@@ -1,0 +1,4 @@
+// Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets | 53c93662-8406-48eb-9136-fb9c97cd7aaf
+Sysmon
+| where EventID == 1
+| where (((Image endswith @"\powershell.exe" or Image endswith @"\pwsh.exe") or (OriginalFileName =~ @"PowerShell.EXE" or OriginalFileName =~ @"pwsh.dll")) and (CommandLine contains @"Register-ScheduledTask" or CommandLine contains @"Set-ScheduledTask") and (CommandLine contains @"New-ScheduledTaskAction" or (CommandLine contains @"$env:TEMP" or CommandLine contains @"$env:APPDATA" or CommandLine contains @"http://" or CommandLine contains @"https://") or CommandLine matches regex @"(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]"))

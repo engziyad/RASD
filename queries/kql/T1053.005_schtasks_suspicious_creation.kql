@@ -1,0 +1,4 @@
+// Scheduled Task Created With Suspicious Action | 2114b226-991c-4830-9b80-8f5421283af3
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\schtasks.exe" or OriginalFileName =~ @"schtasks.exe") and CommandLine matches regex @"(?i)(^|\s)""?[/-](create|change)""?(\s|$)" and ((CommandLine contains @"%TEMP%" or CommandLine contains @"%APPDATA%" or CommandLine contains @"powershell" or CommandLine contains @"cmd /c" or CommandLine contains @"cmd.exe /c" or CommandLine contains @"mshta" or CommandLine contains @"wscript" or CommandLine contains @"cscript" or CommandLine contains @"regsvr32" or CommandLine contains @"http://" or CommandLine contains @"https://") or CommandLine matches regex @"(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]" or (CommandLine matches regex @"(?i)(^|\s)[/-]s\s+\S+" and CommandLine matches regex @"(?i)(^|\s)[/-]ru\s+""?(nt authority\\system|system)""?(\s|$)")))

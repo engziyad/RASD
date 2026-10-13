@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+/reports/
+red/results/
+report.html
+emulation-results.json
+lab-export.jsonl
+*-findings.json
+.venv/
+.DS_Store
+dc-export.jsonl
+siem-alerts.csv
+lab-readiness.json

@@ -1,0 +1,79 @@
+id: suspicious_shell_execution
+name: Encoded shell command and execution from /tmp
+platform: linux
+mitre:
+  technique: T1059.004
+  technique_name: Command and Scripting Interpreter - Unix Shell
+  related: [T1027]
+  tactics: [execution, defense-evasion]
+objective: >
+  Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded command
+  piped into sh, and a script dropped in /tmp, made executable and run from there - with
+  payloads that only print the run marker, and record what auditd or Sysmon for Linux sees.
+prerequisites:
+  - Linux lab host with bash and coreutils
+  - "auditd with execve logging (-a always,exit -F arch=b64 -S execve -k exec) and/or Sysmon for Linux"
+safety:
+  - Runs only with --lab-confirmed on a disposable lab host you own
+  - Both payloads only echo the marker
+  - The /tmp script is named after the marker and removed by cleanup.sh
+execution:
+  - "python3 red/run_red.py --test suspicious_shell_execution --lab-confirmed"
+  - "echo <base64> | base64 -d | sh"
+  - "printf ... > /tmp/<marker>.sh; chmod +x /tmp/<marker>.sh; /tmp/<marker>.sh"
+steps:
+  - id: shell_patterns
+    name: Base64 command piped into sh, then a script executed from /tmp
+    script: emulate_shell.sh
+    detections: []
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: auditd
+    event: "EXECVE · base64 -d, sh"
+    description: The decode-and-pipe chain, one EXECVE record per process
+    fields:
+      a0: 'base64'
+      a1: '-d'
+  - source: auditd
+    event: "EXECVE · /tmp/<marker>.sh"
+    description: Execution of a file under /tmp
+    fields:
+      exe: '/tmp/<marker>.sh (or /bin/sh with a0=/tmp/<marker>.sh)'
+  - source: Sysmon for Linux
+    event: "1 · ProcessCreate / 11 · FileCreate"
+    description: Process creation with the full command line; file creation in /tmp
+    fields:
+      CommandLine: 'base64 -d'
+      TargetFilename: '/tmp/<marker>.sh'
+logging:
+  - "auditd execve rules for all users (64- and 32-bit)"
+dfir_artifacts:
+  - artifact: Process lineage
+    location: auditd EXECVE records (ppid) or Sysmon for Linux 1
+    collect: "ausearch -k exec -ts recent"
+    purpose: Which parent (web server, cron, SSH session) launched the shell chain
+  - artifact: Dropped script
+    location: /tmp, /var/tmp, /dev/shm
+    collect: "find /tmp /var/tmp /dev/shm -type f -newer /etc/hostname -perm -u+x"
+    purpose: Payloads executed from world-writable directories
+gap:
+  reason: RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
+  planned: >
+    Rules for base64 -d piped into a shell and for execution from /tmp, /var/tmp or /dev/shm,
+    on a mapped auditd or Sysmon for Linux source.
+cleanup:
+  actions:
+    - Removes /tmp/<marker>.sh
+  verify: /tmp/<marker>.sh no longer exists
+sample_output:
+  console: |
+    [T1059.004] Base64 command piped into sh, then a script executed from /tmp
+    purplelab_1a2b3c4d
+    purplelab_1a2b3c4d from /tmp
+    [cleanup] verified: /tmp/purplelab_1a2b3c4d.sh removed
+  illustrative_events:
+    - title: auditd EXECVE record for the decode step
+      event:
+        line: 'type=EXECVE msg=audit(1791784801.123:4512): argc=2 a0="base64" a1="-d"'
+dfir_playbook: dfir/playbooks/linux_persistence.md

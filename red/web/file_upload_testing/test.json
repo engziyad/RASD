@@ -1,0 +1,26 @@
+{
+  "id": "file_upload_testing",
+  "name": "File upload restrictions",
+  "platform": "web",
+  "technique": "T1505.003",
+  "runner": "python",
+  "steps": [
+    {
+      "id": "restricted_uploads",
+      "name": "Upload .exe, .pdf.exe, spoofed-type and oversized text files",
+      "script": "emulate_file_upload.py",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

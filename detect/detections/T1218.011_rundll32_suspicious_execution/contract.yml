@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1218.011_rundll32_suspicious_execution
+name: Rundll32 Proxy Execution From Suspicious Context
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1218.011
+related_techniques:
+- attack.t1003.001
+data_contract:
+  required_logsource:
+    product: windows
+    category: process_creation
+  required_events:
+  - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
+  required_fields:
+  - Image
+  - OriginalFileName
+  - CommandLine
+  optional_fields:
+  - ParentImage
+  - User
+  - ProcessGuid
+  telemetry_risk:
+    missing_commandline: critical
+    missing_originalfilename: medium
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - DLL copied into System32 before execution
+  - Malicious DLL in a trusted path called by ordinal
+  - rundll32 without arguments only matches if the command line is captured exactly
+coverage_depth:
+  level: medium
+  reason: Four distinct abuse patterns; blind to malicious DLLs placed in trusted paths
+risk_model:
+  base_score: 60
+  increase_if:
+  - condition: suspicious_parent
+    add: 20
+  - condition: payload_in_user_writable_path
+    add: 10
+  - condition: host_is_critical
+    add: 15
+  decrease_if:
+  - condition: known_vendor_software
+    subtract: 25
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Retrieve the referenced DLL, hash it, and check its signer
+  - Check the parent process
+  - For no-argument rundll32, look for network connections from the PID
+  escalate_if:
+  - DLL is unsigned or new to the environment
+  - 'javascript:, vbscript: or comsvcs MiniDump present'
+  - rundll32 with no arguments that makes network connections
+response:
+  l1_action: Retrieve the referenced DLL or script, hash it, check the signer and the parent process
+  l2_action: Review image loads (Sysmon 7), network connections and child processes of the rundll32 PID
+  ir_action: Quarantine the DLL, block contacted infrastructure, isolate the host if code executed; for comsvcs MiniDump follow
+    the LSASS playbook
+  evidence:
+  - Command line and referenced DLL
+  - Image loads (Sysmon EID 7) for the process
+  - Network connections from the process
+  containment:
+  - Quarantine the DLL
+  - Isolate the host if code executed
+  - Block any contacted infrastructure
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

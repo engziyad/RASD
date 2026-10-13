@@ -1,0 +1,89 @@
+id: lsass_memory_access
+name: LSASS memory dump with comsvcs.dll MiniDump
+platform: windows
+mitre:
+  technique: T1003.001
+  technique_name: OS Credential Dumping - LSASS Memory
+  related: [T1218.011]
+  tactics: [credential-access]
+objective: >
+  Dump LSASS memory with the built-in comsvcs.dll MiniDump export through rundll32 - the
+  living-off-the-land technique seen in many intrusions - and prove that both the process
+  access to LSASS and the rundll32 command line fire their detections. The dump is hashed
+  and deleted immediately; it is never copied or parsed.
+prerequisites:
+  - Windows 10/11 or Windows Server lab VM, elevated PowerShell
+  - "Sysmon with a configuration that logs process access to lsass.exe (Event ID 10)"
+  - "In this lab only: LSA protection (RunAsPPL) off and endpoint protection set to allow the test - both block this attack on hardened hosts, which is the point"
+safety:
+  - Runs only with -LabConfirmed -IncludeCredentialAccess on a disposable lab VM you own
+  - Use a VM whose credentials exist nowhere else; an LSASS dump contains them
+  - The dump goes to C:\Windows\Temp\<marker>.dmp (MiniDump cannot take a quoted path, so never a profile path with spaces), is hashed by collect_artifacts.ps1 and deleted by cleanup.ps1
+execution:
+  - "rundll32.exe C:\\Windows\\System32\\comsvcs.dll, MiniDump <lsass PID> C:\\Windows\\Temp\\<marker>.dmp full"
+  - collect_artifacts.ps1 records the dump's size and SHA-256 (not the dump itself)
+  - cleanup.ps1 deletes the dump and confirms it is gone
+steps:
+  - id: comsvcs_minidump
+    name: rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup)
+    script: emulate_lsass_minidump.ps1
+    needs_admin: true
+    opt_in: IncludeCredentialAccess
+    detections: [T1003.001_lsass_memory_access, T1218.011_rundll32_suspicious_execution]
+    bind:
+      T1218.011_rundll32_suspicious_execution: '{marker}'
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Sysmon
+    event: "10 · ProcessAccess"
+    description: rundll32.exe opening lsass.exe with read access
+    fields:
+      SourceImage: '...\System32\rundll32.exe'
+      TargetImage: '...\System32\lsass.exe'
+      GrantedAccess: 'a VM_READ-capable mask such as 0x1fffff or 0x1410 (depends on the Windows build)'
+    used_by: [T1003.001_lsass_memory_access]
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: rundll32.exe with comsvcs.dll MiniDump on the command line
+    fields:
+      CommandLine: 'C:\Windows\System32\comsvcs.dll, MiniDump <pid> C:\Windows\Temp\<marker>.dmp full'
+    used_by: [T1218.011_rundll32_suspicious_execution]
+  - source: Sysmon
+    event: "11 · FileCreate"
+    description: The dump file written by rundll32
+    fields:
+      TargetFilename: 'C:\Windows\Temp\<marker>.dmp'
+logging:
+  - "Sysmon ProcessAccess rule for TargetImage lsass.exe (Event ID 10)"
+  - "Sysmon FileCreate (Event ID 11) for .dmp files"
+dfir_artifacts:
+  - artifact: Process access record
+    location: Sysmon 10 (GrantedAccess, CallTrace)
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Sysmon/Operational'; Id=10}"
+    purpose: CallTrace through dbgcore/dbghelp or comsvcs confirms a dump, not a handle check
+  - artifact: Dump file metadata
+    location: Sysmon 11 TargetFilename
+    collect: Get-FileHash <path> (then delete or secure the dump)
+    purpose: Proves a dump existed; the hash lets you search for exfiltrated copies
+  - artifact: Logon sessions on the host
+    location: Security 4624 since last boot
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624; StartTime=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime}"
+    purpose: Lists every credential that was in LSASS and must be reset
+cleanup:
+  actions:
+    - Deletes C:\Windows\Temp\<marker>.dmp
+  verify: The dump file no longer exists
+sample_output:
+  console: |
+    [T1003.001] rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup)
+    [collect] dump purplelab_1a2b3c4d.dmp hashed (size and SHA-256 recorded, file not kept)
+    [cleanup] verified: dump purplelab_1a2b3c4d.dmp deleted
+  events:
+    - detection: T1003.001_lsass_memory_access
+      case: "red: lsass_memory_access emulation (process access)"
+    - detection: T1218.011_rundll32_suspicious_execution
+      case: "red: lsass_memory_access emulation (comsvcs MiniDump)"
+dfir_playbook: dfir/playbooks/lsass_access.md
+purple_scenario: purple/scenarios/T1003.001_lsass_access.md

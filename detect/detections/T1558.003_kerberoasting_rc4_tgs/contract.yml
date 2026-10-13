@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1558.003_kerberoasting_rc4_tgs
+name: Kerberoasting - RC4 Service Ticket Requested for User Account
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1558.003
+related_techniques:
+- attack.t1110.002
+data_contract:
+  required_logsource:
+    product: windows
+    service: security
+  required_events:
+  - Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations)
+  required_fields:
+  - EventID
+  - TicketEncryptionType
+  - Status
+  - ServiceName
+  - IpAddress
+  optional_fields:
+  - TargetUserName
+  - TicketOptions
+  telemetry_risk:
+    dc_security_log_not_forwarded: critical
+    kerberos_ticket_auditing_disabled: critical
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - AES ticket requests (Rubeus /aes) - the rule sees only RC4; queries/hunts/kerberoasting_volume counts every encryption type
+  - Low-and-slow roasting of a single account
+  - Domains where RC4 is still common
+coverage_depth:
+  level: medium
+  reason: Single-event RC4 rule plus aggregation and contextual hunts in queries/hunts
+risk_model:
+  base_score: 40
+  increase_if:
+  - condition: user_is_privileged
+    add: 15
+  - condition: outside_business_hours
+    add: 10
+  - condition: remote_execution
+    add: 5
+  decrease_if:
+  - condition: known_vendor_software
+    subtract: 25
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Identify the requesting account and source IP
+  - Count distinct ServiceName values from that client in the last hour
+  - Check whether the source is a workstation or server
+  escalate_if:
+  - Three or more distinct SPNs in ten minutes
+  - Source is a workstation
+  - Targeted accounts are privileged service accounts
+response:
+  l1_action: Identify the requesting account, the source IP and the service accounts requested
+  l2_action: Count distinct SPNs requested by the client in the last hour, check LDAP SPN queries from the source, and logons
+    from that host afterwards
+  ir_action: Rotate the targeted service account passwords, move them to gMSA or 25+ character passwords, disable RC4 where
+    possible
+  evidence:
+  - 4769 events for the client
+  - LDAP queries for servicePrincipalName from the source, if collected
+  - Logons from the source host afterwards
+  containment:
+  - Rotate passwords of targeted service accounts
+  - Move service accounts to gMSA or 25+ character passwords
+  - Disable RC4 where possible
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

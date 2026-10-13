@@ -1,0 +1,16 @@
+// Kerberoasting volume hunt: one client requesting service tickets for many user-based SPNs
+// in 10 minutes. Encryption-agnostic, so AES roasting (Rubeus /aes) is counted too: RC4 makes
+// 3 SPNs enough, AES-only requests need 5 because AES tickets for user SPNs are more common.
+// Fields the stock SecurityEvent table may lack are read from EventData.
+SecurityEvent
+| where EventID == 4769
+| extend TicketEncryptionType = coalesce(tostring(column_ifexists("TicketEncryptionType", "")), extract(@'Name="TicketEncryptionType">([^<]*)<', 1, EventData)),
+         ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData)),
+         Status = coalesce(tostring(column_ifexists("Status", "")), extract(@'Name="Status">([^<]*)<', 1, EventData))
+| where Status in ("0x0", "0") and ServiceName !endswith "$" and ServiceName !~ "krbtgt"
+| extend ClientIp = replace_string(IpAddress, "::ffff:", ""), User = tolower(tostring(split(TargetUserName, "@")[0]))
+| summarize spn_count = dcount(ServiceName), rc4_count = countif(TicketEncryptionType in ("0x17", "23")),
+            enc_types = make_set(TicketEncryptionType, 10), services = make_set(ServiceName, 50)
+    by User, ClientIp, bin(TimeGenerated, 10m)
+| where spn_count >= 5 or (spn_count >= 3 and rc4_count > 0)
+| order by spn_count desc

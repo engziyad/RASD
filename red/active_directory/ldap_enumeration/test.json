@@ -1,0 +1,24 @@
+{
+  "id": "ldap_enumeration",
+  "name": "LDAP enumeration of users, groups and SPNs",
+  "platform": "active_directory",
+  "technique": "T1087.002",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "ldap_queries",
+      "name": "Read-only LDAP queries for SPN users, Domain Admins and computers (counts only)",
+      "script": "emulate_ldap_enumeration.ps1",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": null
+  }
+}

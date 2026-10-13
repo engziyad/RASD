@@ -1,0 +1,73 @@
+# Threat groups whose published ATT&CK procedure examples include techniques RASD validates.
+# Every entry links the ATT&CK group page that publishes the procedure; re-check it when
+# ATT&CK releases a new version, because wording and IDs can change. tools/chain.py renders
+# actor_tradecraft_map.md from this file and fails on a technique RASD does not know.
+# last_checked: the date someone opened every source page and confirmed the rows (null = not yet).
+last_checked: null
+actors:
+  - group: OilRig
+    id: G0049
+    source: https://attack.mitre.org/groups/G0049/
+    context: Iran-linked espionage group active against organisations in the Middle East
+    techniques:
+      - id: T1053.005
+        note: Scheduled tasks for persistence of its backdoors
+  - group: MuddyWater
+    id: G0069
+    source: https://attack.mitre.org/groups/G0069/
+    context: Iran-linked group active against Middle East governments and telecoms
+    techniques:
+      - id: T1059.001
+        note: PowerShell-based backdoors and loaders
+      - id: T1547.001
+        note: Registry Run key values for persistence
+  - group: APT33
+    id: G0064
+    source: https://attack.mitre.org/groups/G0064/
+    context: Iran-linked group that has targeted aviation and energy organisations in Saudi Arabia
+    techniques:
+      - id: T1053.005
+        note: Scheduled tasks that run its payloads repeatedly
+      - id: T1110.003
+        note: Password spraying to gain access to target systems
+  - group: Wizard Spider
+    id: G0102
+    source: https://attack.mitre.org/groups/G0102/
+    context: Cybercrime operators behind TrickBot, Ryuk and Conti ransomware
+    techniques:
+      - id: T1558.003
+        note: Kerberoasting with Rubeus and Invoke-Kerberoast
+      - id: T1569.002
+        note: PsExec to run payloads on remote hosts
+  - group: APT28
+    id: G0007
+    source: https://attack.mitre.org/groups/G0007/
+    context: Russia-linked espionage group
+    techniques:
+      - id: T1070.001
+        note: Clearing the System and Security logs with wevtutil
+      - id: T1218.011
+        note: rundll32 to execute its implants
+      - id: T1110.003
+        note: Brute-force and password-spray campaign against enterprise and cloud accounts
+  - group: Lazarus Group
+    id: G0032
+    source: https://attack.mitre.org/groups/G0032/
+    context: North Korea-linked group known for espionage and destructive operations
+    techniques:
+      - id: T1218.011
+        note: rundll32 to load malicious DLLs
+  - group: HAFNIUM
+    id: G0125
+    source: https://attack.mitre.org/groups/G0125/
+    context: China-linked group known for the 2021 Exchange Server intrusions
+    techniques:
+      - id: T1003.001
+        note: procdump to dump LSASS memory
+  - group: APT29
+    id: G0016
+    source: https://attack.mitre.org/groups/G0016/
+    context: Russia-linked espionage group
+    techniques:
+      - id: T1059.001
+        note: PowerShell for execution and in-memory tooling

@@ -1,0 +1,8 @@
+# Telemetry profile: the native names the rules, tests and evidence use. No translation.
+name: sysmon-native
+description: Sysmon and Windows events with their own EventData field names (Image, CommandLine, TicketEncryptionType ...).
+source: RASD lab export (red/Export-LabTelemetry.ps1), Windows Event Forwarding, any export that keeps the EventData names
+docs: https://learn.microsoft.com/sysinternals/downloads/sysmon
+covers: [process_creation, process_access, registry_set, windows/security, windows/system]
+event: {}
+fields: {}

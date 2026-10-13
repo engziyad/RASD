@@ -1,0 +1,90 @@
+id: ldap_enumeration
+name: LDAP enumeration of users, groups and SPNs
+platform: active_directory
+mitre:
+  technique: T1087.002
+  technique_name: Account Discovery - Domain Account
+  related: [T1069.002, T1018]
+  tactics: [discovery]
+objective: >
+  Run the read-only LDAP queries that precede most AD attacks - every user with an SPN,
+  members of Domain Admins, every computer - and measure whether the environment records
+  them at all. The test prints counts only. RASD has no rule for this yet; the run tells
+  you whether the telemetry a rule would need exists.
+prerequisites:
+  - Domain-joined lab workstation, ordinary domain user
+  - "To see the queries on the DC: Directory Service diagnostics '15 Field Engineering' = 5 with the expensive/inefficient search thresholds lowered (event 1644), or EDR LDAP telemetry"
+safety:
+  - Runs only with -LabConfirmed
+  - Read-only LDAP searches; prints counts, never names or attributes
+  - Nothing is written anywhere
+execution:
+  - "(servicePrincipalName=*) on user objects - the Kerberoasting target list"
+  - "(memberOf=CN=Domain Admins,...) - the privileged users"
+  - "(objectCategory=computer) - the host inventory"
+steps:
+  - id: ldap_queries
+    name: Read-only LDAP queries for SPN users, Domain Admins and computers (counts only)
+    script: emulate_ldap_enumeration.ps1
+    detections: []
+scripts:
+  cleanup: cleanup.ps1
+telemetry:
+  - source: Sysmon (workstation)
+    event: "3 · NetworkConnect"
+    description: powershell.exe connecting to the DC on TCP 389
+    fields:
+      Image: '...\powershell.exe'
+      DestinationPort: '389'
+  - source: Directory Service (domain controller)
+    event: "1644 · LDAP search statistics"
+    description: Filter, base, scope and client IP of each search (only with Field Engineering logging)
+    fields:
+      Filter: '( &(objectCategory=person)(servicePrincipalName=*) )'
+      Client: '<workstation IP>:<port>'
+  - source: Security (domain controller)
+    event: "4662 · An operation was performed on an object"
+    description: Object reads, only where a SACL audits them (for example a honeypot account)
+    fields:
+      ObjectName: '<audited object DN>'
+logging:
+  - "DC: HKLM\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Diagnostics '15 Field Engineering' = 5 (lab only - verbose)"
+  - "Optional: a SACL on a decoy account so any read produces 4662"
+dfir_artifacts:
+  - artifact: LDAP search log
+    location: DC Directory Service log, event 1644
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Directory Service'; Id=1644}"
+    purpose: Which filters were run and from which client
+  - artifact: Client process
+    location: Sysmon 3 on the workstation (DestinationPort 389/636/3268)
+    collect: Pivot on the source IP and time
+    purpose: Ties the LDAP traffic to a process (PowerShell, SharpHound, ADExplorer...)
+gap:
+  reason: >
+    No log source in the default Windows audit policy records LDAP query filters. Event 1644
+    needs verbose diagnostics on every DC, and 4662 only covers objects with a SACL.
+  planned: >
+    A decoy-account rule (4662 read of a honeypot SPN user, which no legitimate process
+    touches) and a hunt over 1644 for (servicePrincipalName=*) from workstations.
+cleanup:
+  actions:
+    - Nothing is created by this test
+  verify: No file, registry value or process is left behind
+sample_output:
+  console: |
+    [T1087.002] Read-only LDAP queries for SPN users, Domain Admins and computers (counts only)
+    users with an SPN: 4
+    Domain Admins members: 2
+    computers: 17
+    [cleanup] verified: nothing persisted
+  illustrative_events:
+    - title: DC event 1644 (with Field Engineering logging)
+      event:
+        Channel: Directory Service
+        EventID: 1644
+        Computer: LAB-DC01.lab.local
+        Client: "10.0.0.21:51144"
+        StartingNode: "DC=lab,DC=local"
+        Filter: " ( &  (objectCategory=CN=Person,CN=Schema,CN=Configuration,DC=lab,DC=local) (servicePrincipalName=*) ) "
+        SearchScope: subtree
+dfir_playbook: dfir/playbooks/ad_reconnaissance.md

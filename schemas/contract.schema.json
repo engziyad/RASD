@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/engziyad/detection-as-code-purple-lab/schemas/contract.schema.json",
+  "title": "RASD Detection Contract",
+  "description": "Operational contract that sits next to every rule.yml (RASD contract v2). Enforced by tools/validate.py and tools/chain.py; this schema gives editors autocomplete and inline validation.",
+  "type": "object",
+  "required": [
+    "detection_id",
+    "name",
+    "maturity",
+    "owner",
+    "primary_technique",
+    "data_contract",
+    "detection_logic",
+    "coverage_depth",
+    "risk_model",
+    "validation",
+    "triage",
+    "response",
+    "governance"
+  ],
+  "properties": {
+    "detection_id": {
+      "type": "string",
+      "pattern": "^T\\d{4}(\\.\\d{3})?_[a-z0-9_]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 5
+    },
+    "maturity": {
+      "description": "Declared RASD maturity level. tools/chain.py fails when it exceeds the level the repository can prove.",
+      "enum": [
+        "draft",
+        "tested",
+        "hardened",
+        "siem-ready",
+        "validated",
+        "reference"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "primary_technique": {
+      "type": "string",
+      "pattern": "^attack\\.t\\d{4}(\\.\\d{3})?$"
+    },
+    "related_techniques": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^attack\\.t\\d{4}(\\.\\d{3})?$"
+      }
+    },
+    "data_contract": {
+      "type": "object",
+      "required": [
+        "required_logsource",
+        "required_events",
+        "required_fields",
+        "telemetry_risk"
+      ],
+      "properties": {
+        "required_logsource": {
+          "type": "object"
+        },
+        "required_events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "telemetry_risk": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          }
+        }
+      }
+    },
+    "detection_logic": {
+      "type": "object",
+      "required": [
+        "type",
+        "confidence",
+        "severity",
+        "expected_noise",
+        "blind_spots"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "single-event",
+            "aggregation",
+            "correlation"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "informational",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "expected_noise": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "blind_spots": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "coverage_depth": {
+      "type": "object",
+      "required": [
+        "level",
+        "reason"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "minimal",
+            "partial",
+            "medium",
+            "high"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "mutation_tests_required",
+        "lab_emulation_available"
+      ],
+      "properties": {
+        "mutation_tests_required": {
+          "type": "boolean"
+        },
+        "lab_emulation_available": {
+          "type": "boolean"
+        },
+        "siem_backends": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "splunk",
+              "kql"
+            ]
+          }
+        }
+      }
+    },
+    "triage": {
+      "type": "object",
+      "required": [
+        "first_checks",
+        "escalate_if"
+      ],
+      "properties": {
+        "first_checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "escalate_if": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": [
+        "l1_action",
+        "l2_action",
+        "ir_action",
+        "evidence",
+        "containment"
+      ],
+      "properties": {
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "containment": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "l1_action": {
+          "type": "string",
+          "minLength": 10
+        },
+        "l2_action": {
+          "type": "string",
+          "minLength": 10
+        },
+        "ir_action": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "evidence_type"
+      ],
+      "properties": {
+        "evidence_type": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "risk_model": {
+      "type": "object",
+      "required": [
+        "base_score"
+      ],
+      "properties": {
+        "base_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "increase_if": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "condition",
+              "add"
+            ],
+            "properties": {
+              "condition": {
+                "type": "string",
+                "description": "A condition defined in detect/risk_conditions.yml"
+              },
+              "add": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              }
+            }
+          }
+        },
+        "decrease_if": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "condition",
+              "subtract"
+            ],
+            "properties": {
+              "condition": {
+                "type": "string",
+                "description": "A condition defined in detect/risk_conditions.yml"
+              },
+              "subtract": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

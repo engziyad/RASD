@@ -1,0 +1,28 @@
+{
+  "id": "password_spray_simulation",
+  "name": "Password spray simulation with a password that cannot be right",
+  "platform": "active_directory",
+  "technique": "T1110.003",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "spray",
+      "name": "One failed LDAP bind per lab account with a random password",
+      "script": "emulate_password_spray.ps1",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "UserList"
+      ],
+      "correlations": [
+        "T1110.003_password_spray_burst"
+      ],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": null
+  }
+}

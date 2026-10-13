@@ -1,0 +1,106 @@
+# Event sequences for the password-spray correlation: 5 or more distinct accounts failing with
+# a wrong password from one client address in a 10-minute window (windows start at :00, :10 ...).
+#
+# Every event is `defaults` + its own fields, `at` seconds after the scenario's `start`.
+# `count` and `every` repeat an entry; `set` fills {n} with 1, 2, 3 ...; `Field: null` removes
+# a default. `rasd correlate` runs every scenario, then checks that each parameter mutant of
+# the correlation (threshold +-1, window x2 and /2, no group-by, events counted instead of
+# accounts, no address normalisation) gets at least one scenario wrong.
+defaults:
+  Channel: Security
+  Computer: LAB-DC01.lab.local
+  EventID: 4771
+  ServiceName: krbtgt/LAB.LOCAL
+  TicketOptions: '0x40810010'
+  Status: '0x18'
+  PreAuthType: '2'
+  IpAddress: '::ffff:10.0.0.21'
+
+scenarios:
+  - name: lab emulation - nine lab accounts in five seconds over Kerberos
+    expect: fire
+    groups: ['10.0.0.21']
+    alerts: 1
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 0.6, count: 9, set: {TargetUserName: 'lab.user{n:02d}'}}
+
+  - name: exactly the threshold - five accounts in one minute
+    expect: fire
+    groups: ['10.0.0.21']
+    alerts: 1
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 12, count: 5, set: {TargetUserName: 'lab.user{n:02d}'}}
+
+  - name: one below the threshold - four accounts
+    expect: silent
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 12, count: 4, set: {TargetUserName: 'lab.user{n:02d}'}}
+
+  - name: five users mistyping their passwords on five workstations
+    expect: silent
+    start: '2026-10-12T08:01:00Z'
+    events:
+      - {at: 0, every: 40, count: 5, set: {TargetUserName: 'user{n:02d}', IpAddress: '::ffff:10.0.1.{n}'}}
+
+  - name: one user with a stale saved password retrying twelve times
+    expect: silent
+    start: '2026-10-12T08:30:00Z'
+    events:
+      - {at: 0, every: 30, count: 12, TargetUserName: 'omar', IpAddress: '::ffff:10.0.1.40'}
+
+  - name: slow spray - one account a minute for five minutes
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-12T09:01:00Z'
+    events:
+      - {at: 0, every: 60, count: 5, set: {TargetUserName: 'lab.user{n:02d}'}}
+
+  - name: mixed Kerberos and NTLM from one client - three accounts each
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 5, count: 3, set: {TargetUserName: 'lab.user{n:02d}'}}
+      - at: 20
+        every: 5
+        count: 3
+        EventID: 4625
+        Status: '0xc000006d'
+        SubStatus: '0xc000006a'
+        FailureReason: '%%2313'
+        LogonType: '3'
+        WorkstationName: LAB-WS01
+        IpAddress: '10.0.0.21'
+        ServiceName: null
+        TicketOptions: null
+        PreAuthType: null
+        set: {TargetUserName: 'lab.user1{n}'}
+
+  - name: two sources spraying in the same window alert separately
+    expect: fire
+    groups: ['10.0.0.21', '10.0.0.22']
+    alerts: 2
+    start: '2026-10-12T11:00:30Z'
+    events:
+      - {at: 0, every: 2, count: 5, set: {TargetUserName: 'lab.user{n:02d}'}}
+      - {at: 1, every: 2, count: 5, IpAddress: '::ffff:10.0.0.22', set: {TargetUserName: 'lab.user{n:02d}'}}
+
+  - name: machine accounts with stale passwords do not count
+    expect: silent
+    start: '2026-10-12T07:00:00Z'
+    events:
+      - {at: 0, every: 30, count: 8, IpAddress: '::ffff:10.0.0.80', set: {TargetUserName: 'LAB-WS{n:02d}$'}}
+
+  - name: six accounts split 3 + 3 by a window boundary
+    expect: silent
+    known_limit: >
+      Tumbling windows cut a burst at the boundary (10:10 here). Any burst of 9 or more accounts
+      within 10 minutes always alerts: the arithmetic proves it, rasd correlate checks it with the
+      engine, and rasd nearmiss reports bursts a boundary split in real traffic.
+    start: '2026-10-12T10:07:00Z'
+    events:
+      - {at: 0, every: 60, count: 3, set: {TargetUserName: 'lab.user{n:02d}'}}
+      - {at: 240, every: 60, count: 3, set: {TargetUserName: 'lab.user1{n}'}}

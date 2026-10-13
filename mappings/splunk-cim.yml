@@ -1,0 +1,27 @@
+# Telemetry profile: Splunk Common Information Model, Endpoint data model (Processes and
+# Registry datasets), e.g. a `| datamodel Endpoint Processes search` export as JSON.
+# CIM has no process-access, Kerberos ticket or service-install fields the rules can use:
+# those detections need the native Windows / Sysmon events.
+name: splunk-cim
+description: Splunk CIM Endpoint data model - Processes and Registry datasets.
+source: Splunk CIM Endpoint data model export (JSON)
+docs: https://help.splunk.com/en/splunk-enterprise-security-8/common-information-model/5.3/data-models/endpoint
+covers: [process_creation, registry_set]
+event:
+  infer:                                # Registry rows also carry process_path, so they are tested first
+    - when: {registry_path: "*"}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 13}
+    - when: {process_path: "*", process: "*"}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 1}
+fields:
+  common:
+    Computer: [dest]
+    User: [user]
+  process_creation:
+    Image: [process_path]
+    CommandLine: [process]              # CIM caps it at 2048 characters
+    OriginalFileName: [original_file_name]
+    ParentImage: [parent_process_path]
+  registry_set:
+    TargetObject: [registry_path]
+    Details: [registry_value_data]

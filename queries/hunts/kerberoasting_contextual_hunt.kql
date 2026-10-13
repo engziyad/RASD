@@ -1,0 +1,26 @@
+// Kerberoasting contextual hunt: the volume hunt plus asset and account context -> risk score.
+// Optional Sentinel watchlists: asset_inventory (ip, asset_type) and privileged_accounts
+// (user, account_type). Keys are normalised on both sides - 4769 logs the client as
+// ::ffff:10.0.0.5 and the user as user@DOMAIN - and column_ifexists keeps the hunt running,
+// scored on volume only, when a watchlist does not exist yet.
+let assets = _GetWatchlist('asset_inventory')
+    | project ClientIp = tostring(column_ifexists("ip", "")), asset_type = tolower(tostring(column_ifexists("asset_type", "")));
+let accounts = _GetWatchlist('privileged_accounts')
+    | project User = tolower(tostring(split(tostring(column_ifexists("user", "")), "@")[0])),
+              account_type = tolower(tostring(column_ifexists("account_type", "")));
+SecurityEvent
+| where EventID == 4769
+| extend TicketEncryptionType = coalesce(tostring(column_ifexists("TicketEncryptionType", "")), extract(@'Name="TicketEncryptionType">([^<]*)<', 1, EventData)),
+         ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData)),
+         Status = coalesce(tostring(column_ifexists("Status", "")), extract(@'Name="Status">([^<]*)<', 1, EventData))
+| where Status in ("0x0", "0") and ServiceName !endswith "$" and ServiceName !~ "krbtgt"
+| extend ClientIp = replace_string(IpAddress, "::ffff:", ""), User = tolower(tostring(split(TargetUserName, "@")[0]))
+| summarize spn_count = dcount(ServiceName), rc4_count = countif(TicketEncryptionType in ("0x17", "23")),
+            services = make_set(ServiceName, 50)
+    by User, ClientIp, bin(TimeGenerated, 10m)
+| where spn_count >= 5 or (spn_count >= 3 and rc4_count > 0)
+| join kind=leftouter assets on ClientIp
+| join kind=leftouter accounts on User
+| extend risk_score = case(spn_count >= 10, 80, spn_count >= 5, 60, 40)
+    + iff(rc4_count > 0, 10, 0) + iff(asset_type == "workstation", 20, 0) + iff(account_type == "service", 15, 0)
+| order by risk_score desc

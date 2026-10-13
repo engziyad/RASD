@@ -1,0 +1,83 @@
+id: powershell_encoded_command
+name: PowerShell -EncodedCommand with a benign payload
+platform: windows
+mitre:
+  technique: T1059.001
+  technique_name: Command and Scripting Interpreter - PowerShell
+  related: [T1027]
+  tactics: [execution, defense-evasion]
+objective: >
+  Prove that an encoded PowerShell command line reaches the SIEM intact and fires the
+  encoded-command detection. The payload only writes the run marker to the console, so the
+  test proves the telemetry path without executing anything harmful.
+prerequisites:
+  - Windows 10/11 or Windows Server lab VM with Sysmon (Event ID 1) installed
+  - PowerShell script block logging (Event ID 4104) enabled to capture the decoded script
+safety:
+  - Runs only with -LabConfirmed on a disposable lab VM you own
+  - The decoded payload is Write-Output '<marker>'; it creates no file, task, key or network connection
+  - Nothing persists, so cleanup only verifies that no process carrying this run's Base64 payload is still running
+execution:
+  - Run the step through the runner so the marker, timing and cleanup are recorded
+  - The runner starts a child powershell.exe with -NoProfile -enc <Base64 of the payload>
+  - Export telemetry with Export-LabTelemetry.ps1 and run `python rasd.py evidence`
+steps:
+  - id: encoded_command
+    name: powershell.exe -enc with a benign Write-Output payload
+    script: emulate_encoded_command.ps1
+    detections: [T1059.001_powershell_encoded_command]
+    bind:
+      T1059.001_powershell_encoded_command: "base64-utf16le:Write-Output '{marker}'"
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: Child powershell.exe started with an encoded command
+    fields:
+      Image: '...\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: '-NoProfile -enc <Base64 of the payload>'
+      ParentImage: '...\powershell.exe (the runner)'
+    used_by: [T1059.001_powershell_encoded_command]
+  - source: Microsoft-Windows-PowerShell/Operational
+    event: "4104 · Script block logged"
+    description: The decoded script block, containing the marker
+    fields:
+      ScriptBlockText: "Write-Output '<marker>'"
+  - source: Security
+    event: "4688 · Process created"
+    description: Same process creation, when command-line auditing is enabled
+    fields:
+      CommandLine: '-NoProfile -enc <Base64>'
+logging:
+  - "Sysmon with a configuration that logs process creation (Event ID 1)"
+  - "Group Policy: Turn on PowerShell Script Block Logging"
+dfir_artifacts:
+  - artifact: Decoded command
+    location: CommandLine of Sysmon 1 / Security 4688
+    collect: "[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('<blob>'))"
+    purpose: Shows exactly what the encoded command ran
+  - artifact: Script block
+    location: Microsoft-Windows-PowerShell/Operational 4104
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-PowerShell/Operational'; Id=4104}"
+    purpose: Captures the decoded script even when the command line is truncated
+  - artifact: Parent process tree
+    location: Sysmon 1 ParentImage / ParentProcessGuid
+    collect: Pivot on ParentProcessGuid in the SIEM
+    purpose: Separates admin tooling from Office or browser delivery
+cleanup:
+  actions:
+    - Nothing is written to disk or registry by this test
+    - "Rebuilds the run's Base64 payload (the marker never appears in clear text) and stops any powershell.exe still carrying it"
+  verify: No powershell.exe with this run's payload on its command line remains
+sample_output:
+  console: |
+    [T1059.001] powershell.exe -enc with a benign Write-Output payload
+    purplelab_1a2b3c4d
+    [cleanup] verified: nothing persisted
+  events:
+    - detection: T1059.001_powershell_encoded_command
+      case: "red: powershell_encoded_command emulation"
+dfir_playbook: dfir/playbooks/suspicious_powershell.md
+purple_scenario: purple/scenarios/T1059.001_powershell_encoded.md

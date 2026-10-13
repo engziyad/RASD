@@ -1,0 +1,84 @@
+id: privilege_escalation_checks
+name: Read-only privilege-escalation reconnaissance
+platform: linux
+mitre:
+  technique: T1083
+  technique_name: File and Directory Discovery
+  related: [T1548.001, T1082]
+  tactics: [discovery, privilege-escalation]
+objective: >
+  Run the checks every Linux enumeration script starts with - sudo rights, SUID binaries,
+  file capabilities, permissions of passwd/shadow/sudoers, writable PATH directories - and
+  record the burst of find / getcap / sudo -l executions it leaves behind. Nothing is
+  changed; the lists double as a hardening report for the host.
+prerequisites:
+  - Linux lab host with bash, find and (optionally) getcap
+  - "auditd with execve logging and/or Sysmon for Linux"
+safety:
+  - Runs only with --lab-confirmed on a disposable lab host you own
+  - Read-only; sudo is called with -n, so it never prompts for or uses a password
+  - Lists are saved to $RASD_OUT_DIR for review and contain no secrets
+execution:
+  - "python3 red/run_red.py --test privilege_escalation_checks --lab-confirmed"
+steps:
+  - id: privesc_recon
+    name: sudo -n -l, SUID and capability search, sensitive file and PATH checks
+    script: emulate_privesc_checks.sh
+    detections: []
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: auditd
+    event: "EXECVE · find / -perm -4000"
+    description: The SUID search, the most recognisable enumeration command
+    fields:
+      a0: 'find'
+      a3: '-perm'
+      a4: '-4000'
+  - source: auditd
+    event: "EXECVE · sudo -n -l / getcap -r /"
+    description: Rights and capabilities enumeration
+    fields:
+      a0: 'sudo or getcap'
+  - source: auth.log / journald
+    event: "sudo: <user> : command not allowed / list"
+    description: sudo logs the -l listing attempt for the user
+    fields:
+      program: sudo
+logging:
+  - "auditd execve rules for all users"
+dfir_artifacts:
+  - artifact: Enumeration burst
+    location: auditd EXECVE records within one session
+    collect: "ausearch -k exec -ts recent | grep -E 'perm|getcap|sudo'"
+    purpose: An interactive session running find -perm -4000 and getcap in seconds is reconnaissance
+  - artifact: Check results
+    location: "$RASD_OUT_DIR/suid-*.txt, capabilities-*.txt, sudo-l-*.txt"
+    collect: Written by the test
+    purpose: The host's actual escalation surface, for hardening
+gap:
+  reason: RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
+  planned: >
+    A correlation rule for find -perm -4000, getcap -r and sudo -l from one session within a
+    short window, once Linux telemetry and correlations are supported.
+cleanup:
+  actions:
+    - Nothing is changed by this test
+  verify: Read-only; nothing to remove
+sample_output:
+  console: |
+    [T1083] sudo -n -l, SUID and capability search, sensitive file and PATH checks
+    user: uid=1000(labuser) gid=1000(labuser) groups=1000(labuser)
+    kernel: 6.8.0-45-generic
+    sudo -n -l: sudo: a password is required
+    SUID binaries: 21
+    files with capabilities: 3
+    -rw-r--r-- root:root /etc/passwd
+    -rw-r----- root:shadow /etc/shadow
+    -r--r----- root:root /etc/sudoers
+    writable PATH directories: none
+  illustrative_events:
+    - title: auditd EXECVE record for the SUID search
+      event:
+        line: 'type=EXECVE msg=audit(1791784860.411:4630): argc=7 a0="find" a1="/" a2="-xdev" a3="-perm" a4="-4000" a5="-type" a6="f"'
+dfir_playbook: dfir/playbooks/linux_persistence.md

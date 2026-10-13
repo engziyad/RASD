@@ -1,0 +1,39 @@
+title: Service Ticket Issued for a User-Based Service Account
+id: 4213dcad-3a04-4423-b9a3-2232491ad32b
+name: service_ticket_user_account
+status: test
+description: |
+  A successful Kerberos service ticket request (4769, status 0x0) for a service that runs
+  under a user account, with any encryption type. Machine accounts ($), krbtgt and requests
+  from the domain controller itself are excluded. This is the base rule of the
+  Kerberoasting volume correlation and never alerts on its own: every user requests service
+  tickets all day.
+references:
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4769
+author: Ziyad (github.com/engziyad)
+date: 2026-10-12
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4769
+    Status:
+      - '0x0'
+      - '0'
+  filter_machine:
+    ServiceName|endswith: '$'
+  filter_krbtgt:
+    ServiceName: krbtgt
+  filter_local:
+    IpAddress:
+      - '::1'
+      - '127.0.0.1'
+      - '::ffff:127.0.0.1'
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - Every service ticket a user needs - which is why this rule only feeds the correlation
+level: informational

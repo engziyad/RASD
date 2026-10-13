@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1053.005_schtasks_suspicious_creation
+expected_noise: medium
+noise_sources:
+- IT automation that schedules PowerShell maintenance scripts
+tunings:
+- id: sccm_client
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: The SCCM client creates tasks that run PowerShell maintenance scripts.
+  filter:
+    ParentImage|endswith: \CCM\CcmExec.exe
+  alternative: Allow-list by task name and script path together, never by task name alone.
+- id: all_powershell_actions
+  status: rejected
+  scope: global
+  residual_risk: high
+  reason: Silencing every task whose action is PowerShell would remove most of the alert volume.
+  filter:
+    CommandLine|contains: powershell
+  alternative: Tune per automation account and script path instead.
+never_tune:
+- 'Never filter remote creation as SYSTEM (/S with /RU SYSTEM): it is a lateral-movement pattern.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

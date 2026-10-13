@@ -1,0 +1,45 @@
+title: Authentication Failure With a Wrong Password
+id: 2e32a46d-cb7c-4dca-831e-09f3e1abe585
+name: auth_failure_wrong_password
+status: test
+description: |
+  A failed authentication whose reason is a wrong password for an existing account:
+  Kerberos pre-authentication failed (4771, failure code 0x18) on a domain controller, or a
+  failed logon (4625, sub-status 0xC000006A) on the server that received the attempt.
+  Machine accounts and attempts without a remote client address are excluded. This is the
+  base rule of the password-spray correlation and never alerts on its own: one failure is
+  a typo, many accounts from one source are a spray.
+references:
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4771
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625
+author: Ziyad (github.com/engziyad)
+date: 2026-10-12
+tags:
+  - attack.credential-access
+  - attack.t1110.003
+logsource:
+  product: windows
+  service: security
+detection:
+  kerberos_preauth:
+    EventID: 4771
+    Status:             # KDC_ERR_PREAUTH_FAILED, hex or decimal depending on the pipeline
+      - '0x18'
+      - '24'
+  logon_failure:
+    EventID: 4625
+    SubStatus:          # STATUS_WRONG_PASSWORD, hex or decimal depending on the pipeline
+      - '0xc000006a'
+      - '3221225578'
+  filter_machine:
+    TargetUserName|endswith: '$'
+  filter_local:
+    IpAddress:
+      - '-'
+      - '::1'
+      - '127.0.0.1'
+      - '::ffff:127.0.0.1'
+  condition: (kerberos_preauth or logon_failure) and not 1 of filter_*
+falsepositives:
+  - Every mistyped password - which is why this rule only feeds the correlation
+level: informational

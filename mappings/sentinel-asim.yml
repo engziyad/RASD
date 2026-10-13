@@ -1,0 +1,27 @@
+# Telemetry profile: Microsoft Sentinel ASIM - imProcessCreate and imRegistry results
+# (ProcessEvent and RegistryEvent schemas). ASIM normalises registry hives to
+# HKEY_LOCAL_MACHINE / HKEY_USERS; the rules match the path below the hive, so both forms work.
+name: sentinel-asim
+description: Microsoft Sentinel ASIM ProcessEvent and RegistryEvent schemas.
+source: Sentinel query export (JSON) of imProcessCreate / imRegistry
+docs: https://learn.microsoft.com/azure/sentinel/normalization-schema-process-event
+covers: [process_creation, registry_set]
+event:
+  infer:
+    - when: {EventType: ProcessCreated}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 1}
+    - when: {EventType: RegistryValueSet}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 13}
+fields:
+  common:
+    Computer: [DvcHostname, Dvc]
+  process_creation:
+    Image: [TargetProcessName]
+    CommandLine: [TargetProcessCommandLine]
+    OriginalFileName: [TargetProcessFileOriginalName]
+    ParentImage: [ActingProcessName]
+    User: [TargetUsername]
+  registry_set:
+    TargetObject: [{join: [RegistryKey, RegistryValue], sep: "\\"}]
+    Details: [RegistryValueData]
+    User: [ActorUsername]

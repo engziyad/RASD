@@ -1,0 +1,29 @@
+{
+  "id": "lsass_memory_access",
+  "name": "LSASS memory dump with comsvcs.dll MiniDump",
+  "platform": "windows",
+  "technique": "T1003.001",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "comsvcs_minidump",
+      "name": "rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup)",
+      "script": "emulate_lsass_minidump.ps1",
+      "detections": [
+        "T1003.001_lsass_memory_access",
+        "T1218.011_rundll32_suspicious_execution"
+      ],
+      "needs_admin": true,
+      "opt_in": "IncludeCredentialAccess",
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1218.011_rundll32_suspicious_execution": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

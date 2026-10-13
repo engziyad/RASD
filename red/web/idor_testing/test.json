@@ -1,0 +1,26 @@
+{
+  "id": "idor_testing",
+  "name": "Object-level authorization (IDOR / BOLA)",
+  "platform": "web",
+  "technique": "T1190",
+  "runner": "python",
+  "steps": [
+    {
+      "id": "walk_object_ids",
+      "name": "Read other users' objects with one account's token (IDs 1-5)",
+      "script": "emulate_idor.py",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

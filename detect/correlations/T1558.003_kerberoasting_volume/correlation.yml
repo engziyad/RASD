@@ -1,0 +1,33 @@
+title: Kerberoasting - One Client Requesting Tickets for Many Service Accounts
+id: 300e1503-3d20-4a7b-8683-0fb27410826f
+status: test
+description: |
+  One client address receiving service tickets for 5 or more distinct user-based service
+  accounts in one 10-minute window - what Kerberoasting tools do before cracking the
+  tickets offline. Every encryption type is counted, so AES roasting (which the RC4
+  single-event rule cannot see) is caught by volume; machine accounts and krbtgt are left
+  out by the base rule because their passwords are long and random.
+references:
+  - https://attack.mitre.org/techniques/T1558/003/
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4769
+  - https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-correlation-rules-specification.md
+author: Ziyad (github.com/engziyad)
+date: 2026-10-12
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+correlation:
+  type: value_count
+  rules:
+    - service_ticket_user_account
+  group-by:
+    - IpAddress
+  timespan: 10m
+  condition:
+    gte: 5
+    field: ServiceName
+  generate: false
+falsepositives:
+  - Application or monitoring servers that connect to many services running under different user accounts
+  - Administrators' jump hosts working through a list of SQL or web servers
+level: high

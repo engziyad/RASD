@@ -1,0 +1,26 @@
+{
+  "id": "api_auth_testing",
+  "name": "API authentication enforcement",
+  "platform": "web",
+  "technique": "T1190",
+  "runner": "python",
+  "steps": [
+    {
+      "id": "unauthenticated_calls",
+      "name": "Call protected endpoints with no token, a malformed token and a foreign-signed JWT",
+      "script": "emulate_api_auth.py",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "privilege_escalation_checks",
+  "name": "Read-only privilege-escalation reconnaissance",
+  "platform": "linux",
+  "technique": "T1083",
+  "runner": "bash",
+  "steps": [
+    {
+      "id": "privesc_recon",
+      "name": "sudo -n -l, SUID and capability search, sensitive file and PATH checks",
+      "script": "emulate_privesc_checks.sh",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

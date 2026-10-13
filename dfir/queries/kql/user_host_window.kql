@@ -1,0 +1,15 @@
+// Everything one user did on one host in a window around the alert (Sysmon + Security)
+let target_host = "WS07.corp.lab";
+let target_user = "lama";
+let alert_time = datetime(2026-10-05 09:12:03);
+let window = 30m;
+union
+    (Sysmon
+        | where Computer =~ target_host and TimeGenerated between ((alert_time - window) .. (alert_time + window))
+        | where User has target_user
+        | project TimeGenerated, Source = "Sysmon", EventID, Image, CommandLine),
+    (SecurityEvent
+        | where Computer =~ target_host and TimeGenerated between ((alert_time - window) .. (alert_time + window))
+        | where Account has target_user or TargetUserName =~ target_user or SubjectUserName =~ target_user
+        | project TimeGenerated, Source = "Security", EventID, Activity)
+| order by TimeGenerated asc

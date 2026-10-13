@@ -1,0 +1,54 @@
+# PowerShell Execution With Encoded Command
+
+<!-- rasd:facts:start -->
+| | |
+|---|---|
+| **ATT&CK** | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) · execution, defense-evasion |
+| **Severity** | `medium` |
+| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Tests** | 12 true positive · 6 true negative · 8 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 202 variants |
+| **Parity** | KQL and SPL identical to the rule on 730 events |
+| **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../../queries/spl/T1059.001_powershell_encoded_command.spl) |
+| **Operations** | [triage](triage.md) · [response](response.md) · [tuning](tuning.yml) · [contract](contract.yml) |
+| **Chain** | red: [powershell_encoded_command](../../../red/windows/powershell_encoded_command/) · DFIR: [phishing_triage](../../../dfir/playbooks/phishing_triage.md) · DFIR: [suspicious_powershell](../../../dfir/playbooks/suspicious_powershell.md) · purple: [T1059.001_powershell_encoded](../../../purple/scenarios/T1059.001_powershell_encoded.md) |
+<!-- rasd:facts:end -->
+
+## Telemetry required
+Sysmon **EID 1** - the generated KQL and SPL read Sysmon. Security **4688** (with command-line auditing) works after remapping `NewProcessName` / `ParentProcessName` in `tools/mappings.yml`; it has no `OriginalFileName`, so the renamed-binary branch goes blind. For full visibility also enable **PowerShell Script Block Logging (4104)**, which records the *decoded* script.
+
+## How the detection works
+PowerShell accepts **any unambiguous prefix** of a parameter name: `-e`, `-ec`, `-enc`, `-encod`, `-EncodedCommand` all work, and it also accepts `/` and Unicode dashes (`–`, `—`) as parameter prefixes. Rules matching the literal string `-enc` are trivially evaded.
+
+This rule uses one regex: a dash-like prefix, then `e`, `ec` or `en*`, then whitespace and a Base64 blob of 16+ chars. Matching on `OriginalFileName` from the PE header catches a renamed `powershell.exe`. The tests prove that `-ExecutionPolicy` / `-ep` do **not** trigger it.
+
+## Evasion & coverage gaps
+- Encoded content passed via environment variables or stdin (`powershell -` with piped input).
+- Obfuscation inside a *non-encoded* command (`IEX`, string concatenation, tick marks) - cover with 4104 script-block rules.
+- PowerShell hosted in another process (System.Management.Automation.dll loaded by a custom binary - Sysmon EID 7).
+
+## False positives & tuning
+Configuration management (SCCM `CcmExec.exe`, Intune, RMM tools). Filter by **parent process path**, as shown with `filter_sccm`.
+
+Every tuning - applied, proposed or rejected - is recorded in [`tuning.yml`](tuning.yml). `python rasd.py tune --filter T1059.001` measures each proposal before it is applied: how many attack variants it would hide against how many corpus alerts it would remove.
+
+## Offensive validation
+[`red/windows/powershell_encoded_command`](../../../red/windows/powershell_encoded_command/) produces exactly the telemetry this rule needs, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
+
+```powershell
+.\red\Invoke-PurpleEmulation.ps1 -Test powershell_encoded_command -LabConfirmed
+.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1)
+```
+
+```bash
+python rasd.py evidence --results <results>/emulation-results.json --logs lab-export.jsonl
+```
+
+## Validate locally
+```bash
+python rasd.py test --filter T1059.001
+python rasd.py prove --filter T1059.001
+python rasd.py parity --filter T1059.001
+python rasd.py explain T1059.001_powershell_encoded_command --tp 1
+```

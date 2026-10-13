@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1558.003_kerberoasting_volume
+name: Kerberoasting - One Client Requesting Tickets for Many Service Accounts
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1558.003
+related_techniques:
+- attack.t1087.002
+data_contract:
+  required_logsource:
+    product: windows
+    service: security
+  required_events:
+  - Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations = Success)
+  required_fields:
+  - EventID
+  - Status
+  - ServiceName
+  - IpAddress
+  optional_fields:
+  - TargetUserName
+  - TicketEncryptionType
+  - TicketOptions
+  - ServiceSid
+  telemetry_risk:
+    dc_security_log_not_forwarded: critical
+    kerberos_ticket_auditing_disabled: critical
+detection_logic:
+  type: correlation
+  confidence: medium
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - Targeted roasting of one to four service accounts per 10 minutes - covered by the RC4 single-event rule and by honeypot SPN accounts
+  - Roasting spread over several source addresses, each below the threshold
+  - AS-REP roasting (accounts without pre-authentication) produces 4768, not 4769, and is not counted here
+  - A burst of 5 to 8 service accounts can be split by a window boundary; 9 or more within 10 minutes always alert
+coverage_depth:
+  level: high
+  reason: Volume over every encryption type complements the RC4 single-event rule; together they cover RC4 and AES roasting, with a proven 9-account guarantee
+risk_model:
+  base_score: 65
+  increase_if:
+  - condition: outside_business_hours
+    add: 10
+  - condition: host_is_critical
+    add: 10
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 30
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: false
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Identify the source address, resolve it to a host and find the user who requested the tickets (TargetUserName)
+  - List the service accounts requested and their encryption types; RC4 among them raises confidence
+  - Check the source for LDAP queries for servicePrincipalName shortly before the burst
+  escalate_if:
+  - The source is a workstation or a server with no reason to talk to these services
+  - Privileged service accounts are among those requested
+  - The requesting user has never used these services before
+response:
+  l1_action: Record the source address, the requesting user, the service accounts and the encryption types
+  l2_action: Resolve the source to a host and process, check for SPN enumeration (LDAP) from the source, and review logons with the targeted service accounts afterwards
+  ir_action: Rotate the passwords of every requested service account, move them to gMSA or 25+ character passwords, and investigate the source host
+  evidence:
+  - 4769 events from the source for the window
+  - LDAP queries for servicePrincipalName from the source, if collected
+  - Logons with the targeted service accounts after the burst
+  containment:
+  - Rotate passwords of the requested service accounts
+  - Move service accounts to gMSA or 25+ character passwords and disable RC4 where possible
+  - Isolate the source host if the activity is not explained
+governance:
+  evidence_type:
+  - correlation rule
+  - base rule and tests
+  - correlation scenarios and mutants
+  - generated SIEM queries
+  - ATT&CK mapping
+  - response playbook

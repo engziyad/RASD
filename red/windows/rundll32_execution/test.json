@@ -1,0 +1,28 @@
+{
+  "id": "rundll32_execution",
+  "name": "rundll32 javascript: proxy execution",
+  "platform": "windows",
+  "technique": "T1218.011",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "javascript_proxy",
+      "name": "rundll32 javascript:\"\\..\\mshtml,RunHTMLApplication \";var m='<marker>';close();",
+      "script": "emulate_rundll32.ps1",
+      "detections": [
+        "T1218.011_rundll32_suspicious_execution"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1218.011_rundll32_suspicious_execution": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": null
+  }
+}

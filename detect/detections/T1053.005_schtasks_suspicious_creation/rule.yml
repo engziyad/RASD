@@ -1,0 +1,50 @@
+title: Scheduled Task Created With Suspicious Action
+id: 2114b226-991c-4830-9b80-8f5421283af3
+status: test
+description: |
+  Detects schtasks.exe /create where the task action points to a
+  user-writable location, a script interpreter, or a remote resource -
+  common persistence and lateral-execution patterns. Vendor updaters
+  under Program Files are not matched.
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-09
+tags:
+  - attack.persistence
+  - attack.execution
+  - attack.privilege-escalation
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:            # path, or the PE name when the binary was copied and renamed
+    - Image|endswith: '\schtasks.exe'
+    - OriginalFileName: 'schtasks.exe'
+  selection_create:
+    CommandLine|re: '(?i)(^|\s)"?[/-](create|change)"?(\s|$)'   # new task or hijacked action; the switch itself (quoted or not), not path text
+  susp_action:
+    CommandLine|contains:
+      - '%TEMP%'
+      - '%APPDATA%'
+      - 'powershell'
+      - 'cmd /c'
+      - 'cmd.exe /c'
+      - 'mshta'
+      - 'wscript'
+      - 'cscript'
+      - 'regsvr32'
+      - 'http://'
+      - 'https://'
+  susp_writable_path:      # '\' or '/' separators: Windows accepts both
+    CommandLine|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]'
+  susp_system_remote:
+    # both flags, in any order, any quoting: /RU SYSTEM | "SYSTEM" | "NT AUTHORITY\SYSTEM"
+    CommandLine|re|all:
+      - '(?i)(^|\s)[/-]s\s+\S+'
+      - '(?i)(^|\s)[/-]ru\s+"?(nt authority\\system|system)"?(\s|$)'
+  condition: selection_img and selection_create and 1 of susp_*
+falsepositives:
+  - IT automation that schedules PowerShell maintenance scripts
+level: medium

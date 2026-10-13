@@ -1,0 +1,12 @@
+index=wineventlog source="XmlWinEventLog:Security" EventCode=4769 (Status=0x0 OR Status=0)
+| where NOT match(ServiceName, "\$$") AND lower(ServiceName)!="krbtgt"
+| eval ClientIp=replace(IpAddress, "^::ffff:", ""), User=lower(mvindex(split(TargetUserName, "@"), 0))
+| eval rc4=if(TicketEncryptionType="0x17" OR TicketEncryptionType="23", 1, 0)
+| bin _time span=10m
+| stats dc(ServiceName) AS spn_count sum(rc4) AS rc4_count values(ServiceName) AS services BY _time, ClientIp, User
+| where spn_count>=5 OR (spn_count>=3 AND rc4_count>0)
+| lookup asset_inventory ip AS ClientIp OUTPUT asset_type, owner, criticality
+| lookup privileged_accounts user AS User OUTPUT account_type
+| eval risk_score=case(spn_count>=10, 80, spn_count>=5, 60, true(), 40)
+| eval risk_score=risk_score + if(rc4_count>0, 10, 0) + if(lower(asset_type)="workstation", 20, 0) + if(lower(account_type)="service", 15, 0)
+| sort - risk_score

@@ -1,0 +1,43 @@
+{
+  "id": "scheduled_task_creation",
+  "name": "Scheduled task with a suspicious action (schtasks and PowerShell)",
+  "platform": "windows",
+  "technique": "T1053.005",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "schtasks",
+      "name": "schtasks /create with a cmd /c action in %TEMP%",
+      "script": "emulate_schtasks.ps1",
+      "detections": [
+        "T1053.005_schtasks_suspicious_creation"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1053.005_schtasks_suspicious_creation": "{marker}"
+      }
+    },
+    {
+      "id": "register_scheduledtask",
+      "name": "Register-ScheduledTask with an inline action in $env:TEMP",
+      "script": "emulate_register_task.ps1",
+      "detections": [
+        "T1053.005_powershell_scheduled_task_creation"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1053.005_powershell_scheduled_task_creation": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

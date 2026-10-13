@@ -1,0 +1,6 @@
+// Pre-deployment profile: which processes already open LSASS, with which access masks.
+// Run before enabling T1003.001 to build the allow-list from your own estate.
+Sysmon
+| where EventID == 10 and TargetImage endswith @"\lsass.exe"
+| summarize count(), hosts = dcount(Computer), access_masks = make_set(GrantedAccess, 20) by SourceImage
+| order by count_ desc

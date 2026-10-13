@@ -1,0 +1,92 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1003.001_lsass_memory_access
+name: Suspicious Process Access to LSASS Memory
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1003.001
+related_techniques:
+- attack.t1218.011
+data_contract:
+  required_logsource:
+    product: windows
+    category: process_access
+  required_events:
+  - Sysmon Event ID 10 (ProcessAccess) with an include rule for TargetImage lsass.exe
+  required_fields:
+  - TargetImage
+  - SourceImage
+  - GrantedAccess
+  optional_fields:
+  - CallTrace
+  - SourceUser
+  - SourceProcessGUID
+  - Computer
+  telemetry_risk:
+    processaccess_not_collected: critical
+    lsass_excluded_in_sysmon_config: critical
+    missing_calltrace: low
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: medium
+  blind_spots:
+  - Handle duplication from another process never opens LSASS directly
+  - Access masks outside the listed values
+  - Credential Guard / RunAsPPL environments where the real control is prevention
+  - ProcessAccess telemetry disabled or filtered for volume
+coverage_depth:
+  level: medium
+  reason: Access-mask based and resistant to tool renaming; blind to handle duplication and unlisted masks
+risk_model:
+  base_score: 60
+  increase_if:
+  - condition: host_is_critical
+    add: 20
+  - condition: payload_in_user_writable_path
+    add: 15
+  - condition: user_is_privileged
+    add: 10
+  decrease_if:
+  - condition: known_vendor_software
+    subtract: 30
+  - condition: approved_admin_activity
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Identify SourceImage, its signer, parent and user
+  - Search for a .dmp file written by the same process within 2 minutes (Sysmon EID 11)
+  - Check whether SourceImage is a known EDR, AV or backup agent in your environment
+  escalate_if:
+  - SourceImage is unsigned, renamed, or in a user-writable path
+  - rundll32.exe with comsvcs.dll on the command line
+  - Any dump file created near the access
+  - Authentication anomalies from the host afterwards (NTLM or logon type 9)
+response:
+  l1_action: Confirm host, source process path, signer and user; check whether the source is a known EDR, AV or backup agent
+  l2_action: 'Pivot on the source process: parent tree, .dmp files written nearby (Sysmon 11), outbound transfers, and logons
+    by accounts active on the host'
+  ir_action: 'Treat as credential theft: isolate the host, reset every credential used on it since boot, hunt for reuse of
+    those accounts'
+  evidence:
+  - ProcessAccess event with GrantedAccess and CallTrace
+  - Process tree of SourceImage
+  - Any dump file and its hash
+  - Logon sessions on the host since last reboot
+  containment:
+  - Isolate the host
+  - Reset credentials of every account that logged on to the host since last reboot, including service accounts
+  - Hunt for reuse of those credentials across the estate
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

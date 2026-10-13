@@ -1,0 +1,7 @@
+// Kerberoasting - RC4 Service Ticket Requested for User Account | 2847ae87-e869-4b37-811b-e7f0da4f9b0b
+SecurityEvent
+| extend TicketEncryptionType = coalesce(tostring(column_ifexists("TicketEncryptionType", "")), extract(@'Name="TicketEncryptionType">([^<]*)<', 1, EventData))
+| extend Status = coalesce(tostring(column_ifexists("Status", "")), extract(@'Name="Status">([^<]*)<', 1, EventData))
+| extend ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData))
+| extend IpAddress = coalesce(tostring(column_ifexists("IpAddress", "")), extract(@'Name="IpAddress">([^<]*)<', 1, EventData))
+| where ((EventID == 4769 and (TicketEncryptionType =~ @"0x17" or TicketEncryptionType =~ @"23") and (Status =~ @"0x0" or Status =~ @"0")) and not((ServiceName endswith @"$" or ServiceName =~ @"krbtgt" or IpAddress =~ @"::1")))

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: comsvcs_ordinal
+  description: Export called by ordinal
+  base: 3
+  set:
+    CommandLine: 'rundll32.exe C:\Windows\System32\comsvcs.dll #24 712 C:\dumps\o.dmp full'
+  should_match: true
+- name: forward_slash_temp
+  base: 2
+  set:
+    CommandLine: rundll32.exe C:/Users/bob/AppData/Local/Temp/x64.dll,StartW
+  should_match: true
+- name: vbscript_handler
+  base: 1
+  set:
+    CommandLine: rundll32.exe vbscript:"\..\mshtml,RunHTMLApplication "+String(CreateObject("WScript.Shell").Run("calc"),0)
+  should_match: true
+- name: shell32_control_panel_is_benign
+  base: 1
+  set:
+    CommandLine: rundll32.exe shell32.dll,Control_RunDLL main.cpl
+  should_match: false

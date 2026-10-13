@@ -1,0 +1,26 @@
+{
+  "id": "jwt_testing",
+  "name": "JWT validation (unsigned and tampered tokens)",
+  "platform": "web",
+  "technique": "T1606",
+  "runner": "python",
+  "steps": [
+    {
+      "id": "forged_tokens",
+      "name": "Replay the genuine token, an alg none token and a tampered token",
+      "script": "emulate_jwt.py",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

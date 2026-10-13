@@ -1,0 +1,39 @@
+title: Rundll32 Proxy Execution From Suspicious Context
+id: 7bc31caf-8287-4c8e-9936-381e4ab88410
+status: test
+description: |
+  Detects rundll32.exe abused as a signed proxy to execute code: script
+  protocol handlers (javascript:/vbscript:), DLLs loaded from user-writable
+  paths, the comsvcs.dll MiniDump export, or rundll32 with no arguments
+  (a classic process-injection host).
+references:
+  - https://attack.mitre.org/techniques/T1218/011/
+  - https://lolbas-project.github.io/lolbas/Binaries/Rundll32/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-09
+tags:
+  - attack.defense-evasion
+  - attack.t1218.011
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    - Image|endswith: '\rundll32.exe'
+    - OriginalFileName: 'RUNDLL32.EXE'
+  susp_script:
+    CommandLine|contains:
+      - 'javascript:'
+      - 'vbscript:'
+      - 'RunHTMLApplication'
+  susp_path:               # '\' or '/' separators: Windows accepts both
+    CommandLine|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]'
+  susp_minidump:           # export by name or ordinal: #24, #+0000024, and the 16-bit wraps #65560 / #-4294967272
+    CommandLine|contains: 'comsvcs'
+    CommandLine|re: '(?i)(minidump|#\+?0*(24|65560)\b|#-4294967272\b)'
+  susp_noargs:
+    CommandLine|re: '(?i)rundll32(\.exe)?"?\s*$'
+  condition: selection_img and 1 of susp_*
+falsepositives:
+  - Legacy installers that stage DLLs in %TEMP% (validate signer and parent)
+level: high

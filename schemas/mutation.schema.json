@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/engziyad/detection-as-code-purple-lab/schemas/mutation.schema.json",
+  "title": "RASD Mutation Tests",
+  "description": "Technique-specific evasion variants (each copies a true-positive event by 1-based line number and overrides fields with `set`), plus any rule mutants accepted as equivalent by tools/prove.py.",
+  "type": "object",
+  "required": [
+    "mutations"
+  ],
+  "properties": {
+    "mutations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "base",
+          "set",
+          "should_match"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "base": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "set": {
+            "type": "object",
+            "minProperties": 1
+          },
+          "should_match": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "accepted_rule_mutants": {
+      "description": "Surviving rule mutants that are equivalent on real tooling. Each needs the exact id printed by tools/prove.py and a reason.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 3
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 30
+          }
+        }
+      }
+    }
+  }
+}

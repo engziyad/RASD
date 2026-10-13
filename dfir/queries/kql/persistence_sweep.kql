@@ -1,0 +1,16 @@
+// Persistence created on one host in a window: scheduled tasks, services, autostart registry values
+let target_host = "WS07.corp.lab";
+let start = datetime(2026-10-05 08:00:00);
+let end = datetime(2026-10-05 12:00:00);
+union
+    (SecurityEvent
+        | where Computer =~ target_host and TimeGenerated between (start .. end) and EventID in (4698, 4702, 4697)
+        | project TimeGenerated, Mechanism = iff(EventID == 4697, "service (4697)", "scheduled task"), Detail = Activity),
+    (Event
+        | where Computer =~ target_host and TimeGenerated between (start .. end) and EventLog == "System" and EventID == 7045
+        | project TimeGenerated, Mechanism = "service (7045)", Detail = RenderedDescription),
+    (Sysmon
+        | where Computer =~ target_host and TimeGenerated between (start .. end) and EventID == 13
+        | where TargetObject has_any (@"\CurrentVersion\Run", @"\Services\", @"\Winlogon\", @"\Image File Execution Options\")
+        | project TimeGenerated, Mechanism = "registry", Detail = strcat(TargetObject, " = ", Details))
+| order by TimeGenerated asc

@@ -1,0 +1,102 @@
+id: scheduled_task_creation
+name: Scheduled task with a suspicious action (schtasks and PowerShell)
+platform: windows
+mitre:
+  technique: T1053.005
+  technique_name: Scheduled Task/Job - Scheduled Task
+  related: [T1059.001]
+  tactics: [persistence, execution, privilege-escalation]
+objective: >
+  Create two scheduled tasks the way intruders do - with schtasks.exe and a cmd /c action
+  in %TEMP%, and with Register-ScheduledTask and an inline action in $env:TEMP - and prove
+  each one fires its own detection. Neither task ever runs: the schtasks trigger is 23:59
+  once, the PowerShell trigger is a year away, and both are deleted by cleanup.
+prerequisites:
+  - Windows 10/11 or Windows Server lab VM with Sysmon (Event ID 1) installed
+  - "Audit Other Object Access Events (success) for Security 4698, which records the task XML"
+safety:
+  - Runs only with -LabConfirmed on a disposable lab VM you own
+  - The schtasks action is cmd /c echo <marker> to a text file in %TEMP%; the PowerShell action points to a file that does not exist
+  - Both tasks are named after the run marker, so cleanup can only remove what this test created
+execution:
+  - "Step 1: schtasks /create /tn <marker> /sc once /st 23:59 /f /tr \"cmd /c echo <marker> > %TEMP%\\<marker>.txt\""
+  - "Step 2: powershell -NoProfile -Command \"Register-ScheduledTask -TaskName <marker>_ps ... -Action (New-ScheduledTaskAction -Execute $env:TEMP\\<marker>.exe)\""
+  - collect_artifacts.ps1 exports both task definitions as XML before cleanup deletes them
+steps:
+  - id: schtasks
+    name: schtasks /create with a cmd /c action in %TEMP%
+    script: emulate_schtasks.ps1
+    detections: [T1053.005_schtasks_suspicious_creation]
+    bind:
+      T1053.005_schtasks_suspicious_creation: '{marker}'
+  - id: register_scheduledtask
+    name: Register-ScheduledTask with an inline action in $env:TEMP
+    script: emulate_register_task.ps1
+    detections: [T1053.005_powershell_scheduled_task_creation]
+    bind:
+      T1053.005_powershell_scheduled_task_creation: '{marker}'
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: schtasks.exe creating the task
+    fields:
+      Image: '...\System32\schtasks.exe'
+      CommandLine: '/create /tn <marker> ... /tr "cmd /c echo <marker> > %TEMP%\<marker>.txt"'
+    used_by: [T1053.005_schtasks_suspicious_creation]
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: powershell.exe registering the second task
+    fields:
+      Image: '...\powershell.exe'
+      CommandLine: 'Register-ScheduledTask -TaskName <marker>_ps ... New-ScheduledTaskAction -Execute $env:TEMP\<marker>.exe'
+    used_by: [T1053.005_powershell_scheduled_task_creation]
+  - source: Security
+    event: "4698 · A scheduled task was created"
+    description: Task name and full task XML (action, trigger, principal)
+    fields:
+      TaskName: '\<marker> and \<marker>_ps'
+      TaskContent: '<Task ...> with the action'
+  - source: Microsoft-Windows-TaskScheduler/Operational
+    event: "106 · Task registered"
+    description: Registration of both tasks by the current user
+    fields:
+      TaskName: '\<marker>'
+logging:
+  - "Sysmon process creation (Event ID 1)"
+  - "Advanced Audit Policy: Object Access > Audit Other Object Access Events = Success (Security 4698)"
+dfir_artifacts:
+  - artifact: Task definition (XML)
+    location: C:\Windows\System32\Tasks\<task name>
+    collect: schtasks /query /tn <task name> /xml
+    purpose: Action, trigger, run-as principal and author - the whole persistence mechanism
+  - artifact: Task cache entry
+    location: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\<task name>
+    collect: reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree"
+    purpose: Survives deletion of the XML file and reveals hidden tasks (SD value removed)
+  - artifact: Security 4698 event
+    location: Security event log on the host
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4698}"
+    purpose: Timestamped record of who registered the task, with its XML
+cleanup:
+  actions:
+    - Deletes the task <marker> (schtasks /delete)
+    - Unregisters the task <marker>_ps (Unregister-ScheduledTask)
+    - Removes %TEMP%\<marker>.txt if the schtasks action ever ran
+  verify: Neither task can be queried any more and the marker file does not exist
+sample_output:
+  console: |
+    [T1053.005] schtasks /create with a cmd /c action in %TEMP%
+    SUCCESS: The scheduled task "purplelab_1a2b3c4d" has successfully been created.
+    [T1053.005] Register-ScheduledTask with an inline action in $env:TEMP
+    [cleanup] removed purplelab_1a2b3c4d, purplelab_1a2b3c4d_ps
+    [cleanup] verified: no marker task remains
+  events:
+    - detection: T1053.005_schtasks_suspicious_creation
+      case: "red: scheduled_task_creation emulation (schtasks)"
+    - detection: T1053.005_powershell_scheduled_task_creation
+      case: "red: scheduled_task_creation emulation (Register-ScheduledTask)"
+dfir_playbook: dfir/playbooks/scheduled_task_persistence.md
+purple_scenario: purple/scenarios/T1053.005_scheduled_task.md

@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1053.005_powershell_scheduled_task_creation
+name: Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1053.005
+related_techniques:
+- attack.t1059.001
+data_contract:
+  required_logsource:
+    product: windows
+    category: process_creation
+  required_events:
+  - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
+  - PowerShell Script Block Logging 4104 (catches cmdlets inside scripts)
+  - Security 4698
+  required_fields:
+  - Image
+  - OriginalFileName
+  - CommandLine
+  optional_fields:
+  - ParentImage
+  - User
+  telemetry_risk:
+    missing_commandline: critical
+    script_block_logging_disabled: high
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Cmdlets executed inside a .ps1 file never appear on the command line (needs 4104)
+  - Tasks registered from XML definitions
+  - COM API (Schedule.Service) task creation
+coverage_depth:
+  level: partial
+  reason: Command-line cmdlet usage only; script files and COM API require 4104 and 4698
+risk_model:
+  base_score: 40
+  increase_if:
+  - condition: payload_in_user_writable_path
+    add: 20
+  - condition: suspicious_parent
+    add: 20
+  - condition: host_is_critical
+    add: 15
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 25
+  - condition: approved_change_window
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Read the full command line and identify the task action
+  - Check the parent process
+  - Check 4698 for the registered task definition
+  escalate_if:
+  - Action points to a user-writable path or a remote URL
+  - Task runs as SYSTEM or at startup
+  - Parent is a script host or Office application
+response:
+  l1_action: Validate host and user, read the task name and the action in the command line, note the parent process
+  l2_action: Pull the registered task (4698 or Get-ScheduledTask), hash the action target, review 4104 script blocks and child
+    processes
+  ir_action: Export then disable the task, quarantine the payload, isolate the host if the action already ran
+  evidence:
+  - Command line
+  - Task definition from 4698 or Get-ScheduledTask
+  - Payload hash
+  - 4104 script blocks around the event
+  containment:
+  - Export the task definition
+  - Disable and unregister the task
+  - Isolate the host if the payload executed
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

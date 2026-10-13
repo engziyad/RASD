@@ -1,0 +1,36 @@
+# Telemetry profile: Elastic Common Schema - Winlogbeat / Elastic Agent Windows integration
+# (Sysmon, Security and System channels) and Elastic Defend process / registry events.
+# EventData fields ECS does not rename stay under winlog.event_data and are read from there.
+name: elastic-ecs
+description: Elastic Common Schema from Winlogbeat, the Elastic Agent Windows integration or Elastic Defend.
+source: Elasticsearch / Kibana export (JSON) of logs-windows.*, winlogbeat-* or logs-endpoint.events.*
+docs: https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html
+covers: [process_creation, process_access, registry_set, windows/security, windows/system]
+event:
+  Channel: [winlog.channel]
+  EventID: [winlog.event_id, event.code]
+  infer:                                # Elastic Defend has no Windows channel
+    - when: {event.category: registry, event.type: change}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 13}
+    - when: {event.category: process, event.type: start}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 1}
+fields:
+  common:
+    Computer: [winlog.computer_name, host.name]
+    User: [{join: [user.domain, user.name], sep: "\\"}]
+    Provider_Name: [winlog.provider_name]
+  process_creation:
+    Image: [process.executable]
+    CommandLine: [process.command_line]
+    OriginalFileName: [process.pe.original_file_name]
+    ParentImage: [process.parent.executable]
+  process_access:
+    SourceImage: [winlog.event_data.SourceImage, process.executable]
+    TargetImage: [winlog.event_data.TargetImage]
+    GrantedAccess: [winlog.event_data.GrantedAccess]
+  registry_set:
+    TargetObject: [winlog.event_data.TargetObject, registry.path]
+    Details: [winlog.event_data.Details, registry.data.strings]
+  windows/security:
+    IpAddress: [winlog.event_data.IpAddress, source.ip]
+fallback_prefix: winlog.event_data.

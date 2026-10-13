@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (4771 for lab.user03) and line 3 (4625 for lab.user04).
+mutations:
+  - name: ipv4_client_address
+    description: "Normalised pipelines write the Kerberos client without the ::ffff: prefix"
+    base: 1
+    set: {IpAddress: "10.0.0.21"}
+    should_match: true
+  - name: uppercase_account
+    base: 1
+    set: {TargetUserName: "LAB.USER03"}
+    should_match: true
+  - name: uppercase_failure_code
+    base: 1
+    set: {Status: "0X18"}
+    should_match: true
+  - name: kerberos_unknown_user_not_counted
+    description: 0x6 (unknown principal) is reported in 4768, not as a wrong password
+    base: 1
+    set: {Status: "0x6"}
+    should_match: false
+  - name: uppercase_sub_status
+    base: 3
+    set: {SubStatus: "0xC000006A"}
+    should_match: true
+  - name: network_cleartext_logon
+    description: LDAP simple binds fail as logon type 8
+    base: 3
+    set: {LogonType: "8"}
+    should_match: true
+  - name: expired_password_not_counted
+    base: 3
+    set: {SubStatus: "0xc0000071"}
+    should_match: false
+  - name: machine_account_still_filtered
+    base: 3
+    set: {TargetUserName: "LAB-SRV02$"}
+    should_match: false

@@ -1,0 +1,5 @@
+{"_case": "security log cleared by a user", "EventID": 1102, "Channel": "Security", "SubjectUserName": "admin", "SubjectDomainName": "CORP", "Computer": "WS01.corp.local"}
+{"_case": "security log cleared by SYSTEM", "EventID": 1102, "Channel": "Security", "SubjectUserName": "WS02$", "SubjectDomainName": "CORP", "Computer": "WS02.corp.local"}
+{"_case": "cleared by a domain admin on a server", "EventID": 1102, "Channel": "Security", "SubjectUserName": "da_khalid", "SubjectDomainName": "CORP", "Computer": "SRV-SQL01.corp.local"}
+{"_case": "event id delivered as a string by the pipeline", "EventID": "1102", "Channel": "Security", "SubjectUserName": "admin", "SubjectDomainName": "CORP", "Computer": "WS05.corp.local"}
+{"_case": "red: event_log_clearing emulation (Security 1102, opt-in)", "EventID": 1102, "Provider_Name": "Microsoft-Windows-Eventlog", "Channel": "Security", "SubjectUserName": "labuser", "SubjectDomainName": "LAB", "Computer": "LAB-WS01.lab.local"}

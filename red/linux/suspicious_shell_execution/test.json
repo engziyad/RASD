@@ -1,0 +1,24 @@
+{
+  "id": "suspicious_shell_execution",
+  "name": "Encoded shell command and execution from /tmp",
+  "platform": "linux",
+  "technique": "T1059.004",
+  "runner": "bash",
+  "steps": [
+    {
+      "id": "shell_patterns",
+      "name": "Base64 command piped into sh, then a script executed from /tmp",
+      "script": "emulate_shell.sh",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

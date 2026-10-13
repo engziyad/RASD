@@ -1,0 +1,92 @@
+# Event sequences for the Kerberoasting volume correlation: service tickets for 5 or more
+# distinct user-based service accounts to one client address in a 10-minute window
+# (windows start at :00, :10 ...).
+#
+# Every event is `defaults` + its own fields, `at` seconds after the scenario's `start`.
+# `count` and `every` repeat an entry; `set` fills {n} with 1, 2, 3 ...; `Field: null` removes
+# a default.
+defaults:
+  Channel: Security
+  Computer: LAB-DC01.lab.local
+  EventID: 4769
+  TargetUserName: lab.user01@LAB.LOCAL
+  TicketOptions: '0x40810000'
+  TicketEncryptionType: '0x17'
+  Status: '0x0'
+  IpAddress: '::ffff:10.0.0.21'
+
+scenarios:
+  - name: roasting tool requesting every SPN - six service accounts in two seconds
+    expect: fire
+    groups: ['10.0.0.21']
+    alerts: 1
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 0.3, count: 6, set: {ServiceName: 'svc_app{n:02d}'}}
+
+  - name: exactly the threshold - five service accounts in one minute
+    expect: fire
+    groups: ['10.0.0.21']
+    alerts: 1
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 12, count: 5, set: {ServiceName: 'svc_app{n:02d}'}}
+
+  - name: one below the threshold - four service accounts
+    expect: silent
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 12, count: 4, set: {ServiceName: 'svc_app{n:02d}'}}
+
+  - name: AES-only roasting - five accounts, every ticket AES-256
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-12T10:22:00Z'
+    events:
+      - {at: 0, every: 3, count: 5, TicketEncryptionType: '0x12', set: {ServiceName: 'svc_app{n:02d}'}}
+
+  - name: five clients each opening a different service at the start of the day
+    expect: silent
+    start: '2026-10-12T08:01:00Z'
+    events:
+      - {at: 0, every: 30, count: 5, set: {ServiceName: 'svc_app{n:02d}', IpAddress: '::ffff:10.0.1.{n}'}}
+
+  - name: one application server renewing the same SQL ticket nine times
+    expect: silent
+    start: '2026-10-12T08:30:00Z'
+    events:
+      - {at: 0, every: 45, count: 9, ServiceName: svc_sql, IpAddress: '::ffff:10.0.2.15'}
+
+  - name: slow roast - one service account a minute for five minutes
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-12T09:01:00Z'
+    events:
+      - {at: 0, every: 60, count: 5, set: {ServiceName: 'svc_app{n:02d}'}}
+
+  - name: one client seen through two collection pipelines (with and without ::ffff:)
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-12T10:02:00Z'
+    events:
+      - {at: 0, every: 4, count: 3, set: {ServiceName: 'svc_app{n:02d}'}}
+      - {at: 20, every: 4, count: 2, Computer: LAB-DC02.lab.local, IpAddress: '10.0.0.21', set: {ServiceName: 'svc_web{n:02d}'}}
+
+  - name: computer and krbtgt tickets do not count - eight of them plus three user services
+    expect: silent
+    start: '2026-10-12T07:00:00Z'
+    events:
+      - {at: 0, every: 10, count: 7, set: {ServiceName: 'LAB-SRV{n:02d}$'}}
+      - {at: 80, ServiceName: krbtgt}
+      - {at: 90, every: 10, count: 3, set: {ServiceName: 'svc_app{n:02d}'}}
+
+  - name: six service accounts split 3 + 3 by a window boundary
+    expect: silent
+    known_limit: >
+      Tumbling windows cut a burst at the boundary (10:10 here). Any burst of 9 or more service
+      accounts within 10 minutes always alerts: the arithmetic proves it, rasd correlate checks it
+      with the engine, and rasd nearmiss reports bursts a boundary split in real traffic.
+    start: '2026-10-12T10:07:00Z'
+    events:
+      - {at: 0, every: 60, count: 3, set: {ServiceName: 'svc_app{n:02d}'}}
+      - {at: 240, every: 60, count: 3, set: {ServiceName: 'svc_web{n:02d}'}}

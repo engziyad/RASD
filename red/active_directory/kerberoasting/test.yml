@@ -1,0 +1,77 @@
+id: kerberoasting
+name: Kerberoasting - request an RC4 service ticket for a lab SPN
+platform: active_directory
+mitre:
+  technique: T1558.003
+  technique_name: Steal or Forge Kerberos Tickets - Kerberoasting
+  related: [T1110.002]
+  tactics: [credential-access]
+objective: >
+  Request a Kerberos service ticket for a service account's SPN from an ordinary domain
+  user, as Kerberoasting tools do before cracking the ticket offline, and prove the domain
+  controller's 4769 event fires the RC4 Kerberoasting detection. The ticket stays in the
+  session's cache; nothing is exported and nothing is cracked.
+prerequisites:
+  - Domain-joined lab workstation and a lab domain controller
+  - "A lab service account with an SPN set to RC4 only: Set-ADUser <account> -Replace @{'msDS-SupportedEncryptionTypes'=4}. Unset or with AES bits, current DCs issue an AES ticket (0x12) and the rule correctly stays silent; the step checks the attribute and refuses to run otherwise"
+  - "Restore the account's msDS-SupportedEncryptionTypes after the lab"
+  - "DC audit policy: Account Logon > Audit Kerberos Service Ticket Operations = Success"
+safety:
+  - Runs only with -LabConfirmed and an explicit -Spn from your lab domain
+  - One ticket request; the ticket is not exported, saved or cracked
+  - The step runs klist purge in its own logon session first; the new ticket expires with the session
+execution:
+  - "Invoke-PurpleEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn MSSQLSvc/sql01.lab.local:1433"
+  - The step purges the session's Kerberos ticket cache (a cached ticket would be reused and the DC would log nothing), then requests the ticket with System.IdentityModel KerberosRequestorSecurityToken
+  - collect_artifacts.ps1 saves klist output, which shows the ticket's encryption type
+  - Export the domain controller's Security log too (Export-LabTelemetry.ps1 -LogName Security -EventId 4769) and pass both exports to evidence
+steps:
+  - id: request_tgs
+    name: Request a service ticket for the lab SPN (no export, no cracking)
+    script: emulate_kerberoast.ps1
+    parameters: [Spn]
+    detections: [T1558.003_kerberoasting_rc4_tgs]
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Security (domain controller)
+    event: "4769 · A Kerberos service ticket was requested"
+    description: Service ticket issued for the SPN's account, logged on the DC
+    fields:
+      ServiceName: '<service account>'
+      TicketEncryptionType: '0x17 (RC4-HMAC)'
+      Status: '0x0'
+      IpAddress: '::ffff:<workstation IP>'
+      TargetUserName: '<user>@<DOMAIN>'
+    used_by: [T1558.003_kerberoasting_rc4_tgs]
+logging:
+  - "DC: Audit Kerberos Service Ticket Operations = Success"
+  - "DC Security log forwarded to the SIEM"
+dfir_artifacts:
+  - artifact: Ticket cache
+    location: Workstation logon session
+    collect: klist
+    purpose: Shows the requested service ticket and its encryption type on the client
+  - artifact: 4769 burst from the client
+    location: DC Security log
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4769} on the DC, grouped by IpAddress"
+    purpose: Several distinct SPNs from one client in minutes is the Kerberoasting signature
+  - artifact: SPN discovery
+    location: LDAP queries for servicePrincipalName (DC 1644 if enabled, or EDR LDAP telemetry)
+    collect: Search for (servicePrincipalName=*) queries from the client
+    purpose: Kerberoasting tools enumerate SPNs right before requesting tickets
+cleanup:
+  actions:
+    - Nothing persists on disk; the ticket lives in the session's ticket cache until it expires
+  verify: No files or registry values are created; run klist purge to drop the ticket early
+sample_output:
+  console: |
+    [T1558.003] Request a service ticket for the lab SPN (no export, no cracking)
+    requested a service ticket for MSSQLSvc/sql01.lab.local:1433
+    [cleanup] verified: nothing persisted (ticket cache expires with the session)
+  events:
+    - detection: T1558.003_kerberoasting_rc4_tgs
+      case: "red: kerberoasting emulation"
+dfir_playbook: dfir/playbooks/kerberoasting.md
+purple_scenario: purple/scenarios/T1558.003_kerberoasting.md

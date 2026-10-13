@@ -1,0 +1,15 @@
+# Telemetry profile: Splunk events searched in index=sysmon / index=wineventlog and exported
+# as JSON (Splunk Add-on for Microsoft Windows + Splunk Add-on for Sysmon, XmlWinEventLog).
+# The add-ons keep the EventData names; only the event id, channel and provider differ.
+name: splunk-ta-windows
+description: Splunk search export of XmlWinEventLog events parsed by the Windows and Sysmon add-ons.
+source: Splunk search export (JSON) of the sysmon and wineventlog indexes
+docs: https://docs.splunk.com/Documentation/AddOns/released/Windows/About
+covers: [process_creation, process_access, registry_set, windows/security, windows/system]
+event:
+  Channel: [Channel, source]            # source = XmlWinEventLog:Security, XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  EventID: [EventID, EventCode]
+fields:
+  common:
+    Computer: [Computer, ComputerName, host]
+    Provider_Name: [Provider_Name, SourceName]

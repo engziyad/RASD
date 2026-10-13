@@ -1,0 +1,18 @@
+// Process tree around an alert: parent, alert process, children and grandchildren (Sysmon EID 1)
+// Set the four values from the alert.
+let target_host = "WS07.corp.lab";
+let process_guid = "{00000000-0000-0000-0000-000000000000}";
+let alert_time = datetime(2026-10-05 09:12:03);
+let window = 2h;
+let procs = Sysmon
+    | where EventID == 1 and Computer =~ target_host
+    | where TimeGenerated between ((alert_time - window) .. (alert_time + window))
+    | project TimeGenerated, ProcessGuid, ParentProcessGuid, Image, CommandLine, User;
+let target = procs | where ProcessGuid == process_guid;
+let parent = procs | where ProcessGuid in ((target | project ParentProcessGuid));
+let children = procs | where ParentProcessGuid == process_guid;
+let grandchildren = procs | where ParentProcessGuid in ((children | project ProcessGuid));
+union (parent | extend Relation = "parent"), (target | extend Relation = "alert process"),
+      (children | extend Relation = "child"), (grandchildren | extend Relation = "grandchild")
+| project TimeGenerated, Relation, Image, CommandLine, User, ProcessGuid, ParentProcessGuid
+| order by TimeGenerated asc

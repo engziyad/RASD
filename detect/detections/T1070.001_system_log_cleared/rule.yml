@@ -1,0 +1,26 @@
+title: Windows Event Log Cleared (System Event 104)
+id: 97e2e414-a0ff-499a-8730-58dda9c04201
+status: test
+description: |
+  Detects System event 104 from the Eventlog provider, written when any
+  event log other than Security (System, Application, PowerShell, Sysmon,
+  custom logs) is cleared. Attackers often clear the Sysmon and PowerShell
+  logs, which Security 1102 does not report.
+references:
+  - https://attack.mitre.org/techniques/T1070/001/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-11
+tags:
+  - attack.defense-evasion
+  - attack.t1070.001
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    EventID: 104
+    Provider_Name: 'Microsoft-Windows-Eventlog'
+  condition: selection
+falsepositives:
+  - Golden-image sealing and documented maintenance on known build hosts
+level: high

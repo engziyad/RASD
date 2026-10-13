@@ -1,0 +1,88 @@
+id: password_spray_simulation
+name: Password spray simulation with a password that cannot be right
+platform: active_directory
+mitre:
+  technique: T1110.003
+  technique_name: Brute Force - Password Spraying
+  tactics: [credential-access]
+objective: >
+  Produce the telemetry of a password spray - one failed authentication for each of many
+  accounts, from one source, within seconds - without any chance of guessing a password:
+  the password is a fresh random 40-character value. The test proves the domain controller
+  records the failures and that the password-spray correlation fires on the burst.
+prerequisites:
+  - Domain-joined lab workstation and lab domain controller
+  - A text file of 9 or 10 lab test accounts (one sAMAccountName per line) - never real users. The correlation alerts at 5 distinct accounts per source in a 10-minute window, and 9 or more always alert whatever the window alignment
+  - "DC audit policy: Account Logon > Audit Kerberos Authentication Service = Failure (4771), Audit Credential Validation = Failure (4776), Logon/Logoff > Audit Logon = Failure (4625)"
+safety:
+  - Runs only with -LabConfirmed and an explicit -UserList of lab test accounts
+  - Exactly one attempt per account, at most 10 accounts per run
+  - "Refuses to run when the domain lockout threshold is 1 or 2, and skips any account whose own threshold (domain or fine-grained policy) is 1 or 2 or whose badPwdCount is within one failure of it"
+  - "badPwdCount is kept per domain controller, and fine-grained policies are visible only to accounts allowed to read them (run as a lab admin for a complete check): use lab test accounts only"
+  - The password is random and generated per run, so no attempt can succeed
+execution:
+  - "Invoke-PurpleEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList .\\lab-users.txt"
+  - The step reads the domain lockoutThreshold, each account's resultant fine-grained policy and badPwdCount, and skips accounts one failure could lock
+  - For each account it attempts one LDAP bind with the random password
+  - Export the DC Security log (Export-LabTelemetry.ps1 -LogName Security -EventId 4771,4776,4625) and pass it to `rasd correlate --logs` and `rasd evidence`
+steps:
+  - id: spray
+    name: One failed LDAP bind per lab account with a random password
+    script: emulate_password_spray.ps1
+    parameters: [UserList]
+    detections: []
+    correlations: [T1110.003_password_spray_burst]
+scripts:
+  cleanup: cleanup.ps1
+telemetry:
+  - source: Security (domain controller)
+    event: "4771 · Kerberos pre-authentication failed"
+    description: One per account when Kerberos is used; Failure Code 0x18 = wrong password
+    fields:
+      TargetUserName: '<lab account>'
+      Status: '0x18'
+      IpAddress: '::ffff:<workstation IP>'
+    used_by: [T1110.003_password_spray_burst]
+  - source: Security (domain controller)
+    event: "4776 · The computer attempted to validate the credentials"
+    description: One per account when NTLM is used; Error Code 0xC000006A = wrong password
+    fields:
+      TargetUserName: '<lab account>'
+      Status: '0xc000006a'
+      Workstation: '<workstation name>'
+  - source: Security (domain controller)
+    event: "4625 · An account failed to log on"
+    description: Failed network logon (type 3) for each LDAP bind, logged by the DC that served the bind
+    fields:
+      LogonType: '3'
+      Status: '0xc000006d'
+      SubStatus: '0xc000006a'
+      IpAddress: '<workstation IP>'
+    used_by: [T1110.003_password_spray_burst]
+logging:
+  - "DC: Audit Kerberos Authentication Service = Failure (4771); Audit Credential Validation = Failure (4776); Audit Logon = Failure (4625)"
+  - "Member servers that accept network logons: Audit Logon = Failure (4625)"
+dfir_artifacts:
+  - artifact: Failure burst
+    location: DC Security 4771 / 4625
+    collect: Run queries/spl/correlations/T1110.003_password_spray_burst.spl (or the .kql) for the time window
+    purpose: Many accounts, one source, one short window - and which (if any) succeeded afterwards
+  - artifact: Successful logons from the source
+    location: DC Security 4768 / 4624 after the burst
+    collect: Filter on the source IP for the following hour
+    purpose: A spray that found one valid password shows up as a success right after the failures
+cleanup:
+  actions:
+    - Nothing is created; the failed attempts leave only log entries (and badPwdCount, which resets with the lockout observation window)
+  verify: No file, registry value or process is left behind
+sample_output:
+  console: |
+    [T1110.003] One failed LDAP bind per lab account with a random password
+    domain lockout threshold: 5
+    attempted 9 account(s): 9 rejected as wrong password, 0 succeeded (expected: 0)
+    [cleanup] verified: nothing persisted
+  scenarios:
+    - correlation: T1110.003_password_spray_burst
+      scenario: lab emulation - nine lab accounts in five seconds over Kerberos
+dfir_playbook: dfir/playbooks/password_spray.md
+purple_scenario: purple/scenarios/T1110.003_password_spray.md

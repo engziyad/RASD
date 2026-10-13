@@ -1,0 +1,20 @@
+// Encoded PowerShell alone = medium. Encoded PowerShell that talks to the network
+// or spawns children = high. Correlates Sysmon EID 1 and EID 3 on ProcessGuid.
+let encoded = Sysmon
+    | where EventID == 1
+    | where Image endswith @"\powershell.exe" or Image endswith @"\pwsh.exe"
+        or OriginalFileName in~ ("PowerShell.EXE", "pwsh.dll")
+    | where CommandLine matches regex @"(?i)\s""*[-/–—―][-–—―]?""*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?""*\s+""*[A-Za-z0-9+/]{16,}={0,2}"
+    | project TimeGenerated, Computer, User, ProcessGuid, ParentImage, CommandLine;
+let network = Sysmon
+    | where EventID == 3
+    | summarize net_dests = dcount(DestinationIp), dest_ips = make_set(DestinationIp, 20) by ProcessGuid;
+let children = Sysmon
+    | where EventID == 1
+    | summarize child_count = count(), child_images = make_set(Image, 20) by ProcessGuid = ParentProcessGuid;
+encoded
+| join kind=leftouter network on ProcessGuid
+| join kind=leftouter children on ProcessGuid
+| extend net_dests = coalesce(net_dests, 0), child_count = coalesce(child_count, 0)
+| extend Severity = iff(net_dests > 0 or child_count > 0, "High", "Medium")
+| order by Severity asc, TimeGenerated desc

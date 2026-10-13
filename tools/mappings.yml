@@ -1,0 +1,64 @@
+# --------------------------------------------------------------------------- #
+# Backend mappings: where each Sigma logsource lives, and how fields are named.
+# Retarget the whole lab to your environment by editing this file only.
+#
+# KQL assumptions : a Sysmon parser function named `Sysmon` (common Sentinel
+#                   community parser) and the stock SecurityEvent / Event tables.
+#                   Fields those tables lack as columns (Event has no ServiceName
+#                   or ImagePath; TicketEncryptionType is not a SecurityEvent
+#                   column everywhere) are read from the EventData XML - see
+#                   `eventdata` below.
+# SPL assumptions : Splunk Add-on for Sysmon / Windows (TA) field extractions.
+# --------------------------------------------------------------------------- #
+kql:
+  fields:
+    Provider_Name: Source      # Event table column for the event provider
+  eventdata:
+    # For these log sources every field a rule reads, except the native columns below,
+    # is extended from the EventData XML before the filter:
+    #   coalesce(tostring(column_ifexists("F", "")), extract(@'Name="F">([^<]*)<', 1, EventData))
+    # so the query runs on the stock table and still prefers a real column if your
+    # workspace has one.
+    logsources: [windows/security, windows/system]
+    native: [EventID, Source, Computer, EventLog, Channel, Account, Activity]
+  logsources:
+    process_creation: |
+      Sysmon
+      | where EventID == 1
+    process_access: |
+      Sysmon
+      | where EventID == 10
+    registry_set: |
+      Sysmon
+      | where EventID == 13
+    windows/security: |
+      SecurityEvent
+    windows/system: |
+      Event
+      | where EventLog == "System"
+
+spl:
+  fields:
+    EventID: EventCode
+  logsources:
+    process_creation: |
+      index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+    process_access: |
+      index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10
+    registry_set: |
+      index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13
+    windows/security: |
+      index=wineventlog source="XmlWinEventLog:Security"
+    windows/system: |
+      index=wineventlog source="XmlWinEventLog:System"
+
+# --------------------------------------------------------------------------- #
+# Correlation rules (detect/correlations): values are normalised before they are grouped or
+# counted - identically by the engine, the SPL (eval replace) and the KQL (extend
+# replace_regex), and `rasd correlate` proves the three agree. Kerberos events log an IPv4
+# client as ::ffff:10.0.0.5 and logon events as 10.0.0.5: without this, one host would split
+# into two groups and each half could stay under the threshold.
+# --------------------------------------------------------------------------- #
+correlation:
+  normalize:
+    IpAddress: '^::ffff:'

@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| where (((match('Image', "(?i)\\\\powershell\\.exe$") OR match('Image', "(?i)\\\\pwsh\\.exe$")) OR (lower('OriginalFileName')="powershell.exe" OR lower('OriginalFileName')="pwsh.dll")) AND match('CommandLine', "(?i)\\s\"*[-/–—―][-–—―]?\"*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?\"*\\s+\"*[A-Za-z0-9+/]{16,}={0,2}") AND NOT (match(coalesce('ParentImage', ""), "(?i)\\\\CCM\\\\CcmExec\\.exe$")))

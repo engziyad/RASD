@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Evasion variants of true_positive.jsonl line 3 (remote task as SYSTEM).
+mutations:
+  - name: ru_before_s
+    base: 3
+    set: {CommandLine: "schtasks /create /ru SYSTEM /tn x /tr C:\\Windows\\svc.exe /s FS01 /sc once /st 00:00"}
+    should_match: true
+  - name: quoted_nt_authority
+    base: 3
+    set: {CommandLine: "schtasks /create /s FS01 /ru \"NT AUTHORITY\\SYSTEM\" /tn x /tr C:\\Windows\\svc.exe /sc once"}
+    should_match: true
+  - name: mixed_case_flags
+    base: 3
+    set: {CommandLine: "SCHTASKS /Create /S FS01 /RU System /TN x /TR C:\\Windows\\svc.exe /SC ONCE"}
+    should_match: true
+  - name: extra_whitespace_between_arguments
+    base: 3
+    set: {CommandLine: "schtasks  /create   /s   FS01   /ru   SYSTEM   /tn x /tr C:\\Windows\\svc.exe /sc once"}
+    should_match: true
+  - name: ip_address_target
+    base: 3
+    set: {CommandLine: "schtasks /create /s 10.0.0.12 /ru SYSTEM /tn x /tr C:\\Windows\\svc.exe /sc onstart"}
+    should_match: true
+  - name: local_sc_is_not_remote_s
+    base: 3
+    set: {CommandLine: "schtasks /create /ru SYSTEM /sc daily /tn x /tr \"C:\\Program Files\\App\\app.exe\""}
+    should_match: false
+  - name: create_inside_path_is_not_the_flag
+    base: 3
+    set: {CommandLine: "schtasks /query /tn \\Vendor\\create_report /fo LIST"}
+    should_match: false

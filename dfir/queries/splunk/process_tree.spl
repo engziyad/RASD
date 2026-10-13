@@ -1,0 +1,4 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 host="<HOST>" (ProcessGuid="<GUID>" OR ParentProcessGuid="<GUID>" OR [ search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 host="<HOST>" ProcessGuid="<GUID>" | head 1 | eval ProcessGuid=ParentProcessGuid | fields ProcessGuid | format ])
+| eval relation=case(ProcessGuid="<GUID>", "alert process", ParentProcessGuid="<GUID>", "child", true(), "parent")
+| table _time relation Image CommandLine User ProcessGuid ParentProcessGuid
+| sort _time

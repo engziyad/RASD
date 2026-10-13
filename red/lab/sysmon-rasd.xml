@@ -1,0 +1,60 @@
+<!--
+  RASD lab Sysmon configuration: logs what the RASD detections, hunts and DFIR playbooks read.
+
+  Install:  Sysmon64.exe -accepteula -i sysmon-rasd.xml
+  Update:   Sysmon64.exe -c sysmon-rasd.xml
+
+  Do not deploy sysmon-rasd.xml to production. It is intentionally verbose for validation:
+  it logs every process creation and every handle opened to lsass.exe. Any other
+  configuration works too, as long as it logs EID 1 for all processes, EID 10 for
+  TargetImage lsass.exe and EID 13 for Run keys.
+-->
+<Sysmon schemaversion="4.50">
+  <HashAlgorithms>SHA256,IMPHASH</HashAlgorithms>
+  <EventFiltering>
+    <!-- EID 1: every process creation (T1059.001, T1053.005, T1070.001, T1218.011) -->
+    <RuleGroup name="" groupRelation="or">
+      <ProcessCreate onmatch="exclude"/>
+    </RuleGroup>
+    <!-- EID 3: network connections of the binaries the tests and hunts look at -->
+    <RuleGroup name="" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <Image condition="end with">\powershell.exe</Image>
+        <Image condition="end with">\pwsh.exe</Image>
+        <Image condition="end with">\rundll32.exe</Image>
+      </NetworkConnect>
+    </RuleGroup>
+    <!-- EID 7: modules loaded by rundll32 only (mshtml / jscript for the javascript: test) -->
+    <RuleGroup name="" groupRelation="or">
+      <ImageLoad onmatch="include">
+        <Image condition="end with">\rundll32.exe</Image>
+      </ImageLoad>
+    </RuleGroup>
+    <!-- EID 8: remote threads (process injection context) -->
+    <RuleGroup name="" groupRelation="or">
+      <CreateRemoteThread onmatch="exclude"/>
+    </RuleGroup>
+    <!-- EID 10: every handle opened to lsass.exe (T1003.001) -->
+    <RuleGroup name="" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <TargetImage condition="end with">\lsass.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+    <!-- EID 11: dump files (the LSASS dump artifact) -->
+    <RuleGroup name="" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="end with">.dmp</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+    <!-- EID 12-14: autostart Run / RunOnce keys (T1547.001) -->
+    <RuleGroup name="" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+    <!-- EID 22: off (very noisy, no RASD rule reads it) -->
+    <RuleGroup name="" groupRelation="or">
+      <DnsQuery onmatch="include"/>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>

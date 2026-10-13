@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1569.002_suspicious_service_installation
+expected_noise: low
+noise_sources:
+- Sysinternals PsExec used by administrators
+tunings:
+- id: psexec_service_name
+  status: rejected
+  scope: global
+  residual_risk: high
+  reason: Administrators use PsExec, so filtering PSEXESVC would remove the known noise.
+  filter:
+    ServiceName|startswith: PSEXESVC
+  alternative: Correlate with change tickets or admin jump hosts in the SIEM instead of filtering the name.
+never_tune:
+- 'Never filter by service name or by LocalSystem: both are what attackers'' tooling uses by default.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

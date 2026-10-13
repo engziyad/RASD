@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (AES ticket for svc_sql).
+mutations:
+  - name: rc4_ticket
+    base: 1
+    set: {TicketEncryptionType: "0x17"}
+    should_match: true
+  - name: des_ticket
+    description: Legacy DES tickets are counted like any other
+    base: 1
+    set: {TicketEncryptionType: "0x3"}
+    should_match: true
+  - name: uppercase_service_account
+    base: 1
+    set: {ServiceName: "SVC_SQL"}
+    should_match: true
+  - name: uppercase_krbtgt_still_filtered
+    base: 1
+    set: {ServiceName: "KRBTGT"}
+    should_match: false
+  - name: machine_account_still_filtered
+    base: 1
+    set: {ServiceName: "LAB-SQL01$"}
+    should_match: false
+  - name: expired_ticket_failure_not_counted
+    base: 1
+    set: {Status: "0x20"}
+    should_match: false

@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1070.001_security_log_cleared
+expected_noise: low
+noise_sources:
+- Golden-image sealing and documented maintenance on known build hosts
+tunings: []
+never_tune:
+- Do not tune this rule. A cleared Security log is reviewed every time; suppress only by build host and change window in the
+  SIEM.
+review:
+  owner: detection-engineering
+  cadence_days: 90

@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: eventid_string
+  base: 1
+  set:
+    EventID: '1102'
+  should_match: true
+- name: other_audit_event
+  description: 1100 = event logging service shut down
+  base: 1
+  set:
+    EventID: 1100
+  should_match: false

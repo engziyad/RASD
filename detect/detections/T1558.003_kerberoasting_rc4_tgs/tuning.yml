@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1558.003_kerberoasting_rc4_tgs
+expected_noise: medium
+noise_sources:
+- Legacy applications or appliances that only support RC4
+tunings:
+- id: machine_accounts
+  status: applied
+  selection: filter_machine
+  reason: Computer accounts ($) request service tickets constantly and are not Kerberoasting targets.
+- id: krbtgt
+  status: applied
+  selection: filter_krbtgt
+  reason: Tickets for krbtgt are TGT renewals, not service tickets for a crackable account.
+- id: local_requests
+  status: applied
+  selection: filter_local
+  reason: Requests from ::1 originate on the domain controller itself.
+- id: legacy_rc4_scanner
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: The svc_legacy_scan service account only supports RC4; a scanner on SRV-APP02 requests a ticket for it twice a day.
+  filter:
+    ServiceName: svc_legacy_scan
+  alternative: Enable AES on the account and retire RC4 instead of filtering it.
+never_tune:
+- 'Never filter by requesting user: Kerberoasting runs as an ordinary domain user.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

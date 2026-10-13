@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (RC4 TGS for svc_sql).
+mutations:
+  - name: ipv4_client_address
+    base: 1
+    set: {IpAddress: "10.10.20.55"}
+    should_match: true
+  - name: uppercase_service_account
+    base: 1
+    set: {ServiceName: "SVC_SQL"}
+    should_match: true
+  - name: different_ticket_options
+    base: 1
+    set: {TicketOptions: "0x40800000"}
+    should_match: true
+  - name: uppercase_krbtgt_still_filtered
+    base: 1
+    set: {ServiceName: "KRBTGT"}
+    should_match: false
+  - name: machine_account_still_filtered
+    base: 1
+    set: {ServiceName: "SQL01$"}
+    should_match: false
+  - name: aes256_ticket_not_matched
+    description: AES requests are left to the volume hunt by design
+    base: 1
+    set: {TicketEncryptionType: "0x12"}
+    should_match: false

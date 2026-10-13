@@ -1,0 +1,92 @@
+id: service_creation
+name: Service installed with a cmd.exe /c binary path
+platform: windows
+mitre:
+  technique: T1569.002
+  technique_name: System Services - Service Execution
+  related: [T1543.003, T1021.002]
+  tactics: [execution, persistence]
+objective: >
+  Install a Windows service whose binary path is a cmd.exe /c command line - the shape
+  PsExec-style tools and Impacket leave behind - and prove the System 7045 event reaches the
+  SIEM with ServiceName and ImagePath intact. The service is created with start=demand and
+  is never started.
+prerequisites:
+  - Windows 10/11 or Windows Server lab VM, elevated PowerShell
+  - System event log collected (7045 is written by the Service Control Manager)
+safety:
+  - Runs only with -LabConfirmed on a disposable lab VM you own
+  - The service is never started; its command would only echo the marker
+  - The service name is the run marker, so cleanup can only delete what this test created
+execution:
+  - "sc.exe create <marker> binPath= \"cmd.exe /c echo <marker>\" start= demand"
+  - collect_artifacts.ps1 saves sc.exe qc output and the service registry key as JSON
+  - cleanup.ps1 deletes the service and confirms sc.exe query no longer finds it
+steps:
+  - id: create_service
+    name: sc.exe create with a cmd.exe /c binary path (never started)
+    script: emulate_service.ps1
+    needs_admin: true
+    detections: [T1569.002_suspicious_service_installation]
+    bind:
+      T1569.002_suspicious_service_installation: '{marker}'
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: System
+    event: "7045 · A service was installed in the system"
+    description: Service Control Manager records the new service
+    fields:
+      Provider_Name: Service Control Manager
+      ServiceName: '<marker>'
+      ImagePath: 'cmd.exe /c echo <marker>'
+      StartType: demand start
+      AccountName: LocalSystem
+    used_by: [T1569.002_suspicious_service_installation]
+  - source: Security
+    event: "4697 · A service was installed in the system"
+    description: Same installation in the Security log, with the installing account
+    fields:
+      ServiceFileName: 'cmd.exe /c echo <marker>'
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: sc.exe with the create command line
+    fields:
+      Image: '...\System32\sc.exe'
+      CommandLine: 'create <marker> binPath= "cmd.exe /c echo <marker>" start= demand'
+  - source: Sysmon
+    event: "13 · RegistryEvent (value set)"
+    description: ImagePath written under the Services key
+    fields:
+      TargetObject: 'HKLM\System\CurrentControlSet\Services\<marker>\ImagePath'
+logging:
+  - "System log forwarded (7045)"
+  - "Advanced Audit Policy: System > Audit Security System Extension = Success (Security 4697)"
+dfir_artifacts:
+  - artifact: Service configuration
+    location: HKLM\SYSTEM\CurrentControlSet\Services\<service name>
+    collect: sc.exe qc <service name>
+    purpose: Binary path, start type and account - what the service would run and as whom
+  - artifact: Preceding network logon
+    location: Security 4624 (logon type 3) seconds before the 7045
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624} | Where-Object { $_.Properties[8].Value -eq 3 }"
+    purpose: Identifies the remote source host when the service was installed over SMB
+  - artifact: Share access
+    location: Security 5140 / 5145 (ADMIN$, IPC$)
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=5140,5145}"
+    purpose: Shows the binary being copied to ADMIN$ by PsExec-style tooling
+cleanup:
+  actions:
+    - Deletes the service <marker> (sc.exe delete)
+  verify: sc.exe query <marker> returns 1060 (the service does not exist)
+sample_output:
+  console: |
+    [T1569.002] sc.exe create with a cmd.exe /c binary path (never started)
+    [SC] CreateService SUCCESS
+    [cleanup] verified: service purplelab_1a2b3c4d does not exist
+  events:
+    - detection: T1569.002_suspicious_service_installation
+      case: "red: service_creation emulation"
+dfir_playbook: dfir/playbooks/service_installation.md
+purple_scenario: purple/scenarios/T1569.002_service_execution.md

@@ -1,0 +1,15 @@
+# Field vocabulary per Sigma logsource (Sysmon / Windows event schema names).
+# The linter uses it to catch typos and case mistakes: the offline engine is
+# case-insensitive, but SIEM column names are not (KQL is case-sensitive).
+process_creation: [EventID, UtcTime, ProcessGuid, ProcessId, Image, FileVersion, Description, Product, Company,
+  OriginalFileName, CommandLine, CurrentDirectory, User, LogonGuid, LogonId, TerminalSessionId, IntegrityLevel,
+  Hashes, ParentProcessGuid, ParentProcessId, ParentImage, ParentCommandLine, ParentUser, Computer]
+process_access: [EventID, UtcTime, SourceProcessGUID, SourceProcessId, SourceThreadId, SourceImage, TargetProcessGUID,
+  TargetProcessId, TargetImage, GrantedAccess, CallTrace, SourceUser, TargetUser, Computer]
+registry_set: [EventID, EventType, UtcTime, ProcessGuid, ProcessId, Image, TargetObject, Details, User, Computer]
+windows/security: [EventID, Channel, Computer, SubjectUserSid, SubjectUserName, SubjectDomainName, SubjectLogonId,
+  TargetUserName, TargetDomainName, ServiceName, ServiceSid, TicketOptions, TicketEncryptionType, IpAddress, IpPort,
+  Status, SubStatus, FailureReason, LogonGuid, TransmittedServices, LogonType, ProcessName, WorkstationName,
+  Workstation, PreAuthType, TargetSid]
+windows/system: [EventID, Channel, Computer, Provider_Name, ServiceName, ImagePath, ServiceType, StartType,
+  AccountName, SubjectUserName, SubjectDomainName, Channel_Cleared]

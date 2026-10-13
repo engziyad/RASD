@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: pwsh_core
+  base: 1
+  set:
+    Image: C:\Program Files\PowerShell\7\pwsh.exe
+    OriginalFileName: pwsh.dll
+  should_match: true
+- name: lowercase_cmdlets
+  base: 1
+  set:
+    CommandLine: powershell -nop -c "$a=new-scheduledtaskaction -execute 'C:\Users\bob\AppData\Roaming\upd.exe'; register-scheduledtask -taskname updater -action $a"
+  should_match: true
+- name: get_only_is_benign
+  base: 1
+  set:
+    CommandLine: powershell -c Get-ScheduledTask -TaskName Updater
+  should_match: false

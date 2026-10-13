@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1218.011_rundll32_suspicious_execution
+expected_noise: medium
+noise_sources:
+- Installers whose custom actions load DLLs from %TEMP%
+tunings:
+- id: msi_custom_actions
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: Windows Installer custom actions run rundll32 against MSI*.tmp files in the user's Temp folder.
+  filter:
+    ParentImage|endswith: \msiexec.exe
+    CommandLine|contains: \AppData\Local\Temp\MSI
+  alternative: Validate the signer of the installer package before rolling the filter out.
+never_tune:
+- 'Never filter javascript:, vbscript:, RunHTMLApplication or comsvcs: they have no common legitimate use with rundll32.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

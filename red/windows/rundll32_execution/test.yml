@@ -1,0 +1,73 @@
+id: rundll32_execution
+name: "rundll32 javascript: proxy execution"
+platform: windows
+mitre:
+  technique: T1218.011
+  technique_name: System Binary Proxy Execution - Rundll32
+  tactics: [defense-evasion]
+objective: >
+  Launch rundll32.exe with the javascript: / mshtml RunHTMLApplication trick that malware
+  uses to run script through a signed Windows binary, and prove the process-creation
+  event fires the rundll32 detection. The script only assigns the run marker and calls
+  close(), so the process exits immediately.
+prerequisites:
+  - Windows 10/11 or Windows Server lab VM with Sysmon (Event ID 1) installed
+safety:
+  - Runs only with -LabConfirmed on a disposable lab VM you own
+  - "The JavaScript payload assigns the run marker and calls close(); nothing is downloaded, written or executed beyond rundll32 itself"
+  - Endpoint protection may terminate rundll32; the process-creation event is still written and the step still counts
+execution:
+  - "Start-Process rundll32.exe -ArgumentList 'javascript:\"\\..\\mshtml,RunHTMLApplication \";var m=''<marker>'';close();'"
+  - "cleanup.ps1 confirms no rundll32 process carrying this run's marker is left"
+steps:
+  - id: javascript_proxy
+    name: 'rundll32 javascript:"\..\mshtml,RunHTMLApplication ";var m=''<marker>'';close();'
+    script: emulate_rundll32.ps1
+    detections: [T1218.011_rundll32_suspicious_execution]
+    bind:
+      T1218.011_rundll32_suspicious_execution: '{marker}'
+scripts:
+  cleanup: cleanup.ps1
+telemetry:
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: "rundll32.exe started with a javascript: argument"
+    fields:
+      Image: '...\System32\rundll32.exe'
+      OriginalFileName: RUNDLL32.EXE
+      CommandLine: 'javascript:"\..\mshtml,RunHTMLApplication ";var m=''<marker>'';close();'
+    used_by: [T1218.011_rundll32_suspicious_execution]
+  - source: Sysmon
+    event: "7 · ImageLoad"
+    description: mshtml.dll and jscript9.dll loaded into rundll32 (if image-load logging is enabled)
+    fields:
+      ImageLoaded: '...\mshtml.dll'
+logging:
+  - "Sysmon process creation (Event ID 1); image loads (Event ID 7) for deeper investigation"
+dfir_artifacts:
+  - artifact: Command line
+    location: Sysmon 1 / Security 4688
+    collect: Pivot on ProcessGuid in the SIEM
+    purpose: Shows the script protocol and the code that rundll32 ran
+  - artifact: Loaded modules
+    location: Sysmon 7 for the rundll32 ProcessGuid
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Sysmon/Operational'; Id=7}"
+    purpose: mshtml / jscript loads confirm script execution inside rundll32
+  - artifact: Child processes and network
+    location: Sysmon 1 (ParentProcessGuid) and Sysmon 3
+    collect: Pivot on the rundll32 ProcessGuid
+    purpose: Shows whether the script launched anything or reached out
+cleanup:
+  actions:
+    - Nothing is written to disk or registry by this test
+    - "Stops a rundll32.exe still running with this run's marker in its script (never any other rundll32)"
+  verify: No rundll32 process with the marker remains
+sample_output:
+  console: |
+    [T1218.011] rundll32 javascript:"\..\mshtml,RunHTMLApplication ";var m='<marker>';close();
+    [cleanup] verified: no rundll32 process with purplelab_1a2b3c4d remains
+  events:
+    - detection: T1218.011_rundll32_suspicious_execution
+      case: "red: rundll32_execution emulation"
+dfir_playbook: dfir/playbooks/rundll32_proxy_execution.md
+purple_scenario: purple/scenarios/T1218.011_rundll32.md

@@ -1,0 +1,8 @@
+index=wineventlog source="XmlWinEventLog:Security" EventCode=4769 (Status=0x0 OR Status=0)
+| where NOT match(ServiceName, "\$$") AND lower(ServiceName)!="krbtgt"
+| eval ClientIp=replace(IpAddress, "^::ffff:", ""), User=lower(mvindex(split(TargetUserName, "@"), 0))
+| eval rc4=if(TicketEncryptionType="0x17" OR TicketEncryptionType="23", 1, 0)
+| bin _time span=10m
+| stats dc(ServiceName) AS spn_count sum(rc4) AS rc4_count values(TicketEncryptionType) AS enc_types values(ServiceName) AS services BY _time, ClientIp, User
+| where spn_count>=5 OR (spn_count>=3 AND rc4_count>0)
+| sort - spn_count

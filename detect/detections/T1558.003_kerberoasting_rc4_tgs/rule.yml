@@ -1,0 +1,41 @@
+title: Kerberoasting - RC4 Service Ticket Requested for User Account
+id: 2847ae87-e869-4b37-811b-e7f0da4f9b0b
+status: test
+description: |
+  Detects successful TGS requests (Security 4769) using RC4-HMAC (0x17)
+  for a service whose account is a *user* (not a computer account, not
+  krbtgt). In AES-enforced domains this is a strong Kerberoasting
+  indicator: tools like Rubeus/Impacket downgrade to RC4 because RC4
+  hashes crack orders of magnitude faster offline.
+  Best used with aggregation (many distinct ServiceName per client in a
+  short window) - see queries/hunts/kerberoasting_volume.*
+references:
+  - https://attack.mitre.org/techniques/T1558/003/
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4769
+author: Ziyad (github.com/engziyad)
+date: 2026-10-09
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4769
+    TicketEncryptionType:   # RC4-HMAC, hex or decimal depending on the pipeline
+      - '0x17'
+      - '23'
+    Status:
+      - '0x0'
+      - '0'
+  filter_machine:
+    ServiceName|endswith: '$'
+  filter_krbtgt:
+    ServiceName: 'krbtgt'
+  filter_local:
+    IpAddress: '::1'
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - Legacy applications or appliances that only support RC4
+level: medium

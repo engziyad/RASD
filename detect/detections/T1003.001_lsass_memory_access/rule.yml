@@ -1,0 +1,49 @@
+title: Suspicious Process Access to LSASS Memory
+id: 2a0b1b0e-af2b-4426-a58b-72866042c48c
+status: test
+description: |
+  Detects a process opening a handle to lsass.exe with access rights commonly
+  required to read its memory (credential dumping via MiniDumpWriteDump,
+  procdump, comsvcs.dll, Mimikatz-style tooling). Known-good system and
+  security components are excluded.
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+author: Ziyad (github.com/engziyad)
+date: 2026-10-09
+tags:
+  - attack.credential-access
+  - attack.t1003.001
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection:
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:   # hex as Sysmon writes it, decimal as some pipelines store it
+      - '0x1010'     # QUERY_LIMITED_INFORMATION | VM_READ
+      - '0x1410'     # + QUERY_INFORMATION
+      - '0x1438'
+      - '0x143a'
+      - '0x1fffff'   # PROCESS_ALL_ACCESS
+      - '4112'
+      - '5136'
+      - '5176'
+      - '5178'
+      - '2097151'
+  filter_system:
+    SourceImage|startswith:
+      - 'C:\Windows\System32\'
+      - 'C:\Windows\SysWOW64\'
+  filter_defender:
+    SourceImage|startswith: 'C:\ProgramData\Microsoft\Windows Defender\Platform\'
+    SourceImage|endswith: '\MsMpEng.exe'
+  lolbin_exception:          # System32 binaries abused for dumping must NOT be filtered
+    SourceImage|endswith:
+      - '\rundll32.exe'
+      - '\taskmgr.exe'
+  condition: selection and (not (filter_system or filter_defender) or lolbin_exception)
+falsepositives:
+  - EDR / AV / backup agents not covered by filters (tune by signed path)
+  - Administrators creating LSASS dumps for Microsoft support cases
+level: high

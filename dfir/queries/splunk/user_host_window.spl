@@ -1,0 +1,3 @@
+(index=sysmon OR index=wineventlog) host="<HOST>" (User="*<USER>*" OR TargetUserName="<USER>" OR SubjectUserName="<USER>")
+| table _time index EventCode Image CommandLine TargetObject TargetFilename DestinationIp TargetUserName
+| sort _time

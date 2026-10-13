@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1110.003_password_spray_burst
+expected_noise: low
+noise_sources:
+- Shared jump hosts, VDI brokers and terminal servers where several users mistype their passwords within minutes
+- Vulnerability scanners or monitoring tools that test credentials against many accounts
+tunings:
+- id: machine_accounts
+  status: applied
+  selection: filter_machine
+  reason: Computer accounts with stale passwords fail constantly and are not what a spray targets.
+- id: local_attempts
+  status: applied
+  selection: filter_local
+  reason: Failures without a remote client address (console, loopback, the domain controller itself) cannot come from a spraying host.
+- id: citrix_broker
+  status: proposed
+  scope: environment
+  residual_risk: high
+  reason: The Citrix broker CTX-01 (10.0.5.10) relays logons for hundreds of users and reaches 5 mistyped accounts in 10 minutes on Monday mornings.
+  filter:
+    IpAddress:
+    - 10.0.5.10
+    - ::ffff:10.0.5.10
+  alternative: Keep the broker visible with its own higher threshold (a copy of the correlation grouped on that address with gte 15) - a compromised broker is the best spraying host on the network.
+never_tune:
+- 'Never exclude a source address without a replacement threshold: the host you exclude is the one an attacker will spray from.'
+- 'Never raise the threshold without re-reading the guarantee: a burst of 2T-1 accounts is the smallest that always alerts (9 for T=5).'
+review:
+  owner: detection-engineering
+  cadence_days: 90

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: hklm_long_hive
+  base: 2
+  set:
+    TargetObject: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run\Sec
+  should_match: true
+- name: wow64_run
+  base: 1
+  set:
+    TargetObject: HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run\Helper
+  should_match: true
+- name: forward_slash_data
+  base: 1
+  set:
+    Details: C:/Users/bob/AppData/Roaming/winupd.exe
+  should_match: true
+- name: runonce_program_files_is_benign
+  base: 1
+  set:
+    TargetObject: HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce\Setup
+    Details: '"C:\Program Files\Vendor\finish.exe"'
+  should_match: false

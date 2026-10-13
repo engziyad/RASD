@@ -1,0 +1,26 @@
+{
+  "id": "winrm_access_validation",
+  "name": "WinRM remote command on a lab host",
+  "platform": "active_directory",
+  "technique": "T1021.006",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "invoke_command",
+      "name": "Invoke-Command on the target over WinRM (returns hostname and marker)",
+      "script": "emulate_winrm.ps1",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": null
+  }
+}

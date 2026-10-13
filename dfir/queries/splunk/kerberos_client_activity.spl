@@ -1,0 +1,4 @@
+index=wineventlog source="XmlWinEventLog:Security" (EventCode=4768 OR EventCode=4769 OR EventCode=4771) (IpAddress="<CLIENT_IP>" OR IpAddress="::ffff:<CLIENT_IP>")
+| eval rc4=if(TicketEncryptionType="0x17" OR TicketEncryptionType="23", 1, 0)
+| stats count AS requests values(ServiceName) AS services sum(rc4) AS rc4 BY EventCode TargetUserName
+| sort EventCode -requests

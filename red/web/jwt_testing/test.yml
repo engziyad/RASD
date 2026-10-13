@@ -1,0 +1,79 @@
+id: jwt_testing
+name: JWT validation (unsigned and tampered tokens)
+platform: web
+mitre:
+  technique: T1606
+  technique_name: Forge Web Credentials
+  related: [T1190]
+  tactics: [credential-access]
+  other:
+    - framework: OWASP API Security Top 10 (2023)
+      id: API2 Broken Authentication
+objective: >
+  Replay a lab account's genuine token against a protected endpoint, then the same token
+  re-encoded with alg none and no signature, then with a changed payload and the original
+  signature. A server that accepts either forged token lets anyone mint identities.
+prerequisites:
+  - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
+  - A lab test account, given to the test as RASD_LAB_EMAIL / RASD_LAB_PASSWORD environment variables
+safety:
+  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - Three read-only GET requests after one login
+  - Forged tokens are built in memory and never written to disk
+execution:
+  - "export RASD_LAB_EMAIL=alice@lab.local RASD_LAB_PASSWORD=..."
+  - "python3 red/run_red.py --test jwt_testing --lab-confirmed --target http://127.0.0.1:3000"
+steps:
+  - id: forged_tokens
+    name: Replay the genuine token, an alg none token and a tampered token
+    script: emulate_jwt.py
+    parameters: [Target]
+    detections: []
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: Web server / reverse proxy access log
+    event: "HTTP request · 401 after 200 for the same path"
+    description: The same client and path accepted once, then rejected for forged tokens
+    fields:
+      user_agent: 'RASD-Red/<marker>'
+      status: '200 then 401'
+  - source: Application log
+    event: "token validation failure"
+    description: Signature or algorithm errors, when the application logs them
+    fields:
+      message: 'invalid algorithm / invalid signature'
+logging:
+  - "Application logging of JWT validation failures (most frameworks can emit them)"
+dfir_artifacts:
+  - artifact: Token header of rejected requests
+    location: Application or WAF logs (if the Authorization header is logged - usually it should not be)
+    collect: Decode the first JWT segment of the rejected request
+    purpose: '"alg": "none" in a token is never legitimate'
+  - artifact: Findings file
+    location: "$RASD_OUT_DIR/jwt_testing-findings.json"
+    collect: Written by the test
+    purpose: Whether either forged token was accepted
+gap:
+  reason: >
+    Access logs normally do not record the Authorization header, so the forged token is
+    invisible to a log-based rule unless the application logs validation failures.
+  planned: >
+    A rule on application logs for JWT validation failures with algorithm none, once an
+    application log source is mapped.
+cleanup:
+  actions:
+    - Nothing is created on the target
+  verify: No state changes on the target; nothing to remove locally except the findings file
+sample_output:
+  console: |
+    [T1606] Replay the genuine token, an alg none token and a tampered token
+      INFO     GET /rest/basket/6 with the genuine token (baseline): HTTP 200
+      PASS     GET /rest/basket/6 with a token: alg none, no signature: HTTP 401
+      PASS     GET /rest/basket/6 with a token: payload changed, original signature: HTTP 401
+    3 check(s), 0 finding(s)
+  illustrative_events:
+    - title: Access log line for the rejected forged token (OWASP Juice Shop 17.3.0, captured from a lab run)
+      event:
+        line: '127.0.0.1 - - [12/Oct/2026:02:17:46 +0000] "GET /rest/basket/6 HTTP/1.1" 401 31 "-" "RASD-Red/purplelab_1a2b3c4d"'
+dfir_playbook: dfir/playbooks/web_application_attack.md

@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Evasion variants of true_positive.jsonl line 1 (classic -enc) and line 3 (renamed binary).
+mutations:
+  - name: slash_prefix_e
+    base: 1
+    set: {CommandLine: "powershell /e VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"}
+    should_match: true
+  - name: en_dash_prefix
+    description: PowerShell accepts U+2013 as a parameter prefix
+    base: 1
+    set: {CommandLine: "powershell –ec VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"}
+    should_match: true
+  - name: em_dash_full_name
+    base: 1
+    set: {CommandLine: "powershell —EncodedCommand VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"}
+    should_match: true
+  - name: partial_name_encodedc
+    base: 1
+    set: {CommandLine: "powershell -NoP -encodedc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"}
+    should_match: true
+  - name: random_case_parameter
+    base: 1
+    set: {CommandLine: "PowerShell -eNcOdEdCoMmAnD VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"}
+    should_match: true
+  - name: renamed_into_system32_lookalike
+    base: 3
+    set: {Image: "C:\\Windows\\System32\\wuauclt64.exe", CommandLine: "wuauclt64.exe -e VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"}
+    should_match: true
+  - name: execution_policy_is_not_encoded
+    base: 1
+    set: {CommandLine: "powershell -Exec Bypass -File C:\\Scripts\\task.ps1"}
+    should_match: false
+  - name: short_value_is_not_base64_payload
+    base: 1
+    set: {CommandLine: "powershell -e abc"}
+    should_match: false

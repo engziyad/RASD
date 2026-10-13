@@ -1,0 +1,60 @@
+id: security_headers_testing
+name: HTTP security headers and cookie flags
+platform: web
+category: posture
+mitre:
+  tactics: []
+  other:
+    - framework: OWASP Top 10 (2021)
+      id: A05 Security Misconfiguration
+objective: >
+  Read the browser protections the application sets on its start page - HSTS,
+  Content-Security-Policy, X-Content-Type-Options, clickjacking protection,
+  Referrer-Policy, Permissions-Policy and cookie flags - and list what is missing. This is
+  a configuration review: it produces a findings list for the application owner, not
+  attack telemetry.
+prerequisites:
+  - A lab copy of the application on localhost or a private address
+safety:
+  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - One GET request
+execution:
+  - "python3 red/run_red.py --test security_headers_testing --lab-confirmed --target http://127.0.0.1:3000"
+steps:
+  - id: header_review
+    name: Fetch the start page and review security headers and cookie flags
+    script: emulate_security_headers.py
+    parameters: [Target]
+    detections: []
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: Web server access log
+    event: "HTTP GET /"
+    description: A single request; nothing worth alerting on
+    fields:
+      user_agent: 'RASD-Red/<marker>'
+dfir_artifacts:
+  - artifact: Response headers
+    location: The HTTP response
+    collect: "curl -sI <target>"
+    purpose: Evidence of the configuration at the time of the review
+  - artifact: Findings file
+    location: "$RASD_OUT_DIR/security_headers_testing-findings.json"
+    collect: Written by the test
+    purpose: The missing protections, for the remediation ticket
+cleanup:
+  actions:
+    - Nothing is created on the target
+  verify: No state changes on the target
+sample_output:
+  console: |
+    [posture] Fetch the start page and review security headers and cookie flags
+      INFO     GET /: HTTP 200
+      FINDING  Content-Security-Policy: missing
+      PASS     X-Content-Type-Options: nosniff
+      PASS     Clickjacking protection: SAMEORIGIN
+      FINDING  Referrer-Policy: missing
+      FINDING  Permissions-Policy: missing
+    6 check(s), 3 finding(s)
+dfir_playbook: dfir/playbooks/web_application_attack.md

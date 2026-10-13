@@ -1,0 +1,70 @@
+id: run_key_persistence
+name: HKCU Run value pointing into a user-writable folder
+platform: windows
+mitre:
+  technique: T1547.001
+  technique_name: Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
+  related: [T1112]
+  tactics: [persistence, privilege-escalation]
+objective: >
+  Write a per-user Run value that would start a binary from %LOCALAPPDATA%\Temp at the next
+  logon - the most common user-level persistence - and prove the Sysmon registry event
+  fires the Run-key detection. The referenced file does not exist and the value is removed
+  before anyone logs on again.
+prerequisites:
+  - Windows 10/11 lab VM with Sysmon whose configuration logs Run-key writes (Event ID 13)
+safety:
+  - Runs only with -LabConfirmed on a disposable lab VM you own
+  - Writes one value named after the run marker; the binary it points to does not exist
+  - Standard user rights only (HKCU)
+execution:
+  - "New-ItemProperty HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run -Name <marker> -Value $env:LOCALAPPDATA\\Temp\\<marker>.exe"
+  - collect_artifacts.ps1 saves the value (name and data only, not the user's other Run entries)
+  - cleanup.ps1 removes the value and confirms it is gone
+steps:
+  - id: run_value
+    name: HKCU Run value pointing to %LOCALAPPDATA%\Temp (file does not exist)
+    script: emulate_run_key.ps1
+    detections: [T1547.001_registry_run_key_persistence]
+    bind:
+      T1547.001_registry_run_key_persistence: '{marker}'
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Sysmon
+    event: "13 · RegistryEvent (value set)"
+    description: The Run value written by powershell.exe
+    fields:
+      TargetObject: 'HKU\<SID>\Software\Microsoft\Windows\CurrentVersion\Run\<marker>'
+      Details: 'C:\Users\<user>\AppData\Local\Temp\<marker>.exe'
+      Image: '...\powershell.exe'
+    used_by: [T1547.001_registry_run_key_persistence]
+logging:
+  - "Sysmon configuration that includes CurrentVersion\\Run and RunOnce in RegistryEvent rules"
+dfir_artifacts:
+  - artifact: Run value
+    location: HKU\<SID>\Software\Microsoft\Windows\CurrentVersion\Run
+    collect: reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
+    purpose: The persistence entry itself - name, data and the binary it starts
+  - artifact: Referenced binary
+    location: The path in the value data
+    collect: Get-FileHash <path>; Get-AuthenticodeSignature <path>
+    purpose: Hash and signer decide whether the entry is a known application
+  - artifact: Writer process
+    location: Sysmon 13 Image / ProcessGuid
+    collect: Pivot on ProcessGuid in the SIEM
+    purpose: reg.exe, PowerShell or an unsigned binary writing Run keys is a strong signal
+cleanup:
+  actions:
+    - Removes the value <marker> from HKCU\...\Run
+  verify: The value no longer exists
+sample_output:
+  console: |
+    [T1547.001] HKCU Run value pointing to %LOCALAPPDATA%\Temp (file does not exist)
+    [cleanup] verified: Run value purplelab_1a2b3c4d removed
+  events:
+    - detection: T1547.001_registry_run_key_persistence
+      case: "red: run_key_persistence emulation"
+dfir_playbook: dfir/playbooks/run_key_persistence.md
+purple_scenario: purple/scenarios/T1547.001_run_key.md

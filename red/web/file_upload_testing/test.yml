@@ -1,0 +1,81 @@
+id: file_upload_testing
+name: File upload restrictions
+platform: web
+mitre:
+  technique: T1505.003
+  technique_name: Server Software Component - Web Shell
+  related: [T1190]
+  tactics: [persistence, initial-access]
+  other:
+    - framework: OWASP Top 10 (2021)
+      id: A04 Insecure Design (unrestricted file upload)
+objective: >
+  Upload four small, harmless text files that a strict upload handler must refuse - a
+  disallowed extension, a double extension, a spoofed content type and an oversized file.
+  Accepting them is the first step to a web shell, so each acceptance is a finding.
+prerequisites:
+  - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
+  - Web server or reverse-proxy access logs collected; WAF logs if one is in front
+safety:
+  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - Every file contains one line of text and the run marker - no script, no executable code
+  - The test does not try to execute or retrieve what it uploaded
+execution:
+  - "python3 red/run_red.py --test file_upload_testing --lab-confirmed --target http://127.0.0.1:3000"
+  - "Set --max-bytes to the limit the application documents (default 100 kB)"
+steps:
+  - id: restricted_uploads
+    name: Upload .exe, .pdf.exe, spoofed-type and oversized text files
+    script: emulate_file_upload.py
+    parameters: [Target]
+    detections: []
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: Web server / reverse proxy access log
+    event: "HTTP POST · multipart upload"
+    description: Uploads to the upload endpoint and the status each one got
+    fields:
+      user_agent: 'RASD-Red/<marker>'
+      path: '/file-upload'
+      status: '2xx accepted / 4xx refused'
+  - source: WAF
+    event: "file-type or size block"
+    description: Blocked uploads, when a WAF inspects multipart bodies
+    fields:
+      filename: '<marker>.exe, <marker>.pdf.exe ...'
+logging:
+  - "Access logs; WAF logs with the multipart filename when available"
+dfir_artifacts:
+  - artifact: Uploaded files on the server
+    location: The application's upload directory
+    collect: List files containing the marker in their name
+    purpose: Confirms what the server kept, and lets you remove it
+  - artifact: Findings file
+    location: "$RASD_OUT_DIR/file_upload_testing-findings.json"
+    collect: Written by the test
+    purpose: Which restricted uploads were accepted
+gap:
+  reason: >
+    The filename of an upload lives in the request body, which access logs do not record;
+    only a WAF or the application sees it.
+  planned: >
+    A WAF-log rule for executable or double extensions on upload endpoints, once a WAF log
+    source is mapped.
+cleanup:
+  actions:
+    - The test removes nothing on the server; delete any stored file whose name contains the marker
+  verify: No file named after the marker remains in the application's upload directory
+sample_output:
+  console: |
+    [T1505.003] Upload .exe, .pdf.exe, spoofed-type and oversized text files
+      FINDING  upload purplelab_1a2b3c4d.exe (disallowed extension, 56 bytes): HTTP 204
+      FINDING  upload purplelab_1a2b3c4d.pdf.exe (double extension, 56 bytes): HTTP 204
+      FINDING  upload purplelab_1a2b3c4d.html (content type spoofed as PDF, 56 bytes): HTTP 204
+      FINDING  upload purplelab_1a2b3c4d.pdf (over the size limit, 100072 bytes): HTTP 204
+    4 check(s), 4 finding(s)
+  illustrative_events:
+    - title: Access log line for an accepted upload (illustrative, Juice Shop log format)
+      event:
+        line: '127.0.0.1 - - [12/Oct/2026:02:17:50 +0000] "POST /file-upload HTTP/1.1" 204 - "-" "RASD-Red/purplelab_1a2b3c4d"'
+dfir_playbook: dfir/playbooks/web_application_attack.md

@@ -1,0 +1,3 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 TargetImage="*\\lsass.exe"
+| stats count dc(host) AS hosts values(GrantedAccess) AS access_masks BY SourceImage
+| sort - count

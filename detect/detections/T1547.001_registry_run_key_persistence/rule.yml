@@ -1,0 +1,44 @@
+title: Run Key Persistence Pointing to Suspicious Location
+id: cd7aa717-e694-4271-889f-019a448ef63b
+status: test
+description: |
+  Detects a value written under a Run / RunOnce key (HKLM or HKCU) whose
+  data points to a user-writable directory or a script interpreter.
+  This is one of the most common persistence mechanisms for commodity
+  malware and post-exploitation frameworks.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-09
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection_key:
+    TargetObject|contains:
+      - '\Software\Microsoft\Windows\CurrentVersion\Run\'
+      - '\Software\Microsoft\Windows\CurrentVersion\RunOnce\'
+      - '\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run\'
+  selection_data:
+    Details|contains:
+      - 'powershell'
+      - 'mshta'
+      - 'wscript'
+      - 'cscript'
+      - 'rundll32'
+      - 'regsvr32'
+      - 'cmd /c'
+      - 'cmd.exe /c'
+  selection_data_path:     # any AppData/ProgramData/Public/Temp path, '\' or '/' separators
+    Details|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]'
+  filter_onedrive:
+    Details|contains: '\AppData\Local\Microsoft\OneDrive\OneDrive.exe'
+  filter_teams:
+    Details|contains: '\AppData\Local\Microsoft\Teams\'
+  condition: selection_key and 1 of selection_data* and not 1 of filter_*
+falsepositives:
+  - Per-user installed apps (Slack, Zoom, Discord) living in AppData - add filters
+level: medium

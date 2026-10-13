@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: uppercase_hex_mask
+  description: Hex case varies between pipelines
+  base: 1
+  set:
+    GrantedAccess: '0x1FFFFF'
+  should_match: true
+- name: decimal_mask
+  description: Decimal form of 0x1010
+  base: 3
+  set:
+    GrantedAccess: '4112'
+  should_match: true
+- name: lsass_short_path
+  base: 1
+  set:
+    TargetImage: C:\WINDOWS\system32\LSASS.EXE
+  should_match: true
+- name: taskmgr_dump_not_filtered
+  description: Task Manager 'Create dump file' is a LOLBin path
+  base: 2
+  set:
+    SourceImage: C:\Windows\System32\Taskmgr.exe
+  should_match: true
+- name: query_limited_only_is_benign
+  base: 3
+  set:
+    GrantedAccess: '0x1000'
+  should_match: false

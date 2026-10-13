@@ -1,0 +1,3 @@
+// Security Audit Log Cleared (Event 1102) | 6688dad2-3d7a-491f-a5f0-49f0d657e78c
+SecurityEvent
+| where EventID == 1102

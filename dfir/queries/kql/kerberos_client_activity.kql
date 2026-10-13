@@ -1,0 +1,13 @@
+// Kerberos activity of one client IP: TGT requests, service tickets (with RC4 count), pre-auth failures.
+// 4768/4769/4771 log the client as ::ffff:<ip>; the address is normalised and compared exactly.
+let client_ip = "10.20.30.16";
+let start = datetime(2026-10-05 08:00:00);
+let end = datetime(2026-10-05 12:00:00);
+SecurityEvent
+| where TimeGenerated between (start .. end) and EventID in (4768, 4769, 4771)
+| where replace_string(IpAddress, "::ffff:", "") == client_ip
+| extend TicketEncryptionType = coalesce(tostring(column_ifexists("TicketEncryptionType", "")), extract(@'Name="TicketEncryptionType">([^<]*)<', 1, EventData)),
+         ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData))
+| summarize requests = count(), services = make_set(ServiceName, 50), rc4 = countif(TicketEncryptionType in ("0x17", "23"))
+    by EventID, TargetUserName
+| order by EventID asc, requests desc

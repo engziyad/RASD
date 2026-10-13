@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1053.005_schtasks_suspicious_creation
+name: Scheduled Task Created With Suspicious Action
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1053.005
+related_techniques:
+- attack.t1021
+data_contract:
+  required_logsource:
+    product: windows
+    category: process_creation
+  required_events:
+  - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
+  - Security 4698 (recommended, holds the task XML)
+  required_fields:
+  - Image
+  - CommandLine
+  optional_fields:
+  - ParentImage
+  - User
+  - Computer
+  - OriginalFileName
+  telemetry_risk:
+    missing_commandline: critical
+    commandline_truncation: high
+    missing_parent: medium
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Tasks created through the COM API or PowerShell cmdlets without schtasks.exe
+  - Task XML written directly to the Tasks folder and TaskCache registry
+  - Benign task path that runs a malicious script
+coverage_depth:
+  level: partial
+  reason: schtasks.exe command lines only; PowerShell is covered by a separate rule, COM API is not covered
+risk_model:
+  base_score: 40
+  increase_if:
+  - condition: remote_execution
+    add: 20
+  - condition: payload_in_user_writable_path
+    add: 15
+  - condition: host_is_critical
+    add: 15
+  - condition: suspicious_parent
+    add: 15
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 25
+  - condition: approved_change_window
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Validate the host and user
+  - Review the task name and action
+  - Check whether the action points to a user-writable path
+  - Check the parent process
+  - Search the same user and host for 30 minutes either side
+  escalate_if:
+  - Remote creation with /S and /RU SYSTEM
+  - An existing task's action changed (/change) to a new binary
+  - Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32
+  - Payload under AppData, ProgramData, Public or Temp
+response:
+  l1_action: Validate host, user, task name and the command path of the action
+  l2_action: Pivot on the process tree, parent process, logon session and network activity; for /S, move to the source host
+  ir_action: Isolate the host if the payload executed; collect the task XML before deleting anything
+  evidence:
+  - Process creation event and full command line
+  - Task XML (schtasks /query /xml or Security 4698)
+  - Parent process tree and user logon session
+  - Hash of the task payload
+  - Network connections from the payload process
+  containment:
+  - Preserve the task XML before deleting anything
+  - Disable the task
+  - Isolate the host if the payload executed
+  - For remote creation, investigate the source host
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

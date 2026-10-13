@@ -1,0 +1,4 @@
+// PowerShell Execution With Encoded Command | 31cc8b50-1d60-4c11-8fb0-e4a0a57c46ba
+Sysmon
+| where EventID == 1
+| where (((Image endswith @"\powershell.exe" or Image endswith @"\pwsh.exe") or (OriginalFileName =~ @"PowerShell.EXE" or OriginalFileName =~ @"pwsh.dll")) and CommandLine matches regex @"(?i)\s""*[-/–—―][-–—―]?""*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?""*\s+""*[A-Za-z0-9+/]{16,}={0,2}" and not(ParentImage endswith @"\CCM\CcmExec.exe"))

@@ -1,0 +1,17 @@
+ip,host,role
+10.20.30.10,WS01.corp.lab,workstation
+10.20.30.11,WS02.corp.lab,workstation
+10.20.30.12,WS03.corp.lab,workstation
+10.20.30.13,WS04.corp.lab,workstation
+10.20.30.14,WS05.corp.lab,workstation
+10.20.30.15,WS06.corp.lab,workstation
+10.20.30.16,WS07.corp.lab,workstation
+10.20.30.17,WS08.corp.lab,workstation
+10.20.30.18,WS09.corp.lab,workstation
+10.20.30.19,WS10.corp.lab,workstation
+10.20.30.20,WS11.corp.lab,workstation
+10.20.30.21,WS12.corp.lab,workstation
+10.20.30.22,SRV-FS01.corp.lab,server
+10.20.30.23,SRV-APP02.corp.lab,server
+10.20.30.24,SRV-SQL01.corp.lab,server
+10.20.30.2,DC01.corp.lab,domain-controller

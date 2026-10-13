@@ -1,0 +1,46 @@
+{
+  "id": "event_log_clearing",
+  "name": "Event log clearing (dedicated test log, optional Security log)",
+  "platform": "windows",
+  "technique": "T1070.001",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "clear_test_log",
+      "name": "wevtutil cl on a dedicated test log (writes System 104)",
+      "script": "emulate_clear_test_log.ps1",
+      "detections": [
+        "T1070.001_event_log_clearing",
+        "T1070.001_system_log_cleared"
+      ],
+      "needs_admin": true,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1070.001_event_log_clearing": "R{hex}",
+        "T1070.001_system_log_cleared": "R{hex}"
+      }
+    },
+    {
+      "id": "clear_security_log",
+      "name": "wevtutil cl Security with a backup first (writes Security 1102)",
+      "script": "emulate_clear_security_log.ps1",
+      "detections": [
+        "T1070.001_event_log_clearing",
+        "T1070.001_security_log_cleared"
+      ],
+      "needs_admin": true,
+      "opt_in": "IncludeSecurityLogClear",
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1070.001_event_log_clearing": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

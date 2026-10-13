@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1547.001_registry_run_key_persistence
+expected_noise: medium
+noise_sources:
+- Per-user applications installed under AppData (chat and meeting clients)
+tunings:
+- id: onedrive
+  status: applied
+  selection: filter_onedrive
+  reason: OneDrive installs per user and autostarts from AppData\Local\Microsoft\OneDrive.
+- id: teams_classic
+  status: applied
+  selection: filter_teams
+  reason: Classic Teams autostarts through Update.exe under AppData\Local\Microsoft\Teams.
+- id: slack_per_user
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: Slack installs per user and autostarts from AppData\Local\slack.
+  filter:
+    Details|contains: \AppData\Local\slack\slack.exe
+  alternative: Check the signer of slack.exe before applying; a dropped binary with the same name would pass.
+never_tune:
+- 'Never filter by value name: attackers reuse names such as OneDrive, Teams or SecurityHealth.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

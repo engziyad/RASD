@@ -1,0 +1,14 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 (Image="*\\powershell.exe" OR Image="*\\pwsh.exe" OR OriginalFileName="PowerShell.EXE" OR OriginalFileName="pwsh.dll")
+| regex CommandLine="(?i)\s\"*[-/–—―][-–—―]?\"*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?\"*\s+\"*[A-Za-z0-9+/]{16,}={0,2}"
+| fields _time, host, User, ProcessGuid, ParentImage, CommandLine
+| join type=left ProcessGuid
+    [ search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=3
+      | stats dc(DestinationIp) AS net_dests values(DestinationIp) AS dest_ips BY ProcessGuid ]
+| join type=left ProcessGuid
+    [ search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+      | rename ParentProcessGuid AS child_parent
+      | stats count AS child_count values(Image) AS child_images BY child_parent
+      | rename child_parent AS ProcessGuid ]
+| fillnull value=0 net_dests child_count
+| eval severity=if(net_dests>0 OR child_count>0, "high", "medium")
+| sort severity, -_time

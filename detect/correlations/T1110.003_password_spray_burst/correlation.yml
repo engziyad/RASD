@@ -1,0 +1,35 @@
+title: Password Spray - One Source Failing Authentication for Many Accounts
+id: f5f349c4-de03-46b4-a439-2884a1b1133b
+status: test
+description: |
+  One client address failing authentication with a wrong password for 5 or more distinct
+  accounts in one 10-minute window: the shape of a password spray, where one or two
+  passwords are tried against many accounts, few enough times per account to stay under
+  the lockout threshold. Counts Kerberos pre-authentication failures (4771, logged by
+  domain controllers) and failed logons (4625, logged by the server that received the
+  attempt) per client address, so a spray that mixes Kerberos and NTLM is counted once.
+references:
+  - https://attack.mitre.org/techniques/T1110/003/
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4771
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625
+  - https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-correlation-rules-specification.md
+author: Ziyad (github.com/engziyad)
+date: 2026-10-12
+tags:
+  - attack.credential-access
+  - attack.t1110.003
+correlation:
+  type: value_count
+  rules:
+    - auth_failure_wrong_password
+  group-by:
+    - IpAddress
+  timespan: 10m
+  condition:
+    gte: 5
+    field: TargetUserName
+  generate: false
+falsepositives:
+  - A shared jump host, VDI broker or terminal server where several users mistype their passwords within minutes
+  - Vulnerability scanners or monitoring tools that test credentials against many accounts
+level: high

@@ -1,0 +1,5 @@
+{"_case": "Defender scanning lsass", "EventID": 10, "SourceImage": "C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\4.18.24090.11-0\\MsMpEng.exe", "TargetImage": "C:\\Windows\\System32\\lsass.exe", "GrantedAccess": "0x1410"}
+{"_case": "wininit normal access", "EventID": 10, "SourceImage": "C:\\Windows\\System32\\wininit.exe", "TargetImage": "C:\\Windows\\System32\\lsass.exe", "GrantedAccess": "0x1fffff"}
+{"_case": "query-only access (no VM_READ)", "EventID": 10, "SourceImage": "C:\\Users\\analyst\\AppData\\Local\\app.exe", "TargetImage": "C:\\Windows\\System32\\lsass.exe", "GrantedAccess": "0x1000"}
+{"_case": "access to a different process", "EventID": 10, "SourceImage": "C:\\Users\\analyst\\Downloads\\procdump64.exe", "TargetImage": "C:\\Windows\\System32\\svchost.exe", "GrantedAccess": "0x1fffff"}
+{"_case": "32-bit WMI provider host (SysWOW64) querying lsass", "EventID": 10, "SourceImage": "C:\\Windows\\SysWOW64\\wbem\\WmiPrvSE.exe", "TargetImage": "C:\\Windows\\System32\\lsass.exe", "GrantedAccess": "0x1410"}

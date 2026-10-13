@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1547.001_registry_run_key_persistence
+name: Run Key Persistence Pointing to Suspicious Location
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1547.001
+related_techniques:
+- attack.t1112
+data_contract:
+  required_logsource:
+    product: windows
+    category: registry_set
+  required_events:
+  - Sysmon Event ID 13 (RegistryEvent value set) with includes for Run and RunOnce keys
+  required_fields:
+  - TargetObject
+  - Details
+  optional_fields:
+  - Image
+  - EventType
+  - User
+  telemetry_risk:
+    run_keys_not_in_sysmon_config: critical
+    details_truncated: medium
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Other autostart locations (Winlogon, IFEO, Startup folder, UserInitMprLogonScript)
+  - Payload placed in a trusted path (DLL side-loading)
+  - Offline hive edits
+coverage_depth:
+  level: partial
+  reason: Run and RunOnce keys only; other autostart extensibility points need their own rules
+risk_model:
+  base_score: 40
+  increase_if:
+  - condition: payload_in_user_writable_path
+    add: 15
+  - condition: suspicious_parent
+    add: 20
+  - condition: host_is_critical
+    add: 15
+  decrease_if:
+  - condition: known_vendor_software
+    subtract: 25
+  - condition: approved_admin_activity
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Check which process wrote the value (Image)
+  - Hash and check the referenced binary
+  - Check whether it already ran at the next logon
+  escalate_if:
+  - Writer is reg.exe, PowerShell or an unsigned binary
+  - Referenced file is unsigned or new to the environment
+  - Value data runs a script interpreter
+response:
+  l1_action: Check which process wrote the value, the full key and the data; hash the referenced file
+  l2_action: Check whether the payload already ran (process creation at logon), its network activity and other persistence
+    on the host
+  ir_action: Export the key, remove the value, quarantine the payload, isolate the host if it executed
+  evidence:
+  - Registry event with full key and data
+  - Referenced binary and hash
+  - Process creation of the payload
+  containment:
+  - Export the key, then remove the value
+  - Quarantine the payload
+  - Isolate the host if the payload executed
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

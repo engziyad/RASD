@@ -1,0 +1,4 @@
+((index=wineventlog source="XmlWinEventLog:Security" (EventCode=4698 OR EventCode=4702 OR EventCode=4697)) OR (index=wineventlog source="XmlWinEventLog:System" EventCode=7045) OR (index=sysmon EventCode=13 (TargetObject="*\\CurrentVersion\\Run*" OR TargetObject="*\\Services\\*" OR TargetObject="*\\Winlogon\\*" OR TargetObject="*\\Image File Execution Options\\*"))) host="<HOST>"
+| eval mechanism=case(EventCode=7045 OR EventCode=4697, "service", EventCode=4698 OR EventCode=4702, "scheduled task", EventCode=13, "registry")
+| table _time host mechanism TaskName ServiceName ImagePath TargetObject Details
+| sort _time

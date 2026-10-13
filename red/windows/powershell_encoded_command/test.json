@@ -1,0 +1,28 @@
+{
+  "id": "powershell_encoded_command",
+  "name": "PowerShell -EncodedCommand with a benign payload",
+  "platform": "windows",
+  "technique": "T1059.001",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "encoded_command",
+      "name": "powershell.exe -enc with a benign Write-Output payload",
+      "script": "emulate_encoded_command.ps1",
+      "detections": [
+        "T1059.001_powershell_encoded_command"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1059.001_powershell_encoded_command": "base64-utf16le:Write-Output '{marker}'"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

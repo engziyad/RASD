@@ -1,0 +1,24 @@
+{
+  "id": "cron_persistence",
+  "name": "User crontab persistence",
+  "platform": "linux",
+  "technique": "T1053.003",
+  "runner": "bash",
+  "steps": [
+    {
+      "id": "crontab_entry",
+      "name": "Add a crontab line that echoes the marker every 30 minutes",
+      "script": "emulate_cron.sh",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": "collect_artifacts.sh"
+  }
+}

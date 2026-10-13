@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1070.001_system_log_cleared
+name: Windows Event Log Cleared (System Event 104)
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1070.001
+related_techniques: []
+data_contract:
+  required_logsource:
+    product: windows
+    service: system
+  required_events:
+  - System Event ID 104 (Microsoft-Windows-Eventlog)
+  required_fields:
+  - EventID
+  - Provider_Name
+  optional_fields:
+  - SubjectUserName
+  - Channel
+  - Computer
+  telemetry_risk:
+    system_log_not_forwarded: critical
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - EventLog service stopped or forwarding tampered with before clearing
+  - Security log clearing (covered by 1102)
+  - Logs cleared by stopping the service and deleting .evtx files produce no 104 event
+coverage_depth:
+  level: high
+  reason: 'Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell'
+risk_model:
+  base_score: 60
+  increase_if:
+  - condition: host_is_critical
+    add: 20
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: approved_change_window
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Identify which log was cleared and by whom
+  - Check maintenance records
+  - Look for the process-level clearing alert at the same time
+  escalate_if:
+  - Sysmon, PowerShell or System log cleared
+  - No documented maintenance
+response:
+  l1_action: Identify which log was cleared and by whom; check maintenance records
+  l2_action: Recover the forwarded copy of that log; correlate with the process-level clearing alert on the same host
+  ir_action: Treat the host as compromised when no maintenance explains it; investigate the account
+  evidence:
+  - 104 event
+  - SIEM copy of the cleared log
+  - User activity on the host
+  containment:
+  - Treat the host as compromised
+  - Recover forwarded logs
+  - Investigate the account
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

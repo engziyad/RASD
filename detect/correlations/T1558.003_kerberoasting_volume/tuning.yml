@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1558.003_kerberoasting_volume
+expected_noise: low
+noise_sources:
+- Application or monitoring servers that connect to many services running under different user accounts
+- Administrators' jump hosts working through a list of SQL or web servers
+tunings:
+- id: machine_accounts
+  status: applied
+  selection: filter_machine
+  reason: Services under computer accounts have long random passwords; their tickets cannot be cracked.
+- id: krbtgt
+  status: applied
+  selection: filter_krbtgt
+  reason: Tickets for krbtgt are TGT renewals, not service tickets for a crackable account.
+- id: local_requests
+  status: applied
+  selection: filter_local
+  reason: Requests from the domain controller itself (::1, loopback) do not come from a roasting client.
+- id: monitoring_server
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: The SCOM server MON-01 (10.0.4.20) checks 12 SQL instances that run under 7 different service accounts every five minutes.
+  filter:
+    IpAddress:
+    - 10.0.4.20
+    - ::ffff:10.0.4.20
+  alternative: Move the SQL instances to gMSA, which the base rule already ignores - that removes both the noise and the risk.
+never_tune:
+- 'Never filter by requesting user: Kerberoasting runs as an ordinary domain user.'
+- 'Never filter by encryption type: AES roasting is exactly what this correlation exists to catch.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

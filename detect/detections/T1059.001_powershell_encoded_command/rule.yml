@@ -1,0 +1,43 @@
+title: PowerShell Execution With Encoded Command
+id: 31cc8b50-1d60-4c11-8fb0-e4a0a57c46ba
+status: test
+description: |
+  Detects PowerShell launched with -EncodedCommand (or any accepted
+  abbreviation such as -e, -ec, -enc, -encod, with a -, --, / or Unicode dash
+  prefix, quoted or not) followed by a Base64 blob.
+  Attackers encode payloads to evade command-line keyword detections and
+  to avoid quoting problems in droppers and macros. Matching on the regex
+  instead of fixed strings defeats parameter-abbreviation evasion.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe
+author: Ziyad (github.com/engziyad)
+date: 2026-10-09
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.defense-evasion
+  - attack.t1027
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    - Image|endswith:
+        - '\powershell.exe'
+        - '\pwsh.exe'
+    - OriginalFileName:
+        - 'PowerShell.EXE'
+        - 'pwsh.dll'
+  selection_enc:
+    # A dash (-, /, en dash, em dash, horizontal bar; doubled as -- or —— is accepted too),
+    # then exactly a prefix of -EncodedCommand (e, ec, en, enc ... encodedcommand - never
+    # another word such as -Environment), then a Base64 blob. Quotes around the switch or
+    # the blob are stripped by Windows argument parsing, so any number of them is allowed.
+    CommandLine|re: '(?i)\s"*[-/–—―][-–—―]?"*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?"*\s+"*[A-Za-z0-9+/]{16,}={0,2}'
+  filter_sccm:
+    ParentImage|endswith: '\CCM\CcmExec.exe'
+  condition: selection_img and selection_enc and not filter_sccm
+falsepositives:
+  - Management agents (SCCM/Intune, RMM) that legitimately use encoded commands
+level: medium

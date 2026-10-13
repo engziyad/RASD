@@ -1,0 +1,47 @@
+title: Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets
+id: 53c93662-8406-48eb-9136-fb9c97cd7aaf
+status: test
+description: |
+  Detects PowerShell command lines that register a scheduled task with the
+  ScheduledTasks module (Register-ScheduledTask together with an action from
+  New-ScheduledTaskAction) instead of schtasks.exe. Complements the schtasks
+  rule, which never sees tasks created this way.
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/register-scheduledtask
+author: Ziyad (github.com/engziyad)
+date: 2026-10-11
+tags:
+  - attack.persistence
+  - attack.execution
+  - attack.privilege-escalation
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    - Image|endswith:
+        - '\powershell.exe'
+        - '\pwsh.exe'
+    - OriginalFileName:
+        - 'PowerShell.EXE'
+        - 'pwsh.dll'
+  selection_register:
+    CommandLine|contains:
+      - 'Register-ScheduledTask'
+      - 'Set-ScheduledTask'      # hijacking the action of an existing task
+  susp_action:                   # inline action built on the command line (-Execute may be positional)
+    CommandLine|contains: 'New-ScheduledTaskAction'
+  susp_payload:
+    CommandLine|contains:
+      - '$env:TEMP'
+      - '$env:APPDATA'
+      - 'http://'
+      - 'https://'
+  susp_payload_path:       # '\' or '/' separators: PowerShell accepts both
+    CommandLine|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]'
+  condition: selection_img and selection_register and 1 of susp_*
+falsepositives:
+  - Configuration management or login scripts that register tasks with PowerShell
+level: medium

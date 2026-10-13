@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1059.001_powershell_encoded_command
+name: PowerShell Execution With Encoded Command
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1059.001
+related_techniques:
+- attack.t1027
+data_contract:
+  required_logsource:
+    product: windows
+    category: process_creation
+  required_events:
+  - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
+  - PowerShell Script Block Logging 4104 (recommended, holds the decoded script)
+  required_fields:
+  - Image
+  - OriginalFileName
+  - CommandLine
+  - ParentImage
+  optional_fields:
+  - User
+  - ProcessGuid
+  - Computer
+  telemetry_risk:
+    missing_commandline: critical
+    commandline_truncation: high
+    missing_originalfilename: medium
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Payload passed through stdin or environment variables
+  - Obfuscation inside a non-encoded command
+  - PowerShell hosted inside another process (System.Management.Automation.dll)
+  - Quotes inside the switch name or the Base64 blob (-e"nc", -enc "VwBy"AGkA...) - argv parsing strips them, so PowerShell still runs the payload; 4104 script block logging covers the decoded script
+coverage_depth:
+  level: medium
+  reason: Defeats parameter abbreviation, -- / Unicode-dash prefixes, quoting around the switch or blob, and renaming; blind to non-encoded obfuscation and hosted runspaces
+risk_model:
+  base_score: 40
+  increase_if:
+  - condition: suspicious_parent
+    add: 25
+  - condition: host_is_critical
+    add: 15
+  - condition: user_is_privileged
+    add: 10
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: known_vendor_software
+    subtract: 25
+  - condition: approved_admin_activity
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Decode the Base64 blob (UTF-16LE) and read the script
+  - Check the parent process
+  - Search 4104 script blocks on the same host and time
+  escalate_if:
+  - Parent is Office, a browser, wscript, mshta or an unknown binary
+  - Decoded script downloads content or uses IEX
+  - Network connections from the PowerShell process (Sysmon EID 3)
+response:
+  l1_action: Decode the Base64 (UTF-16LE), validate host and user, note the parent process
+  l2_action: Review 4104 script blocks, child processes, network connections and DNS from the PowerShell process (±30 minutes)
+  ir_action: Block contacted infrastructure, remove persistence created by the script, isolate the host if a second stage
+    ran
+  evidence:
+  - Full command line and decoded script
+  - 4104 script blocks
+  - Parent process tree
+  - Network connections and DNS queries from the process
+  containment:
+  - Block the remote host or domain seen in the script
+  - Isolate the host if a second stage executed
+  - Remove any persistence created by the script
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

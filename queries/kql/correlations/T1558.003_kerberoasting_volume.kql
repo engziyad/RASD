@@ -1,0 +1,11 @@
+// Kerberoasting - One Client Requesting Tickets for Many Service Accounts | 300e1503-3d20-4a7b-8683-0fb27410826f
+// counts: Service Ticket Issued for a User-Based Service Account | 4213dcad-3a04-4423-b9a3-2232491ad32b
+SecurityEvent
+| extend Status = coalesce(tostring(column_ifexists("Status", "")), extract(@'Name="Status">([^<]*)<', 1, EventData))
+| extend ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData))
+| extend IpAddress = coalesce(tostring(column_ifexists("IpAddress", "")), extract(@'Name="IpAddress">([^<]*)<', 1, EventData))
+| where ((EventID == 4769 and (Status =~ @"0x0" or Status =~ @"0")) and not((ServiceName endswith @"$" or ServiceName =~ @"krbtgt" or (IpAddress =~ @"::1" or IpAddress =~ @"127.0.0.1" or IpAddress =~ @"::ffff:127.0.0.1"))))
+| extend IpAddress = replace_regex(IpAddress, @"^::ffff:", "")
+| where isnotempty(IpAddress) and isnotempty(ServiceName)
+| summarize value_count = array_length(make_set(ServiceName)), event_count = count(), distinct_values = make_set(ServiceName, 50), first_event = min(TimeGenerated), last_event = max(TimeGenerated) by window_start = bin(TimeGenerated, 600s), IpAddress
+| where value_count >= 5

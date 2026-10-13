@@ -1,0 +1,5 @@
+{"_case": "event id 104 reused by another provider (illustrative name)", "EventID": 104, "Provider_Name": "Contoso-Backup-Agent", "Channel": "System", "Computer": "WS01.corp.local"}
+{"_case": "service state change", "EventID": 7036, "Provider_Name": "Service Control Manager", "Channel": "System", "Computer": "WS01.corp.local"}
+{"_case": "service installed (7045)", "EventID": 7045, "Provider_Name": "Service Control Manager", "Channel": "System", "Computer": "WS01.corp.local"}
+{"_case": "Eventlog service started (6005) - same provider family, not a clear", "EventID": 6005, "Provider_Name": "EventLog", "Channel": "System", "Computer": "WS01.corp.local"}
+{"_case": "same provider, different event: 105 log full and auto-backed up", "EventID": 105, "Provider_Name": "Microsoft-Windows-Eventlog", "Channel": "System", "Computer": "SRV-FS01.corp.local"}

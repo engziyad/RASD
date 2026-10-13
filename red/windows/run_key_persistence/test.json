@@ -1,0 +1,28 @@
+{
+  "id": "run_key_persistence",
+  "name": "HKCU Run value pointing into a user-writable folder",
+  "platform": "windows",
+  "technique": "T1547.001",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "run_value",
+      "name": "HKCU Run value pointing to %LOCALAPPDATA%\\Temp (file does not exist)",
+      "script": "emulate_run_key.ps1",
+      "detections": [
+        "T1547.001_registry_run_key_persistence"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1547.001_registry_run_key_persistence": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

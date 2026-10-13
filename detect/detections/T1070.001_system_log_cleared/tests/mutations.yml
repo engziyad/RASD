@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: eventid_string
+  base: 1
+  set:
+    EventID: '104'
+  should_match: true
+- name: provider_case
+  base: 1
+  set:
+    Provider_Name: microsoft-windows-eventlog
+  should_match: true
+- name: other_provider
+  base: 1
+  set:
+    Provider_Name: Microsoft-Windows-Kernel-General
+  should_match: false

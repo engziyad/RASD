@@ -1,0 +1,84 @@
+id: api_auth_testing
+name: API authentication enforcement
+platform: web
+mitre:
+  technique: T1190
+  technique_name: Exploit Public-Facing Application
+  tactics: [initial-access]
+  other:
+    - framework: OWASP API Security Top 10 (2023)
+      id: API2 Broken Authentication
+objective: >
+  Check that every protected API endpoint refuses a request with no token, a malformed
+  token, and a well-formed JWT signed with a key the server never issued - and generate the
+  401/403 burst that an attacker probing an API leaves in the web logs. RASD has no web
+  rule yet; the run shows what the logs contain and how to hunt it.
+prerequisites:
+  - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
+  - Python 3.9+ on the machine running the test (standard library only)
+  - Web server or reverse-proxy access logs collected (combined log format or JSON)
+safety:
+  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - Read-only GET requests, paced at 5 per second
+  - "Malformed tokens can crash fragile applications: OWASP Juice Shop 17.3.0 terminates on a malformed JWT at /api/Deliverys, so that path is not in the defaults"
+execution:
+  - "python3 red/run_red.py --test api_auth_testing --lab-confirmed --target http://127.0.0.1:3000"
+  - Each endpoint is called three times (no token, malformed token, foreign-signed JWT)
+  - Results print as PASS / FINDING / REVIEW and are saved as JSON for the runner
+steps:
+  - id: unauthenticated_calls
+    name: Call protected endpoints with no token, a malformed token and a foreign-signed JWT
+    script: emulate_api_auth.py
+    parameters: [Target]
+    detections: []
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: Web server / reverse proxy access log
+    event: "HTTP request · 401 / 403"
+    description: A burst of rejected requests across many API paths from one client
+    fields:
+      user_agent: 'RASD-Red/<marker>'
+      status: '401'
+      path: '/api/Cards, /api/Users, /rest/basket/1 ...'
+  - source: Application log
+    event: "authentication failure"
+    description: Token validation errors (missing header, invalid signature), when the application logs them
+    fields:
+      message: 'UnauthorizedError: No authorization token was found / invalid signature'
+logging:
+  - "Access logs from the web server, load balancer or WAF, with client IP, path, status and user agent"
+dfir_artifacts:
+  - artifact: Access log window
+    location: Web server / proxy access logs
+    collect: "grep 'RASD-Red/<marker>' access.log (or the SIEM equivalent on client IP)"
+    purpose: Every path the client probed and every status it got back
+  - artifact: Findings file
+    location: "$RASD_OUT_DIR/api_auth_testing-findings.json"
+    collect: Written by the test
+    purpose: Which endpoints served data without valid authentication
+gap:
+  reason: >
+    RASD's rules cover Windows endpoint and AD telemetry. Web access logs have no shared
+    field schema across servers, so a portable rule needs a log-source mapping first.
+  planned: >
+    A web log source in tools/mappings.yml and a rule for one client receiving 401/403 on
+    10+ distinct API paths within 5 minutes.
+cleanup:
+  actions:
+    - Nothing is created on the target
+  verify: No state changes on the target; nothing to remove locally except the findings file
+sample_output:
+  console: |
+    [T1190] Call protected endpoints with no token, a malformed token and a foreign-signed JWT
+      PASS     GET /rest/basket/1 with no token: HTTP 401
+      PASS     GET /rest/basket/1 with malformed token: HTTP 401
+      PASS     GET /rest/basket/1 with foreign-signed JWT: HTTP 401
+      PASS     GET /api/Cards with no token: HTTP 401
+      ...
+    18 check(s), 0 finding(s)
+  illustrative_events:
+    - title: Access log line (OWASP Juice Shop 17.3.0 format, captured from a lab run)
+      event:
+        line: '127.0.0.1 - - [12/Oct/2026:02:17:41 +0000] "GET /api/Cards HTTP/1.1" 401 31 "-" "RASD-Red/purplelab_1a2b3c4d"'
+dfir_playbook: dfir/playbooks/web_application_attack.md

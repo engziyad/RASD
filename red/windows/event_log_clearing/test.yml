@@ -1,0 +1,104 @@
+id: event_log_clearing
+name: Event log clearing (dedicated test log, optional Security log)
+platform: windows
+mitre:
+  technique: T1070.001
+  technique_name: Indicator Removal - Clear Windows Event Logs
+  tactics: [defense-evasion]
+objective: >
+  Clear an event log with wevtutil the way intruders do and prove all three log-clearing
+  detections fire: the wevtutil process, the System 104 record of the clear and - only when
+  you opt in - the Security 1102 record. The default step clears a log this test creates
+  for itself, so no real evidence is ever destroyed.
+prerequisites:
+  - Windows 10/11 or Windows Server lab VM, elevated PowerShell (Windows PowerShell 5.1 for New-EventLog)
+  - Sysmon (Event ID 1) installed; System and Security logs forwarded to the SIEM
+safety:
+  - Runs only with -LabConfirmed on a disposable lab VM you own
+  - The default step creates a log named R<hex> (the marker's random part; classic log names are unique on 8 characters), writes one entry and clears only that log
+  - The Security-log step runs only with -IncludeSecurityLogClear, backs the log up with wevtutil /bu first, and refuses to overwrite an existing backup
+  - Forward logs to the SIEM before using the Security-log step; the local Security log is emptied
+execution:
+  - "Step 1: New-EventLog -LogName R<hex> -Source <marker>; Write-EventLog ...; wevtutil cl R<hex>"
+  - "Step 2 (opt-in): wevtutil cl Security /bu:%TEMP%\\security-before-clear-<marker>.evtx"
+  - collect_artifacts.ps1 saves the 104 (and 1102) records of the clear as JSON
+  - cleanup.ps1 removes the test log; the Security backup stays on disk as evidence
+steps:
+  - id: clear_test_log
+    name: wevtutil cl on a dedicated test log (writes System 104)
+    script: emulate_clear_test_log.ps1
+    needs_admin: true
+    detections: [T1070.001_event_log_clearing, T1070.001_system_log_cleared]
+    bind:
+      T1070.001_event_log_clearing: 'R{hex}'
+      T1070.001_system_log_cleared: 'R{hex}'
+  - id: clear_security_log
+    name: wevtutil cl Security with a backup first (writes Security 1102)
+    script: emulate_clear_security_log.ps1
+    needs_admin: true
+    opt_in: IncludeSecurityLogClear
+    detections: [T1070.001_event_log_clearing, T1070.001_security_log_cleared]
+    bind:
+      T1070.001_event_log_clearing: '{marker}'
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Sysmon
+    event: "1 · ProcessCreate"
+    description: wevtutil.exe clearing a log
+    fields:
+      Image: '...\System32\wevtutil.exe'
+      CommandLine: 'cl R<hex>  /  cl Security /bu:<path>\security-before-clear-<marker>.evtx'
+    used_by: [T1070.001_event_log_clearing]
+  - source: System
+    event: "104 · The log file was cleared"
+    description: "Written by Microsoft-Windows-Eventlog for every cleared log except Security. The cleared log's name sits in UserData/LogFileCleared/Channel; Export-LabTelemetry.ps1 names it Channel_Cleared so it does not overwrite the event's own Channel (System) - in a SIEM look for the UserData field instead"
+    fields:
+      Provider_Name: Microsoft-Windows-Eventlog
+      Channel_Cleared: 'R<hex>'
+      SubjectUserName: '<user>'
+    used_by: [T1070.001_system_log_cleared]
+  - source: Security
+    event: "1102 · The audit log was cleared"
+    description: Written when the Security log is cleared (opt-in step only)
+    fields:
+      SubjectUserName: '<user>'
+    used_by: [T1070.001_security_log_cleared]
+logging:
+  - "Sysmon process creation (Event ID 1)"
+  - "System and Security logs forwarded off the host before the test - the point of the attack is to destroy the local copy"
+dfir_artifacts:
+  - artifact: Clear records
+    location: System 104 and Security 1102
+    collect: "Get-WinEvent -FilterHashtable @{LogName='System'; Id=104}"
+    purpose: Who cleared which log and when - the anchor of the timeline
+  - artifact: Forwarded copy of the cleared log
+    location: SIEM / Windows Event Forwarding collector
+    collect: Query the SIEM for the host and the hour before the clear
+    purpose: Recovers the events the clear was meant to destroy
+  - artifact: Security log backup
+    location: "The /bu: path (opt-in step)"
+    collect: wevtutil qe <backup.evtx> /lf:true /c:5 /f:text
+    purpose: Shows that wevtutil can archive before clearing - check intruder tooling for /bu paths too
+cleanup:
+  actions:
+    - Removes the test log R<hex> (Remove-EventLog)
+    - Leaves the Security backup file in place on purpose (it is the evidence of the opt-in step)
+  verify: The test log no longer exists
+sample_output:
+  console: |
+    [T1070.001] wevtutil cl on a dedicated test log (writes System 104)
+    WARNING: [T1070.001] wevtutil cl Security with a backup first - skipped (opt-in: add -IncludeSecurityLogClear)
+    [cleanup] verified: test log R1a2b3c4d removed
+  events:
+    - detection: T1070.001_event_log_clearing
+      case: "red: event_log_clearing emulation (test log)"
+    - detection: T1070.001_system_log_cleared
+      case: "red: event_log_clearing emulation (System 104)"
+    - detection: T1070.001_event_log_clearing
+      case: "red: event_log_clearing emulation (Security log, opt-in)"
+    - detection: T1070.001_security_log_cleared
+      case: "red: event_log_clearing emulation (Security 1102, opt-in)"
+dfir_playbook: dfir/playbooks/event_log_clearing.md
+purple_scenario: purple/scenarios/T1070.001_event_log_clearing.md

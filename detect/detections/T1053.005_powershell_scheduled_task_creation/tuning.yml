@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1053.005_powershell_scheduled_task_creation
+expected_noise: medium
+noise_sources:
+- Configuration management or logon scripts that register tasks inline
+tunings:
+- id: sccm_client
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: The SCCM client registers maintenance tasks with PowerShell one-liners.
+  filter:
+    ParentImage|endswith: \CCM\CcmExec.exe
+  alternative: Scope to the task names your SCCM baselines create.
+never_tune:
+- 'Never allow-list by task name: attackers copy vendor task names (GoogleUpdateTaskMachineCore, OneDrive Standalone).'
+review:
+  owner: detection-engineering
+  cadence_days: 90

@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1110.003_password_spray_burst
+name: Password Spray - One Source Failing Authentication for Many Accounts
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1110.003
+related_techniques:
+- attack.t1110.001
+data_contract:
+  required_logsource:
+    product: windows
+    service: security
+  required_events:
+  - Security Event ID 4771 on domain controllers (Audit Kerberos Authentication Service = Failure)
+  - Security Event ID 4625 on domain controllers and on member servers that accept network or RDP logons (Audit Logon = Failure)
+  required_fields:
+  - EventID
+  - Status
+  - SubStatus
+  - TargetUserName
+  - IpAddress
+  optional_fields:
+  - LogonType
+  - WorkstationName
+  - FailureReason
+  - ServiceName
+  - PreAuthType
+  - TargetDomainName
+  telemetry_risk:
+    dc_security_log_not_forwarded: critical
+    kerberos_authentication_failure_auditing_disabled: critical
+    member_server_logon_failures_not_collected: high
+detection_logic:
+  type: correlation
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - Low-and-slow sprays that stay under 5 accounts per source in every 10-minute window
+  - Sprays spread over many source addresses (botnets, cloud egress pools), each source below the threshold
+  - Sprays against cloud identity (Entra ID sign-in logs) - this correlation reads on-premises Windows events only
+  - NTLM failures a domain controller validates for a member server (4776) carry no client address; they are counted through the member server's own 4625, so member server Security logs must be collected
+  - A burst of 5 to 8 accounts can be split by a window boundary; 9 or more within 10 minutes always alert
+coverage_depth:
+  level: medium
+  reason: Kerberos and NTLM wrong-password failures from one source, counted per 10-minute window with a proven 9-account guarantee; distributed and low-and-slow sprays need longer-window hunting
+risk_model:
+  base_score: 60
+  increase_if:
+  - condition: host_is_critical
+    add: 15
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: approved_change_window
+    subtract: 40
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Identify the source address and resolve it to a host and its owner
+  - List the accounts that failed and check whether any of them then logged on successfully (4624 / 4768 from the same source)
+  - Check whether the source is a workstation, a server or a jump host, and whether a scan or password audit was scheduled
+  escalate_if:
+  - Any sprayed account logged on successfully from the source after the burst
+  - The source is a server or a domain-joined workstation with no scanning role
+  - Privileged or service accounts are among the failed accounts
+response:
+  l1_action: Record the source address, the failed accounts and the window; check for a successful logon from the same source afterwards
+  l2_action: Resolve the source to a host and process (who ran the binds or logons), check every sprayed account for a later success, and look for the same pattern from other sources
+  ir_action: Isolate the source host, reset the password of every sprayed account that later logged on, and review what those accounts accessed
+  evidence:
+  - 4771 and 4625 events from the source for the window
+  - Successful logons (4624, 4768) from the source after the burst
+  - Process and network telemetry on the source host for the window
+  containment:
+  - Block or isolate the source address
+  - Reset passwords of sprayed accounts that logged on successfully, and revoke their sessions
+  - Enforce smart lockout or a banned-password list for the targeted accounts
+governance:
+  evidence_type:
+  - correlation rule
+  - base rule and tests
+  - correlation scenarios and mutants
+  - generated SIEM queries
+  - ATT&CK mapping
+  - response playbook

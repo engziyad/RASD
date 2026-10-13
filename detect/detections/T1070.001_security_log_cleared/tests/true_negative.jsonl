@@ -1,0 +1,4 @@
+{"_case": "successful logon", "EventID": 4624, "Channel": "Security", "TargetUserName": "bob", "LogonType": 3, "Computer": "WS01.corp.local"}
+{"_case": "audit policy changed (related but different event)", "EventID": 4719, "Channel": "Security", "SubjectUserName": "admin", "Computer": "WS01.corp.local"}
+{"_case": "special privileges assigned (4672)", "EventID": 4672, "Channel": "Security", "SubjectUserName": "admin", "Computer": "WS01.corp.local"}
+{"_case": "security log full warning (1104), not cleared", "EventID": 1104, "Channel": "Security", "Computer": "WS01.corp.local"}

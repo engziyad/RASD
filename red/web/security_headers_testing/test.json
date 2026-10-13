@@ -1,0 +1,26 @@
+{
+  "id": "security_headers_testing",
+  "name": "HTTP security headers and cookie flags",
+  "platform": "web",
+  "technique": null,
+  "runner": "python",
+  "steps": [
+    {
+      "id": "header_review",
+      "name": "Fetch the start page and review security headers and cookie flags",
+      "script": "emulate_security_headers.py",
+      "detections": [],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

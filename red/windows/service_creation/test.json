@@ -1,0 +1,28 @@
+{
+  "id": "service_creation",
+  "name": "Service installed with a cmd.exe /c binary path",
+  "platform": "windows",
+  "technique": "T1569.002",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "create_service",
+      "name": "sc.exe create with a cmd.exe /c binary path (never started)",
+      "script": "emulate_service.ps1",
+      "detections": [
+        "T1569.002_suspicious_service_installation"
+      ],
+      "needs_admin": true,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {
+        "T1569.002_suspicious_service_installation": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

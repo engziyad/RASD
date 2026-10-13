@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1569.002_suspicious_service_installation
+name: Suspicious Service Installation (PsExec-style / Command Services)
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1569.002
+related_techniques:
+- attack.t1021.002
+data_contract:
+  required_logsource:
+    product: windows
+    service: system
+  required_events:
+  - System Event ID 7045 (Service Control Manager)
+  - Security 4697 (optional)
+  required_fields:
+  - EventID
+  - Provider_Name
+  - ServiceName
+  - ImagePath
+  optional_fields:
+  - AccountName
+  - StartType
+  - ServiceType
+  - Computer
+  telemetry_risk:
+    system_log_not_forwarded: critical
+    imagepath_not_parsed: critical
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - Randomised service name with the binary placed in System32
+  - Modifying an existing service ImagePath (sc config) produces no 7045
+  - WMI, WinRM and DCOM lateral movement
+coverage_depth:
+  level: medium
+  reason: Fingerprints PsExec, Impacket psexec and smbexec plus generic command services; blind to service modification
+risk_model:
+  base_score: 60
+  increase_if:
+  - condition: remote_execution
+    add: 15
+  - condition: host_is_critical
+    add: 20
+  - condition: payload_in_user_writable_path
+    add: 10
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 25
+  - condition: approved_change_window
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Review ServiceName, ImagePath, AccountName and Computer
+  - Check whether ADMIN$ or a loopback share is involved
+  - Find the network logon (4624 type 3) seconds before the 7045
+  - Check for change records or known admin PsExec usage
+  escalate_if:
+  - ImagePath runs cmd or PowerShell or lives under Temp, Public or AppData
+  - Service name matches PsExec, PAExec, RemCom, CSExec or smbexec defaults, or an 8-letter random binary
+  - No matching change or admin activity
+response:
+  l1_action: Review ServiceName, ImagePath, AccountName and host; check for a change record or known admin PsExec use
+  l2_action: Find the network logon (4624 type 3) and share access (5140/5145) just before the 7045 to identify the source
+    host
+  ir_action: Collect the service binary, delete the service, and investigate the source host as compromised
+  evidence:
+  - 7045 event
+  - Preceding 4624 type 3 and 5140/5145 share access
+  - Service binary before it is deleted
+  - Source host of the network logon
+  containment:
+  - Collect the service binary
+  - Delete the service
+  - Treat the source host as compromised and investigate it
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

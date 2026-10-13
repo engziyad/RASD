@@ -1,0 +1,7 @@
+index=wineventlog source="XmlWinEventLog:Security"
+| where (('EventCode'=4769 AND (lower('Status')="0x0" OR lower('Status')="0")) AND NOT (match(coalesce('ServiceName', ""), "(?i)\\$$") OR lower(coalesce('ServiceName', ""))="krbtgt" OR (lower(coalesce('IpAddress', ""))="::1" OR lower(coalesce('IpAddress', ""))="127.0.0.1" OR lower(coalesce('IpAddress', ""))="::ffff:127.0.0.1")))
+| eval IpAddress=replace('IpAddress', "^::ffff:", "")
+| where isnotnull('IpAddress') AND 'IpAddress'!="" AND isnotnull('ServiceName') AND 'ServiceName'!=""
+| bin span=600s _time AS window_start
+| stats dc(ServiceName) as value_count count as event_count values(ServiceName) as distinct_values min(_time) as first_event max(_time) as last_event by window_start IpAddress
+| where value_count>=5

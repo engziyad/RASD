@@ -1,0 +1,36 @@
+# Conditions a detection contract's risk_model may reference.
+#
+#   auto     replay.py resolves it from the event, the assets file and the users file,
+#            and adds or subtracts the points on every alert it produces.
+#   analyst  only a human, a CMDB or a change system knows the answer; the triage card
+#            turns it into a question and replay lists it as unresolved.
+#
+# validate.py rejects a contract that references a condition not defined here.
+conditions:
+  host_is_critical:
+    resolve: auto
+    description: The host's role in the assets file is domain-controller, server or critical.
+  user_is_privileged:
+    resolve: auto
+    description: The user is marked privileged in the users file, or is a built-in administrator account.
+  outside_business_hours:
+    resolve: auto
+    description: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset).
+  payload_in_user_writable_path:
+    resolve: auto
+    description: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads.
+  suspicious_parent:
+    resolve: auto
+    description: The parent process is an Office application, a browser, mshta, wscript or cscript.
+  remote_execution:
+    resolve: auto
+    description: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event).
+  approved_admin_activity:
+    resolve: analyst
+    description: The action is documented, expected administration by a known administrator.
+  approved_change_window:
+    resolve: analyst
+    description: A change ticket covers this host and time.
+  known_vendor_software:
+    resolve: analyst
+    description: The binary is signed by a vendor already approved in this environment.

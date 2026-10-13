@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: wevtutil_long_verb
+  base: 1
+  set:
+    CommandLine: wevtutil.exe clear-log Security
+  should_match: true
+- name: wevtutil_quoted_log
+  base: 1
+  set:
+    CommandLine: wevtutil cl "Microsoft-Windows-Sysmon/Operational"
+  should_match: true
+- name: remove_eventlog
+  base: 2
+  set:
+    CommandLine: powershell -c Remove-EventLog -LogName Application
+  should_match: true
+- name: get_winevent_is_benign
+  base: 2
+  set:
+    CommandLine: powershell -c Get-WinEvent -ListLog *
+  should_match: false
