@@ -9,7 +9,7 @@ banner.py - the RASD signature, in the terminal and as an SVG for the README.
 Hidden automatically in CI, when output is piped, or with NO_BANNER=1.
 NO_COLOR=1 prints it without colour. Uses 24-bit colour when the terminal
 advertises it (COLORTERM=truecolor), otherwise the nearest 256-colour shade.
-The two text lines carry the framework name and its five pillars.
+The text lines carry the framework name, its five pillars and the author credit.
 """
 from __future__ import annotations
 
@@ -61,6 +61,7 @@ SWORD = [
 TAGLINE = "Attack-to-Defense Validation Framework"
 PILLARS = ("Red", "Detect", "DFIR", "Intel", "Purple")
 COL = 18          # text column, right of the emblem
+CREDIT = "By: @ZiyadSOC"
 
 
 def pillars() -> list[tuple[str, str]]:
@@ -83,6 +84,7 @@ def layout() -> list[list[tuple[str, str | None]]]:
     right[9] = [tuple(s) for s in SWORD[1]]
     right[10] = [(TAGLINE, IVORY)]
     right[11] = pillars()
+    right[12] = [(CREDIT, GRAY)]
     rows = []
     for i, emb in enumerate(EMBLEM):
         segs = [("  ", None)] + [tuple(s) for s in emb]
