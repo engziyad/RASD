@@ -12,7 +12,7 @@
 | Incident response | Isolate the source host, reset the password of every sprayed account that later logged on, and review what those accounts accessed |
 
 ### Evidence to collect
-- 4771 and 4625 events from the source for the window
+- 4771, 4768 and 4625 events from the source for the window, with their failure codes
 - Successful logons (4624, 4768) from the source after the burst
 - Process and network telemetry on the source host for the window
 

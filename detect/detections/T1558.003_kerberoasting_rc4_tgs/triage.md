@@ -31,13 +31,16 @@ Base score **40**.
 - +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +5 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
-- −25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
+- -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 
 ### Known benign sources
 - Legacy applications or appliances that only support RC4
 
 ### Never tune
 - Never filter by requesting user: Kerberoasting runs as an ordinary domain user.
+
+### Close or escalate
+[Closure and escalation notes](../T1558.003_kerberoasting_rc4_tgs/closure.md) for this detection.
 
 ---
 

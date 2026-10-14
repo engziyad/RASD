@@ -4,7 +4,7 @@
 |---|---|
 | **ATT&CK technique** | [T1083](https://attack.mitre.org/techniques/T1083/) File and Directory Discovery |
 | **Related** | [T1548.001](https://attack.mitre.org/techniques/T1548/001/) · [T1082](https://attack.mitre.org/techniques/T1082/) |
-| **Tactics** | discovery, privilege-escalation |
+| **Tactics** | discovery |
 | **Platform** | linux · runner: bash |
 | **Status** | Detect: **gap** |
 | **Requires** | standard user |

@@ -1,0 +1,2 @@
+index=linux sourcetype="sysmon:linux" EventID=1
+| where (match('Image', "(?i)/crontab$") AND (match('CommandLine', "(?i)crontab\"?\\s+(-u\\s+\\S+\\s+)?-\\s*$") OR match('CommandLine', "(?i)crontab\"?\\s+(-u\\s+\\S+\\s+)?[^-\\s]\\S*\\s*$")))

@@ -1,0 +1,6 @@
+// Rundll32 Proxy Execution From Suspicious Context | 7bc31caf-8287-4c8e-9936-381e4ab88410 | Microsoft Defender XDR advanced hunting
+DeviceProcessEvents
+| extend Image = iff(isempty(FolderPath), FileName, iff(isempty(FileName) or trim_end(@"[\\/]+", FolderPath) endswith FileName, FolderPath, strcat(trim_end(@"[\\/]+", FolderPath), @"\", FileName))),
+    OriginalFileName = tostring(ProcessVersionInfoOriginalFileName),
+    CommandLine = tostring(ProcessCommandLine)
+| where ((Image endswith @"\rundll32.exe" or OriginalFileName =~ @"RUNDLL32.EXE") and ((CommandLine contains @"javascript:" or CommandLine contains @"vbscript:" or CommandLine contains @"RunHTMLApplication") or CommandLine matches regex @"(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]" or (CommandLine contains @"comsvcs" and CommandLine matches regex @"(?i)(minidump|#\+?0*(24|65560)\b|#-4294967272\b)") or CommandLine matches regex @"(?i)rundll32(\.exe)?""?\s*$" or CommandLine matches regex @"(?i)\b(zipfldr(\.dll)?""?[\s,]+""?RouteTheCall|advpack(\.dll)?""?[\s,]+""?RegisterOCX|pcwutl(\.dll)?""?[\s,]+""?LaunchApplication)\b"))

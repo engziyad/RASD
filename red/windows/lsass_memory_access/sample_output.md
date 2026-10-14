@@ -6,8 +6,8 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1003.001] rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup)
-[collect] dump purplelab_1a2b3c4d.dmp hashed (size and SHA-256 recorded, file not kept)
-[cleanup] verified: dump purplelab_1a2b3c4d.dmp deleted
+[collect] dump rasd_1a2b3c4d.dmp hashed (size and SHA-256 recorded, file not kept)
+[cleanup] verified: dump rasd_1a2b3c4d.dmp deleted
 ```
 
 ## Expected event → T1003.001_lsass_memory_access
@@ -33,7 +33,7 @@ This is true positive *red: lsass_memory_access emulation (comsvcs MiniDump)* in
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\rundll32.exe",
   "OriginalFileName": "RUNDLL32.EXE",
-  "CommandLine": "\"C:\\Windows\\system32\\rundll32.exe\" C:\\Windows\\System32\\comsvcs.dll, MiniDump 704 C:\\Windows\\Temp\\purplelab_1a2b3c4d.dmp full",
+  "CommandLine": "\"C:\\Windows\\system32\\rundll32.exe\" C:\\Windows\\System32\\comsvcs.dll, MiniDump 704 C:\\Windows\\Temp\\rasd_1a2b3c4d.dmp full",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"

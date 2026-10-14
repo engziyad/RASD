@@ -6,6 +6,6 @@
 set -euo pipefail
 marker=""
 while [[ $# -gt 0 ]]; do case "$1" in --marker) marker="$2"; shift 2 ;; *) shift ;; esac; done
-[[ "$marker" =~ ^purplelab_[0-9a-f]{8}$ ]] || { echo "usage: cleanup.sh --marker purplelab_xxxxxxxx" >&2; exit 2; }
+[[ "$marker" =~ ^rasd_[0-9a-f]{8}$ ]] || { echo "usage: cleanup.sh --marker rasd_xxxxxxxx" >&2; exit 2; }
 echo "[cleanup] manual: delete any file on the target whose name contains $marker"
 exit 3

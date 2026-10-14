@@ -25,14 +25,14 @@
 - [ ] CTI mapping updated
 - [ ] Purple scenario updated
 - [ ] Evidence status reviewed
-- [ ] Quality score reviewed
+- [ ] Engineering and Operational Scores reviewed
 
 ## Proof
 Paste the relevant output:
 
 ```text
-python rasd.py ci
-python rasd.py diff --base origin/main --fuzz
+rasd ci
+rasd diff --base origin/main --fuzz
 ```
 
 <!-- CI blocks the merge on: failing tests, surviving rule mutants, parity divergences, new evasion bypasses,

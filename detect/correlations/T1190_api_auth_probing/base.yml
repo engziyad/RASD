@@ -1,0 +1,29 @@
+title: Web Request Rejected With 401 or 403
+id: f0269a60-dd31-411f-8462-7768053a94cb
+name: web_request_rejected
+status: test
+description: |
+  A web request the application refused for missing or invalid credentials (401) or
+  insufficient rights (403). CORS preflight requests (OPTIONS) are excluded. This is the
+  base rule of the API-probing correlation and never alerts on its own: one rejected request
+  is an expired session, many distinct paths from one client are a probe.
+references:
+  - https://www.rfc-editor.org/rfc/rfc9110#name-401-unauthorized
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.initial-access
+  - attack.t1190
+logsource:
+  category: webserver
+detection:
+  selection:
+    sc-status:
+      - '401'
+      - '403'
+  filter_preflight:
+    cs-method: 'OPTIONS'
+  condition: selection and not filter_preflight
+falsepositives:
+  - Every expired session - which is why this rule only feeds the correlation
+level: informational

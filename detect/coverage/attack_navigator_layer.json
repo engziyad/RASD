@@ -1,7 +1,7 @@
 {
-  "name": "Purple Lab - Validated Detection Coverage",
+  "name": "RASD - Tested Detection Coverage",
   "versions": {
-    "attack": "16",
+    "attack": "18",
     "navigator": "5.1.0",
     "layer": "4.5"
   },
@@ -11,7 +11,7 @@
     {
       "techniqueID": "T1003.001",
       "score": 64,
-      "comment": "Suspicious Process Access to LSASS Memory (T1003.001_lsass_memory_access) - depth medium - validated",
+      "comment": "Suspicious Process Access to LSASS Memory (T1003.001_lsass_memory_access) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -24,7 +24,20 @@
     {
       "techniqueID": "T1021.002",
       "score": 32,
-      "comment": "Suspicious Service Installation (PsExec-style / Command Services) (T1569.002_suspicious_service_installation) - depth medium (related) - validated",
+      "comment": "Suspicious Service Installation (PsExec-style / Command Services) (T1569.002_suspicious_service_installation) - depth medium (related) - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1021.006",
+      "score": 48,
+      "comment": "Suspicious Child Process of a WinRM Session Host (T1021.006_wsmprovhost_suspicious_child) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -36,8 +49,21 @@
     },
     {
       "techniqueID": "T1027",
-      "score": 24,
-      "comment": "PowerShell Execution With Encoded Command (T1059.001_powershell_encoded_command) - depth medium (related) - validated",
+      "score": 32,
+      "comment": "PowerShell Execution With Encoded Command (T1059.001_powershell_encoded_command) - depth medium (related) - tests pass\nLinux Shell Executing Decoded Base64 or Code From a Temporary Directory (T1059.004_linux_suspicious_shell_execution) - depth medium (related) - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1053.003",
+      "score": 36,
+      "comment": "Crontab Installed From Standard Input or a File (T1053.003_crontab_noninteractive_install) - depth partial - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -50,7 +76,7 @@
     {
       "techniqueID": "T1053.005",
       "score": 36,
-      "comment": "Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets (T1053.005_powershell_scheduled_task_creation) - depth partial - validated\nScheduled Task Created With Suspicious Action (T1053.005_schtasks_suspicious_creation) - depth partial - validated",
+      "comment": "Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets (T1053.005_powershell_scheduled_task_creation) - depth partial - tests pass\nScheduled Task Created With Suspicious Action (T1053.005_schtasks_suspicious_creation) - depth partial - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -63,7 +89,20 @@
     {
       "techniqueID": "T1059.001",
       "score": 48,
-      "comment": "PowerShell Execution With Encoded Command (T1059.001_powershell_encoded_command) - depth medium - validated",
+      "comment": "PowerShell Execution With Encoded Command (T1059.001_powershell_encoded_command) - depth medium - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1059.004",
+      "score": 64,
+      "comment": "Linux Shell Executing Decoded Base64 or Code From a Temporary Directory (T1059.004_linux_suspicious_shell_execution) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -76,7 +115,7 @@
     {
       "techniqueID": "T1070.001",
       "score": 80,
-      "comment": "Windows Event Log Clearing via Command Line (T1070.001_event_log_clearing) - depth medium - validated\nSecurity Audit Log Cleared (Event 1102) (T1070.001_security_log_cleared) - depth high - validated\nWindows Event Log Cleared (System Event 104) (T1070.001_system_log_cleared) - depth high - validated",
+      "comment": "Windows Event Log Clearing via Command Line (T1070.001_event_log_clearing) - depth medium - tests pass\nSecurity Audit Log Cleared (Event 1102) (T1070.001_security_log_cleared) - depth high - tests pass\nWindows Event Log Cleared (System Event 104) (T1070.001_system_log_cleared) - depth high - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -89,7 +128,7 @@
     {
       "techniqueID": "T1110.003",
       "score": 64,
-      "comment": "Password Spray - One Source Failing Authentication for Many Accounts (T1110.003_password_spray_burst, correlation) - depth medium - validated",
+      "comment": "Password Spray - One Source Failing Authentication for Many Accounts (T1110.003_password_spray_burst, correlation) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -100,9 +139,22 @@
       ]
     },
     {
+      "techniqueID": "T1190",
+      "score": 48,
+      "comment": "API Probing - One Client Rejected on Many Distinct Paths (T1190_api_auth_probing, correlation) - depth partial - tests pass\nObject ID Enumeration - One Client Walking Single-Owner Objects (T1190_object_id_enumeration, correlation) - depth partial - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "2"
+        }
+      ]
+    },
+    {
       "techniqueID": "T1218.011",
       "score": 64,
-      "comment": "Rundll32 Proxy Execution From Suspicious Context (T1218.011_rundll32_suspicious_execution) - depth medium - validated",
+      "comment": "Rundll32 Proxy Execution From Suspicious Context (T1218.011_rundll32_suspicious_execution) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -115,7 +167,7 @@
     {
       "techniqueID": "T1547.001",
       "score": 36,
-      "comment": "Run Key Persistence Pointing to Suspicious Location (T1547.001_registry_run_key_persistence) - depth partial - validated",
+      "comment": "Run Key Persistence Pointing to Suspicious Location (T1547.001_registry_run_key_persistence) - depth partial - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -128,7 +180,7 @@
     {
       "techniqueID": "T1558.003",
       "score": 80,
-      "comment": "Kerberoasting - RC4 Service Ticket Requested for User Account (T1558.003_kerberoasting_rc4_tgs) - depth medium - validated\nKerberoasting - One Client Requesting Tickets for Many Service Accounts (T1558.003_kerberoasting_volume, correlation) - depth high - validated",
+      "comment": "Kerberoasting - RC4 Service Ticket Requested for User Account (T1558.003_kerberoasting_rc4_tgs) - depth medium - tests pass\nKerberoasting - One Client Requesting Tickets for Many Service Accounts (T1558.003_kerberoasting_volume, correlation) - depth high - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -141,7 +193,7 @@
     {
       "techniqueID": "T1569.002",
       "score": 64,
-      "comment": "Suspicious Service Installation (PsExec-style / Command Services) (T1569.002_suspicious_service_installation) - depth medium - validated",
+      "comment": "Suspicious Service Installation (PsExec-style / Command Services) (T1569.002_suspicious_service_installation) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
@@ -163,7 +215,7 @@
   },
   "legendItems": [
     {
-      "label": "Validated high-fidelity detection",
+      "label": "Tested detection, high fidelity",
       "color": "#10ac84"
     },
     {

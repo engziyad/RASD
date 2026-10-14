@@ -1,12 +1,13 @@
 # Expected telemetry · WinRM remote command on a lab host
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
 | Security (target) | 4624 · An account was successfully logged on | Network logon from the source host | `LogonType`: `3`<br>`IpAddress`: `<source IP>`<br>`AuthenticationPackageName`: `Kerberos (or NTLM)` | investigation |
 | Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | A remote shell was created for the connecting user | `ResourceUri`: `http://schemas.microsoft.com/powershell/Microsoft.PowerShell` | investigation |
 | Sysmon (target) | 1 · ProcessCreate | wsmprovhost.exe started to host the remote session | `Image`: `...\System32\wsmprovhost.exe`<br>`ParentImage`: `...\System32\svchost.exe` | investigation |
+| Sysmon (target) | 1 · ProcessCreate | cmd.exe started by the session host to run the remote command | `Image`: `...\System32\cmd.exe`<br>`CommandLine`: `cmd.exe /c "echo <target> <marker>"`<br>`ParentImage`: `...\System32\wsmprovhost.exe` | [`T1021.006_wsmprovhost_suspicious_child`](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) |
 | Sysmon (source) | 3 · NetworkConnect | Connection to the target on TCP 5985 (HTTP) or 5986 (HTTPS) | `DestinationPort`: `5985` | investigation |
 
 ## Logging that must be enabled
@@ -14,7 +15,7 @@ Search key: every artifact this test creates carries the run marker (for example
 - Target: Logon/Logoff &gt; Audit Logon = Success; WinRM Operational log forwarded
 - Sysmon process creation on the target
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

@@ -1,6 +1,5 @@
 """Tests for Sigma correlation detections: engine semantics, SIEM conversion, proofs (python -m unittest)."""
 import copy
-import json
 import random
 import shutil
 import sys
@@ -18,12 +17,14 @@ import evidence  # noqa: E402
 import replay  # noqa: E402
 import validate  # noqa: E402
 from common import load_jsonl  # noqa: E402
-from correlation import (CorrelationError, Correlation, alert_signature, check_guarantee, evaluate,  # noqa: E402
+from correlation import (CorrelationError, Correlation, alert_signature, evaluate,  # noqa: E402
                          expand_scenarios, guaranteed_burst, iso, load_correlations, param_mutants,
                          timespan_seconds, to_kql, to_spl)
 
 SPRAY = "T1110.003_password_spray_burst"
 ROAST = "T1558.003_kerberoasting_volume"
+API = "T1190_api_auth_probing"
+IDOR = "T1190_object_id_enumeration"
 
 
 def spray():
@@ -52,7 +53,7 @@ class Semantics(unittest.TestCase):
             broken = copy.deepcopy(c)
             broken.rule["correlation"].update(change)
             with self.assertRaises(CorrelationError, msg=str(change)):
-                broken.params
+                _ = broken.params                          # reading the property validates the rule
 
     def test_windows_are_aligned_to_the_clock(self):
         c = spray()
@@ -107,31 +108,35 @@ class Proofs(unittest.TestCase):
         cls.report = correlate.check(queries=True)
 
     def test_every_correlation_is_proven(self):
-        self.assertEqual(set(self.report), {SPRAY, ROAST})
+        self.assertEqual(set(self.report), {SPRAY, ROAST, API, IDOR})
         for cid, r in self.report.items():
             self.assertEqual(correlate.failures(r), [], cid)
 
     def test_every_parameter_mutant_flips_a_scenario_verdict(self):
+        corrs = {c.id: c for c in load_correlations()}
         for cid, r in self.report.items():
             mutants = r["correlation_mutants"]["mutants"]
-            self.assertEqual({m["id"] for m in mutants},
-                             {"threshold:+1", "threshold:-1", "timespan:x2", "timespan:/2", "group-by:-IpAddress",
-                              "type:event_count", "normalize:-IpAddress"}, cid)
+            self.assertEqual({m["id"] for m in mutants}, {m[0] for m in param_mutants(corrs[cid].params)}, cid)
+            self.assertTrue({"threshold:+1", "threshold:-1", "type:event_count"} <= {m["id"] for m in mutants}, cid)
             for m in mutants:
                 self.assertTrue(m["killed_by"] and m["verdict_flip"], f"{cid} {m['id']}")
 
     def test_aggregation_parity_covers_the_rule_and_every_mutant(self):
+        corrs = {c.id: c for c in load_correlations()}
+        self.assertEqual(self.report[SPRAY]["aggregation_parity"]["parameter_sets"], 8)
         for cid, r in self.report.items():
             ap = r["aggregation_parity"]
-            self.assertEqual(ap["parameter_sets"], 8, cid)
+            self.assertEqual(ap["parameter_sets"], 1 + len(list(param_mutants(corrs[cid].params))), cid)
             self.assertGreaterEqual(ap["sequences"], 150, cid)
             self.assertGreater(ap["alerts"], 100, cid)
             self.assertEqual((ap["spl"], ap["kql"], ap["errors"]), ([], [], []), cid)
 
     def test_burst_guarantee_is_2t_minus_1_and_tight(self):
+        corrs = {c.id: c for c in load_correlations()}
+        self.assertEqual((self.report[SPRAY]["guarantee"]["burst"], self.report[IDOR]["guarantee"]["burst"]), (9, 5))
         for cid, r in self.report.items():
             g = r["guarantee"]
-            self.assertEqual(g["burst"], 9, cid)
+            self.assertEqual(g["burst"], guaranteed_burst(corrs[cid].params), cid)
             self.assertEqual(g["failures"], [], cid)
             self.assertTrue(g["tight"], cid)
         p = spray().params
@@ -173,7 +178,7 @@ class ConverterBugs(unittest.TestCase):
 
     def test_injected_bugs_are_caught(self):
         spl, kql = to_spl(self.c), to_kql(self.c)
-        drop = lambda text, start: "\n".join(l for l in text.split("\n") if not l.startswith(start))
+        drop = lambda text, start: "\n".join(line for line in text.split("\n") if not line.startswith(start))
         bugs = {
             "SPL without normalisation": ("spl", drop(spl, "| eval IpAddress")),
             "SPL without the not-null filter": ("spl", drop(spl, "| where isnotnull")),
@@ -186,7 +191,7 @@ class ConverterBugs(unittest.TestCase):
             "SPL binning _time in place": ("spl", spl.replace("| bin span=600s _time AS window_start",
                                                               "| bin span=600s _time")),
             "KQL without isnotempty": ("kql", drop(kql, "| where isnotempty")),
-            "KQL without normalisation": ("kql", "\n".join(l for l in kql.split("\n") if "replace_regex" not in l)),
+            "KQL without normalisation": ("kql", "\n".join(line for line in kql.split("\n") if "replace_regex" not in line)),
             "KQL with 20-minute windows": ("kql", kql.replace("600s", "1200s")),
             "KQL > instead of >=": ("kql", kql.replace("value_count >= 5", "value_count > 5")),
             "KQL grouping by the counted field": ("kql", kql.replace("600s), IpAddress", "600s), TargetUserName")),
@@ -255,7 +260,7 @@ class Integration(unittest.TestCase):
         c = spray()
         step = {"technique": "T1110.003", "test": "password_spray_simulation", "step": "spray", "name": "spray",
                 "correlations": [SPRAY], "status": "executed", "host": "LAB-WS01.lab.local", "host_netbios": "LAB-WS01",
-                "host_ips": ["10.0.0.21"], "marker": "purplelab_1a2b3c4d", "utc_start": "2026-10-12T10:02:00Z",
+                "host_ips": ["10.0.0.21"], "marker": "rasd_1a2b3c4d", "utc_start": "2026-10-12T10:02:00Z",
                 "utc_end": "2026-10-12T10:02:09Z", "cleanup": "verified"}
         mine = [failure(f"lab.user{i}", f"2026-10-12T10:02:0{i}.5Z") for i in range(9)]
         other = [failure(f"x{i}", f"2026-10-12T10:02:0{i}.7Z", ip="::ffff:10.0.0.99") for i in range(8)]

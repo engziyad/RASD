@@ -1,0 +1,7 @@
+// Object ID Enumeration - One Client Walking Single-Owner Objects | 21e06334-9710-4843-a0c4-7a3ec400ca2d
+// counts: Web Request for a Single-Owner Object by Numeric ID | 30c0b4cd-e8af-4017-b5d4-3c4a3d79d59f
+W3CIISLog
+| where (csMethod =~ @"GET" and csUriStem matches regex @"(?i)/(basket|user|account|profile|wallet)s?/\d+/?$")
+| where isnotempty(cIP) and isnotempty(csUriStem)
+| summarize value_count = array_length(make_set(csUriStem)), event_count = count(), distinct_values = make_set(csUriStem, 50), first_event = min(TimeGenerated), last_event = max(TimeGenerated) by window_start = bin(TimeGenerated, 60s), cIP
+| where value_count >= 3

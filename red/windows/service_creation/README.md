@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) System Services - Service Execution |
+| **ATT&CK technique** | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) System Services: Service Execution |
 | **Related** | [T1543.003](https://attack.mitre.org/techniques/T1543/003/) · [T1021.002](https://attack.mitre.org/techniques/T1021/002/) |
-| **Tactics** | execution, persistence |
+| **Tactics** | execution |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
 | **Requires** | administrator |
@@ -58,7 +58,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test service_creation -LabConfirmed
+.\red\Invoke-RasdEmulation.ps1 -Test service_creation -LabConfirmed
 ```
 
 ---

@@ -6,7 +6,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1059.001] powershell.exe -enc with a benign Write-Output payload
-purplelab_1a2b3c4d
+rasd_1a2b3c4d
 [cleanup] verified: nothing persisted
 ```
 
@@ -19,7 +19,7 @@ This is true positive *red: powershell_encoded_command emulation* in [`tests/tru
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "OriginalFileName": "PowerShell.EXE",
-  "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlAGwAYQBiAF8AMQBhADIAYgAzAGMANABkACcA",
+  "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHIAYQBzAGQAXwAxAGEAMgBiADMAYwA0AGQAJwA=",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"

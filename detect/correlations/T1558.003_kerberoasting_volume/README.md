@@ -3,17 +3,18 @@
 <!-- rasd:facts:start -->
 | | |
 |---|---|
-| **ATT&CK** | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) · credential-access |
+| **ATT&CK** | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) Steal or Forge Kerberos Tickets: Kerberoasting (credential-access) |
 | **Severity** | `high` |
 | **Type** | Sigma correlation · >= 5 distinct ServiceName per IpAddress in 10m windows · base rule [`service_ticket_user_account`](base.yml) |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | base rule: 4 true positive · 7 true negative · 6 technique mutations · 10 scenarios (5 fire, 5 silent) |
 | **Proof** | base rule: 100% of 12 mutants killed · fuzzer resistance 100% over 18 variants · correlation: 7/7 parameter mutants killed |
-| **Parity** | base filter identical on 244 events · aggregation identical in SPL and KQL on 1280 runs (160 sequences × 8 parameter sets) |
+| **Parity** | base filter identical on 249 events · aggregation identical in SPL and KQL on 1280 runs (160 sequences × 8 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
+| **Public data** | fires on 1 of 1 public recordings of its behaviour · 1 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1558.003_kerberoasting_volume.kql) · [SPL](../../../queries/spl/correlations/T1558.003_kerberoasting_volume.spl) · [scenarios](tests/scenarios.yml) |
-| **Operations** | [triage](triage.md) · [response](response.md) · [tuning](tuning.yml) · [contract](contract.yml) |
+| **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | DFIR: [kerberoasting](../../../dfir/playbooks/kerberoasting.md) · purple: [T1558.003_kerberoasting](../../../purple/scenarios/T1558.003_kerberoasting.md) |
 <!-- rasd:facts:end -->
 
@@ -31,10 +32,10 @@ This is a [Sigma correlation rule](correlation.yml) (`value_count`) over a [base
 | Correlation | Counts **distinct `ServiceName`** per **`IpAddress`** in tumbling **10-minute** windows and alerts at **5 or more**. |
 | Normalisation | `::ffff:10.0.0.21` and `10.0.0.21` are one client ([`tools/mappings.yml`](../../../tools/mappings.yml)), so events collected through two pipelines are not split. |
 
-It complements the single-event [RC4 rule](../../detections/T1558.003_kerberoasting_rc4_tgs/): that rule fires on one RC4 ticket but cannot see AES roasting (Rubeus `/aes`); this correlation ignores the encryption type and catches roasting by volume.
+It complements the single-event rule [Kerberoasting - RC4 Service Ticket Requested for User Account](../../detections/T1558.003_kerberoasting_rc4_tgs/): that rule fires on one RC4 ticket but cannot see AES roasting (Rubeus `/aes`); this correlation ignores the encryption type and catches roasting by volume.
 
 ## What RASD proves about it
-`python rasd.py correlate --filter T1558.003 -v` checks, on every commit:
+`rasd correlate --filter T1558.003 -v` checks, on every commit:
 
 - **Base rule** - true positives fire, true negatives stay silent, every value, field and branch is held in place by a test, fuzzer variants still fire, and its KQL and SPL filters equal the rule.
 - **Scenarios** - ten event sequences: a roasting tool requesting every SPN, exactly the threshold, one below it, AES-only roasting, five clients opening five services, one application server renewing the same ticket, a slow roast, one client seen through two pipelines, computer and krbtgt tickets, and one pinned known limit.
@@ -54,8 +55,8 @@ Monitoring and application servers that talk to many services running under diff
 ## Offensive validation
 The [kerberoasting red test](../../../red/active_directory/kerberoasting/) requests a single ticket by design (it validates the RC4 rule without touching more accounts than needed), so it does not reach this threshold. The correlation is proven by its scenarios and aggregation parity; a lab run against 9 or more lab SPNs would be needed for operational evidence.
 
-## Validate locally
+## Test locally
 ```bash
-python rasd.py correlate --filter T1558.003 -v
-python rasd.py correlate --logs samples/replay/lab-day.jsonl
+rasd correlate --filter T1558.003 -v
+rasd correlate --logs samples/replay/lab-day.jsonl
 ```

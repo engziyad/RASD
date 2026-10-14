@@ -1,16 +1,13 @@
 # Detection links · Object-level authorization (IDOR / BOLA)
 
-
-## Coverage gap
-
-**Why there is no rule yet:** Telling a user's own object from someone else's needs application context (the object owner) that access logs do not carry.
-
-**Planned:** A hunt for one session requesting many distinct object IDs on the same route, and an application log field for the object owner so a rule can compare it with the caller.
+| Step | Detection | Rule | KQL | SPL | Evidence bound by |
+|---|---|---|---|---|---|
+| Read other users' objects with one account's token (IDs 1-5) | [`T1190_object_id_enumeration`](../../../detect/correlations/T1190_object_id_enumeration/) | [correlation.yml](../../../detect/correlations/T1190_object_id_enumeration/correlation.yml) · [base.yml](../../../detect/correlations/T1190_object_id_enumeration/base.yml) | [KQL](../../../queries/kql/correlations/T1190_object_id_enumeration.kql) | [SPL](../../../queries/spl/correlations/T1190_object_id_enumeration.spl) | host, time window |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

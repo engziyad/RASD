@@ -18,7 +18,7 @@ Shape of the telemetry this test produces. No rule consumes it yet (see detectio
 
 ```json
 {
-  "line": "127.0.0.1 - - [12/Oct/2026:02:17:46 +0000] \"GET /rest/basket/6 HTTP/1.1\" 401 31 \"-\" \"RASD-Red/purplelab_1a2b3c4d\""
+  "line": "127.0.0.1 - - [12/Oct/2026:02:17:46 +0000] \"GET /rest/basket/6 HTTP/1.1\" 401 31 \"-\" \"RASD-Red/rasd_1a2b3c4d\""
 }
 ```
 

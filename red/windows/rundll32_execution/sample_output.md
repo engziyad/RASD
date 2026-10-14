@@ -6,7 +6,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1218.011] rundll32 javascript:"\..\mshtml,RunHTMLApplication ";var m='<marker>';close();
-[cleanup] verified: no rundll32 process with purplelab_1a2b3c4d remains
+[cleanup] verified: no rundll32 process with rasd_1a2b3c4d remains
 ```
 
 ## Expected event → T1218.011_rundll32_suspicious_execution
@@ -18,7 +18,7 @@ This is true positive *red: rundll32_execution emulation* in [`tests/true_positi
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\rundll32.exe",
   "OriginalFileName": "RUNDLL32.EXE",
-  "CommandLine": "\"C:\\Windows\\system32\\rundll32.exe\" javascript:\"\\..\\mshtml,RunHTMLApplication \";var m='purplelab_1a2b3c4d';close();",
+  "CommandLine": "\"C:\\Windows\\system32\\rundll32.exe\" javascript:\"\\..\\mshtml,RunHTMLApplication \";var m='rasd_1a2b3c4d';close();",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"

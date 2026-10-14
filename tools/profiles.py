@@ -5,11 +5,11 @@ profiles.py - read a log export in its own field names and give the rules theirs
 The rules, their tests and the evidence step use Sysmon / Windows native field names
 (Image, CommandLine, TicketEncryptionType ...). Real exports rarely do: Elastic writes
 process.command_line, Defender writes ProcessCommandLine, Splunk's CIM writes process.
-A telemetry profile in mappings/ says, per log source, where each rule field lives in
+A telemetry profile in profiles/ says, per log source, where each rule field lives in
 that export and how to recognise the event type. doctor, replay, evidence and benchmark
 apply it with --profile <name>, or --profile auto to pick the best fit for the export.
 
-Profile format (mappings/<name>.yml)
+Profile format (profiles/<name>.yml)
   name, description, source, docs      what it reads and where the field names come from
   covers                               the RASD log sources it can carry
   event:                               how the event type is read
@@ -27,16 +27,18 @@ Profile format (mappings/<name>.yml)
     {path: [folder, file]}        folder + "\\" + file, unless the folder already ends with it
 
 Native fields already in the event always win: a profile only fills what is missing,
-and the original fields are kept.
+and the original fields are kept. --profile auto picks the profile that gives the rules the
+most of the fields they read, on events that reach a rule.
 
 Usage
-  python tools/profiles.py                      # list profiles and what they cover
-  python tools/profiles.py --detect export.jsonl
-  python tools/profiles.py --readme             # refresh the table in mappings/README.md
+  rasd profiles                      # list profiles and what they cover
+  rasd profiles --detect export.jsonl
+  rasd profiles --readme             # refresh the table in profiles/README.md
 """
 from __future__ import annotations
 
 import argparse
+import functools
 import sys
 from pathlib import Path
 from typing import Any
@@ -44,13 +46,14 @@ from typing import Any
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_jsonl  # noqa: E402
-from replay import route  # noqa: E402
-from sigma_engine import _get_field  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_jsonl
+from replay import route
+from sigma_engine import _get_field
 
-PROFILES_DIR = ROOT / "mappings"
+PROFILES_DIR = ROOT / "profiles"
 NATIVE = "sysmon-native"
-LOGSOURCES = ("process_creation", "process_access", "registry_set", "windows/security", "windows/system")
+LOGSOURCES = ("process_creation", "process_access", "registry_set", "windows/security", "windows/system",
+              "linux/process_creation", "webserver")
 README_START, README_END = "<!-- rasd:profiles:start -->", "<!-- rasd:profiles:end -->"
 
 
@@ -168,15 +171,70 @@ def apply(events: list[dict], name: str | None) -> tuple[list[dict], str]:
     return ([normalize(e, prof) for e in events] if prof else events), (name or NATIVE)
 
 
+@functools.lru_cache(maxsize=1)
+def rule_reads() -> dict[str, tuple[frozenset[str] | None, frozenset[str]]]:
+    """Per log source with rules: the event ids they read (None when a rule there reads every
+    event of the source) and the fields they read."""
+    from common import load_detections
+    from convert import logsource_key, referenced_fields
+    from correlation import load_correlations           # imported here: correlation imports replay too
+    ids_of: dict[str, frozenset[str] | None] = {}
+    fields_of: dict[str, frozenset[str]] = {}
+    for rule in [d.rule for d in load_detections()] + [c.base for c in load_correlations()]:
+        src = logsource_key(rule)
+        ids = {str(v) for sel in rule["detection"].values() if isinstance(sel, dict) for k, val in sel.items()
+               if k.split("|")[0] == "EventID" for v in (val if isinstance(val, list) else [val])}
+        known = ids_of.get(src, frozenset())
+        ids_of[src] = None if not ids or known is None else known | ids
+        fields_of[src] = fields_of.get(src, frozenset()) | (set(referenced_fields(rule["detection"])) - {"EventID"})
+    return {src: (ids_of[src], fields_of[src]) for src in ids_of}
+
+
+def score(ev: dict) -> int:
+    """How many of the fields the rules read this event carries, when it reaches one of them."""
+    src = route(ev)
+    reads = rule_reads().get(src or "")
+    if reads is None:
+        return 0
+    ids, fields = reads
+    if ids is not None and str(ev.get("EventID", "")) not in ids:
+        return 0
+    return 1 + sum(1 for f in fields if present(_get_field(ev, f)))
+
+
+def evidence(prof: dict, events: list[dict]) -> int:
+    """How many of the profile's own source field names (not the native names it fills) the export
+    carries: a tie on score goes to the profile whose schema the export visibly uses."""
+    names: set[str] = set()
+
+    def walk(cands, target: str) -> None:
+        for c in cands or []:
+            if isinstance(c, str) and c != target:
+                names.add(c)
+            elif isinstance(c, dict):
+                names.update(x for x in (c.get("join") or c.get("path") or []) if x != target)
+    spec = prof.get("event") or {}
+    for target in ("Channel", "EventID"):
+        walk(spec.get(target), target)
+    for section in (prof.get("fields") or {}).values():
+        for target, cands in (section or {}).items():
+            walk(cands, target)
+    return sum(1 for n in names if any(present(_get_field(e, n)) for e in events))
+
+
 def detect(events: list[dict], sample: int = 500) -> tuple[str, dict[str, int]]:
-    """The profile under which most of the export reaches a RASD log source."""
+    """The profile that gives the rules the most of the fields they read, on events that reach a rule.
+    Ties go to the native names, then to the profile whose source field names the export carries,
+    then to the narrower profile (fewer log sources covered)."""
     head = events[:sample]
-    scores = {NATIVE: sum(1 for e in head if route(e))}
+    scores = {NATIVE: sum(score(e) for e in head)}
+    tiebreak: dict[str, tuple[int, int]] = {NATIVE: (0, 0)}
     for n in names():
         if n != NATIVE:
-            prof = load(n)
-            scores[n] = sum(1 for e in head if route(normalize(e, prof)))
-    best = max(scores, key=lambda k: (scores[k], k == NATIVE))
+            prof = load(n) or {}
+            scores[n] = sum(score(normalize(e, prof)) for e in head)
+            tiebreak[n] = (evidence(prof, head), -len(prof.get("covers") or []))
+    best = max(scores, key=lambda k: (scores[k], k == NATIVE, *tiebreak[k]))
     return best, scores
 
 
@@ -207,17 +265,17 @@ def write_readme(check: bool = False) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--detect", nargs="+", metavar="EXPORT", help="which profile fits this export")
-    ap.add_argument("--readme", action="store_true", help="refresh the coverage table in mappings/README.md")
-    ap.add_argument("--check", action="store_true", help="fail if mappings/README.md is stale")
+    ap.add_argument("--readme", action="store_true", help="refresh the coverage table in profiles/README.md")
+    ap.add_argument("--check", action="store_true", help="fail if profiles/README.md is stale")
     args = ap.parse_args()
     if args.readme or args.check:
         before = (PROFILES_DIR / "README.md").read_text(encoding="utf-8")
         ok = write_readme(check=args.check)
         if args.check and not ok:
-            print(f"{RED}mappings/README.md is stale (run: python rasd.py build){RESET}")
+            print(f"{RED}profiles/README.md is stale (run: rasd build){RESET}")
             return 1
         changed = (PROFILES_DIR / "README.md").read_text(encoding="utf-8") != before
-        print(f"{GREEN}mappings/README.md profile table {'written' if changed else 'up to date'}{RESET}")
+        print(f"{GREEN}profiles/README.md profile table {'written' if changed else 'up to date'}{RESET}")
         return 0
     if args.detect:
         events = [e for p in args.detect for e in load_jsonl(Path(p))]

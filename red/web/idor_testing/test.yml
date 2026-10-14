@@ -3,16 +3,16 @@ name: Object-level authorization (IDOR / BOLA)
 platform: web
 mitre:
   technique: T1190
-  technique_name: Exploit Public-Facing Application
-  tactics: [initial-access, collection]
+  technique_name: "Exploit Public-Facing Application"
+  tactics: [initial-access]
   other:
     - framework: OWASP API Security Top 10 (2023)
       id: API1 Broken Object Level Authorization
 objective: >
   Log in as one lab account and request objects that belong to other users by walking a
   small range of IDs. Every foreign object served is a broken object-level authorization
-  finding, and the sequential-ID pattern it leaves in the logs is what a detection for
-  data scraping would key on.
+  finding, and the sequential-ID pattern it leaves in the logs is what the object-ID
+  enumeration correlation must catch.
 prerequisites:
   - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
   - A lab test account, given to the test as RASD_LAB_EMAIL / RASD_LAB_PASSWORD environment variables
@@ -31,6 +31,7 @@ steps:
     script: emulate_idor.py
     parameters: [Target]
     detections: []
+    correlations: [T1190_object_id_enumeration]
 scripts:
   cleanup: cleanup.sh
 telemetry:
@@ -38,9 +39,11 @@ telemetry:
     event: "HTTP request · sequential object IDs"
     description: One authenticated session requesting /rest/basket/1, /2, /3 ... within seconds
     fields:
-      user_agent: 'RASD-Red/<marker>'
-      path: '/rest/basket/<n> for consecutive n'
-      status: '200 where authorization is broken'
+      c-ip: '<client address, 127.0.0.1 for an application on the same host>'
+      cs-user-agent: 'RASD-Red/<marker>'
+      cs-uri-stem: '/rest/basket/<n> for consecutive n'
+      sc-status: '200 where authorization is broken'
+    used_by: [T1190_object_id_enumeration]
 logging:
   - "Access logs with an authenticated user or session identifier per request (most do not log one by default)"
 dfir_artifacts:
@@ -52,13 +55,7 @@ dfir_artifacts:
     location: "$RASD_OUT_DIR/idor_testing-findings.json"
     collect: Written by the test
     purpose: The object IDs served to an account that does not own them
-gap:
-  reason: >
-    Telling a user's own object from someone else's needs application context (the object
-    owner) that access logs do not carry.
-  planned: >
-    A hunt for one session requesting many distinct object IDs on the same route, and an
-    application log field for the object owner so a rule can compare it with the caller.
+
 cleanup:
   actions:
     - Nothing is created on the target
@@ -70,8 +67,8 @@ sample_output:
       FINDING  GET /rest/basket/2 (another user's object): HTTP 200: object served to a user who does not own it
       ...
     5 check(s), 5 finding(s)
-  illustrative_events:
-    - title: Access log line (OWASP Juice Shop 17.3.0 format, captured from a lab run)
-      event:
-        line: '127.0.0.1 - - [12/Oct/2026:02:17:45 +0000] "GET /rest/basket/2 HTTP/1.1" 200 557 "-" "RASD-Red/purplelab_1a2b3c4d"'
+  scenarios:
+    - correlation: T1190_object_id_enumeration
+      scenario: lab emulation - baskets 1 to 5, one request every 0.2 seconds
 dfir_playbook: dfir/playbooks/web_application_attack.md
+purple_scenario: purple/scenarios/T1190_object_id_enumeration.md

@@ -1,6 +1,6 @@
 # Expected telemetry · LDAP enumeration of users, groups and SPNs
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
@@ -13,7 +13,7 @@ Search key: every artifact this test creates carries the run marker (for example
 - DC: HKLM\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Diagnostics '15 Field Engineering' = 5 (lab only - verbose)
 - Optional: a SACL on a decoy account so any read produces 4662
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

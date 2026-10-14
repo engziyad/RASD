@@ -1,6 +1,6 @@
 # Expected telemetry · Password spray simulation with a password that cannot be right
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
@@ -13,7 +13,7 @@ Search key: every artifact this test creates carries the run marker (for example
 - DC: Audit Kerberos Authentication Service = Failure (4771); Audit Credential Validation = Failure (4776); Audit Logon = Failure (4625)
 - Member servers that accept network logons: Audit Logon = Failure (4625)
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

@@ -41,7 +41,8 @@ def proc(t, host, user, image, cmd, parent, ofn=None):
 
 
 def benign(t: datetime) -> list[dict]:
-    host = rng.choice(HOSTS); user = USERS[HOSTS.index(host)]
+    host = rng.choice(HOSTS)
+    user = USERS[HOSTS.index(host)]
     pick = rng.random()
     if pick < 0.30:
         return [proc(t, host, user, "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
@@ -76,7 +77,8 @@ def benign(t: datetime) -> list[dict]:
 
 
 def intrusion(start: datetime) -> list[dict]:
-    h = "WS07.corp.lab"; u, ip = USERS[HOSTS.index(h)], IPS[h]
+    h = "WS07.corp.lab"
+    u, ip = USERS[HOSTS.index(h)], IPS[h]
     t = lambda m, s=0: start + timedelta(minutes=m, seconds=s)
     stage = f"C:\\Users\\{u}\\AppData\\Roaming\\Microsoft\\Teamsync"
     ev = [

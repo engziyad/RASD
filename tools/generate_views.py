@@ -6,7 +6,9 @@ One source of truth (contract.yml + rule.yml + tests) -> many audiences:
 
   detect/detections/<id>/triage.md    SOC triage card for that alert
   detect/detections/<id>/response.md  IR evidence and containment for that alert
-  detect/correlations/<id>/...        the same two cards for every correlation detection
+  detect/detections/<id>/closure.md   SOC L2 closure notes (benign / false positive) and the
+                                      escalation note to incident response, for that alert
+  detect/correlations/<id>/...        the same three cards for every correlation detection
   docs/views/SOC_L1.md            every triage card on one page
   docs/views/Incident_Response.md evidence and containment per detection
   docs/views/GRC_Audit.md         control evidence and stated limitations
@@ -33,7 +35,7 @@ CONDITIONS = yaml.safe_load((ROOT / "detect" / "risk_conditions.yml").read_text(
 def count_lines(path: Path) -> int:
     if not path.exists():
         return 0
-    return sum(1 for l in path.read_text(encoding="utf-8").splitlines() if l.strip())
+    return sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
 
 
 def count_mutations(path: Path) -> int:
@@ -86,7 +88,7 @@ def risk_lines(c: dict) -> str:
     if not rm:
         return "-"
     lines = [f"Base score **{rm.get('base_score')}**."]
-    for kind, sign, key in (("increase_if", "+", "add"), ("decrease_if", "−", "subtract")):
+    for kind, sign, key in (("increase_if", "+", "add"), ("decrease_if", "-", "subtract")):
         for item in rm.get(kind) or []:
             cond = CONDITIONS.get(item["condition"], {})
             how = "auto" if cond.get("resolve") == "auto" else "ask"
@@ -133,6 +135,9 @@ def triage_card(d: dict, link_prefix: str = "") -> str:
 
 ### Never tune
 {bullets(never) if never else '-'}
+
+### Close or escalate
+[Closure and escalation notes]({link(d, link_prefix)}closure.md) for this detection.
 """
 
 
@@ -156,6 +161,99 @@ def response_card(d: dict, link_prefix: str = "") -> str:
 """
 
 
+def risk_hint(c: dict) -> tuple[str, str]:
+    """('base 50', 'user is privileged +15 · ...') from the contract's risk model."""
+    rm = c.get("risk_model") or {}
+    ups = [f"{i['condition'].replace('_', ' ')} +{i['add']}" for i in rm.get("increase_if") or []]
+    downs = [f"{i['condition'].replace('_', ' ')} -{i['subtract']}" for i in rm.get("decrease_if") or []]
+    return f"base {rm.get('base_score', '-')}", " · ".join(ups + downs) or "-"
+
+
+def closure_card(d: dict) -> str:
+    """Closure notes an L2 analyst fills from what they observed. Placeholders only ask for facts
+    seen in the alert or checked during triage; nothing is pre-filled as if it had happened."""
+    c, r, t = d["c"], d["rule"], d["tuning"]
+    tid = technique(d)
+    name = c["name"]
+    if d["kind"] == "correlations":
+        corr = r["correlation"]
+        group = ", ".join(corr.get("group-by") or []) or "the source"
+        counted = (corr.get("condition") or {}).get("field") or "events"
+        subject = f"<{group}>"
+        when = "<window start, UTC>"
+        observed = f"<n> distinct {counted} from {group} <value> in the {corr.get('timespan')} window: <values>"
+    else:
+        subject = "<host>"
+        when = "<time, UTC>"
+        fields = (c["data_contract"].get("required_fields") or [])[:4]
+        observed = "  ".join(f"{f}=<value>" for f in fields) or "<what the event shows>"
+    checks = c["triage"]["first_checks"]
+    pad = " " * 14
+    checked = ("\n" + pad).join(f"{n}. {x} -> <result>" for n, x in enumerate(checks, 1))
+    benign = list(t.get("noise_sources") or []) or list(r.get("falsepositives") or [])
+    tunings = [f"{x['id']} ({x.get('status', 'proposed')})" for x in t.get("tunings") or []]
+    never = t.get("never_tune") or []
+    base, conditions = risk_hint(c)
+    resp = c["response"]
+    preserved = ("\n" + pad).join(f"{e} -> <where it is saved>" for e in resp["evidence"])
+    return f"""**{name}** · `{d['id']}` · {tid}
+
+Fill in only what you checked. A confirmed attack is never closed from the queue: send the escalation note instead.
+
+## Benign Positive
+
+The rule fired on real activity that is expected and authorized.
+
+```text
+Alert:        {d['id']} for {subject} at {when}
+Observed:     {observed}
+Checked:      {checked}
+Benign:       <which known source below> - confirmed by <change record, owner or ticket>
+Disposition:  Benign Positive
+Tuning:       none | {' | '.join(tunings) if tunings else '<proposal added to tuning.yml>'}
+```
+
+Known benign sources for this detection:
+{bullets(benign)}
+
+Never tune:
+{bullets(never) if never else '- -'}
+
+## False Positive
+
+The rule matched something that is not the behaviour it describes.
+
+```text
+Alert:        {d['id']} for {subject} at {when}
+Observed:     {observed}
+Why not:      <the field that matched, and what it really was>
+Disposition:  False Positive
+Follow-up:    event sent to detection engineering as a true negative for {d['id']}
+```
+
+## Escalation to incident response
+
+```text
+Alert:        {d['id']} for {subject} at {when}
+Escalated:    <the condition met, from the list below>
+Observed:     {observed}
+Who / where:  <account> on <host>; source <host or address, if any>
+Risk:         {base} + <conditions met> = <score>
+Preserved:    {preserved}
+Containment:  none yet | <action taken, time UTC>
+Recommended:  {resp.get('ir_action', '-')}
+```
+
+Escalate when any of these holds:
+{numbered(c['triage']['escalate_if'])}
+
+Risk conditions: {conditions}.
+
+Containment options, after the evidence above is preserved:
+{numbered(resp['containment'])}
+"""
+
+
 def write(path: Path, body: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(HEADER + body.rstrip() + "\n" + FOOTER, encoding="utf-8")
@@ -167,16 +265,17 @@ def main() -> int:
     for d in items:
         write(d["folder"] / "triage.md", "# SOC Triage Card\n\n" + triage_card(d, "../"))
         write(d["folder"] / "response.md", "# Incident Response\n\n" + response_card(d, "../"))
+        write(d["folder"] / "closure.md", "# Closure and Escalation Notes\n\n" + closure_card(d))
 
     views = ROOT / "docs" / "views"
     prefix = "../../detect/"
 
     write(views / "SOC_L1.md",
-          "# SOC L1 — Triage Cards\n\nOne card per detection: what fired, what to check first, "
+          "# SOC L1: Triage Cards\n\nOne card per detection: what fired, what to check first, "
           "and when to escalate.\n\n" + "\n---\n\n".join(triage_card(d, prefix) for d in items))
 
     write(views / "Incident_Response.md",
-          "# Incident Response — Evidence & Containment\n\n"
+          "# Incident Response: Evidence & Containment\n\n"
           "Preserve evidence **before** containment actions that destroy it "
           "(deleting tasks, services or registry values).\n\n"
           + "\n---\n\n".join(response_card(d, prefix) for d in items))
@@ -189,12 +288,12 @@ def main() -> int:
         rows.append(f"| [{c['name']}]({link(d, prefix)}) | {technique(d)} | {maturity_label(c['maturity'])} | {c['owner']} | "
                     f"{d['tp']} / {d['tn']} | {d['mut'] or '-'} | **{c['coverage_depth']['level']}** | "
                     f"[KQL]({d['kql']}) · [SPL]({d['spl']}) |")
-        limits.append(f"### {c['name']}\n\n**Depth:** {c['coverage_depth']['level']} — "
+        limits.append(f"### {c['name']}\n\n**Depth:** {c['coverage_depth']['level']}. "
                       f"{c['coverage_depth']['reason']}\n\n**Depends on:**\n"
                       f"{bullets(c['data_contract']['required_events'])}\n\n**Known blind spots:**\n"
                       f"{bullets(c['detection_logic']['blind_spots'])}\n")
     write(views / "GRC_Audit.md",
-          "# GRC / Audit — Control Evidence\n\n"
+          "# GRC / Audit: Control Evidence\n\n"
           "Every row below is backed by artifacts in this repository and re-verified by CI on each change: "
           "the rule, its true-positive and true-negative tests, mutation tests where required, "
           "generated SIEM queries, the ATT&CK mapping and a response procedure.\n\n"
@@ -202,26 +301,29 @@ def main() -> int:
           "\n\n## Stated limitations\n\nCoverage claims are only as strong as the telemetry they depend on. "
           "These limitations are part of the control statement, not footnotes.\n\n" + "\n".join(limits))
 
-    red_by_det = {}
+    red_by_det: dict[str, dict[str, str]] = {}          # detection -> {test path: the test's technique}
     for test in sorted((ROOT / "red").glob("*/*/test.yml")):
         doc = yaml.safe_load(test.read_text(encoding="utf-8")) or {}
         for step in doc.get("steps") or []:
             for det in (step.get("detections") or []) + (step.get("correlations") or []):
-                red_by_det.setdefault(det, f"{test.parent.parent.name}/{test.parent.name}")
-    prow = ["| Detection | Offensive test | Mutation cases | Depth | Attack next (blind spots) |", "|---|---|---|---|---|"]
+                red_by_det.setdefault(det, {})[f"{test.parent.parent.name}/{test.parent.name}"] = \
+                    str((doc.get("mitre") or {}).get("technique"))
+    prow = ["| Detection | Offensive tests | Mutation cases | Depth | Attack next (blind spots) |", "|---|---|---|---|---|"]
     for d in items:
         c = d["c"]
-        red = red_by_det.get(d["id"])
-        emu = f"[{red.split('/')[-1]}](../../red/{red}/)" if red else "— manual"
+        tests = red_by_det.get(d["id"]) or {}
+        own = d["id"].split("_", 1)[0]               # the test of the detection's own technique first
+        emu = ", ".join(f"[{t.split('/')[-1]}](../../red/{t}/)" for t in sorted(tests, key=lambda t: (tests[t] != own, t))) \
+            or "manual"
         prow.append(f"| [{c['name']}]({link(d, prefix)}) | {emu} | {d['mut'] or '-'} | "
                     f"{c['coverage_depth']['level']} | {'<br>'.join(c['detection_logic']['blind_spots'])} |")
     write(views / "Purple_Team.md",
-          "# Purple Team — Validation Backlog\n\n"
+          "# Purple Team: Validation Backlog\n\n"
           "The blind spots column is the purple-team backlog: each item is a test to run, "
           "and each confirmed miss becomes a new detection or a documented accepted risk.\n\n"
           + "\n".join(prow) +
-          "\n\nRun emulation: `.\\red\\Invoke-PurpleEmulation.ps1 -Technique <ID> -LabConfirmed`  \n"
-          "Then: `python rasd.py evidence --results <results>/emulation-results.json --logs lab-export.jsonl`\n")
+          "\n\nRun emulation: `.\\red\\Invoke-RasdEmulation.ps1 -Technique <ID> -LabConfirmed`  \n"
+          "Then: `rasd evidence --results <results>/emulation-results.json --logs lab-export.jsonl`\n")
 
     write(views / "README.md",
           "# Role-Based Views\n\nGenerated from each detection's and each correlation's `contract.yml`.\n\n"

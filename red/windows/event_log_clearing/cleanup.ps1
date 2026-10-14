@@ -6,11 +6,11 @@
     is kept on purpose: it is the evidence of that step.
 #>
 [CmdletBinding()]
-param([Parameter(Mandatory)] [ValidatePattern('^purplelab_[0-9a-f]{8}$')] [string] $Marker)
+param([Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Continue'   # the runner's 'Stop' is inherited; native stderr must not throw (Windows PowerShell 5.1)
 
-$LogName = 'R' + $Marker.Substring(10)
+$LogName = 'R' + $Marker.Substring($Marker.Length - 8)
 if ([System.Diagnostics.EventLog]::Exists($LogName)) {
     Remove-EventLog -LogName $LogName -ErrorAction SilentlyContinue
 }

@@ -3,30 +3,33 @@ name: WinRM remote command on a lab host
 platform: active_directory
 mitre:
   technique: T1021.006
-  technique_name: Remote Services - Windows Remote Management
-  tactics: [lateral-movement, execution]
+  technique_name: "Remote Services: Windows Remote Management"
+  tactics: [lateral-movement]
 objective: >
   Run one harmless command on another lab host over WinRM (Invoke-Command), the way
   intruders and administrators both move laterally, and record what the target logs: the
-  network logon, the WinRM shell and the wsmprovhost.exe process. RASD has no rule for
-  this yet; the run shows which events a rule could use and how noisy they are.
+  network logon, the WinRM shell and the wsmprovhost.exe process. The remote command runs
+  through cmd.exe, so the session host starts a child process and the WinRM child-process
+  detection must fire.
 prerequisites:
   - Two domain-joined lab hosts; WinRM enabled on the target (Enable-PSRemoting)
   - An account allowed to connect to the target (Remote Management Users or local admin)
 safety:
   - Runs only with -LabConfirmed and an explicit -Target
-  - The remote command returns the target's hostname and the marker; it changes nothing
+  - The remote command echoes the target's hostname and the marker through cmd.exe; it changes nothing
   - The session closes when the command returns
 execution:
-  - "Invoke-PurpleEmulation.ps1 -Test winrm_access_validation -LabConfirmed -Target LAB-SRV01"
-  - The step runs Invoke-Command -ComputerName <target> -ScriptBlock { "$env:COMPUTERNAME <marker>" }
+  - "Invoke-RasdEmulation.ps1 -Test winrm_access_validation -LabConfirmed -Target LAB-SRV01"
+  - The step runs Invoke-Command -ComputerName <target> -ScriptBlock { cmd.exe /c "echo $env:COMPUTERNAME <marker>" }
   - Export telemetry from the target (Export-LabTelemetry.ps1 -LogName Security,Microsoft-Windows-WinRM/Operational,Microsoft-Windows-Sysmon/Operational -EventId 1,4624,91)
 steps:
   - id: invoke_command
-    name: Invoke-Command on the target over WinRM (returns hostname and marker)
+    name: Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker)
     script: emulate_winrm.ps1
     parameters: [Target]
-    detections: []
+    detections: [T1021.006_wsmprovhost_suspicious_child]
+    bind:
+      T1021.006_wsmprovhost_suspicious_child: '{marker}'
 scripts:
   cleanup: cleanup.ps1
 telemetry:
@@ -48,6 +51,14 @@ telemetry:
     fields:
       Image: '...\System32\wsmprovhost.exe'
       ParentImage: '...\System32\svchost.exe'
+  - source: Sysmon (target)
+    event: "1 · ProcessCreate"
+    description: cmd.exe started by the session host to run the remote command
+    fields:
+      Image: '...\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c "echo <target> <marker>"'
+      ParentImage: '...\System32\wsmprovhost.exe'
+    used_by: [T1021.006_wsmprovhost_suspicious_child]
   - source: Sysmon (source)
     event: "3 · NetworkConnect"
     description: Connection to the target on TCP 5985 (HTTP) or 5986 (HTTPS)
@@ -69,31 +80,17 @@ dfir_artifacts:
     location: Target Sysmon 1 with ParentImage wsmprovhost.exe
     collect: Pivot on the wsmprovhost.exe ProcessGuid
     purpose: Every command run through the session appears as a child of wsmprovhost.exe
-gap:
-  reason: >
-    WinRM is everyday administration in most estates, so a single-event rule on 4624 or
-    WinRM 91 would page on every admin action. Useful detection needs a baseline of which
-    sources normally use WinRM.
-  planned: >
-    A rule on suspicious children of wsmprovhost.exe (cmd, encoded PowerShell, rundll32) and
-    a hunt for WinRM logons from hosts that never used WinRM before.
 cleanup:
   actions:
     - Nothing is created on either host; the remote session ends with the command
   verify: No file, registry value or process is left behind
 sample_output:
   console: |
-    [T1021.006] Invoke-Command on the target over WinRM (returns hostname and marker)
-    LAB-SRV01 purplelab_1a2b3c4d
+    [T1021.006] Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker)
+    LAB-SRV01 rasd_1a2b3c4d
     [cleanup] verified: nothing persisted
-  illustrative_events:
-    - title: Target Sysmon 1 for the remote session host
-      event:
-        Channel: Microsoft-Windows-Sysmon/Operational
-        EventID: 1
-        Computer: LAB-SRV01.lab.local
-        Image: C:\Windows\System32\wsmprovhost.exe
-        CommandLine: C:\Windows\system32\wsmprovhost.exe -Embedding
-        ParentImage: C:\Windows\System32\svchost.exe
-        User: LAB\labuser
+  events:
+    - detection: T1021.006_wsmprovhost_suspicious_child
+      case: "red: winrm_access_validation emulation"
 dfir_playbook: dfir/playbooks/lateral_movement.md
+purple_scenario: purple/scenarios/T1021.006_winrm.md

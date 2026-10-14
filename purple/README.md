@@ -1,4 +1,4 @@
-# RASD-Purple — Attack-to-Defense Validation
+# RASD-Purple: Attack-to-Defense Validation
 
 The bridge that connects everything: proof that offensive behaviour produces telemetry, that detection catches it, that DFIR can investigate it, that CTI gives it context - and that all of it is measured.
 

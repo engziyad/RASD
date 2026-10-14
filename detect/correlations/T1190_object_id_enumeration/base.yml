@@ -1,0 +1,28 @@
+title: Web Request for a Single-Owner Object by Numeric ID
+id: 30c0b4cd-e8af-4017-b5d4-3c4a3d79d59f
+name: web_object_id_request
+status: test
+description: |
+  A GET request for one object of a type each user owns once - basket, user, account, profile
+  or wallet, singular or plural - addressed by a numeric ID at the end of the path. This is
+  the base rule of the object-ID enumeration correlation and never alerts on its own: reading
+  your own basket is normal, reading three in a minute is not. Edit the object types to the
+  single-owner objects of your own application.
+references:
+  - https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.initial-access
+  - attack.t1190
+logsource:
+  category: webserver
+detection:
+  selection_method:
+    cs-method: 'GET'
+  selection_object:
+    cs-uri-stem|re: '(?i)/(basket|user|account|profile|wallet)s?/\d+/?$'
+  condition: selection_method and selection_object
+falsepositives:
+  - Every user reading their own object - which is why this rule only feeds the correlation
+level: informational

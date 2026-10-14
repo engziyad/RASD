@@ -32,14 +32,17 @@ Base score **40**.
 - +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- −25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
-- −20 if approved change window *(ask: A change ticket covers this host and time)*
+- -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
 - Configuration management or logon scripts that register tasks inline
 
 ### Never tune
 - Never allow-list by task name: attackers copy vendor task names (GoogleUpdateTaskMachineCore, OneDrive Standalone).
+
+### Close or escalate
+[Closure and escalation notes](../T1053.005_powershell_scheduled_task_creation/closure.md) for this detection.
 
 ---
 

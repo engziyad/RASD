@@ -25,7 +25,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-MARKER_RE = re.compile(r"^purplelab_[0-9a-f]{8}$")
+MARKER_RE = re.compile(r"^rasd_[0-9a-f]{8}$")
 PAUSE = 0.2          # seconds between requests: telemetry, not load
 
 
@@ -36,7 +36,7 @@ class Refused(SystemExit):
 def base_parser(description: str) -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=description)
     ap.add_argument("--target", required=True, help="base URL of the lab application, e.g. http://127.0.0.1:3000")
-    ap.add_argument("--marker", required=True, help="run marker (purplelab_xxxxxxxx), set by the runner")
+    ap.add_argument("--marker", required=True, help="run marker (rasd_xxxxxxxx), set by the runner")
     ap.add_argument("--lab-confirmed", action="store_true", help="confirm the target is a lab you own")
     return ap
 
@@ -45,7 +45,7 @@ def check_args(args) -> str:
     if not args.lab_confirmed:
         raise Refused("Refusing to run without --lab-confirmed.")
     if not MARKER_RE.match(args.marker):
-        raise Refused("--marker must look like purplelab_1a2b3c4d")
+        raise Refused("--marker must look like rasd_1a2b3c4d")
     return lab_target(args.target)
 
 
@@ -67,9 +67,9 @@ def lab_target(url: str) -> str:
     try:
         infos = socket.getaddrinfo(parts.hostname, parts.port or (443 if parts.scheme == "https" else 80))
     except socket.gaierror as e:
-        raise Refused(f"cannot resolve {parts.hostname}: {e}")
+        raise Refused(f"cannot resolve {parts.hostname}: {e}") from e
     for info in infos:
-        ip = ipaddress.ip_address(info[4][0].split("%")[0])
+        ip = ipaddress.ip_address(str(info[4][0]).split("%")[0])
         if not lab_address(ip):
             raise Refused(f"{parts.hostname} resolves to {ip}, which is not a loopback or private address - "
                           "RASD web tests only run against lab targets")
@@ -92,13 +92,14 @@ class Client:
             body = json.dumps(json_body).encode()
             h["Content-Type"] = "application/json"
         h.update(headers or {})
-        req = urllib.request.Request(self.base + path, data=body, method=method, headers=h)
+        # self.base passed lab_target(): http(s) only, resolving to loopback or private addresses
+        req = urllib.request.Request(self.base + path, data=body, method=method, headers=h)  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=15) as r:
+            with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310
                 status, rh, data = r.status, r.headers, r.read()
         except urllib.error.HTTPError as e:
             status, rh, data = e.code, e.headers or email.message.Message(), e.read() or b""
-        except (urllib.error.URLError, ConnectionError, TimeoutError, socket.timeout) as e:
+        except (urllib.error.URLError, ConnectionError, TimeoutError) as e:
             status, rh, data = 0, email.message.Message(), str(e).encode()
         self.log.append({"time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "method": method,
                          "path": path, "status": status})

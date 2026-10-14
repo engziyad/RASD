@@ -1,0 +1,32 @@
+title: Crontab Installed From Standard Input or a File
+id: e7a0a098-5465-40e5-8600-8ac2d50b19a8
+status: test
+description: |
+  Detects crontab replacing a user's cron table from standard input (crontab -) or from a
+  file (crontab <file>), with or without -u <user>. An administrator edits a cron table
+  interactively with crontab -e; scripts, implants and intruders install it in one
+  non-interactive command, often after reading the current table with crontab -l so the
+  existing jobs survive.
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+  - https://man7.org/linux/man-pages/man1/crontab.1.html
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.persistence
+  - attack.execution
+  - attack.t1053.003
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '/crontab'
+  install_stdin:
+    CommandLine|re: '(?i)crontab"?\s+(-u\s+\S+\s+)?-\s*$'
+  install_file:
+    CommandLine|re: '(?i)crontab"?\s+(-u\s+\S+\s+)?[^-\s]\S*\s*$'
+  condition: selection and 1 of install_*
+falsepositives:
+  - Configuration management (Ansible cron module, Puppet, Salt) installing cron tables from a file
+level: medium

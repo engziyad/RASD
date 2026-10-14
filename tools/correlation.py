@@ -163,8 +163,12 @@ class Correlation:
         group_by = tuple(spec.get("group-by") or ())
         counted = cond.get("field") if spec["type"] == "value_count" else None
         for name in group_by + ((counted,) if counted else ()):
-            if not FIELD_NAME.match(str(name)):
-                raise CorrelationError(f"field {name!r} must be a plain field name (letters, digits, _)")
+            # the generated queries name the field: it must be a plain identifier in every backend,
+            # as written or as tools/mappings.yml renames it (c-ip -> clientip / cIP)
+            columns = [str((MAPPINGS[b].get("fields") or {}).get(name, name)) for b in ("spl", "kql")]
+            if not all(FIELD_NAME.match(c) for c in columns):
+                raise CorrelationError(f"field {name!r} must be a plain field name (letters, digits, _) "
+                                       "or be renamed to one for every backend in tools/mappings.yml")
         reads = list(dict.fromkeys(list(group_by) + ([counted] if counted else [])))
         return Params(type=spec["type"], group_by=group_by, timespan=timespan_seconds(spec.get("timespan")),
                       field=counted, op=ops[0], threshold=int(cond[ops[0]]), normalize=normalizations(reads))
@@ -188,7 +192,7 @@ class Correlation:
 
 
 def load_correlations(filter_: str | None = None) -> list[Correlation]:
-    out = []
+    out: list[Correlation] = []
     if not CORRELATIONS.exists():
         return out
     for folder in sorted(p for p in CORRELATIONS.iterdir() if p.is_dir()):
@@ -302,7 +306,7 @@ def evaluate(corr: Correlation, events: list[dict], params: Params | None = None
             continue
         if not monotonic:                       # lt / lte / eq: decided when the window closes
             crossed = EPOCH + timedelta(seconds=start + p.timespan)
-        alerts.append({"window_start": EPOCH + timedelta(seconds=start), "group": dict(zip(p.group_by, group)),
+        alerts.append({"window_start": EPOCH + timedelta(seconds=start), "group": dict(zip(p.group_by, group, strict=True)),
                        "value_count": len(seen) if p.counted else None, "event_count": len(items),
                        "metric": metric, "values": sorted(seen)[:VALUES_KEPT],
                        "first_event": items[0][0], "last_event": items[-1][0], "crossed_at": crossed or items[-1][0]})
@@ -358,13 +362,27 @@ def guaranteed_burst(p: Params) -> int | None:
     return max(1, 2 * need - 1)
 
 
-def burst_events(p: Params, template: dict, times: list[float], start: datetime) -> list[dict]:
+def burst_values(p: Params, template: dict, fn=None):
+    """The counted values of a burst: the template's own value with a numeric suffix when the base
+    rule still matches it (a base rule can constrain the counted field itself - an object path
+    that must end in digits), otherwise neutral values."""
+    if not p.counted:
+        return None
+    own = str(template.get(p.counted) or "")
+    schemes = ([lambda i: f"{own}{i:03d}"] if own else []) + [lambda i: f"burst.value{i:03d}"]
+    if fn is None:
+        return schemes[-1]
+    return next((s for s in schemes if all(fn({**template, p.counted: s(i)}) for i in range(3))), schemes[-1])
+
+
+def burst_events(p: Params, template: dict, times: list[float], start: datetime, values=None) -> list[dict]:
     """`len(times)` copies of one base event for one group, each with its own counted value."""
+    values = values or burst_values(p, template)
     out = []
     for i, offset in enumerate(times):
         ev = {k: v for k, v in template.items() if k not in TIME_FIELDS}   # the burst time is the only time
         if p.counted:
-            ev[p.counted] = f"burst.value{i:03d}"
+            ev[p.counted] = values(i)
         ev["TimeCreated"] = iso(start + timedelta(seconds=offset))
         out.append(ev)
     return out
@@ -380,16 +398,17 @@ def check_guarantee(corr: Correlation, template: dict, params: Params | None = N
     w = p.timespan
     day = datetime(2026, 1, 5)                                   # any midnight: windows divide a day
     fn = compile_rule(corr.base)
+    values = burst_values(p, template, fn)
     failures = []
     for k in range(alignments):
         offset = w * k / alignments
         for spread in (0.0, w / 3, w - 1.0):
             times = [offset + (spread * i / max(1, g - 1)) for i in range(g)]
-            if not evaluate(corr, burst_events(p, template, times, day), p, fn):
+            if not evaluate(corr, burst_events(p, template, times, day, values), p, fn):
                 failures.append({"offset": offset, "spread": spread})
     need = (g + 1) // 2
     split = [w - 1.0 - i * 0.5 for i in range(need - 1)] + [w + i * 0.5 for i in range(need - 1)]
-    tight = not evaluate(corr, burst_events(p, template, split, day), p, fn) if need > 1 else True
+    tight = not evaluate(corr, burst_events(p, template, split, day, values), p, fn) if need > 1 else True
     return {"burst": g, "alignments": alignments, "spreads": 3, "checked": alignments * 3, "failures": failures,
             "tight": tight}
 
@@ -430,7 +449,7 @@ def to_kql(corr: Correlation, params: Params | None = None) -> str:
     read = referenced_fields(corr.base["detection"])
     extra = [f for f in p.reads() if f not in read]
     if extra:                                                        # fields only the correlation reads
-        head += kql_eventdata({"detection": {"fields": {f: None for f in extra}, "condition": "fields"}},
+        head += kql_eventdata({"detection": {"fields": dict.fromkeys(extra), "condition": "fields"}},
                               logsource_key(corr.base), MAPPINGS["kql"].get("fields") or {})
     lines = [f"// {corr.title} | {corr.rule.get('id')}",
              f"// counts: {corr.base.get('title')} | {corr.base.get('id')}", head, f"| where {where}"]

@@ -3,16 +3,19 @@
 convert.py - translate the lab's Sigma rules into SIEM queries.
 
 Backends
-  kql : Microsoft Sentinel / Defender (Kusto Query Language)
+  kql : Microsoft Sentinel (Kusto Query Language)
   spl : Splunk (Search Processing Language)
+  mde : Microsoft Defender XDR advanced hunting - optional, for the log sources a Defender
+        table carries (process creation, registry); the KQL filter over an extend that
+        rebuilds the rule's field names from the Defender columns
 
 Field names and base tables come from tools/mappings.yml, so the same
 rule can be retargeted to any environment by editing one file.
 
 Usage
-  python tools/convert.py --backend kql                 # print all
-  python tools/convert.py --backend spl --rule "detect/detections/T1059.001_*/rule.yml"
-  python tools/convert.py --all --out queries/          # write files
+  rasd convert --backend kql                 # print all
+  rasd convert --backend spl --rule "detect/detections/T1059.001_*/rule.yml"
+  rasd convert --all --out queries/          # write files
 """
 from __future__ import annotations
 
@@ -27,15 +30,20 @@ from typing import Any
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sigma_engine import SigmaError, SUPPORTED_MODIFIERS, resolve_pattern, tokenize  # noqa: E402
+from sigma_engine import SigmaError, _parse_key, check_values, conditions, resolve_pattern, tokenize
 
 ROOT = Path(__file__).resolve().parent.parent
 MAPPINGS = yaml.safe_load((ROOT / "tools" / "mappings.yml").read_text(encoding="utf-8"))
 
 
 def logsource_key(rule: dict) -> str:
+    """Windows categories keep their bare name (process_creation); a category on another product
+    is qualified with it (linux/process_creation); services are product/service."""
     ls = rule.get("logsource", {})
-    return ls.get("category") or f"{ls.get('product', '')}/{ls.get('service', '')}"
+    product, category = ls.get("product", ""), ls.get("category")
+    if category:
+        return category if product in ("", "windows") else f"{product}/{category}"
+    return f"{product}/{ls.get('service', '')}"
 
 
 def sigma_regex(value: Any, mods: list[str]) -> str:
@@ -124,7 +132,7 @@ class SPL:
             return f"match({ref}, {self.s(sigma_regex(v, mods))})"
         if isinstance(v, (int, float)):
             return f"{ref}={v}"
-        # contains/startswith/endswith/wildcards -> anchored regex (robust with backslashes)
+        # contains/startswith/endswith/wildcards -> anchored regex (safe with backslashes)
         if "contains" in mods:
             rx = re.escape(str(v))
         elif "startswith" in mods:
@@ -144,7 +152,47 @@ class SPL:
         return f"{base}\n| where {where}"
 
 
-BACKENDS = {"kql": KQL(), "spl": SPL()}
+BACKENDS: dict[str, KQL | SPL] = {"kql": KQL(), "spl": SPL()}
+DEFENDER = "mde"                                   # optional backend: not every log source has a table
+
+
+def defender_expression(spec: Any) -> str:
+    """The KQL expression that rebuilds one rule field from Defender columns (see tools/mappings.yml)."""
+    if isinstance(spec, str):
+        return f"tostring({spec})"
+    if "path" in spec:
+        folder, file = spec["path"]
+        trimmed = rf'trim_end(@"[\\/]+", {folder})'
+        return (f"iff(isempty({folder}), {file}, iff(isempty({file}) or {trimmed} endswith {file}, {folder}, "
+                rf'strcat({trimmed}, @"\", {file})))')
+    if "account" in spec:
+        domain, name = spec["account"]
+        return rf'iff(isempty({domain}), {name}, strcat({domain}, @"\", {name}))'
+    if "registry" in spec:
+        key, value = spec["registry"]
+        hive = (f'replace_regex(replace_regex(replace_regex({key}, @"(?i)^HKEY_LOCAL_MACHINE", "HKLM"), '
+                f'@"(?i)^HKEY_(CURRENT_USER|USERS)", "HKU"), @"(?i)^HKEY_CLASSES_ROOT", "HKCR")')
+        # an empty value name is the key's default value, which Sysmon writes as "(Default)"
+        return rf'strcat({hive}, @"\", iff(isempty({value}), "(Default)", {value}))'
+    raise SigmaError(f"invalid Defender field spec {spec!r}")
+
+
+def convert_defender(rule: dict) -> str:
+    """Microsoft Defender XDR advanced hunting: the Defender table, an extend that gives the rule
+    its own field names, then the KQL backend's filter."""
+    m, key = MAPPINGS[DEFENDER], logsource_key(rule)
+    if key not in m["logsources"]:
+        raise SigmaError(f"Defender advanced hunting has no table for log source '{key}'")
+    spec = (m.get("extend") or {}).get(key) or {}
+    fields = referenced_fields(rule["detection"])
+    missing = [f for f in fields if f not in spec]
+    if missing:
+        raise SigmaError(f"Defender advanced hunting has no column for {', '.join(missing)} ({key})")
+    base = m["logsources"][key].strip()
+    if fields:
+        base += "\n| extend " + ",\n    ".join(f"{f} = {defender_expression(spec[f])}" for f in fields)
+    where = translate_condition(rule["detection"], BACKENDS["kql"], {})
+    return f"// {rule['title']} | {rule['id']} | Microsoft Defender XDR advanced hunting\n{KQL.wrap(base, where)}"
 
 
 # --------------------------------------------------------------------------- #
@@ -162,11 +210,13 @@ def translate_selection(sel: Any, backend, fieldmap: dict, null_safe: bool = Fal
         if not all(isinstance(s, dict) for s in sel):
             raise SigmaError("Keyword selections are not supported by the converter")
         return _join([translate_selection(s, backend, fieldmap, null_safe) for s in sel], backend.OR)
+    if not isinstance(sel, dict):
+        raise SigmaError(f"Invalid selection type: {type(sel).__name__}")
     clauses = []
     for key, value in sel.items():
-        field, *mods = key.split("|")
-        if set(mods) - SUPPORTED_MODIFIERS:
-            raise SigmaError(f"Unsupported modifier on {field}")
+        field, parsed = _parse_key(key)          # the engine's own validation: one definition of what is supported
+        check_values(field, parsed, value)
+        mods = list(parsed)
         field = fieldmap.get(field, field)
         values = value if isinstance(value, list) else [value]
         preds = [backend.predicate(field, mods, v, null_safe) for v in values]
@@ -227,9 +277,8 @@ class _CondTranslator:
 
 
 def translate_condition(detection: dict, backend, fieldmap: dict) -> str:
-    cond = detection["condition"]
-    conds = cond if isinstance(cond, list) else [cond]
-    return _join([_CondTranslator(tokenize(c), detection, backend, fieldmap).expr() for c in conds], backend.OR)
+    return _join([_CondTranslator(tokenize(c), detection, backend, fieldmap).expr() for c in conditions(detection)],
+                 backend.OR)
 
 
 def referenced_fields(detection: dict) -> list[str]:
@@ -269,6 +318,8 @@ def kql_eventdata(rule: dict, key: str, fieldmap: dict) -> str:
 
 
 def convert(rule: dict, backend_name: str) -> str:
+    if backend_name == DEFENDER:
+        return convert_defender(rule)
     backend = BACKENDS[backend_name]
     m = MAPPINGS[backend_name]
     key = logsource_key(rule)
@@ -288,19 +339,22 @@ def convert(rule: dict, backend_name: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--backend", choices=BACKENDS, default="kql")
+    ap.add_argument("--backend", choices=[*BACKENDS, DEFENDER], default="kql")
     ap.add_argument("--rule", help="glob of rule files (default: all)")
     ap.add_argument("--all", action="store_true", help="generate every backend")
     ap.add_argument("--out", help="write queries to this directory instead of stdout")
     args = ap.parse_args()
 
     files = sorted(glob.glob(args.rule or str(ROOT / "detect" / "detections" / "*" / "rule.yml")))
-    backends = list(BACKENDS) if args.all else [args.backend]
-    failed = 0
+    backends = [*BACKENDS, DEFENDER] if args.all else [args.backend]
+    failed = written = 0
+    defender_files: set[str] = set()
     for path in files:
         rule = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         folder = Path(path).parent.name
         for b in backends:
+            if b == DEFENDER and logsource_key(rule) not in MAPPINGS[DEFENDER]["logsources"]:
+                continue                               # no Defender table for this log source
             try:
                 q = convert(rule, b)
             except SigmaError as e:
@@ -309,12 +363,19 @@ def main() -> int:
                 continue
             if args.out:
                 os.makedirs(Path(args.out) / b, exist_ok=True)
-                ext = "kql" if b == "kql" else "spl"
+                ext = "spl" if b == "spl" else "kql"
                 (Path(args.out) / b / f"{folder}.{ext}").write_text(q + "\n", encoding="utf-8")
+                written += 1
+                if b == DEFENDER:
+                    defender_files.add(f"{folder}.kql")
             else:
                 print(q, end="\n\n")
+    if args.out and DEFENDER in backends and not args.rule:   # only a full run knows which files are stale
+        for stale in (Path(args.out) / DEFENDER).glob("*.kql"):
+            if stale.name not in defender_files:
+                stale.unlink()                         # a rule removed, or its log source no longer covered
     if args.out:
-        print(f"[+] wrote {len(files) * len(backends) - failed} queries to {args.out}")
+        print(f"[+] wrote {written} queries to {args.out}")
     return 1 if failed else 0
 
 

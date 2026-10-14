@@ -2,7 +2,7 @@
 
 `tools/score.py` gives every detection two separate scores. The rule of both is the same: **every point comes from something a script can verify** in this repository - no reviewer opinion, no self-assessment. The live numbers are in [detect/quality/QUALITY.md](../detect/quality/QUALITY.md).
 
-## Engineering Quality Score
+## Engineering Score
 Measures detection engineering completeness - whether the detection is built right.
 
 | Area | Weight | Earned by |
@@ -17,8 +17,8 @@ Measures detection engineering completeness - whether the detection is built rig
 
 **Correlation detections** are scored on the same seven areas from what `rasd correlate` proves ([CORRELATIONS.md](CORRELATIONS.md)). Tests: base-rule true positives (20%) and true negatives (20%), scenarios that fire (10%) and stay silent (10%), and a proof score (40%) that is the lower of the base rule's mutation proof and the share of parameter mutants killed; a failing test or scenario zeroes the area. Evasion awareness counts the base rule's technique mutations (2) and the verified burst guarantee (2) in place of the 4 mutation points. SIEM portability needs, per backend, both the base filter parity and the aggregation parity.
 
-## Operational Validation Score
-Measures whether the detection was proven in a real lab telemetry flow. It is read only from the front matter of `detect/detections/<id>/evidence.md`, which `python rasd.py evidence` writes from a real run - with the SHA-256 of the results file, every telemetry export and every SIEM alert export.
+## Operational Score
+Measures whether the detection was proven in a real lab telemetry flow. It is read only from the front matter of `detect/detections/<id>/evidence.md`, which `rasd evidence` writes from a real run - with the SHA-256 of the results file, every telemetry export and every SIEM alert export.
 
 | Area | Weight | Earned by |
 |---|---:|---|

@@ -13,3 +13,7 @@ windows/security: [EventID, Channel, Computer, SubjectUserSid, SubjectUserName, 
   Workstation, PreAuthType, TargetSid]
 windows/system: [EventID, Channel, Computer, Provider_Name, ServiceName, ImagePath, ServiceType, StartType,
   AccountName, SubjectUserName, SubjectDomainName, Channel_Cleared]
+webserver: [c-ip, cs-username, cs-method, cs-uri-stem, cs-uri-query, sc-status, sc-bytes, cs-referer,
+  cs-user-agent, cs-host, s-ip, time-taken]
+linux/process_creation: [EventID, UtcTime, ProcessGuid, ProcessId, Image, CommandLine, CurrentDirectory, User,
+  LogonGuid, LogonId, ParentProcessGuid, ParentProcessId, ParentImage, ParentCommandLine, ParentUser, Computer]

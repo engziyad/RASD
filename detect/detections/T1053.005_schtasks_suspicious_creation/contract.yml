@@ -15,16 +15,17 @@ data_contract:
   - Security 4698 (recommended, holds the task XML)
   required_fields:
   - Image
+  - OriginalFileName
   - CommandLine
   optional_fields:
   - ParentImage
   - User
   - Computer
-  - OriginalFileName
   telemetry_risk:
     missing_commandline: critical
     commandline_truncation: high
     missing_parent: medium
+    missing_originalfilename: medium
 detection_logic:
   type: single-event
   confidence: medium

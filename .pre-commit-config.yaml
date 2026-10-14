@@ -1,0 +1,22 @@
+# pip install -r requirements-dev.txt pre-commit && pre-commit install
+# Every hook runs a tool already installed in the environment, so nothing is downloaded at commit time.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (lint and security rules)
+        entry: ruff check
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: rasd-lint
+        name: rasd lint (rules, contracts, tuning guides)
+        entry: rasd lint
+        language: system
+        files: ^detect/
+        pass_filenames: false

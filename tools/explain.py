@@ -7,10 +7,10 @@ event actually carried, and which expected value matched. Built for the SOC
 analyst asking "why did this alert?" and the engineer asking "why didn't it?".
 
 Usage
-  python tools/explain.py T1059.001                       # first true-positive sample
-  python tools/explain.py T1059.001 --tn 2                # second true-negative sample
-  python tools/explain.py T1218 --event '{"Image": "...", "CommandLine": "..."}'
-  python tools/explain.py T1558 --file logs.jsonl --line 42
+  rasd explain T1059.001                       # first true-positive sample
+  rasd explain T1059.001 --tn 2                # second true-negative sample
+  rasd explain T1218 --event '{"Image": "...", "CommandLine": "..."}'
+  rasd explain T1558 --file logs.jsonl --line 42
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GOLD, GREEN, RED, RESET, find_detection, load_jsonl  # noqa: E402
-from sigma_engine import explain  # noqa: E402
+from common import BOLD, DIM, GOLD, GREEN, RED, RESET, find_detection, load_jsonl
+from sigma_engine import explain
 
 
 def mark(ok: bool) -> str:

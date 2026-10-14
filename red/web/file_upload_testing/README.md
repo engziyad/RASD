@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1505.003](https://attack.mitre.org/techniques/T1505/003/) Server Software Component - Web Shell |
+| **ATT&CK technique** | [T1505.003](https://attack.mitre.org/techniques/T1505/003/) Server Software Component: Web Shell |
 | **Related** | [T1190](https://attack.mitre.org/techniques/T1190/) |
-| **Tactics** | persistence, initial-access |
+| **Tactics** | persistence |
 | **OWASP Top 10 (2021)** | A04 Insecure Design (unrestricted file upload) |
 | **Platform** | web · runner: python |
 | **Status** | Detect: **gap** |

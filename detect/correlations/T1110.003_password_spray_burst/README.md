@@ -3,22 +3,23 @@
 <!-- rasd:facts:start -->
 | | |
 |---|---|
-| **ATT&CK** | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) · credential-access |
+| **ATT&CK** | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Brute Force: Password Spraying (credential-access) |
 | **Severity** | `high` |
-| **Type** | Sigma correlation · >= 5 distinct TargetUserName per IpAddress in 10m windows · base rule [`auth_failure_wrong_password`](base.yml) |
+| **Type** | Sigma correlation · >= 5 distinct TargetUserName per IpAddress in 10m windows · base rule [`auth_failure`](base.yml) |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | base rule: 5 true positive · 9 true negative · 8 technique mutations · 10 scenarios (5 fire, 5 silent) |
-| **Proof** | base rule: 100% of 18 mutants killed · fuzzer resistance 100% over 14 variants · correlation: 7/7 parameter mutants killed |
-| **Parity** | base filter identical on 280 events · aggregation identical in SPL and KQL on 1280 runs (160 sequences × 8 parameter sets) |
+| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Tests** | base rule: 11 true positive · 8 true negative · 8 technique mutations · 12 scenarios (6 fire, 6 silent) |
+| **Proof** | base rule: 100% of 27 mutants killed · fuzzer resistance 100% over 35 variants · correlation: 7/7 parameter mutants killed |
+| **Parity** | base filter identical on 360 events · aggregation identical in SPL and KQL on 1296 runs (162 sequences × 8 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
+| **Public data** | fires on 8 of 16 public recordings of its behaviour · 8 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1110.003_password_spray_burst.kql) · [SPL](../../../queries/spl/correlations/T1110.003_password_spray_burst.spl) · [scenarios](tests/scenarios.yml) |
-| **Operations** | [triage](triage.md) · [response](response.md) · [tuning](tuning.yml) · [contract](contract.yml) |
+| **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [password_spray_simulation](../../../red/active_directory/password_spray_simulation/) · DFIR: [password_spray](../../../dfir/playbooks/password_spray.md) · purple: [T1110.003_password_spray](../../../purple/scenarios/T1110.003_password_spray.md) |
 <!-- rasd:facts:end -->
 
 ## Telemetry required
-Security **4771** (Kerberos pre-authentication failed) on **domain controllers** - *Audit Kerberos Authentication Service* (Failure) - and Security **4625** (an account failed to log on) on domain controllers **and member servers** that accept network or RDP logons - *Audit Logon* (Failure). Both carry the client address (`IpAddress`) and the account (`TargetUserName`).
+Security **4771** (Kerberos pre-authentication failed) and **4768** (a Kerberos TGT was requested, here the refused ones) on **domain controllers** - *Audit Kerberos Authentication Service* (Failure) - and Security **4625** (an account failed to log on) on domain controllers **and member servers** that accept network or RDP logons - *Audit Logon* (Failure). All three carry the client address (`IpAddress`) and the account (`TargetUserName`).
 
 ## How the detection works
 A password spray tries one or two passwords against many accounts, few enough times per account to stay under the lockout threshold. No single failure is suspicious. The shape is: **many distinct accounts, one source, a short window** - something no single-event rule can express.
@@ -27,14 +28,14 @@ This is a [Sigma correlation rule](correlation.yml) (`value_count`) over a [base
 
 | Part | What it does |
 |---|---|
-| Base rule `auth_failure_wrong_password` | Keeps wrong-password failures only: 4771 with failure code `0x18`, 4625 with sub-status `0xC000006A`, hex or decimal. Drops machine accounts and attempts without a remote address. Never alerts on its own. |
+| Base rule `auth_failure` | Keeps failures for an account: 4771 with failure code `0x18` (wrong password), 4768 with `0x6` or `0x12` (the account does not exist, or is disabled, expired or locked), 4625 with sub-status `0xC000006A` or `0xC0000064` (wrong password, unknown account), hex or decimal. Drops machine accounts and attempts without a remote address. Never alerts on its own. Unknown and disabled accounts were added after public data showed kerbrute-style and PurpleSharp sprays whose lists were mostly such names ([public evidence](public_evidence.md)); the disabled-account file is one of two files that hold the same records with the status code edited, so the `0x12` branch rests on Microsoft's documentation of the code until the lab run. |
 | Correlation | Counts **distinct `TargetUserName`** per **`IpAddress`** in tumbling **10-minute** windows and alerts at **5 or more**. |
 | Normalisation | `::ffff:10.0.0.21` (Kerberos events) and `10.0.0.21` (logon events) are one client ([`tools/mappings.yml`](../../../tools/mappings.yml)), so a spray that mixes Kerberos and NTLM is counted once instead of split in two. |
 
 Counting distinct accounts instead of events is what separates a spray from one user whose saved password went stale and retries all morning - one of the [scenarios](tests/scenarios.yml) that proves it.
 
 ## What RASD proves about it
-`python rasd.py correlate --filter T1110.003 -v` checks, on every commit:
+`rasd correlate --filter T1110.003 -v` checks, on every commit:
 
 - **Base rule** - true positives fire, true negatives stay silent, every value, field and branch is held in place by a test (rule mutation testing), fuzzer variants (decimal codes, case, IPv4 without `::ffff:`) still fire, and its KQL and SPL filters equal the rule.
 - **Scenarios** - ten event sequences: the lab emulation, exactly the threshold, one below it, five users mistyping on five workstations, one user retrying twelve times, a slow spray, mixed Kerberos and NTLM, two sprayers at once, machine accounts, and one pinned known limit.
@@ -50,23 +51,25 @@ Counting distinct accounts instead of events is what separates a spray from one 
 - **NTLM against member servers** - the domain controller's 4776 has no client address, so member server 4625 events must be collected.
 
 ## False positives & tuning
-Jump hosts, VDI brokers and terminal servers relay many users' logons, and scanners test credentials. The [tuning guide](tuning.yml) proposes giving such a host its own, higher threshold instead of excluding it: a compromised broker is the best spraying host on the network.
+Jump hosts, VDI brokers, terminal servers, VPN concentrators, NAT gateways and ADFS servers present many users behind one address, and scanners test credentials. The [tuning guide](tuning.yml) proposes giving such a host its own, higher threshold instead of excluding it: a compromised broker is the best spraying host on the network.
+
+A window made only of unknown names (4768 `0x6`, 4625 `0xC0000064`) is either a spray over a guessed list or account enumeration such as kerbrute's userenum, which tries no password at all. Both alert, and both deserve a look; triage tells them apart by whether any wrong-password failure (4771 `0x18`, 4625 `0xC000006A`) is in the window.
 
 ## Offensive validation
 [`red/active_directory/password_spray_simulation`](../../../red/active_directory/password_spray_simulation/) makes one failed LDAP bind per lab account with a random 40-character password, so no attempt can succeed. Give it 9 or 10 lab accounts so the burst guarantee applies, export the domain controller's Security log, and turn the run into evidence:
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList .\lab-users.txt
-.\red\Export-LabTelemetry.ps1 -LogName Security -EventId 4771,4776,4625 -OutFile .\dc-export.jsonl   # on the DC
+.\red\Invoke-RasdEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList .\lab-users.txt
+.\red\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4771,4776,4625 -OutFile .\dc-export.jsonl   # on the DC
 ```
 
 ```bash
-python rasd.py correlate --logs dc-export.jsonl
-python rasd.py evidence --results <results>/emulation-results.json --logs dc-export.jsonl
+rasd correlate --logs dc-export.jsonl
+rasd evidence --results <results>/emulation-results.json --logs dc-export.jsonl
 ```
 
-## Validate locally
+## Test locally
 ```bash
-python rasd.py correlate --filter T1110.003 -v
-python rasd.py correlate --logs samples/replay/lab-day.jsonl
+rasd correlate --filter T1110.003 -v
+rasd correlate --logs samples/replay/lab-day.jsonl
 ```

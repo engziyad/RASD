@@ -7,14 +7,14 @@
     top-level keys, so the file uses the same field names as the rules and the test
     samples, and can go straight into:
 
-        python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
-        python rasd.py replay lab-export.jsonl
-        python rasd.py doctor lab-export.jsonl
+        rasd evidence --results emulation-results.json --logs lab-export.jsonl
+        rasd replay lab-export.jsonl
+        rasd doctor lab-export.jsonl
 
-    Run it on the lab VM after Invoke-PurpleEmulation.ps1. Kerberos service tickets
-    (4769) and Kerberos pre-authentication failures (4771) are logged on the domain
-    controller, so for T1558.003 and T1110.003 run it there too and pass both files to
-    --logs.
+    Run it on the lab VM after Invoke-RasdEmulation.ps1. Kerberos service tickets
+    (4769), refused TGT requests (4768) and pre-authentication failures (4771) are logged on
+    the domain controller, so for T1558.003 and T1110.003 run it there too and pass both
+    files to --logs.
 
     Read-only: it never changes or clears a log. Works on Windows PowerShell 5.1 and 7.
 
@@ -22,7 +22,8 @@
     Export events created at or after this time. Default: two hours ago.
 
 .PARAMETER OutFile
-    Output path. Written as UTF-8 without a byte-order mark.
+    Output path. Written as UTF-8 without a byte-order mark, with <OutFile>.sha256 beside it in
+    sha256sum format, so `rasd evidence --run ... --strict` can check the export was not changed.
 
 .PARAMETER LogName
     Logs to read. Logs that do not exist on this host are skipped with a warning.
@@ -48,7 +49,7 @@ param(
 
     [string[]] $LogName = @('Microsoft-Windows-Sysmon/Operational', 'Security', 'System'),
 
-    [int[]] $EventId = @(1, 10, 13, 104, 1102, 4625, 4769, 4771, 7045),
+    [int[]] $EventId = @(1, 10, 13, 104, 1102, 4625, 4768, 4769, 4771, 7045),
 
     [int] $MaxEvents = 0
 )
@@ -174,4 +175,8 @@ try {
 finally {
     $writer.Dispose()
 }
+# sha256sum format beside the export, as the lab run writes beside its zip: sha256sum -c <file>.sha256
+$hash = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLower()
+[System.IO.File]::WriteAllText("$fullPath.sha256", "$hash  $(Split-Path -Leaf $fullPath)`n")
 Write-Host "`n[+] $total event(s) written to $fullPath" -ForegroundColor Green
+Write-Host "    sha256: $hash (also in $(Split-Path -Leaf $fullPath).sha256)" -ForegroundColor DarkGray

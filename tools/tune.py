@@ -19,9 +19,9 @@ rule.yml and be used under `not` in the condition (or, for `kind: exception`, be
 positively to take abused binaries back out of a filter).
 
 Usage
-  python tools/tune.py                         # all detections, replay corpus as noise source
-  python tools/tune.py --filter T1558 --logs my-export.jsonl
-  python tools/tune.py --check                 # CI: fail on a RISKY proposed tuning or a broken applied one
+  rasd tune                         # all detections, replay corpus as noise source
+  rasd tune --filter T1558 --logs my-export.jsonl
+  rasd tune --check                 # CI: fail on a RISKY proposed tuning or a broken applied one
 """
 from __future__ import annotations
 
@@ -34,11 +34,11 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections, load_jsonl  # noqa: E402
-from convert import logsource_key  # noqa: E402
-from prove import suite  # noqa: E402
-from replay import route  # noqa: E402
-from sigma_engine import SigmaError, matches, tokenize  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections, load_jsonl
+from convert import logsource_key
+from prove import suite
+from replay import route
+from sigma_engine import SigmaError, compile_rule, matches, tokenize
 
 DEFAULT_LOGS = [ROOT / "samples" / "replay" / "lab-day.jsonl"]
 
@@ -65,7 +65,8 @@ def negated_selections(rule: dict) -> set[str]:
     for cond in det["condition"] if isinstance(det["condition"], list) else [det["condition"]]:
         tokens = [t.lower() for t in tokenize(cond)]
         raw = tokenize(cond)
-        depth_stack, negated_depths = [], []
+        depth_stack: list[int] = []
+        negated_depths: list[int] = []
         for i, tok in enumerate(tokens):
             if tok == "(":
                 depth_stack.append(i)
@@ -124,6 +125,13 @@ def analyse(det, logs: list[Path]) -> list[dict]:
             out.append(r)
             continue
         tuned = with_filter(det.rule, f"tune_{t.get('id')}", flt)
+        try:
+            compile_rule(tuned)                    # a filter the engine refuses would read as "hides everything"
+        except SigmaError as e:
+            r["problems"].append(f"the filter is refused: {e}")
+            r["verdict"] = "BROKEN"
+            out.append(r)
+            continue
         hidden = [label for label, ev, _exp in tests if _safe(det.rule, ev) and not _safe(tuned, ev)]
         removed = [ev for ev in baseline_alerts if not _safe(tuned, ev)]
         r.update({"hidden": hidden, "tested": len(tests), "removed": len(removed), "alerts": len(baseline_alerts),

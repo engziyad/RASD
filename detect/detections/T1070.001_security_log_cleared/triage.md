@@ -29,13 +29,16 @@ Identify SubjectUserName and host; check maintenance records
 Base score **60**.
 - +25 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- −20 if approved change window *(ask: A change ticket covers this host and time)*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
 - Golden-image sealing and documented maintenance on known build hosts
 
 ### Never tune
 - Do not tune this rule. A cleared Security log is reviewed every time; suppress only by build host and change window in the SIEM.
+
+### Close or escalate
+[Closure and escalation notes](../T1070.001_security_log_cleared/closure.md) for this detection.
 
 ---
 

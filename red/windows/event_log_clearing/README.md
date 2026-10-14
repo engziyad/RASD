@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) Indicator Removal - Clear Windows Event Logs |
+| **ATT&CK technique** | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) Indicator Removal: Clear Windows Event Logs |
 | **Tactics** | defense-evasion |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
@@ -61,7 +61,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test event_log_clearing -LabConfirmed -IncludeSecurityLogClear
+.\red\Invoke-RasdEmulation.ps1 -Test event_log_clearing -LabConfirmed -IncludeSecurityLogClear
 ```
 
 ---

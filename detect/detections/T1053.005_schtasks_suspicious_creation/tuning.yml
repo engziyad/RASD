@@ -3,7 +3,18 @@ detection_id: T1053.005_schtasks_suspicious_creation
 expected_noise: medium
 noise_sources:
 - IT automation that schedules PowerShell maintenance scripts
+- Office Click-to-Run registering Office's update and telemetry tasks from XML files under C:\ProgramData\Microsoft\ClickToRun
 tunings:
+- id: office_click_to_run
+  status: proposed
+  scope: environment
+  residual_risk: low
+  reason: 'Office Click-to-Run''s Integrator.exe runs schtasks /Create /XML with task XML files under C:\ProgramData\Microsoft\ClickToRun
+    on every install and update (public data, held-out file H59 - six alerts in one capture).'
+  filter:
+    ParentImage|endswith: '\root\Integration\Integrator.exe'
+    CommandLine|contains: '\ProgramData\Microsoft\ClickToRun\'
+  alternative: Pin the full Click-to-Run path of Integrator.exe on your build, and keep the task name prefix Microsoft\Office\ in the filter.
 - id: sccm_client
   status: proposed
   scope: environment

@@ -6,18 +6,40 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1059.004] Base64 command piped into sh, then a script executed from /tmp
-purplelab_1a2b3c4d
-purplelab_1a2b3c4d from /tmp
-[cleanup] verified: /tmp/purplelab_1a2b3c4d.sh removed
+rasd_1a2b3c4d
+rasd_1a2b3c4d from /tmp
+[cleanup] verified: /tmp/rasd_1a2b3c4d.sh removed
 ```
 
-## Illustrative event · auditd EXECVE record for the decode step
+## Expected event → T1059.004_linux_suspicious_shell_execution
 
-Shape of the telemetry this test produces. No rule consumes it yet (see detection_links.md).
+This is true positive *red: suspicious_shell_execution emulation (Base64 piped into sh)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {
-  "line": "type=EXECVE msg=audit(1791784801.123:4512): argc=2 a0=\"base64\" a1=\"-d\""
+  "EventID": 1,
+  "Image": "/usr/bin/dash",
+  "CommandLine": "sh -c echo ZWNobyByYXNkXzFhMmIzYzRk | base64 -d | sh # rasd_1a2b3c4d",
+  "ParentImage": "/usr/bin/bash",
+  "ParentCommandLine": "bash red/linux/suspicious_shell_execution/emulate_shell.sh --marker rasd_1a2b3c4d --lab-confirmed",
+  "User": "labuser",
+  "CurrentDirectory": "/home/labuser"
+}
+```
+
+## Expected event → T1059.004_linux_suspicious_shell_execution
+
+This is true positive *red: suspicious_shell_execution emulation (script run from /tmp)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
+
+```json
+{
+  "EventID": 1,
+  "Image": "/usr/bin/dash",
+  "CommandLine": "/bin/sh /tmp/rasd_1a2b3c4d.sh",
+  "ParentImage": "/usr/bin/bash",
+  "ParentCommandLine": "bash red/linux/suspicious_shell_execution/emulate_shell.sh --marker rasd_1a2b3c4d --lab-confirmed",
+  "User": "labuser",
+  "CurrentDirectory": "/home/labuser"
 }
 ```
 

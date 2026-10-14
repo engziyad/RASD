@@ -1,0 +1,32 @@
+title: API Probing - One Client Rejected on Many Distinct Paths
+id: edd7625b-b71e-4261-8fa4-91484f52d6be
+status: test
+description: |
+  One client address receiving 401 or 403 on 5 or more distinct paths in one 5-minute window:
+  the shape of someone probing an application's protected endpoints without valid
+  credentials - with no token, a malformed one, or a token the server never issued. A user
+  whose session expired retries the same few paths; a probe walks many.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+  - https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-correlation-rules-specification.md
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.initial-access
+  - attack.t1190
+correlation:
+  type: value_count
+  rules:
+    - web_request_rejected
+  group-by:
+    - c-ip
+  timespan: 5m
+  condition:
+    gte: 5
+    field: cs-uri-stem
+  generate: false
+falsepositives:
+  - A single-page application whose session expired, calling several protected endpoints at once
+  - Security scanners and API test suites run against the application on purpose
+level: medium

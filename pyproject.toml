@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rasd"
+version = "1.0.0"
+description = "Attack-to-defense validation framework: lab emulation, tested Sigma detections, KQL and SPL checked against the rules, DFIR playbooks and lab evidence tooling."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Ziyad" }]
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+# only for the EVTX files among the public datasets (rasd datasets run)
+datasets = ["python-evtx>=0.7"]
+
+[project.scripts]
+rasd = "rasd:main"
+
+[project.urls]
+Repository = "https://github.com/engziyad/RASD-v1.0"
+
+[tool.setuptools]
+# RASD is a repository, not a library: the command runs the tools and reads the detections of
+# the clone it is installed from, so install it in editable mode (pip install -e .).
+py-modules = ["rasd"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 130
+extend-exclude = ["red/results"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, bugbear, flake8-bandit (security), pyupgrade, simplify, comprehensions, ruff
+select = ["E", "F", "W", "B", "S", "UP", "SIM", "C4", "PIE", "RUF"]
+ignore = [
+    "E501",    # generated SPL / KQL strings, regexes and Markdown table rows read better unbroken
+    "E731",    # small named lambdas are used on purpose as field readers and predicates
+    "RUF001",  # en dashes, em dashes and the multiplication sign in strings are deliberate (fuzzer variants, report text)
+    "RUF005",  # [*a, b] versus a + [b] is style only
+    "S603",    # subprocess with an argument list and no shell: every call runs this repository's own tools or git
+]
+
+[tool.ruff.lint.per-file-ignores]
+# seeded pseudo-random numbers build synthetic events and test sequences, never secrets
+"samples/replay/generate.py" = ["S311"]
+"tools/benchmark.py" = ["S311"]
+"tools/correlate.py" = ["S311"]
+"tests/*" = ["S311"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["rasd.py", "tools", "red/run_red.py", "red/linux", "red/web"]
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_unused_ignores = true

@@ -19,6 +19,7 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 | Security (target) | 4624 · An account was successfully logged on | no |
 | Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | no |
 | Sysmon (target) | 1 · ProcessCreate | no |
+| Sysmon (target) | 1 · ProcessCreate | yes |
 | Sysmon (source) | 3 · NetworkConnect | no |
 
 ## [T1053.003](https://attack.mitre.org/techniques/T1053/003/)
@@ -27,7 +28,7 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 |---|---|---|
 | auditd | SYSCALL / EXECVE · key=cron | no |
 | syslog / journald | crontab[pid]: (<user>) REPLACE (<user>) | no |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | no |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | yes |
 
 ## [T1053.005](https://attack.mitre.org/techniques/T1053/005/)
 
@@ -50,9 +51,9 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 
 | Source | Event | Rule uses it |
 |---|---|---|
-| auditd | EXECVE · base64 -d, sh | no |
+| auditd | EXECVE · sh -c, base64 -d, sh | no |
 | auditd | EXECVE · /tmp/<marker>.sh | no |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | no |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | yes |
 
 ## [T1070.001](https://attack.mitre.org/techniques/T1070/001/)
 
@@ -90,9 +91,9 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 
 | Source | Event | Rule uses it |
 |---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | no |
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | yes |
 | Application log | authentication failure | no |
-| Web server / reverse proxy access log | HTTP request · sequential object IDs | no |
+| Web server / reverse proxy access log | HTTP request · sequential object IDs | yes |
 
 ## [T1218.011](https://attack.mitre.org/techniques/T1218/011/)
 

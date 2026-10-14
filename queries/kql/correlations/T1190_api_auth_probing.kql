@@ -1,0 +1,7 @@
+// API Probing - One Client Rejected on Many Distinct Paths | edd7625b-b71e-4261-8fa4-91484f52d6be
+// counts: Web Request Rejected With 401 or 403 | f0269a60-dd31-411f-8462-7768053a94cb
+W3CIISLog
+| where ((scStatus =~ @"401" or scStatus =~ @"403") and not(csMethod =~ @"OPTIONS"))
+| where isnotempty(cIP) and isnotempty(csUriStem)
+| summarize value_count = array_length(make_set(csUriStem)), event_count = count(), distinct_values = make_set(csUriStem, 50), first_event = min(TimeGenerated), last_event = max(TimeGenerated) by window_start = bin(TimeGenerated, 300s), cIP
+| where value_count >= 5

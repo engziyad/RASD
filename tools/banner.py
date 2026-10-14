@@ -27,7 +27,7 @@ IVORY, GOLD, SAND, SILVER, SAGE, GRAY = "#e4dccb", "#d7af87", "#af875f", "#bcbcb
 XTERM = {IVORY: 187, GOLD: 180, SAND: 137, SILVER: 250, SAGE: 108, GRAY: 245}
 
 # Palm and crossed swords, drawn with quadrant blocks (2x2 pixels per cell).
-EMBLEM = [
+EMBLEM: list[list[list]] = [
     [["  ", None], ["▐▙▖", "#87af87"], ["  ", None], ["▗▟▌", "#87af87"], ["  ", None]],
     [["   ", None], ["▝█▖▗█▘", "#87af87"], ["   ", None]],
     [[" ", None], ["▗████████▖", "#87af87"], [" ", None]],
@@ -53,7 +53,7 @@ NAME = [
 ]
 
 # Saudi sword divider: silver blade, gold hilt with chain and curled pommel
-SWORD = [
+SWORD: list[list[list]] = [
     [["▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄", "#bcbcbc"], ["▄█▄▄▄▄▄▄ ", "#d7af87"]],
     [["  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", "#bcbcbc"], ["▜▌▖▄▖▖▖▐▛", "#d7af87"]],
 ]
@@ -64,9 +64,9 @@ COL = 18          # text column, right of the emblem
 CREDIT = "By: @ZiyadSOC"
 
 
-def pillars() -> list[tuple[str, str]]:
+def pillars() -> list[tuple[str, str | None]]:
     """Red → Detect → DFIR → Intel → Purple, names in gray and arrows in sand."""
-    segs: list[tuple[str, str]] = []
+    segs: list[tuple[str, str | None]] = []
     for i, name in enumerate(PILLARS):
         if i:
             segs.append((" → ", SAND))
@@ -76,18 +76,18 @@ def pillars() -> list[tuple[str, str]]:
 
 def layout() -> list[list[tuple[str, str | None]]]:
     """Rows of (text, colour) segments, with absolute column placement resolved."""
-    right: dict[int, list] = {}
+    right: dict[int, list[tuple[str, str | None]]] = {}
     for k, r in enumerate(NAME):
         right[2 + k] = [(r, IVORY)]
     right[2].extend([("   ", None), (f"v{VERSION.rsplit('.', 1)[0]}", SAND)])
-    right[8] = [tuple(s) for s in SWORD[0]]
-    right[9] = [tuple(s) for s in SWORD[1]]
+    right[8] = [(s[0], s[1]) for s in SWORD[0]]
+    right[9] = [(s[0], s[1]) for s in SWORD[1]]
     right[10] = [(TAGLINE, IVORY)]
     right[11] = pillars()
     right[12] = [(CREDIT, GRAY)]
-    rows = []
+    rows: list[list[tuple[str, str | None]]] = []
     for i, emb in enumerate(EMBLEM):
-        segs = [("  ", None)] + [tuple(s) for s in emb]
+        segs: list[tuple[str, str | None]] = [("  ", None), *((s[0], s[1]) for s in emb)]
         width = 2 + sum(len(t) for t, _ in segs[1:])
         if i in right:
             segs.append((" " * (COL - width), None))
@@ -129,25 +129,28 @@ def svg() -> str:
     cols = max(sum(len(t) for t, _ in r) for r in rows)
     W, H = cols * cw + 2 * pad, len(rows) * ch + 2 * pad
     pixels: dict[tuple[int, int], str] = {}
-    texts = []
+    texts: list[tuple[int, int, str, str | None]] = []
     for y, row in enumerate(rows):
-        x, run, run_x, run_col = 0, "", 0, None
-        def flush():
-            if run.strip():
-                texts.append((run_x, y, run, run_col))
+        x, run, run_x = 0, "", 0
+        run_col: str | None = None
         for text, colr in row:
             for chx in text:
                 if chx in QUADS and colr:
-                    flush(); run = ""
+                    if run.strip():
+                        texts.append((run_x, y, run, run_col))
+                    run = ""
                     for qi, (dx, dy) in enumerate(((0, 0), (1, 0), (0, 1), (1, 1))):
                         if QUADS[chx][qi] == "1":
                             pixels[(2 * x + dx, 2 * y + dy)] = colr
                 elif not (chx == " " and not run):
                     if not run or colr != run_col:
-                        flush(); run, run_x, run_col = "", x, colr
+                        if run.strip():
+                            texts.append((run_x, y, run, run_col))
+                        run, run_x, run_col = "", x, colr
                     run += chx
                 x += 1
-        flush()
+        if run.strip():
+            texts.append((run_x, y, run, run_col))
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W:.0f} {H:.0f}" width="{W:.0f}" height="{H:.0f}" '
              f'role="img" aria-label="RASD - Attack-to-Defense Validation Framework">',
              '<rect width="100%" height="100%" rx="14" fill="#0d0d12"/>', '<g shape-rendering="crispEdges">']

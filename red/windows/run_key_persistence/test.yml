@@ -3,7 +3,7 @@ name: HKCU Run value pointing into a user-writable folder
 platform: windows
 mitre:
   technique: T1547.001
-  technique_name: Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
+  technique_name: "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder"
   related: [T1112]
   tactics: [persistence, privilege-escalation]
 objective: >
@@ -62,7 +62,7 @@ cleanup:
 sample_output:
   console: |
     [T1547.001] HKCU Run value pointing to %LOCALAPPDATA%\Temp (file does not exist)
-    [cleanup] verified: Run value purplelab_1a2b3c4d removed
+    [cleanup] verified: Run value rasd_1a2b3c4d removed
   events:
     - detection: T1547.001_registry_run_key_persistence
       case: "red: run_key_persistence emulation"

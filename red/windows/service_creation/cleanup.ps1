@@ -3,7 +3,7 @@
     RASD-Red cleanup · service_creation. Exit code 0 only when verified clean.
 #>
 [CmdletBinding()]
-param([Parameter(Mandatory)] [ValidatePattern('^purplelab_[0-9a-f]{8}$')] [string] $Marker)
+param([Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Continue'   # the runner's 'Stop' is inherited; native stderr must not throw (Windows PowerShell 5.1)
 

@@ -33,6 +33,9 @@ detection:
     CommandLine|re: '(?i)(minidump|#\+?0*(24|65560)\b|#-4294967272\b)'
   susp_noargs:
     CommandLine|re: '(?i)rundll32(\.exe)?"?\s*$'
+  susp_proxy_export:       # Windows DLL exports that start another program (LOLBAS), by name, comma or space before the export
+    # (public data: zipfldr RouteTheCall, advpack RegisterOCX and pcwutl LaunchApplication starting a binary)
+    CommandLine|re: '(?i)\b(zipfldr(\.dll)?"?[\s,]+"?RouteTheCall|advpack(\.dll)?"?[\s,]+"?RegisterOCX|pcwutl(\.dll)?"?[\s,]+"?LaunchApplication)\b'
   condition: selection_img and 1 of susp_*
 falsepositives:
   - Legacy installers that stage DLLs in %TEMP% (validate signer and parent)

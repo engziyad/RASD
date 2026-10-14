@@ -2,13 +2,13 @@
 
 | Step | Detection | Rule | KQL | SPL | Evidence bound by |
 |---|---|---|---|---|---|
-| schtasks /create with a cmd /c action in %TEMP% | [`T1053.005_schtasks_suspicious_creation`](../../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [rule.yml](../../../detect/detections/T1053.005_schtasks_suspicious_creation/rule.yml) | [KQL](../../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) | [SPL](../../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) | token `{marker}` (e.g. `purplelab_1a2b3c4d`) |
-| Register-ScheduledTask with an inline action in $env:TEMP | [`T1053.005_powershell_scheduled_task_creation`](../../../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [rule.yml](../../../detect/detections/T1053.005_powershell_scheduled_task_creation/rule.yml) | [KQL](../../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) | [SPL](../../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) | token `{marker}` (e.g. `purplelab_1a2b3c4d`) |
+| schtasks /create with a cmd /c action in %TEMP% | [`T1053.005_schtasks_suspicious_creation`](../../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [rule.yml](../../../detect/detections/T1053.005_schtasks_suspicious_creation/rule.yml) | [KQL](../../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) | [SPL](../../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
+| Register-ScheduledTask with an inline action in $env:TEMP | [`T1053.005_powershell_scheduled_task_creation`](../../../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [rule.yml](../../../detect/detections/T1053.005_powershell_scheduled_task_creation/rule.yml) | [KQL](../../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) | [SPL](../../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

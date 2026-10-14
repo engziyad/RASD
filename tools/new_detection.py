@@ -4,7 +4,7 @@ new_detection.py - scaffold a new detection folder that already passes the linte
 structure checks, so contributors only write the logic, tests and notes.
 
 Usage
-  python tools/new_detection.py T1021.006 winrm_remote_shell
+  rasd new T1021.006 winrm_remote_shell
 """
 from __future__ import annotations
 
@@ -164,7 +164,7 @@ def main() -> int:
     (folder / "tests" / "true_negative.jsonl").write_text(
         '{"_case": "TODO benign example", "EventID": 1, "Image": "C:\\\\Windows\\\\explorer.exe"}\n', encoding="utf-8")
     print(f"[+] scaffolded {folder.relative_to(ROOT)}")
-    print("    edit rule.yml, contract.yml, tuning.yml, tests/ and README.md, then run: python rasd.py ci")
+    print("    edit rule.yml, contract.yml, tuning.yml, tests/ and README.md, then run: rasd ci")
     return 0
 
 

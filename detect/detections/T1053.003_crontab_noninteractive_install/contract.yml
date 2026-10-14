@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1053.003_crontab_noninteractive_install
+name: Crontab Installed From Standard Input or a File
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1053.003
+related_techniques:
+- attack.t1059.004
+data_contract:
+  required_logsource:
+    product: linux
+    category: process_creation
+  required_events:
+  - Sysmon for Linux Event ID 1 (ProcessCreate) - the generated KQL reads the SysmonForLinux parser function and the SPL reads sourcetype sysmon:linux; auditd EXECVE carries the same arguments but needs its own mapping in tools/mappings.yml
+  required_fields:
+  - Image
+  - CommandLine
+  optional_fields:
+  - ParentImage
+  - ParentCommandLine
+  - User
+  telemetry_risk:
+    missing_commandline: critical
+    missing_image: high
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Writing the spool file (/var/spool/cron) or /etc/cron.d directly, without the crontab binary - a file-event rule covers it
+  - systemd timers and at jobs, which are other persistence mechanisms
+  - crontab -e driven by a script that sets EDITOR to a non-interactive command
+coverage_depth:
+  level: partial
+  reason: Non-interactive crontab installs only; direct writes to cron files and systemd timers are not covered
+risk_model:
+  base_score: 45
+  increase_if:
+  - condition: user_is_privileged
+    add: 15
+  - condition: payload_in_user_writable_path
+    add: 10
+  - condition: outside_business_hours
+    add: 10
+  - condition: host_is_critical
+    add: 15
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 25
+  - condition: approved_change_window
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Read the new cron table (crontab -l -u <user>) and find the line that was added
+  - Identify the parent process and session that ran crontab (SSH session, web server, cron itself)
+  - Check whether configuration management owns this host and this user's cron table
+  escalate_if:
+  - The new line downloads or runs anything from /tmp, /var/tmp, /dev/shm or the network
+  - The parent is a web server, a database or another service account
+  - No change ticket or configuration management run covers the change
+response:
+  l1_action: Save the user's cron table, record the parent process and session, and compare with configuration management
+  l2_action: Trace the session that ran crontab (auth.log, parent chain) and review what the new job runs
+  ir_action: Remove the job after saving it as evidence, contain the account or service that installed it, and hunt for the same line on other hosts
+  evidence:
+  - The cron table before and after the change
+  - Process creation of crontab with its parent chain
+  - Authentication records for the session (auth.log or journald)
+  containment:
+  - Save, then remove the malicious cron line
+  - Lock or reset the account that installed it
+  - Isolate the host if the job downloaded or ran a payload
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

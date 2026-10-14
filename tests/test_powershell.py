@@ -35,7 +35,7 @@ SYSMON_1 = f"""<Event xmlns='{NS}'><System><Provider Name='Microsoft-Windows-Sys
 <Data Name='ProcessGuid'>{{7d3f2a10-1c2b-670a-5a01-000000000a00}}</Data><Data Name='ProcessId'>7444</Data>
 <Data Name='Image'>C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe</Data>
 <Data Name='OriginalFileName'>PowerShell.EXE</Data>
-<Data Name='CommandLine'>"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlAGwAYQBiAF8AMQBhADIAYgAzAGMANABkACcA</Data>
+<Data Name='CommandLine'>"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHIAYQBzAGQAXwAxAGEAMgBiADMAYwA0AGQAJwA=</Data>
 <Data Name='User'>LAB\\labuser</Data><Data Name='ParentProcessId'>6120</Data>
 <Data Name='ParentImage'>C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe</Data></EventData></Event>"""
 
@@ -58,8 +58,8 @@ SECURITY_4769 = f"""<Event xmlns='{NS}'><System><Provider Name='Microsoft-Window
 SYSTEM_7045 = f"""<Event xmlns='{NS}'><System><Provider Name='Service Control Manager' Guid='{{555908d1-a6d7-4695-8e1e-26931d2012f4}}' EventSourceName='Service Control Manager'/>
 <EventID Qualifiers='16384'>7045</EventID><Level>4</Level><TimeCreated SystemTime='2026-10-12T06:02:00.0000000Z'/>
 <EventRecordID>9930</EventRecordID><Correlation/><Execution ProcessID='812' ThreadID='4420'/><Channel>System</Channel>
-<Computer>LAB-WS01.lab.local</Computer></System><EventData><Data Name='ServiceName'>purplelab_1a2b3c4d</Data>
-<Data Name='ImagePath'>cmd.exe /c echo purplelab_1a2b3c4d</Data><Data Name='ServiceType'>user mode service</Data>
+<Computer>LAB-WS01.lab.local</Computer></System><EventData><Data Name='ServiceName'>rasd_1a2b3c4d</Data>
+<Data Name='ImagePath'>cmd.exe /c echo rasd_1a2b3c4d</Data><Data Name='ServiceType'>user mode service</Data>
 <Data Name='StartType'>demand start</Data><Data Name='AccountName'>LocalSystem</Data></EventData></Event>"""
 
 # an EventData field named like a core key must not replace it
@@ -135,9 +135,22 @@ class PowerShellScripts(unittest.TestCase):
                 self.assertFalse(any(route(ev) == logsource_key(d.rule) and matches(d.rule, ev)
                                      for ev in expected.values()), d.id)
         # the bind tokens of the red tests are carried by the exported events
-        self.assertTrue(carries_token(sysmon, "base64-utf16le:Write-Output '{marker}'", "purplelab_1a2b3c4d"))
-        self.assertTrue(carries_token(cleared, "R{hex}", "purplelab_1a2b3c4d"))
-        self.assertTrue(carries_token(service, "{marker}", "purplelab_1a2b3c4d"))
+        self.assertTrue(carries_token(sysmon, "base64-utf16le:Write-Output '{marker}'", "rasd_1a2b3c4d"))
+        self.assertTrue(carries_token(cleared, "R{hex}", "rasd_1a2b3c4d"))
+        self.assertTrue(carries_token(service, "{marker}", "rasd_1a2b3c4d"))
+
+    def test_public_dataset_reader_names_fields_like_the_lab_exporter(self):
+        """The XML of a public dataset and the lab's own export decide the same: datasets.xml_event and the
+        exporter give every rule field, the core keys and the clash names identically."""
+        import datasets
+        cases = [(SYSMON_1, "Microsoft-Windows-Sysmon/Operational"), (SYSTEM_104, "System"),
+                 (SECURITY_4769, "Security"), (SYSTEM_7045, "System"), (CLASH, "Application")]
+        for (xml, _channel), exported in zip(cases, self.export(cases), strict=True):
+            read = datasets.xml_event(xml.replace("\n", ""))
+            if exported.get("Channel") == "Application":       # the exporter takes the channel from the log it read
+                read["Channel"] = "Application"
+            shared = {k: v for k, v in exported.items() if not k.startswith("System_")}
+            self.assertEqual({k: str(v) for k, v in read.items()}, {k: str(v) for k, v in shared.items()})
 
     def test_eventdata_cannot_replace_core_fields(self):
         (ev,) = self.export([(CLASH, "Application")])
@@ -157,15 +170,15 @@ class PowerShellScripts(unittest.TestCase):
     def test_windows_runner_lists_and_plans_every_test(self):
         tests = sorted(p.parent.name for p in (ROOT / "red").glob("*/*/test.json")
                        if p.parent.parent.name in ("windows", "active_directory"))
-        listed = run_pwsh("-File", str(ROOT / "red" / "Invoke-PurpleEmulation.ps1"), "-List")
+        listed = run_pwsh("-File", str(ROOT / "red" / "Invoke-RasdEmulation.ps1"), "-List")
         self.assertEqual(listed.returncode, 0, listed.stderr)
         self.assertEqual(sorted(line.split()[0] for line in listed.stdout.splitlines() if line.strip()), tests)
-        plan = run_pwsh("-File", str(ROOT / "red" / "Invoke-PurpleEmulation.ps1"), "-Technique", "All",
+        plan = run_pwsh("-File", str(ROOT / "red" / "Invoke-RasdEmulation.ps1"), "-Technique", "All",
                         "-LabConfirmed", "-DryRun")
         self.assertEqual(plan.returncode, 0, plan.stderr)
         self.assertIn("skip (opt-in: add -IncludeCredentialAccess)", plan.stdout)
         self.assertIn("skip (missing parameter: -Spn)", plan.stdout)
-        refused = run_pwsh("-File", str(ROOT / "red" / "Invoke-PurpleEmulation.ps1"), "-Technique", "All")
+        refused = run_pwsh("-File", str(ROOT / "red" / "Invoke-RasdEmulation.ps1"), "-Technique", "All")
         self.assertNotEqual(refused.returncode, 0)
 
     def test_lab_run_dry_run_plans_without_running(self):

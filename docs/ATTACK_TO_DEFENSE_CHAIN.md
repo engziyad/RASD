@@ -18,9 +18,13 @@ Mutation Testing                     tests/mutations.yml             rasd mutate
    ↓
 Triage                               triage.md                       generated from contract.yml
    ↓
-Response                             response.md · dfir/playbooks    generated + playbooks
+Response / DFIR Playbook             response.md · dfir/playbooks    generated + playbooks
+   ↓
+Closure / Escalation                 closure.md                      generated from contract.yml + tuning.yml
    ↓
 CTI Mapping                          intel/mappings                  rasd chain
+   ↓
+Purple Scenario                      purple/scenarios                rasd chain
    ↓
 Operational Evidence                 evidence.md                     rasd evidence
    ↓
@@ -41,7 +45,7 @@ A chain is only as strong as its links, so each link is checked by CI rather tha
 | Detect → DFIR | Every technique has a DFIR playbook with an evidence table; playbooks reference only detections and tests that exist |
 | Detect → Intel | Every technique appears in the actor tradecraft map, with the ATT&CK group page as source |
 | Purple → all | Every technique has a purple scenario linking existing detections, red test and playbook |
-| Evidence → Score | The Operational Validation Score is read only from `evidence.md` front matter written by `rasd evidence` from a real run, with SHA-256 of every input |
+| Evidence → Score | The Operational Score is read only from `evidence.md` front matter written by `rasd evidence` from a real run, with SHA-256 of every input |
 | Docs → files | `rasd links`: every relative link in every Markdown file resolves |
 
-`python rasd.py chain` prints the 20-point completeness map per technique and writes the [validation matrix](../purple/validation_matrix.md).
+`rasd chain` prints the 20-point completeness map per technique and writes the [validation matrix](../purple/validation_matrix.md).

@@ -13,13 +13,14 @@ data_contract:
   - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
   required_fields:
   - Image
+  - OriginalFileName
   - CommandLine
   optional_fields:
   - User
   - ParentImage
-  - OriginalFileName
   telemetry_risk:
     missing_commandline: critical
+    missing_originalfilename: medium
 detection_logic:
   type: single-event
   confidence: high

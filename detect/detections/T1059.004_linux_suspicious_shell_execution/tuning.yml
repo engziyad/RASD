@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1059.004_linux_suspicious_shell_execution
+expected_noise: low
+noise_sources:
+- Installers and package builds that unpack helpers into /tmp and run them
+- Provisioning scripts that pass small Base64 payloads to a shell
+tunings:
+- id: package_manager_helpers
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: Package maintainer scripts run from a temporary directory under dpkg or rpm.
+  filter:
+    ParentImage|endswith:
+    - /dpkg
+    - /rpm
+  alternative: Narrow it to the package names your hosts install, from the parent command line.
+never_tune:
+- Never filter Base64 piped into a shell by user or host - the pattern has no routine administrative use.
+- Never filter binaries in /dev/shm.
+review:
+  owner: detection-engineering
+  cadence_days: 90

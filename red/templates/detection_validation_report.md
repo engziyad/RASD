@@ -1,8 +1,8 @@
 # Detection Validation Report
 
-Produced from `python rasd.py evidence` output for one lab run.
+Produced from `rasd evidence` output for one lab run.
 
-| Detection | Expected from step | Verdict | Telemetry latency | SIEM latency | Operational score |
+| Detection | Expected from step | Verdict | Telemetry latency | SIEM latency | Operational Score |
 |---|---|---|---|---|---|
 | | | FIRED / MISSED | | | |
 

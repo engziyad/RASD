@@ -2,7 +2,7 @@
 """
 run_red.py - RASD-Red runner for the web and Linux tests.
 
-The Windows and Active Directory tests run through Invoke-PurpleEmulation.ps1; this
+The Windows and Active Directory tests run through Invoke-RasdEmulation.ps1; this
 runner does the same job for the tests whose runner is python (web) or bash (linux):
 
   1. discovers every red/web/* and red/linux/* test from its test.json
@@ -10,12 +10,12 @@ runner does the same job for the tests whose runner is python (web) or bash (lin
   3. hashes every file the steps and the collect script write to the output folder
   4. runs cleanup and records it as verified (exit 0), manual (exit 3) or failed
   5. writes emulation-results.json in the same format as the PowerShell runner, so
-     `python rasd.py evidence` and the purple matrices read both the same way
+     `rasd evidence` and the purple matrices read both the same way
 
 Lab use only. Web tests refuse any target that resolves to a public address.
 
 --dry-run prints which steps would run or be skipped, and why - including a web target the
-lab guard refuses - and runs nothing, like Invoke-PurpleEmulation.ps1 -DryRun.
+lab guard refuses - and runs nothing, like Invoke-RasdEmulation.ps1 -DryRun.
 
 Usage
   python3 red/run_red.py --list
@@ -49,7 +49,7 @@ def host_ips() -> list[str]:
     ips = set()
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None):
-            ips.add(info[4][0].split("%")[0])
+            ips.add(str(info[4][0]).split("%")[0])
     except OSError:
         pass
     try:                                    # the address used for outbound traffic, without sending anything
@@ -93,6 +93,21 @@ def target_refusal(url: str) -> str | None:
     except rasd_web.Refused as e:
         return str(e)
     return None
+
+
+def target_is_loopback(url: str | None) -> bool:
+    """The lab application runs on this host: its access log records the requests as coming
+    from a loopback address, which then belongs to this run's evidence."""
+    if not url:
+        return False
+    import ipaddress
+    import urllib.parse
+    host = urllib.parse.urlsplit(url).hostname or ""
+    try:
+        addrs = {str(info[4][0]).split("%")[0] for info in socket.getaddrinfo(host, None)}
+    except OSError:
+        return False
+    return bool(addrs) and all(ipaddress.ip_address(a).is_loopback for a in addrs)
 
 
 def plan_state(step: dict, available: dict, refused: str | None) -> str:
@@ -148,7 +163,7 @@ def main() -> int:
         print(f"Refusing: {refused}", file=sys.stderr)
         return 2
 
-    marker = "purplelab_" + secrets.token_hex(4)
+    marker = "rasd_" + secrets.token_hex(4)
     out_dir = Path(args.out_dir or RED / "results" / dt.datetime.now().strftime("%Y%m%d-%H%M%S")).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     results = []
@@ -166,6 +181,8 @@ def main() -> int:
                    "host": platform.node(), "host_ips": ips, "user": getpass.getuser(), "marker": marker,
                    "bind": s.get("bind") or {},
                    "utc_start": None, "utc_end": None, "error": None, "cleanup": "not-run", "artifacts": []}
+            if t["platform"] == "web" and target_is_loopback(available.get("Target")):
+                rec["host_ips"] = ips + ["127.0.0.1", "::1"]     # the app's log sees this run as loopback
             missing = [p for p in s.get("parameters") or [] if not available.get(p)]
             if missing:
                 rec["reason"] = "missing parameter: " + ", ".join(f"--{p.lower()}" for p in missing)
@@ -174,7 +191,7 @@ def main() -> int:
                 continue
             extra = ["--lab-confirmed"]
             for p in s.get("parameters") or []:
-                extra += [f"--{p.lower()}", available[p]]
+                extra += [f"--{p.lower()}", str(available[p])]   # present: missing parameters skip the step
             print(f"[{t.get('technique') or 'posture'}] {s['name']}")
             rec["utc_start"] = utc_now()
             proc = subprocess.run(command(t, s["script"], marker, extra), env=env)

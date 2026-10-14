@@ -6,7 +6,7 @@ Why build our own instead of only relying on a SIEM?
     with zero SIEM required -> real unit tests for detections.
   * Keeps matching semantics transparent and auditable.
 
-Supported Sigma features
+Supported Sigma features (docs/SIGMA_SUPPORT.md, generated and proven by tools/sigma_support.py)
   * Selections as maps (AND across fields) or lists of maps (OR)
   * Value lists (OR) and the |all modifier (AND)
   * Modifiers: contains, startswith, endswith, re (with i / m / s), all, cased, exists
@@ -15,14 +15,20 @@ Supported Sigma features
   * Wildcards * and ? in plain values
   * null values (field must be absent/empty)
   * Conditions: and / or / not / parentheses,
-    "1 of <pattern>", "all of <pattern>", "1 of them", "all of them"
+    "1 of <pattern>", "all of <pattern>", "1 of them", "all of them"; a list of conditions is OR
+
+Everything else is refused with SigmaError - other modifiers, Sigma v1 aggregations
+(| count() ... and detection.timeframe), and values the Sigma specification reads differently
+from a literal string (the escapes \\*, \\? and \\\\, and wildcards inside contains / startswith /
+endswith) - so no rule is ever evaluated approximately.
 """
 from __future__ import annotations
 
 import fnmatch
 import functools
 import re
-from typing import Any
+from collections.abc import Callable, Sequence
+from typing import Any, cast
 
 SUPPORTED_MODIFIERS = {"contains", "startswith", "endswith", "re", "all", "cased", "exists", "i", "m", "s"}
 RE_FLAGS = {"i": re.IGNORECASE, "m": re.MULTILINE, "s": re.DOTALL}
@@ -57,7 +63,7 @@ def _get_field(event: dict, field: str) -> Any:
     return cur
 
 
-def _match_single(actual: Any, expected: Any, mods: list[str]) -> bool:
+def _match_single(actual: Any, expected: Any, mods: Sequence[str]) -> bool:
     if "exists" in mods:
         present = actual is not None and actual != ""
         return present == bool(expected)
@@ -91,12 +97,12 @@ def _match_single(actual: Any, expected: Any, mods: list[str]) -> bool:
 
 
 @functools.lru_cache(maxsize=4096)
-def _wildcard(value: str) -> "re.Pattern[str]":
+def _wildcard(value: str) -> re.Pattern[str]:
     return re.compile(re.escape(value).replace(r"\*", ".*").replace(r"\?", "."), re.DOTALL)
 
 
 @functools.lru_cache(maxsize=4096)
-def _regex(pattern: str, flags: int = 0) -> "re.Pattern[str]":
+def _regex(pattern: str, flags: int = 0) -> re.Pattern[str]:
     try:
         return re.compile(pattern, flags)
     except re.error as e:
@@ -115,8 +121,40 @@ def _parse_key(key: str) -> tuple[str, tuple[str, ...]]:
     return field, tuple(mods)
 
 
+_SIGMA_ESCAPE = re.compile(r"\\[\\*?]")
+_AFFIX = {"contains", "startswith", "endswith"}
+
+
+@functools.lru_cache(maxsize=4096)
+def _check_scalar(field: str, mods: tuple[str, ...], value: Any) -> None:
+    if not isinstance(value, str) or "re" in mods or "exists" in mods:
+        return
+    if _SIGMA_ESCAPE.search(value):
+        raise SigmaError(f"Field '{field}': value {value!r} holds a Sigma escape (\\*, \\? or \\\\), which Sigma reads "
+                         "as an escape and RASD would read literally; write single backslashes, or use |re")
+    if ("*" in value or "?" in value) and _AFFIX & set(mods):
+        raise SigmaError(f"Field '{field}': value {value!r} has a wildcard inside |{'|'.join(sorted(_AFFIX & set(mods)))}, "
+                         "which Sigma expands and RASD would compare literally; split the value, or use |re")
+
+
+def check_values(field: str, mods: tuple[str, ...], expected: Any) -> None:
+    """Refuse the values RASD would read differently from the Sigma specification."""
+    for v in expected if isinstance(expected, list) else [expected]:
+        if isinstance(v, (str, int, float, bool)) or v is None:
+            _check_scalar(field, mods, v)
+
+
+def check_keywords(words: list) -> None:
+    """Keywords are searched as plain substrings; Sigma would expand wildcards and escapes in them."""
+    for w in words:
+        if isinstance(w, str) and ("*" in w or "?" in w or _SIGMA_ESCAPE.search(w)):
+            raise SigmaError(f"Keyword {w!r} has a wildcard or a Sigma escape, which RASD would search literally; "
+                             "write a field condition instead")
+
+
 def _match_field(event: dict, key: str, expected: Any) -> bool:
     field, mods = _parse_key(key)
+    check_values(field, mods, expected)
 
     actual = _get_field(event, field)
     values = expected if isinstance(expected, list) else [expected]
@@ -134,6 +172,7 @@ def _match_selection(event: dict, selection: Any) -> bool:
     if isinstance(selection, list):
         if all(isinstance(s, dict) for s in selection):      # list of maps -> OR
             return any(_match_selection(event, s) for s in selection)
+        check_keywords(selection)
         blob = " ".join(str(v) for v in event.values()).lower()  # keywords
         return any(str(s).lower() in blob for s in selection)
     raise SigmaError(f"Invalid selection type: {type(selection).__name__}")
@@ -164,6 +203,24 @@ def _tokenize(condition: str) -> tuple[str, ...]:
         tokens.append(m.group(1))
         pos = m.end()
     return tuple(tokens)
+
+
+def conditions(detection: dict) -> list[str]:
+    """The rule's conditions, refusing what this engine does not evaluate."""
+    if "timeframe" in detection:
+        raise SigmaError("detection.timeframe belongs to the Sigma v1 aggregations, removed in Sigma v2: "
+                         "write a correlation rule")
+    condition = detection.get("condition")
+    if not condition:
+        raise SigmaError("Rule has no detection.condition")
+    conds = condition if isinstance(condition, list) else [condition]
+    for c in conds:
+        if not isinstance(c, str) or not c.strip():
+            raise SigmaError("detection.condition must be a string or a list of strings")
+        if "|" in c:
+            raise SigmaError("aggregations in a condition (| count() ...) were removed in Sigma v2: "
+                             "write a correlation rule")
+    return conds
 
 
 def selection_names(detection: dict) -> list[str]:
@@ -247,11 +304,7 @@ class _Parser:
 def matches(rule: dict, event: dict) -> bool:
     """Return True if `event` satisfies the Sigma `rule`."""
     detection = rule.get("detection") or {}
-    condition = detection.get("condition")
-    if not condition:
-        raise SigmaError("Rule has no detection.condition")
-    conditions = condition if isinstance(condition, list) else [condition]
-    return any(_Parser(tokenize(c), detection, event).parse() for c in conditions)
+    return any(_Parser(tokenize(c), detection, event).parse() for c in conditions(detection))
 
 
 # --------------------------------------------------------------------------- #
@@ -318,6 +371,7 @@ def _compile_single(expected: Any, mods: tuple[str, ...]):
 
 def _compile_field(key: str, expected: Any):
     field, mods = _parse_key(key)
+    check_values(field, mods, expected)
     get = _getter(field)
     singles = [_compile_single(v, mods) for v in (expected if isinstance(expected, list) else [expected])]
     if "all" in mods:
@@ -342,7 +396,8 @@ def _compile_selection(selection: Any):
         fields = [_compile_field(k, v) for k, v in selection.items()]
 
         def all_fields(event: dict) -> bool:
-            for f in fields:
+            # an explicit loop: this is the hot path, and it beats all() over a generator
+            for f in fields:  # noqa: SIM110
                 if not f(event):
                     return False
             return True
@@ -351,6 +406,7 @@ def _compile_selection(selection: Any):
         if all(isinstance(s, dict) for s in selection):
             subs = [_compile_selection(s) for s in selection]
             return lambda event: any(f(event) for f in subs)
+        check_keywords(selection)
         words = [str(s).lower() for s in selection]
 
         def keywords(event: dict) -> bool:
@@ -418,11 +474,9 @@ def compile_rule(rule: dict):
     """A function event -> bool with exactly the verdicts of matches(rule, event).
     The rule is read now: change it later and compile it again."""
     detection = rule.get("detection") or {}
-    condition = detection.get("condition")
-    if not condition:
-        raise SigmaError("Rule has no detection.condition")
     cache: dict = {}
-    conds = [_Compiler(tokenize(c), detection, cache).parse() for c in (condition if isinstance(condition, list) else [condition])]
+    conds = [cast("Callable[[dict], bool]", _Compiler(tokenize(c), detection, cache).parse())
+             for c in conditions(detection)]
     return conds[0] if len(conds) == 1 else (lambda event: any(c(event) for c in conds))
 
 

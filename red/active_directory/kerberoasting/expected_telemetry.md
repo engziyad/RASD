@@ -1,6 +1,6 @@
 # Expected telemetry · Kerberoasting - request an RC4 service ticket for a lab SPN
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
@@ -11,7 +11,7 @@ Search key: every artifact this test creates carries the run marker (for example
 - DC: Audit Kerberos Service Ticket Operations = Success
 - DC Security log forwarded to the SIEM
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

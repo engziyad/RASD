@@ -1,16 +1,13 @@
 # Detection links · Encoded shell command and execution from /tmp
 
-
-## Coverage gap
-
-**Why there is no rule yet:** RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
-
-**Planned:** Rules for base64 -d piped into a shell and for execution from /tmp, /var/tmp or /dev/shm, on a mapped auditd or Sysmon for Linux source.
+| Step | Detection | Rule | KQL | SPL | Evidence bound by |
+|---|---|---|---|---|---|
+| Base64 command piped into sh, then a script executed from /tmp | [`T1059.004_linux_suspicious_shell_execution`](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [rule.yml](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/rule.yml) | [KQL](../../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) | [SPL](../../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

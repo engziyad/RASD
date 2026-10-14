@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1190_object_id_enumeration
+name: Object ID Enumeration - One Client Walking Single-Owner Objects
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1190
+related_techniques:
+- attack.t1530
+data_contract:
+  required_logsource:
+    category: webserver
+  required_events:
+  - Web server or reverse-proxy access log with client address, method and path - the generated KQL reads W3CIISLog and the SPL reads sourcetype access_combined; other tables need their columns in tools/mappings.yml
+  required_fields:
+  - c-ip
+  - cs-method
+  - cs-uri-stem
+  optional_fields:
+  - sc-status
+  - cs-username
+  - cs-user-agent
+  telemetry_risk:
+    proxy_hides_client_address: critical
+    access_log_not_forwarded: critical
+    object_id_in_query_string_not_path: high
+detection_logic:
+  type: correlation
+  confidence: medium
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - Object IDs passed in the query string or the request body instead of the path
+  - Non-numeric identifiers (UUIDs, slugs)
+  - Object types outside the base rule's list - edit it to your application's single-owner objects
+  - A walk of 3 or 4 objects can be split by a window boundary; 5 or more within a minute always alert
+coverage_depth:
+  level: partial
+  reason: Numeric IDs of five single-owner object types in the path; other identifier styles and object types need the base rule edited
+risk_model:
+  base_score: 55
+  increase_if:
+  - condition: host_is_critical
+    add: 15
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: approved_change_window
+    subtract: 30
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - List the object IDs requested and the status of each response
+  - Check whether the authenticated user owns any of them (application records)
+  - Resolve the client address and the account used
+  escalate_if:
+  - Objects the user does not own were served with 200
+  - The walk continued past a few IDs or came back in later windows
+  - The same client also triggered the API-probing correlation
+response:
+  l1_action: Record the client, account, object IDs and status codes; note every 200 for an object the user does not own
+  l2_action: Confirm with the application owner which responses exposed another user's data and how many records were read
+  ir_action: Block the client, suspend the account used, fix the authorization check, and assess the exposed records for notification duties
+  evidence:
+  - Access-log lines for the client and window
+  - Application records of object ownership for the IDs requested
+  - Authentication records of the account used
+  containment:
+  - Block or rate-limit the client address
+  - Suspend the account used for the walk
+  - Disable the vulnerable endpoint until the ownership check is fixed
+governance:
+  evidence_type:
+  - correlation rule
+  - base rule and tests
+  - correlation scenarios and mutants
+  - generated SIEM queries
+  - ATT&CK mapping
+  - response playbook

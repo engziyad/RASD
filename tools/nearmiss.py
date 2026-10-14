@@ -34,10 +34,10 @@ Correlations, over the same corpus
                   boundary cut in two - the tumbling-window blind spot, found in your data
 
 Usage
-  python tools/nearmiss.py                                   # the replay corpus
-  python tools/nearmiss.py my-export.jsonl --profile auto    # your own traffic
-  python tools/nearmiss.py --filter T1558 --suggest
-  python tools/nearmiss.py --check                           # fail on a loaded, unpinned boundary
+  rasd nearmiss                                   # the replay corpus
+  rasd nearmiss my-export.jsonl --profile auto    # your own traffic
+  rasd nearmiss --filter T1558 --suggest
+  rasd nearmiss --check                           # fail on a loaded, unpinned boundary
 """
 from __future__ import annotations
 
@@ -46,19 +46,20 @@ import json
 import math
 import re
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl  # noqa: E402
-from convert import logsource_key  # noqa: E402
-from correlation import EPOCH, OPS, epoch, human, load_correlations, value_reader  # noqa: E402
-from parity import REPLAY_CORPUS  # noqa: E402
-from prove import parse_condition  # noqa: E402
-from replay import parse_time, route  # noqa: E402
-from sigma_engine import SigmaError, _get_field, compile_rule  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl
+from convert import logsource_key
+from correlation import EPOCH, OPS, epoch, human, load_correlations, value_reader
+from parity import REPLAY_CORPUS
+from prove import parse_condition
+from replay import parse_time, route
+from sigma_engine import SigmaError, _get_field, compile_rule
 
 NOISE_KEYS = ("_case",)
 
@@ -101,7 +102,7 @@ def freeze(v: Any) -> Any:
 class Boundary:
     """A rule as a boolean formula over its field conditions, so single flips can be tried."""
 
-    def __init__(self, rule: dict, positives: list[dict] = (), negatives: list[dict] = ()):
+    def __init__(self, rule: dict, positives: Sequence[dict] = (), negatives: Sequence[dict] = ()):
         det = rule["detection"]
         self.rule = rule
         self.fires = compile_rule(rule)
@@ -311,7 +312,7 @@ def analyse_correlation(corr, events: list[dict], dets) -> dict:
         return {"describe": p.describe(), "note": "headroom applies to at-least conditions only"}
     need = p.threshold + (1 if p.op == "gt" else 0)
     read = value_reader(p)
-    rows = []
+    rows: list[dict[str, Any]] = []
     for (start, group), evs in windows(corr, events).items():
         metric = len({read(ev, p.counted) for ev in evs}) if p.counted else len(evs)
         rows.append({"window_start": EPOCH + timedelta(seconds=start), "group": "|".join(group) or "*",
@@ -380,7 +381,7 @@ def unpinned(report: dict, min_events: int = 1) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("logs", nargs="*", help="JSONL exports (default: the replay corpus)")
-    ap.add_argument("--profile", help="telemetry profile of the logs (see: python rasd.py profiles), or 'auto'")
+    ap.add_argument("--profile", help="telemetry profile of the logs (see: rasd profiles), or 'auto'")
     ap.add_argument("--filter")
     ap.add_argument("--suggest", action="store_true", help="print a candidate true negative for every unpinned boundary")
     ap.add_argument("--check", action="store_true", help="fail when a boundary carrying traffic has no true negative")

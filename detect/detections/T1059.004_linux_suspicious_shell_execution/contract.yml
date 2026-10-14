@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1059.004_linux_suspicious_shell_execution
+name: Linux Shell Executing Decoded Base64 or Code From a Temporary Directory
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1059.004
+related_techniques:
+- attack.t1027
+- attack.t1105
+data_contract:
+  required_logsource:
+    product: linux
+    category: process_creation
+  required_events:
+  - Sysmon for Linux Event ID 1 (ProcessCreate) - the generated KQL reads the SysmonForLinux parser function and the SPL reads sourcetype sysmon:linux; auditd EXECVE carries the same arguments but needs its own mapping in tools/mappings.yml
+  required_fields:
+  - Image
+  - CommandLine
+  optional_fields:
+  - ParentImage
+  - ParentCommandLine
+  - User
+  - CurrentDirectory
+  telemetry_risk:
+    missing_commandline: critical
+    missing_image: high
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - A pipeline typed in an interactive shell runs base64 and sh as separate processes with no shared command line
+  - Interpreters other than shells (python, perl) running code from temporary directories
+  - Temporary directories outside /tmp, /var/tmp and /dev/shm, such as a user's ~/.cache
+coverage_depth:
+  level: medium
+  reason: Decoded Base64 piped into a shell through -c, binaries in three temporary directories, and shell scripts started from them
+risk_model:
+  base_score: 60
+  increase_if:
+  - condition: user_is_privileged
+    add: 15
+  - condition: host_is_critical
+    add: 15
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: known_vendor_software
+    subtract: 25
+  - condition: approved_change_window
+    subtract: 15
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Decode the Base64 blob or read the script or binary in the temporary directory
+  - Identify the parent chain - an SSH session, a web server, cron, a container entry point
+  - Check for network connections and new files from the same process tree
+  escalate_if:
+  - The decoded text or script downloads, opens a network connection or changes persistence
+  - The parent is a web server or another service account
+  - The binary in the temporary directory is unknown to the host
+response:
+  l1_action: Save the command line, decode the blob or copy the script before it is deleted, and record the parent chain
+  l2_action: Rebuild the process tree, review network connections and file writes of the tree, and check the account's recent sessions
+  ir_action: Contain the account or service that ran the code, isolate the host if a payload ran, and hunt for the same blob or file name on other hosts
+  evidence:
+  - Process creation with the full command line and parent chain
+  - The decoded content or the file in the temporary directory, with its hash
+  - Network connections of the process tree
+  containment:
+  - Kill the process tree after saving its details
+  - Lock the account or stop the service that started it
+  - Isolate the host if a payload ran
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

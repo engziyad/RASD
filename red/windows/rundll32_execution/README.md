@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution - Rundll32 |
+| **ATT&CK technique** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32 |
 | **Tactics** | defense-evasion |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
@@ -56,7 +56,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test rundll32_execution -LabConfirmed
+.\red\Invoke-RasdEmulation.ps1 -Test rundll32_execution -LabConfirmed
 ```
 
 ---

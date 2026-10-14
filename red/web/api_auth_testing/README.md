@@ -6,12 +6,12 @@
 | **Tactics** | initial-access |
 | **OWASP API Security Top 10 (2023)** | API2 Broken Authentication |
 | **Platform** | web · runner: python |
-| **Status** | Detect: **gap** |
+| **Status** | Detect: **covered** |
 | **Requires** | standard user |
 
 ## Objective
 
-Check that every protected API endpoint refuses a request with no token, a malformed token, and a well-formed JWT signed with a key the server never issued - and generate the 401/403 burst that an attacker probing an API leaves in the web logs. RASD has no web rule yet; the run shows what the logs contain and how to hunt it.
+Check that every protected API endpoint refuses a request with no token, a malformed token, and a well-formed JWT signed with a key the server never issued - and generate the 401/403 burst that an attacker probing an API leaves in the web logs, which the API-probing correlation must catch.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ Check that every protected API endpoint refuses a request with no token, a malfo
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`emulate_api_auth.py`](emulate_api_auth.py) | `Target` | gap |
+| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`emulate_api_auth.py`](emulate_api_auth.py) | `Target` | [`T1190_api_auth_probing`](../../../detect/correlations/T1190_api_auth_probing/) (correlation) |
 
 ## Links
 
@@ -46,6 +46,7 @@ Check that every protected API endpoint refuses a request with no token, a malfo
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [web_application_attack.md](../../../dfir/playbooks/web_application_attack.md) |
+| Purple scenario | [T1190_api_auth_probing.md](../../../purple/scenarios/T1190_api_auth_probing.md) |
 
 ## Cleanup
 

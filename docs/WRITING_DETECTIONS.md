@@ -15,7 +15,7 @@ A detection is merged only when **all** of the following are true:
 - [ ] `rasd parity` shows zero divergences for KQL and SPL.
 - [ ] A red test in `red/` produces its telemetry, and that test's sample event is one of the rule's true positives.
 - [ ] Its README documents logic, **evasion gaps** and tuning.
-- [ ] `python rasd.py ci` passes and generated files are committed.
+- [ ] `rasd ci` passes and generated files are committed.
 
 ## Correlation detections
 
@@ -65,7 +65,7 @@ The contract is what other teams read, so write it for them:
 - **response**: `l1_action`, `l2_action` and `ir_action` say who does what; then evidence before containment.
 - **maturity**: never higher than what `rasd chain` computes (CI enforces it).
 
-After editing a contract, run `python rasd.py build` and commit the regenerated cards.
+After editing a contract, run `rasd build` and commit the regenerated cards.
 
 ## Writing mutations
 
@@ -82,15 +82,15 @@ Good mutations come from how the program parses input (abbreviations, prefixes, 
 ## Proving the rule
 
 ```bash
-python rasd.py test --filter T1218          # true positives match, true negatives do not
-python rasd.py prove --filter T1218 --suggest   # every value, field and branch is needed by a test
-python rasd.py fuzz --filter T1218 -v       # automatic evasion variants
-python rasd.py parity --filter T1218        # the KQL and SPL behave like the rule
-python rasd.py explain T1218 --tp 3         # why an event matched, field by field
-python rasd.py diff --base origin/main      # which events change verdict in this pull request
+rasd test --filter T1218          # true positives match, true negatives do not
+rasd prove --filter T1218 --suggest   # every value, field and branch is needed by a test
+rasd fuzz --filter T1218 -v       # automatic evasion variants
+rasd parity --filter T1218        # the KQL and SPL behave like the rule
+rasd explain T1218 --tp 3         # why an event matched, field by field
+rasd diff --base origin/main      # which events change verdict in this pull request
 ```
 
-`prove --suggest` prints a candidate event for each surviving mutant - edit it for realism, then add it as a true positive or true negative.
+`rasd prove --suggest` prints a candidate event for each surviving mutant - edit it for realism, then add it as a true positive or true negative.
 
 ## Common mistakes
 

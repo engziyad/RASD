@@ -1,0 +1,55 @@
+title: Suspicious Child Process of a WinRM Session Host
+id: 0476861f-29f4-4dd1-a9e4-d16679efcb74
+status: test
+description: |
+  Detects a command interpreter, encoded PowerShell or a signed proxy binary started by
+  wsmprovhost.exe (the process that hosts every PowerShell remoting session on the target)
+  or winrshost.exe (the host of winrs commands). Cmdlets sent over PowerShell remoting run
+  inside wsmprovhost.exe; a native shell or a proxy binary under it is how lateral-movement
+  tools run their commands over WinRM.
+references:
+  - https://attack.mitre.org/techniques/T1021/006/
+  - https://learn.microsoft.com/en-us/windows/win32/winrm/portal
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.lateral-movement
+  - attack.t1021.006
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '\wsmprovhost.exe'
+      - '\winrshost.exe'
+  susp_shell:
+    - Image|endswith: '\cmd.exe'
+    - OriginalFileName: 'Cmd.Exe'
+  powershell_image:
+    - Image|endswith:
+        - '\powershell.exe'
+        - '\pwsh.exe'
+    - OriginalFileName:
+        - 'PowerShell.EXE'
+        - 'pwsh.dll'
+  encoded_command:
+    # the encoded-command pattern of T1059.001_powershell_encoded_command
+    CommandLine|re: '(?i)\s"*[-/–—―][-–—―]?"*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?"*\s+"*[A-Za-z0-9+/]{16,}={0,2}'
+  susp_proxy:
+    - Image|endswith:
+        - '\rundll32.exe'
+        - '\regsvr32.exe'
+        - '\mshta.exe'
+        - '\certutil.exe'
+        - '\bitsadmin.exe'
+    - OriginalFileName:
+        - 'RUNDLL32.EXE'
+        - 'REGSVR32.EXE'
+        - 'MSHTA.EXE'
+        - 'CertUtil.exe'
+        - 'bitsadmin.exe'
+  condition: selection_parent and (susp_shell or susp_proxy or (powershell_image and encoded_command))
+falsepositives:
+  - Administrators running cmd.exe commands or batch files through PowerShell remoting or winrs
+level: medium

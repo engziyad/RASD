@@ -1,0 +1,50 @@
+---
+scenario: T1190_api_auth_probing
+technique: T1190
+detections: [T1190_api_auth_probing]
+red_test: api_auth_testing
+dfir_playbook: web_application_attack
+---
+
+# Purple Scenario: API Authentication Probing (T1190 Exploit Public-Facing Application)
+
+## Objective
+Validate that a burst of rejected requests across many protected API paths reaches the access log and fires the API-probing correlation.
+
+## Red
+Run `api_auth_testing` against a lab copy of the application: every protected path is called with no token, a malformed token and a foreign-signed JWT. All requests are read-only and carry the run marker in the User-Agent.
+
+Test folder: [`red/web/api_auth_testing`](../../red/web/api_auth_testing/) · expected telemetry: [expected_telemetry.md](../../red/web/api_auth_testing/expected_telemetry.md)
+
+## Telemetry
+- Access log - one line per request: client address, method, path, status 401 or 403, the RASD-Red User-Agent
+- Application log - token validation errors, when the application logs them
+
+## Detect
+- [`T1190_api_auth_probing`](../../detect/correlations/T1190_api_auth_probing/) - correlation rule, base rule, scenarios, parameter mutants, SPL and KQL
+
+Run the full gate for this detection:
+
+```bash
+rasd correlate --filter T1190_api -v
+```
+
+## DFIR
+Playbook: [web_application_attack.md](../../dfir/playbooks/web_application_attack.md). Collect:
+- Access-log lines of the client for the window
+- Any later success from the same client on a protected path
+- WAF or proxy records for the client
+
+## Intel
+Exploitation of internet-facing applications is a common first step of espionage groups. Groups: HAFNIUM (G0125) - [actor tradecraft map](../../intel/mappings/actor_tradecraft_map.md).
+
+## Success Criteria
+- Required telemetry exists (every event in expected_telemetry.md arrived with its fields)
+- Detection triggers (`rasd evidence` reports FIRED for the detection above)
+- Triage steps are actionable (the triage card answered the analyst's first questions)
+- Response guidance is available (the response card and the DFIR playbook were usable)
+- Cleanup is complete (the runner recorded cleanup: verified)
+- Evidence is documented (evidence.md committed for the detection above)
+
+## Status
+Live status for this scenario is in the [validation matrix](../validation_matrix.md).

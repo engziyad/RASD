@@ -4,13 +4,13 @@
 |---|---|---|---|---|---|
 | wevtutil cl on a dedicated test log (writes System 104) | [`T1070.001_event_log_clearing`](../../../detect/detections/T1070.001_event_log_clearing/) | [rule.yml](../../../detect/detections/T1070.001_event_log_clearing/rule.yml) | [KQL](../../../queries/kql/T1070.001_event_log_clearing.kql) | [SPL](../../../queries/spl/T1070.001_event_log_clearing.spl) | token `R{hex}` (e.g. `R1a2b3c4d`) |
 | wevtutil cl on a dedicated test log (writes System 104) | [`T1070.001_system_log_cleared`](../../../detect/detections/T1070.001_system_log_cleared/) | [rule.yml](../../../detect/detections/T1070.001_system_log_cleared/rule.yml) | [KQL](../../../queries/kql/T1070.001_system_log_cleared.kql) | [SPL](../../../queries/spl/T1070.001_system_log_cleared.spl) | token `R{hex}` (e.g. `R1a2b3c4d`) |
-| wevtutil cl Security with a backup first (writes Security 1102) | [`T1070.001_event_log_clearing`](../../../detect/detections/T1070.001_event_log_clearing/) | [rule.yml](../../../detect/detections/T1070.001_event_log_clearing/rule.yml) | [KQL](../../../queries/kql/T1070.001_event_log_clearing.kql) | [SPL](../../../queries/spl/T1070.001_event_log_clearing.spl) | token `{marker}` (e.g. `purplelab_1a2b3c4d`) |
+| wevtutil cl Security with a backup first (writes Security 1102) | [`T1070.001_event_log_clearing`](../../../detect/detections/T1070.001_event_log_clearing/) | [rule.yml](../../../detect/detections/T1070.001_event_log_clearing/rule.yml) | [KQL](../../../queries/kql/T1070.001_event_log_clearing.kql) | [SPL](../../../queries/spl/T1070.001_event_log_clearing.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 | wevtutil cl Security with a backup first (writes Security 1102) | [`T1070.001_security_log_cleared`](../../../detect/detections/T1070.001_security_log_cleared/) | [rule.yml](../../../detect/detections/T1070.001_security_log_cleared/rule.yml) | [KQL](../../../queries/kql/T1070.001_security_log_cleared.kql) | [SPL](../../../queries/spl/T1070.001_security_log_cleared.spl) | host, time window |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

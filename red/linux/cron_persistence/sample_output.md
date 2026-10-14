@@ -6,17 +6,23 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1053.003] Add a crontab line that echoes the marker every 30 minutes
-added crontab entry: */30 * * * * /bin/echo purplelab_1a2b3c4d >/dev/null 2>&1 # purplelab_1a2b3c4d
-[cleanup] verified: no crontab line contains purplelab_1a2b3c4d
+added crontab entry: */30 * * * * /bin/echo rasd_1a2b3c4d >/dev/null 2>&1 # rasd_1a2b3c4d
+[cleanup] verified: no crontab line contains rasd_1a2b3c4d
 ```
 
-## Illustrative event · syslog line written by crontab (Debian format)
+## Expected event → T1053.003_crontab_noninteractive_install
 
-Shape of the telemetry this test produces. No rule consumes it yet (see detection_links.md).
+This is true positive *red: cron_persistence emulation* in [`tests/true_positive.jsonl`](../../../detect/detections/T1053.003_crontab_noninteractive_install/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {
-  "line": "Oct 12 06:00:01 lab-lnx01 crontab[2481]: (labuser) REPLACE (labuser)"
+  "EventID": 1,
+  "Image": "/usr/bin/crontab",
+  "CommandLine": "crontab -",
+  "ParentImage": "/usr/bin/bash",
+  "ParentCommandLine": "bash red/linux/cron_persistence/emulate_cron.sh --marker rasd_1a2b3c4d --lab-confirmed",
+  "User": "labuser",
+  "CurrentDirectory": "/home/labuser"
 }
 ```
 

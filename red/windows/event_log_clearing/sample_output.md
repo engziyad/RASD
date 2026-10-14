@@ -51,7 +51,7 @@ This is true positive *red: event_log_clearing emulation (Security log, opt-in)*
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\wevtutil.exe",
   "OriginalFileName": "wevtutil.exe",
-  "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl Security /bu:C:\\Users\\labuser\\AppData\\Local\\Temp\\security-before-clear-purplelab_1a2b3c4d.evtx",
+  "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl Security /bu:C:\\Users\\labuser\\AppData\\Local\\Temp\\security-before-clear-rasd_1a2b3c4d.evtx",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"

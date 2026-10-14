@@ -1,0 +1,21 @@
+# Telemetry profile: Windows Security event 4688 (process creation) for estates without Sysmon.
+# Needs "Audit Process Creation" and "Include command line in process creation events". 4688 has
+# no OriginalFileName and no hashes: the renamed-binary branches of the rules go blind, which
+# `rasd doctor` reports as DEGRADED (every contract with such a branch rates the field medium).
+# The other Security and System events pass through unchanged.
+name: windows-security-4688
+description: Windows Security 4688 process creation in place of Sysmon event 1; other Security and System events unchanged.
+source: Security log export (Export-LabTelemetry.ps1 -LogName Security -EventId 4688,4769,1102, Windows Event Forwarding, Sentinel SecurityEvent, Splunk WinEventLog)
+docs: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4688
+covers: [process_creation, windows/security, windows/system]
+event:                                                  # RASD routes Security 4688 to process_creation
+  Channel: [Channel, LogName]                           # LogName: Splunk classic WinEventLog format
+  EventID: [EventID, EventCode]
+fields:
+  process_creation:
+    Image: [NewProcessName, New_Process_Name]
+    CommandLine: [CommandLine, Process_Command_Line]
+    ParentImage: [ParentProcessName, Creator_Process_Name]
+    User:                                                 # the new process's account: Target when set, else Subject
+      - {join: [TargetDomainName, TargetUserName], sep: "\\"}
+      - {join: [SubjectDomainName, SubjectUserName], sep: "\\"}

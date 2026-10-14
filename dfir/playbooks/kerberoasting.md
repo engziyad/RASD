@@ -8,7 +8,7 @@ red_tests: [kerberoasting, ldap_enumeration]
 # DFIR Playbook: Kerberoasting
 
 ## Trigger
-A domain controller issued an RC4-encrypted service ticket (4769, `TicketEncryptionType` 0x17) for a user-based service account, or the [Kerberoasting volume correlation](../../detect/correlations/T1558.003_kerberoasting_volume/) alerted: one client received service tickets for 5 or more distinct user-based service accounts in a 10-minute window, with any encryption type.
+A domain controller issued an RC4-encrypted service ticket (4769, `TicketEncryptionType` 0x17) for a user-based service account, or the correlation [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../../detect/correlations/T1558.003_kerberoasting_volume/) alerted: one client received service tickets for 5 or more distinct user-based service accounts in a 10-minute window, with any encryption type.
 
 ## Required Data
 - DC Security 4769 for the requesting client

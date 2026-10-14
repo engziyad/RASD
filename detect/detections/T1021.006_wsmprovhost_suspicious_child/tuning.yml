@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1021.006_wsmprovhost_suspicious_child
+expected_noise: medium
+noise_sources:
+- Administrators running cmd.exe commands or batch files over PowerShell remoting or winrs
+- Configuration management that launches cmd.exe through WinRM
+tunings:
+- id: management_script_share
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: Some estates run approved batch files from one management share over WinRM; the share path identifies them.
+  filter:
+    Image|endswith: \cmd.exe
+    CommandLine|contains: \mgmt-share\scripts\
+  alternative: Prefer a filter on the administration hosts that open the session, applied in the SIEM with the 4624 source address.
+never_tune:
+- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host.
+- Never filter by account alone - a stolen administrator account is exactly what this rule must catch.
+review:
+  owner: detection-engineering
+  cadence_days: 90

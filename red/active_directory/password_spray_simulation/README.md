@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Brute Force - Password Spraying |
+| **ATT&CK technique** | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Brute Force: Password Spraying |
 | **Tactics** | credential-access |
 | **Platform** | active directory · runner: powershell |
 | **Status** | Detect: **covered** |
@@ -28,10 +28,10 @@ Produce the telemetry of a password spray - one failed authentication for each o
 
 ## Execution
 
-1. Invoke-PurpleEmulation.ps1 -Test password\_spray\_simulation -LabConfirmed -UserList .\\lab-users.txt
+1. Invoke-RasdEmulation.ps1 -Test password\_spray\_simulation -LabConfirmed -UserList .\\lab-users.txt
 2. The step reads the domain lockoutThreshold, each account's resultant fine-grained policy and badPwdCount, and skips accounts one failure could lock
 3. For each account it attempts one LDAP bind with the random password
-4. Export the DC Security log (Export-LabTelemetry.ps1 -LogName Security -EventId 4771,4776,4625) and pass it to `rasd correlate --logs` and `rasd evidence`
+4. Export the DC Security log (Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4771,4776,4625) and pass it to `rasd correlate --logs` and `rasd evidence`
 
 ### Steps and the detections they must trigger
 
@@ -61,7 +61,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList <userlist>
+.\red\Invoke-RasdEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList <userlist>
 ```
 
 ---

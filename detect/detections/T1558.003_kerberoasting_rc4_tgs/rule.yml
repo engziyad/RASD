@@ -8,7 +8,7 @@ description: |
   indicator: tools like Rubeus/Impacket downgrade to RC4 because RC4
   hashes crack orders of magnitude faster offline.
   Best used with aggregation (many distinct ServiceName per client in a
-  short window) - see queries/hunts/kerberoasting_volume.*
+  short window) - see queries/hunts/kerberoasting_volume_hunt.*
 references:
   - https://attack.mitre.org/techniques/T1558/003/
   - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4769

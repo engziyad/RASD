@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1087.002](https://attack.mitre.org/techniques/T1087/002/) Account Discovery - Domain Account |
+| **ATT&CK technique** | [T1087.002](https://attack.mitre.org/techniques/T1087/002/) Account Discovery: Domain Account |
 | **Related** | [T1069.002](https://attack.mitre.org/techniques/T1069/002/) · [T1018](https://attack.mitre.org/techniques/T1018/) |
 | **Tactics** | discovery |
 | **Platform** | active directory · runner: powershell |
@@ -57,7 +57,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test ldap_enumeration -LabConfirmed
+.\red\Invoke-RasdEmulation.ps1 -Test ldap_enumeration -LabConfirmed
 ```
 
 ---

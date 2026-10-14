@@ -17,7 +17,7 @@ Checks
     true-negative event (removing the filter must make that event match),
     so no exclusion exists without a test proving why it is there
   * mutations.yml present and well-formed when the contract requires it
-  * generated triage.md / response.md are present (content is drift-checked in CI)
+  * generated triage.md / response.md / closure.md are present (content is drift-checked in CI)
 """
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import DETECTIONS, load_jsonl  # noqa: E402,F401  (load_jsonl re-exported for score.py)
-from convert import BACKENDS, MAPPINGS, logsource_key  # noqa: E402
-from sigma_engine import SigmaError, matches, tokenize  # noqa: E402
+from common import DETECTIONS, load_jsonl, attack_tag_errors
+from convert import BACKENDS, MAPPINGS, logsource_key
+from sigma_engine import SigmaError, matches, tokenize
 
 WARNINGS: dict[str, list[str]] = {}
 
@@ -113,11 +113,13 @@ def check_contract(folder: Path, rule: dict) -> list[str]:
                     "(Operational now means lab evidence only)")
     elif need("maturity") and c["maturity"] not in MATURITY:
         errs.append(f"contract.yml: maturity must be one of {MATURITY}")
-    need("name"); need("owner")
+    need("name")
+    need("owner")
     primary = need("primary_technique")
     if primary and primary not in rule.get("tags", []):
         errs.append(f"contract.yml: primary_technique {primary} is not a tag of rule.yml")
-    need("data_contract.required_events"); need("data_contract.telemetry_risk")
+    need("data_contract.required_events")
+    need("data_contract.telemetry_risk")
     required = need("data_contract.required_fields") or []
     declared = set(required) | set((c.get("data_contract") or {}).get("optional_fields") or [])
     undeclared = sorted(rule_fields(rule.get("detection", {})) - declared)
@@ -275,7 +277,7 @@ def evidence_errors(folder: Path) -> list[str]:
         return []
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
-        return ["evidence.md: missing front matter (generate it with: python rasd.py evidence)"]
+        return ["evidence.md: missing front matter (generate it with: rasd evidence)"]
     try:
         front = yaml.safe_load(text[4:text.index("\n---\n", 4)]) or {}
     except yaml.YAMLError as e:
@@ -370,6 +372,7 @@ def check(folder: Path, seen_ids: dict) -> list[str]:
     techniques = [t for t in rule.get("tags", []) if TECH_TAG.match(t)]
     if not techniques:
         errs.append("no ATT&CK technique tag (attack.tXXXX)")
+    errs += attack_tag_errors(rule.get("tags", []))
     m = FOLDER.match(folder.name)
     if not m:
         errs.append("folder must be named <TechniqueID>_<snake_case_name>")
@@ -414,9 +417,9 @@ def check(folder: Path, seen_ids: dict) -> list[str]:
     except SigmaError:
         pass  # already reported above as a logic error
 
-    for generated in ("triage.md", "response.md"):
+    for generated in ("triage.md", "response.md", "closure.md"):
         if not (folder / generated).exists():
-            errs.append(f"missing {generated} (run: python tools/generate_views.py)")
+            errs.append(f"missing {generated} (run: rasd build)")
     return errs
 
 

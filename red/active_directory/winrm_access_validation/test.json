@@ -7,16 +7,20 @@
   "steps": [
     {
       "id": "invoke_command",
-      "name": "Invoke-Command on the target over WinRM (returns hostname and marker)",
+      "name": "Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker)",
       "script": "emulate_winrm.ps1",
-      "detections": [],
+      "detections": [
+        "T1021.006_wsmprovhost_suspicious_child"
+      ],
       "needs_admin": null,
       "opt_in": null,
       "parameters": [
         "Target"
       ],
       "correlations": [],
-      "bind": {}
+      "bind": {
+        "T1021.006_wsmprovhost_suspicious_child": "{marker}"
+      }
     }
   ],
   "scripts": {

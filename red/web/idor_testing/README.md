@@ -3,15 +3,15 @@
 | | |
 |---|---|
 | **ATT&CK technique** | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application |
-| **Tactics** | initial-access, collection |
+| **Tactics** | initial-access |
 | **OWASP API Security Top 10 (2023)** | API1 Broken Object Level Authorization |
 | **Platform** | web · runner: python |
-| **Status** | Detect: **gap** |
+| **Status** | Detect: **covered** |
 | **Requires** | standard user |
 
 ## Objective
 
-Log in as one lab account and request objects that belong to other users by walking a small range of IDs. Every foreign object served is a broken object-level authorization finding, and the sequential-ID pattern it leaves in the logs is what a detection for data scraping would key on.
+Log in as one lab account and request objects that belong to other users by walking a small range of IDs. Every foreign object served is a broken object-level authorization finding, and the sequential-ID pattern it leaves in the logs is what the object-ID enumeration correlation must catch.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ Log in as one lab account and request objects that belong to other users by walk
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Read other users' objects with one account's token (IDs 1-5) | [`emulate_idor.py`](emulate_idor.py) | `Target` | gap |
+| Read other users' objects with one account's token (IDs 1-5) | [`emulate_idor.py`](emulate_idor.py) | `Target` | [`T1190_object_id_enumeration`](../../../detect/correlations/T1190_object_id_enumeration/) (correlation) |
 
 ## Links
 
@@ -46,6 +46,7 @@ Log in as one lab account and request objects that belong to other users by walk
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [web_application_attack.md](../../../dfir/playbooks/web_application_attack.md) |
+| Purple scenario | [T1190_object_id_enumeration.md](../../../purple/scenarios/T1190_object_id_enumeration.md) |
 
 ## Cleanup
 

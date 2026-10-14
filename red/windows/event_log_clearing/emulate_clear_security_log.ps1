@@ -9,7 +9,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [ValidatePattern('^purplelab_[0-9a-f]{8}$')] [string] $Marker,
+    [Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker,
     [Parameter(Mandatory)] [switch] $LabConfirmed
 )
 Set-StrictMode -Version Latest

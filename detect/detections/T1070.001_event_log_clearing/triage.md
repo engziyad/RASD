@@ -30,13 +30,16 @@ Base score **60**.
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
-- −20 if approved change window *(ask: A change ticket covers this host and time)*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
 - Golden-image and VDI build scripts that reset logs before sealing
 
 ### Never tune
 - Never filter by user: clearing logs is what an intruder does with a borrowed admin or service account.
+
+### Close or escalate
+[Closure and escalation notes](../T1070.001_event_log_clearing/closure.md) for this detection.
 
 ---
 

@@ -31,13 +31,16 @@ Base score **60**.
 - +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
 - +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- −25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
+- -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 
 ### Known benign sources
 - Installers whose custom actions load DLLs from %TEMP%
 
 ### Never tune
 - Never filter javascript:, vbscript:, RunHTMLApplication or comsvcs: they have no common legitimate use with rundll32.
+
+### Close or escalate
+[Closure and escalation notes](../T1218.011_rundll32_suspicious_execution/closure.md) for this detection.
 
 ---
 

@@ -3,9 +3,9 @@ name: Scheduled task with a suspicious action (schtasks and PowerShell)
 platform: windows
 mitre:
   technique: T1053.005
-  technique_name: Scheduled Task/Job - Scheduled Task
+  technique_name: "Scheduled Task/Job: Scheduled Task"
   related: [T1059.001]
-  tactics: [persistence, execution, privilege-escalation]
+  tactics: [execution, persistence, privilege-escalation]
 objective: >
   Create two scheduled tasks the way intruders do - with schtasks.exe and a cmd /c action
   in %TEMP%, and with Register-ScheduledTask and an inline action in $env:TEMP - and prove
@@ -89,9 +89,9 @@ cleanup:
 sample_output:
   console: |
     [T1053.005] schtasks /create with a cmd /c action in %TEMP%
-    SUCCESS: The scheduled task "purplelab_1a2b3c4d" has successfully been created.
+    SUCCESS: The scheduled task "rasd_1a2b3c4d" has successfully been created.
     [T1053.005] Register-ScheduledTask with an inline action in $env:TEMP
-    [cleanup] removed purplelab_1a2b3c4d, purplelab_1a2b3c4d_ps
+    [cleanup] removed rasd_1a2b3c4d, rasd_1a2b3c4d_ps
     [cleanup] verified: no marker task remains
   events:
     - detection: T1053.005_schtasks_suspicious_creation

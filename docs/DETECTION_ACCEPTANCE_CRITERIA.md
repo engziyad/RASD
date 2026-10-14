@@ -14,6 +14,7 @@ A detection is considered complete only when it includes:
 | KQL output | `queries/kql/<id>.kql` | generated, drift-checked, parity-proven |
 | Triage guide | `triage.md` | generated from the contract |
 | Response guide | `response.md` | generated from the contract (L1 / L2 / IR actions, evidence, containment) |
+| Closure and escalation notes | `closure.md` | generated from the contract and tuning guide (benign positive, false positive, escalation to IR) |
 | Tuning guidance | `tuning.yml` | `validate.py` structure; `tune.py --check` (no proposed filter hides an attack variant) |
 | ATT&CK mapping | `rule.yml` tags, `contract.yml` primary and related techniques | `validate.py` |
 | Coverage depth | `contract.yml` `coverage_depth` | `validate.py` |
@@ -27,5 +28,5 @@ Beyond the detection itself, the technique is complete only when the chain aroun
 Scaffold a detection that already has every file and fails CI until each `TODO` is replaced:
 
 ```bash
-python rasd.py new T1021.006 winrm_remote_shell
+rasd new T1021.006 winrm_remote_shell
 ```

@@ -1,7 +1,7 @@
 ---
 playbook: lateral_movement
 techniques: [T1021.002, T1021.006, T1569.002, T1053.005]
-detections: [T1569.002_suspicious_service_installation, T1053.005_schtasks_suspicious_creation]
+detections: [T1569.002_suspicious_service_installation, T1053.005_schtasks_suspicious_creation, T1021.006_wsmprovhost_suspicious_child]
 red_tests: [service_creation, scheduled_task_creation, winrm_access_validation]
 ---
 

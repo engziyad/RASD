@@ -29,11 +29,11 @@ Two modes
               Chosen automatically above 250,000 generated events or 100 MB of exports.
 
 Usage
-  python tools/benchmark.py --generate 100000
-  python tools/benchmark.py big-export.jsonl --profile elastic-ecs --top 10
-  python tools/benchmark.py --generate 1000000 --stream --chunk-size 50000
-  python tools/benchmark.py --generate 5000000 --stream --write-sample samples/big.jsonl --json benchmark.json
-  python tools/benchmark.py --generate 20000 --min-eps 2000          # fail below 2000 events/s
+  rasd benchmark --generate 100000
+  rasd benchmark big-export.jsonl --profile elastic-ecs --top 10
+  rasd benchmark --generate 1000000 --stream --chunk-size 50000
+  rasd benchmark --generate 5000000 --stream --write-sample samples/big.jsonl --json benchmark.json
+  rasd benchmark --generate 20000 --min-eps 2000          # fail below 2000 events/s
 """
 from __future__ import annotations
 
@@ -41,6 +41,7 @@ import argparse
 import copy
 import itertools
 import json
+import math
 import os
 import random
 import re
@@ -51,11 +52,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections, load_jsonl  # noqa: E402
-from convert import logsource_key  # noqa: E402
-import profiles  # noqa: E402
-from replay import route  # noqa: E402
-from sigma_engine import RE_FLAGS, SigmaError, _get_field, compile_rule, matches  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections, load_jsonl
+from convert import logsource_key
+import profiles
+from replay import route
+from sigma_engine import RE_FLAGS, SigmaError, _get_field, compile_rule, matches
 
 CORPUS = ROOT / "samples" / "replay" / "lab-day.jsonl"
 HOSTS = [f"WS{n:03d}.corp.lab" for n in range(1, 201)] + ["DC01.corp.lab", "DC02.corp.lab", "FS01.corp.lab"]
@@ -87,12 +88,14 @@ def iter_generated(n: int, dets, seed: int = 7):
         for kind in ("true_positive", "true_negative"):
             for ev in d.tests(kind):
                 ev = {k: v for k, v in ev.items() if not k.startswith("_")}
-                if route(ev) is None:          # test events carry no channel: give them the rule's own
-                    ev.setdefault("Channel", {"process_creation": "Microsoft-Windows-Sysmon/Operational",
-                                              "process_access": "Microsoft-Windows-Sysmon/Operational",
-                                              "registry_set": "Microsoft-Windows-Sysmon/Operational",
-                                              "windows/security": "Security",
-                                              "windows/system": "System"}[logsource_key(d.rule)])
+                channel = {"process_creation": "Microsoft-Windows-Sysmon/Operational",
+                           "process_access": "Microsoft-Windows-Sysmon/Operational",
+                           "registry_set": "Microsoft-Windows-Sysmon/Operational",
+                           "windows/security": "Security",
+                           "windows/system": "System",
+                           "linux/process_creation": "Linux-Sysmon/Operational"}.get(logsource_key(d.rule))
+                if route(ev) is None and channel:    # test events carry no channel: give them the rule's own
+                    ev.setdefault("Channel", channel)
                 attacks.append(ev)
     pool = base or attacks
     start = datetime(2026, 10, 1)
@@ -136,8 +139,8 @@ def chunked(events, size: int):
         yield chunk
 
 
-def compile_sources(dets) -> dict:
-    by_source = defaultdict(list)
+def compile_sources(dets) -> dict[str | None, list]:
+    by_source: defaultdict[str | None, list] = defaultdict(list)
     for d in dets:
         try:
             by_source[logsource_key(d.rule)].append((d, compile_rule(d.rule)))
@@ -158,7 +161,7 @@ def run_once(events, by_source, compiled: bool = True) -> tuple[float, int]:
 
 
 def per_rule(events, by_source) -> dict[str, dict]:
-    stats = defaultdict(lambda: {"seconds": 0.0, "events": 0, "alerts": 0})
+    stats: defaultdict[str, dict[str, float]] = defaultdict(lambda: {"seconds": 0.0, "events": 0, "alerts": 0})
     for ev in events:
         for d, fn in by_source.get(route(ev), ()):
             t0 = time.perf_counter()
@@ -172,22 +175,24 @@ def per_rule(events, by_source) -> dict[str, dict]:
 
 def regexes(dets) -> list[tuple[str, str, str, int]]:
     """(detection, field, pattern, flags) for every |re value in every rule."""
-    out = []
+    out: list[tuple[str, str, str, int]] = []
+
+    def walk(det_id: str, sel) -> None:
+        if isinstance(sel, dict):
+            for key, value in sel.items():
+                field, *mods = key.split("|")
+                if "re" in mods:
+                    flags = sum(RE_FLAGS[m] for m in set(mods) & RE_FLAGS.keys())
+                    for v in value if isinstance(value, list) else [value]:
+                        out.append((det_id, field, str(v), flags))
+        elif isinstance(sel, list):
+            for s in sel:
+                walk(det_id, s)
+
     for d in dets:
-        def walk(sel):
-            if isinstance(sel, dict):
-                for key, value in sel.items():
-                    field, *mods = key.split("|")
-                    if "re" in mods:
-                        flags = sum(RE_FLAGS[m] for m in set(mods) & RE_FLAGS.keys())
-                        for v in value if isinstance(value, list) else [value]:
-                            out.append((d.id, field, str(v), flags))
-            elif isinstance(sel, list):
-                for s in sel:
-                    walk(s)
         for name, sel in d.rule["detection"].items():
             if name != "condition":
-                walk(sel)
+                walk(d.id, sel)
     return out
 
 
@@ -198,7 +203,7 @@ def per_regex(events, dets) -> list[dict]:
     by_key = {}
     for d in dets:
         src = logsource_key(d.rule)
-        for det_id, field, _p, _f in regexes([d]):
+        for _det_id, field, _p, _f in regexes([d]):
             if (src, field) not in by_key:
                 by_key[(src, field)] = [str(v) for v in (_get_field(ev, field) for ev in routed.get(src, []))
                                         if v not in (None, "")]
@@ -226,14 +231,15 @@ def stream(events, dets, chunk_size: int = 50_000, sample: int = 2_000, compare:
     Throughput times routing + matching only; rule and regex costs come from the first
     `sample` events of every chunk (regex values through a reservoir of RESERVOIR each)."""
     by_source = compile_sources(dets)
-    needed = defaultdict(set)                      # log source -> fields read by some regex
+    needed: defaultdict[str, set[str]] = defaultdict(set)   # log source -> fields read by some regex
     by_id = {d.id: logsource_key(d.rule) for d in dets}
     for det_id, field, _p, _f in regexes(dets):
         needed[by_id[det_id]].add(field)
     rnd = random.Random(1)
-    reservoir, seen = defaultdict(list), defaultdict(int)
-    stats = defaultdict(lambda: {"seconds": 0.0, "events": 0, "alerts": 0})
-    routed_by = defaultdict(int)
+    reservoir: defaultdict[tuple, list[str]] = defaultdict(list)
+    seen: defaultdict[tuple, int] = defaultdict(int)
+    stats: defaultdict[str, dict[str, float]] = defaultdict(lambda: {"seconds": 0.0, "events": 0, "alerts": 0})
+    routed_by: defaultdict[str | None, int] = defaultdict(int)
     total = alerts = chunks = sampled = 0
     match = interp = 0.0
     wall0 = time.perf_counter()
@@ -267,7 +273,7 @@ def stream(events, dets, chunk_size: int = 50_000, sample: int = 2_000, compare:
                     interp += time.perf_counter() - t2
                     if ref != hit:
                         raise SystemExit(f"compiled and interpreted engines disagree on {d.id}: {json.dumps(ev)[:200]}")
-            for field in needed.get(src, ()):
+            for field in needed.get(src or "", ()):
                 v = _get_field(ev, field)
                 if v in (None, ""):
                     continue
@@ -283,9 +289,9 @@ def stream(events, dets, chunk_size: int = 50_000, sample: int = 2_000, compare:
     wall = time.perf_counter() - wall0
     rows = []
     for d in dets:
-        st = stats.get(d.id)
-        if not st:
+        if d.id not in stats:
             continue
+        st = stats[d.id]
         per = st["seconds"] / st["events"] if st["events"] else 0.0
         rows.append({"detection": d.id, "seconds": round(per * routed_by[by_id[d.id]], 4), "events": routed_by[by_id[d.id]],
                      "alerts": st["alerts"], "us_per_event": round(1e6 * per, 2), "sampled_events": st["events"]})
@@ -311,12 +317,11 @@ def correlation_throughput(events: list[dict], corrs, repeat: int = 3) -> dict |
         return None
     from correlation import evaluate                     # imported here: correlation imports replay
     fns = {c.id: compile_rule(c.base) for c in corrs}
-    best, alerts = None, 0
+    best, alerts = math.inf, 0
     for _ in range(max(1, repeat)):
         t0 = time.perf_counter()
         alerts = sum(len(evaluate(c, events, base_fn=fns[c.id])) for c in corrs)
-        secs = time.perf_counter() - t0
-        best = secs if best is None else min(best, secs)
+        best = min(best, time.perf_counter() - t0)
     return {"correlations": len(corrs), "seconds": round(best, 4),
             "events_per_second": round(len(events) / best) if best else None, "alerts": alerts}
 
@@ -350,7 +355,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("logs", nargs="*", help="JSONL exports to benchmark on")
     ap.add_argument("--generate", type=int, metavar="N", help="benchmark on N synthetic events instead")
-    ap.add_argument("--profile", help="telemetry profile from mappings/ (or 'auto') the logs are written in")
+    ap.add_argument("--profile", help="telemetry profile from profiles/ (or 'auto') the logs are written in")
     ap.add_argument("--filter", help="only detections matching this text")
     ap.add_argument("--repeat", type=int, default=3, help="throughput runs; the best one counts (default 3)")
     ap.add_argument("--top", type=int, default=5, help="rows in the rule and regex tables (default 5)")
@@ -378,7 +383,8 @@ def main() -> int:
             events, used = iter_generated(args.generate, dets), profiles.NATIVE
         else:
             events, used = iter_files(args.logs, args.profile)
-        writer = open(args.write_sample, "w", encoding="utf-8") if args.write_sample and args.generate else None
+        # closed in the finally block below
+        writer = open(args.write_sample, "w", encoding="utf-8") if args.write_sample and args.generate else None  # noqa: SIM115
         try:
             res = stream(events, dets, max(1, args.chunk_size), max(0, args.sample), args.compare, writer)
         finally:

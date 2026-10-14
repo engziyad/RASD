@@ -3,16 +3,16 @@ playbook: password_spray
 techniques: [T1110.003]
 detections: [T1110.003_password_spray_burst]
 red_tests: [password_spray_simulation]
-hunts: [queries/hunts/password_spray_burst.kql, queries/hunts/password_spray_burst.spl]
+hunts: [queries/hunts/password_spray_hunt.kql, queries/hunts/password_spray_hunt.spl]
 ---
 
 # DFIR Playbook: Password Spray
 
 ## Trigger
-The [password-spray correlation](../../detect/correlations/T1110.003_password_spray_burst/) alerts: one client address failed authentication with a wrong password for 5 or more distinct accounts in a 10-minute window (4771 0x18 or 4625 0xC000006A). The alert carries the source (`IpAddress`), the window, the number of accounts and their names. The [password spray hunt](../../queries/hunts/password_spray_burst.kql) or identity protection can raise the same question.
+The correlation [Password Spray - One Source Failing Authentication for Many Accounts](../../detect/correlations/T1110.003_password_spray_burst/) alerts: one client address failed authentication for 5 or more distinct accounts in a 10-minute window - a wrong password (4771 0x18, 4625 0xC000006A), an account that does not exist (4768 0x6, 4625 0xC0000064) or a disabled, expired or locked account (4768 0x12). The alert carries the source (`IpAddress`), the window, the number of accounts and their names. The [password spray hunt](../../queries/hunts/password_spray_hunt.kql) or identity protection can raise the same question.
 
 ## Required Data
-- DC Security 4771 / 4776 / 4625 failures, and 4768 / 4624 successes, for the source
+- DC Security 4771 / 4768 / 4776 / 4625 failures, and 4768 / 4624 successes, for the source
 - The source's role (workstation, VPN pool, proxy, internet-facing server)
 - Account lockout events (4740)
 
@@ -20,6 +20,7 @@ The [password-spray correlation](../../detect/correlations/T1110.003_password_sp
 1. Identify the source (IP or workstation) and resolve it to a host or a VPN user.
 2. Count distinct target accounts and the time span.
 3. Check for any success from the same source after the failures: that account is compromised.
+   Unknown-account failures (4768 0x6) in the list mean the attacker guessed names: look for the enumeration that produced the valid ones.
 4. Check lockouts (4740) caused by the spray.
 
 ## Deep Investigation

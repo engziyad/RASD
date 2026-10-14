@@ -27,4 +27,4 @@ Explain:
 ## Suggested Tuning
 Add filter or context:
 
-Before a filter is merged it is added to `tuning.yml` as `proposed`, the event becomes a true-negative test, and `python rasd.py tune` must show it hides no attack variant.
+Before a filter is merged it is added to `tuning.yml` as `proposed`, the event becomes a true-negative test, and `rasd tune` must show it hides no attack variant.

@@ -3,7 +3,7 @@ name: Event log clearing (dedicated test log, optional Security log)
 platform: windows
 mitre:
   technique: T1070.001
-  technique_name: Indicator Removal - Clear Windows Event Logs
+  technique_name: "Indicator Removal: Clear Windows Event Logs"
   tactics: [defense-evasion]
 objective: >
   Clear an event log with wevtutil the way intruders do and prove all three log-clearing

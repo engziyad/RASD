@@ -1,16 +1,13 @@
 # Detection links · User crontab persistence
 
-
-## Coverage gap
-
-**Why there is no rule yet:** RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
-
-**Planned:** A linux/auditd log source in tools/mappings.yml and a rule for crontab writes by interactive users outside configuration management.
+| Step | Detection | Rule | KQL | SPL | Evidence bound by |
+|---|---|---|---|---|---|
+| Add a crontab line that echoes the marker every 30 minutes | [`T1053.003_crontab_noninteractive_install`](../../../detect/detections/T1053.003_crontab_noninteractive_install/) | [rule.yml](../../../detect/detections/T1053.003_crontab_noninteractive_install/rule.yml) | [KQL](../../../queries/kql/T1053.003_crontab_noninteractive_install.kql) | [SPL](../../../queries/spl/T1053.003_crontab_noninteractive_install.spl) | host, time window |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Run marker** | `purplelab_xxxxxxxx` |
-| **Runner** | Invoke-PurpleEmulation.ps1 / run_red.py |
+| **Run marker** | `rasd_xxxxxxxx` |
+| **Runner** | Invoke-RasdEmulation.ps1 / run_red.py |
 | **Started / ended (UTC)** | |
 | **Host / user** | |
 | **Results file** | `emulation-results.json` (SHA-256: ) |

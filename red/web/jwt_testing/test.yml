@@ -3,7 +3,7 @@ name: JWT validation (unsigned and tampered tokens)
 platform: web
 mitre:
   technique: T1606
-  technique_name: Forge Web Credentials
+  technique_name: "Forge Web Credentials"
   related: [T1190]
   tactics: [credential-access]
   other:
@@ -75,5 +75,5 @@ sample_output:
   illustrative_events:
     - title: Access log line for the rejected forged token (OWASP Juice Shop 17.3.0, captured from a lab run)
       event:
-        line: '127.0.0.1 - - [12/Oct/2026:02:17:46 +0000] "GET /rest/basket/6 HTTP/1.1" 401 31 "-" "RASD-Red/purplelab_1a2b3c4d"'
+        line: '127.0.0.1 - - [12/Oct/2026:02:17:46 +0000] "GET /rest/basket/6 HTTP/1.1" 401 31 "-" "RASD-Red/rasd_1a2b3c4d"'
 dfir_playbook: dfir/playbooks/web_application_attack.md

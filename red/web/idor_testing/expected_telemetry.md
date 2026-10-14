@@ -1,16 +1,16 @@
 # Expected telemetry · Object-level authorization (IDOR / BOLA)
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
-| Web server / reverse proxy access log | HTTP request · sequential object IDs | One authenticated session requesting /rest/basket/1, /2, /3 ... within seconds | `user_agent`: `RASD-Red/<marker>`<br>`path`: `/rest/basket/<n> for consecutive n`<br>`status`: `200 where authorization is broken` | investigation |
+| Web server / reverse proxy access log | HTTP request · sequential object IDs | One authenticated session requesting /rest/basket/1, /2, /3 ... within seconds | `c-ip`: `<client address, 127.0.0.1 for an application on the same host>`<br>`cs-user-agent`: `RASD-Red/<marker>`<br>`cs-uri-stem`: `/rest/basket/<n> for consecutive n`<br>`sc-status`: `200 where authorization is broken` | [`T1190_object_id_enumeration`](../../../detect/correlations/T1190_object_id_enumeration/) |
 
 ## Logging that must be enabled
 
 - Access logs with an authenticated user or session identifier per request (most do not log one by default)
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

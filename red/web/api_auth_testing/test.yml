@@ -3,7 +3,7 @@ name: API authentication enforcement
 platform: web
 mitre:
   technique: T1190
-  technique_name: Exploit Public-Facing Application
+  technique_name: "Exploit Public-Facing Application"
   tactics: [initial-access]
   other:
     - framework: OWASP API Security Top 10 (2023)
@@ -11,8 +11,8 @@ mitre:
 objective: >
   Check that every protected API endpoint refuses a request with no token, a malformed
   token, and a well-formed JWT signed with a key the server never issued - and generate the
-  401/403 burst that an attacker probing an API leaves in the web logs. RASD has no web
-  rule yet; the run shows what the logs contain and how to hunt it.
+  401/403 burst that an attacker probing an API leaves in the web logs, which the
+  API-probing correlation must catch.
 prerequisites:
   - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
   - Python 3.9+ on the machine running the test (standard library only)
@@ -31,6 +31,7 @@ steps:
     script: emulate_api_auth.py
     parameters: [Target]
     detections: []
+    correlations: [T1190_api_auth_probing]
 scripts:
   cleanup: cleanup.sh
 telemetry:
@@ -38,9 +39,11 @@ telemetry:
     event: "HTTP request · 401 / 403"
     description: A burst of rejected requests across many API paths from one client
     fields:
-      user_agent: 'RASD-Red/<marker>'
-      status: '401'
-      path: '/api/Cards, /api/Users, /rest/basket/1 ...'
+      c-ip: '<client address, 127.0.0.1 for an application on the same host>'
+      cs-user-agent: 'RASD-Red/<marker>'
+      sc-status: '401'
+      cs-uri-stem: '/api/Cards, /api/Users, /rest/basket/1 ...'
+    used_by: [T1190_api_auth_probing]
   - source: Application log
     event: "authentication failure"
     description: Token validation errors (missing header, invalid signature), when the application logs them
@@ -57,13 +60,7 @@ dfir_artifacts:
     location: "$RASD_OUT_DIR/api_auth_testing-findings.json"
     collect: Written by the test
     purpose: Which endpoints served data without valid authentication
-gap:
-  reason: >
-    RASD's rules cover Windows endpoint and AD telemetry. Web access logs have no shared
-    field schema across servers, so a portable rule needs a log-source mapping first.
-  planned: >
-    A web log source in tools/mappings.yml and a rule for one client receiving 401/403 on
-    10+ distinct API paths within 5 minutes.
+
 cleanup:
   actions:
     - Nothing is created on the target
@@ -77,8 +74,8 @@ sample_output:
       PASS     GET /api/Cards with no token: HTTP 401
       ...
     18 check(s), 0 finding(s)
-  illustrative_events:
-    - title: Access log line (OWASP Juice Shop 17.3.0 format, captured from a lab run)
-      event:
-        line: '127.0.0.1 - - [12/Oct/2026:02:17:41 +0000] "GET /api/Cards HTTP/1.1" 401 31 "-" "RASD-Red/purplelab_1a2b3c4d"'
+  scenarios:
+    - correlation: T1190_api_auth_probing
+      scenario: lab emulation - six protected paths, three token variants each
 dfir_playbook: dfir/playbooks/web_application_attack.md
+purple_scenario: purple/scenarios/T1190_api_auth_probing.md

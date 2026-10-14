@@ -8,8 +8,8 @@ This replays every rule over every sample event (plus optional logs) and reports
 each pair that co-fires, so the overlap is either intended and documented, or removed.
 
 Usage
-  python tools/overlap.py
-  python tools/overlap.py --logs samples/replay/lab-day.jsonl
+  rasd overlap
+  rasd overlap --logs samples/replay/lab-day.jsonl
 """
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, RESET, YELLOW, load_detections, load_jsonl  # noqa: E402
-from convert import logsource_key  # noqa: E402
-from replay import route  # noqa: E402
-from sigma_engine import SigmaError, matches  # noqa: E402
+from common import BOLD, DIM, RESET, YELLOW, load_detections, load_jsonl
+from convert import logsource_key
+from replay import route
+from sigma_engine import SigmaError, matches
 
 
 def main() -> int:

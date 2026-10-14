@@ -16,8 +16,8 @@ labels: telemetry
 | | | | |
 
 ## How it was found
-- [ ] `python rasd.py doctor <export>` output attached
-- [ ] `python rasd.py evidence` reported MISSED
+- [ ] `rasd doctor <export>` output attached
+- [ ] `rasd evidence` reported MISSED
 - [ ] Other:
 
 ## Proposed fix

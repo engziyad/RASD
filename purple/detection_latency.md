@@ -7,9 +7,12 @@ Measured from the start of the emulation step. *Telemetry* is the time until the
 | Detection | Telemetry latency | SIEM alert latency | SIEM pipeline delay | Latency points |
 |---|---|---|---|---|
 | T1003.001_lsass_memory_access | pending | pending | - | - |
+| T1021.006_wsmprovhost_suspicious_child | pending | pending | - | - |
+| T1053.003_crontab_noninteractive_install | pending | pending | - | - |
 | T1053.005_powershell_scheduled_task_creation | pending | pending | - | - |
 | T1053.005_schtasks_suspicious_creation | pending | pending | - | - |
 | T1059.001_powershell_encoded_command | pending | pending | - | - |
+| T1059.004_linux_suspicious_shell_execution | pending | pending | - | - |
 | T1070.001_event_log_clearing | pending | pending | - | - |
 | T1070.001_security_log_cleared | pending | pending | - | - |
 | T1070.001_system_log_cleared | pending | pending | - | - |
@@ -18,6 +21,8 @@ Measured from the start of the emulation step. *Telemetry* is the time until the
 | T1558.003_kerberoasting_rc4_tgs | pending | pending | - | - |
 | T1569.002_suspicious_service_installation | pending | pending | - | - |
 | T1110.003_password_spray_burst | pending | pending | - | - |
+| T1190_api_auth_probing | pending | pending | - | - |
+| T1190_object_id_enumeration | pending | pending | - | - |
 | T1558.003_kerberoasting_volume | pending | pending | - | - |
 
 Targets: ≤ 60 s earns 15 points, ≤ 5 min 10, ≤ 15 min 5 (see [QUALITY_MODEL.md](../docs/QUALITY_MODEL.md)). For a correlation, telemetry latency runs to the event that made it reach its threshold, and its Splunk alert runs once per window, after the window closes.

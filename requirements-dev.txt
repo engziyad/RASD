@@ -1,0 +1,4 @@
+# Code quality gates for the tools themselves (CI and pre-commit). The detections need only requirements.txt.
+-r requirements.txt
+ruff==0.16.8
+mypy==2.3.1

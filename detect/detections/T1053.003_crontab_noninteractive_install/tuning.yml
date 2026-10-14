@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1053.003_crontab_noninteractive_install
+expected_noise: medium
+noise_sources:
+- Configuration management installing cron tables from a staged file (Ansible cron module, Puppet, Salt)
+- Deployment scripts that append a job with crontab -l | ... | crontab -
+tunings:
+- id: configuration_management_parent
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: Ansible runs its cron module through a Python interpreter under an ansible temporary directory; that parent identifies managed changes.
+  filter:
+    ParentCommandLine|contains: /.ansible/tmp/
+  alternative: Prefer reviewing configuration-managed hosts through change records instead of filtering them.
+never_tune:
+- Never filter crontab installs whose parent is a web server, database or other service account.
+- Never filter by user name alone - root and deploy accounts are the ones attackers use.
+review:
+  owner: detection-engineering
+  cadence_days: 90

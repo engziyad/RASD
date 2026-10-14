@@ -3,7 +3,7 @@ name: LSASS memory dump with comsvcs.dll MiniDump
 platform: windows
 mitre:
   technique: T1003.001
-  technique_name: OS Credential Dumping - LSASS Memory
+  technique_name: "OS Credential Dumping: LSASS Memory"
   related: [T1218.011]
   tactics: [credential-access]
 objective: >
@@ -78,8 +78,8 @@ cleanup:
 sample_output:
   console: |
     [T1003.001] rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup)
-    [collect] dump purplelab_1a2b3c4d.dmp hashed (size and SHA-256 recorded, file not kept)
-    [cleanup] verified: dump purplelab_1a2b3c4d.dmp deleted
+    [collect] dump rasd_1a2b3c4d.dmp hashed (size and SHA-256 recorded, file not kept)
+    [cleanup] verified: dump rasd_1a2b3c4d.dmp deleted
   events:
     - detection: T1003.001_lsass_memory_access
       case: "red: lsass_memory_access emulation (process access)"

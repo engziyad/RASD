@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1190_api_auth_probing
+expected_noise: medium
+noise_sources:
+- Single-page applications whose session expired, calling several protected endpoints at once
+- Security scanners and API test suites run against the application on purpose
+tunings:
+- id: cors_preflight
+  status: applied
+  selection: filter_preflight
+  reason: Browsers send OPTIONS preflights before cross-origin calls; a refused preflight is browser behaviour, not a probe.
+- id: approved_scanner
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: The weekly authenticated scan runs from the scanner 10.0.9.5 and walks every endpoint.
+  filter:
+    c-ip: 10.0.9.5
+  alternative: Keep the scanner visible with a schedule check in the SIEM instead of excluding its address.
+never_tune:
+- 'Never exclude a client address without a replacement: the excluded host is the one an attacker will use.'
+- 'Never raise the threshold without re-reading the guarantee: 2T-1 distinct paths is the smallest burst that always alerts (9 for T=5).'
+review:
+  owner: detection-engineering
+  cadence_days: 90

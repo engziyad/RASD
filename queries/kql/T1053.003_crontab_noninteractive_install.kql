@@ -1,0 +1,4 @@
+// Crontab Installed From Standard Input or a File | e7a0a098-5465-40e5-8600-8ac2d50b19a8
+SysmonForLinux
+| where EventID == 1
+| where (Image endswith @"/crontab" and (CommandLine matches regex @"(?i)crontab""?\s+(-u\s+\S+\s+)?-\s*$" or CommandLine matches regex @"(?i)crontab""?\s+(-u\s+\S+\s+)?[^-\s]\S*\s*$"))

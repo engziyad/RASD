@@ -3,7 +3,7 @@ name: Kerberoasting - request an RC4 service ticket for a lab SPN
 platform: active_directory
 mitre:
   technique: T1558.003
-  technique_name: Steal or Forge Kerberos Tickets - Kerberoasting
+  technique_name: "Steal or Forge Kerberos Tickets: Kerberoasting"
   related: [T1110.002]
   tactics: [credential-access]
 objective: >
@@ -21,7 +21,7 @@ safety:
   - One ticket request; the ticket is not exported, saved or cracked
   - The step runs klist purge in its own logon session first; the new ticket expires with the session
 execution:
-  - "Invoke-PurpleEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn MSSQLSvc/sql01.lab.local:1433"
+  - "Invoke-RasdEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn MSSQLSvc/sql01.lab.local:1433"
   - The step purges the session's Kerberos ticket cache (a cached ticket would be reused and the DC would log nothing), then requests the ticket with System.IdentityModel KerberosRequestorSecurityToken
   - collect_artifacts.ps1 saves klist output, which shows the ticket's encryption type
   - Export the domain controller's Security log too (Export-LabTelemetry.ps1 -LogName Security -EventId 4769) and pass both exports to evidence
