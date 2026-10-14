@@ -7,7 +7,7 @@ passes, a field that is declared, a query proven equivalent, an evidence file wi
 hashes), never from a reviewer's opinion. The weights are a published model, not a truth:
 see docs/QUALITY_MODEL.md.
 
-Engineering Quality Score - is the detection built right?
+Engineering Score - is the detection built right?
   Tests                    25  TP and TN volume, all passing, every rule part proven (prove.py)
   Telemetry contract       20  events, fields (consistent with the rule), telemetry risks
   False-positive handling  15  documented FP sources, TN volume, every filter proven by a TN
@@ -22,7 +22,7 @@ parameter mutants in the proof; Evasion awareness counts the verified burst guar
 next to the base rule's mutation tests; SIEM portability needs the base filter AND the
 aggregation to be identical in each backend.
 
-Operational Validation Score - was it proven in a real lab telemetry flow?
+Operational Score - was it proven in a real lab telemetry flow?
   Computed from detect/detections/<id>/evidence.md, written by evidence.py from a lab run
   (Lab evidence 35, SIEM result 25, Detection latency 15, DFIR evidence 15, Cleanup 10).
   Without a lab run it is "pending" - never estimated.
@@ -37,16 +37,16 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import DETECTIONS, QUALITY_DIR  # noqa: E402
-from convert import BACKENDS, convert  # noqa: E402
-from evidence import OPERATIONAL_WEIGHTS, operational_score  # noqa: E402
-from fuzz import fuzz as run_fuzz  # noqa: E402
-from mutation_test import run as run_mutations  # noqa: E402
-from parity import check as run_parity  # noqa: E402
-from prove import prove as run_prove  # noqa: E402
-from run_tests import run as run_tests  # noqa: E402
-from sigma_engine import SigmaError  # noqa: E402
-from validate import evidence_errors, load_jsonl, rule_fields, tuning_errors, unexercised_filters  # noqa: E402
+from common import DETECTIONS, QUALITY_DIR
+from convert import BACKENDS, convert
+from evidence import OPERATIONAL_WEIGHTS, operational_score
+from fuzz import fuzz as run_fuzz
+from mutation_test import run as run_mutations
+from parity import check as run_parity
+from prove import prove as run_prove
+from run_tests import run as run_tests
+from sigma_engine import SigmaError
+from validate import evidence_errors, load_jsonl, rule_fields, tuning_errors, unexercised_filters
 
 WEIGHTS = {"Tests": 25, "Telemetry contract": 20, "False-positive handling": 15, "Evasion awareness": 15,
            "SIEM portability": 10, "Response playbook": 10, "Documentation": 5}
@@ -145,7 +145,7 @@ def score_one(folder: Path, test_results: list[dict], mut_results: list[dict], f
     if not tuning_ok:
         notes.append("tuning guide missing or invalid")
 
-    # Operational Validation Score from a real lab run
+    # Operational Score from a real lab run
     front = evidence_front(folder)
     ops = operational_score(front) if front else None
     if not front:
@@ -275,8 +275,8 @@ def main() -> int:
     eng_avg = sum(r["total"] for r in rows) / len(rows)
     validated = [r for r in rows if r["operational"]]
     ops_avg = sum(r["operational_total"] for r in validated) / len(validated) if validated else None
-    print(f"\nEngineering Quality Score: {eng_avg:.0f}/100 average")
-    print("Operational Validation Score: " + (f"{ops_avg:.0f}/100 average over {len(validated)} validated detection(s)"
+    print(f"\nEngineering Score: {eng_avg:.0f}/100 average")
+    print("Operational Score: " + (f"{ops_avg:.0f}/100 average over {len(validated)} Validated detection(s) (lab evidence)"
                                              if validated else "pending - no lab run evidence yet"))
 
     cols = list(WEIGHTS)
@@ -290,13 +290,13 @@ def main() -> int:
         "Model and weights: [QUALITY_MODEL.md](../../docs/QUALITY_MODEL.md).",
         "",
         "| | |", "|---|---|",
-        f"| **Engineering Quality Score** | **{eng_avg:.0f}/100** average across {len(det_rows)} detections"
-        + (f" and {len(corr_rows)} correlations" if corr_rows else "") + " |",
-        "| **Operational Validation Score** | "
-        + (f"**{ops_avg:.0f}/100** average across {len(validated)} lab-validated detections |" if validated
+        f"| **Engineering Score** | **{eng_avg:.0f}/100** average across {len(det_rows) + len(corr_rows)} detections"
+        + (f" ({len(det_rows)} single-event rules, {len(corr_rows)} correlations)" if corr_rows else "") + " |",
+        "| **Operational Score** | "
+        + (f"**{ops_avg:.0f}/100** average across {len(validated)} Validated detections (lab evidence) |" if validated
            else "**pending** - no lab run evidence yet |"),
         "",
-        "## Engineering Quality Score",
+        "## Engineering Score",
         "",
         "| Detection | Score | " + " | ".join(f"{short[c]} /{WEIGHTS[c]}" for c in cols) + " | Notes |",
         "|---|---|" + "---|" * len(cols) + "---|",
@@ -321,7 +321,7 @@ def main() -> int:
             lines.append(f"| [{r['title']}](../correlations/{r['folder']}/) | **{r['total']}** | {cells} | "
                          f"{'; '.join(eng_notes) or '-'} |")
     ocols = list(OPERATIONAL_WEIGHTS)
-    lines += ["", "## Operational Validation Score", "",
+    lines += ["", "## Operational Score", "",
               "| Detection | Score | " + " | ".join(f"{c} /{OPERATIONAL_WEIGHTS[c]}" for c in ocols) + " |",
               "|---|---|" + "---|" * len(ocols)]
     for r in sorted(rows, key=lambda x: x["folder"]):
@@ -331,8 +331,8 @@ def main() -> int:
         else:
             lines.append(f"| [{r['title']}](../{where(r)}/{r['folder']}/) | pending | "
                          + " | ".join("-" for _ in ocols) + " |")
-    lines += ["", "The operational score stays **pending** until a real lab run is turned into evidence with "
-              "`python rasd.py evidence` (see [OPERATIONAL_VALIDATION.md](../../docs/OPERATIONAL_VALIDATION.md)). "
+    lines += ["", "The Operational Score stays **pending** until a real lab run is turned into evidence with "
+              "`rasd evidence` (see [OPERATIONAL_VALIDATION.md](../../docs/OPERATIONAL_VALIDATION.md)). "
               "That is intentional: RASD never claims validation that has not happened, and a detection "
               "cannot reach the Validated or Reference maturity level without it.", "",
               "<sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>", ""]

@@ -1,7 +1,7 @@
 ---
 playbook: event_log_clearing
-techniques: [T1070.001]
-detections: [T1070.001_event_log_clearing, T1070.001_security_log_cleared, T1070.001_system_log_cleared]
+techniques: [T1685.005]
+detections: [T1685.005_event_log_clearing, T1685.005_security_log_cleared, T1685.005_system_log_cleared]
 red_tests: [event_log_clearing]
 ---
 

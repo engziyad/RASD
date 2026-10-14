@@ -1,5 +1,5 @@
-# Event sequences for the password-spray correlation: 5 or more distinct accounts failing with
-# a wrong password from one client address in a 10-minute window (windows start at :00, :10 ...).
+# Event sequences for the password-spray correlation: 5 or more distinct accounts failing from
+# one client address in a 10-minute window (windows start at :00, :10 ...).
 #
 # Every event is `defaults` + its own fields, `at` seconds after the scenario's `start`.
 # `count` and `every` repeat an entry; `set` fills {n} with 1, 2, 3 ...; `Field: null` removes
@@ -104,3 +104,19 @@ scenarios:
     events:
       - {at: 0, every: 60, count: 3, set: {TargetUserName: 'lab.user{n:02d}'}}
       - {at: 240, every: 60, count: 3, set: {TargetUserName: 'lab.user1{n}'}}
+
+  - name: spray over a guessed list - unknown names and wrong passwords within one second (the shape public data showed)
+    expect: fire
+    groups: ['10.0.0.66']
+    alerts: 1
+    start: '2026-10-12T12:20:00Z'
+    events:
+      - {at: 0, every: 0.02, count: 6, EventID: 4768, Status: '0x6', PreAuthType: '-', IpAddress: '10.0.0.66', set: {TargetUserName: 'lab.guess{n:02d}'}}
+      - {at: 0.2, every: 0.02, count: 3, IpAddress: '10.0.0.66', set: {TargetUserName: 'lab.user{n:02d}'}}
+
+  - name: three unknown names and one wrong password stay below the threshold together
+    expect: silent
+    start: '2026-10-12T12:31:00Z'
+    events:
+      - {at: 0, every: 5, count: 3, EventID: 4768, Status: '0x6', PreAuthType: '-', set: {TargetUserName: 'guess{n:02d}'}}
+      - {at: 30, TargetUserName: 'lab.user01'}

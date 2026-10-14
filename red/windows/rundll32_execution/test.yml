@@ -3,8 +3,8 @@ name: "rundll32 javascript: proxy execution"
 platform: windows
 mitre:
   technique: T1218.011
-  technique_name: System Binary Proxy Execution - Rundll32
-  tactics: [defense-evasion]
+  technique_name: "System Binary Proxy Execution: Rundll32"
+  tactics: [stealth]
 objective: >
   Launch rundll32.exe with the javascript: / mshtml RunHTMLApplication trick that malware
   uses to run script through a signed Windows binary, and prove the process-creation
@@ -65,7 +65,7 @@ cleanup:
 sample_output:
   console: |
     [T1218.011] rundll32 javascript:"\..\mshtml,RunHTMLApplication ";var m='<marker>';close();
-    [cleanup] verified: no rundll32 process with purplelab_1a2b3c4d remains
+    [cleanup] verified: no rundll32 process with rasd_1a2b3c4d remains
   events:
     - detection: T1218.011_rundll32_suspicious_execution
       case: "red: rundll32_execution emulation"

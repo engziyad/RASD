@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) Indicator Removal - Clear Windows Event Logs |
-| **Tactics** | defense-evasion |
+| **ATT&CK technique** | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) Disable or Modify Tools: Clear Windows Event Logs |
+| **Tactics** | defense-impairment |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
 | **Requires** | administrator · opt-in `IncludeSecurityLogClear` |
@@ -35,8 +35,8 @@ Clear an event log with wevtutil the way intruders do and prove all three log-cl
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| wevtutil cl on a dedicated test log (writes System 104) | [`emulate_clear_test_log.ps1`](emulate_clear_test_log.ps1) | admin | [`T1070.001_event_log_clearing`](../../../detect/detections/T1070.001_event_log_clearing/)<br>[`T1070.001_system_log_cleared`](../../../detect/detections/T1070.001_system_log_cleared/) |
-| wevtutil cl Security with a backup first (writes Security 1102) | [`emulate_clear_security_log.ps1`](emulate_clear_security_log.ps1) | admin, `-IncludeSecurityLogClear` | [`T1070.001_event_log_clearing`](../../../detect/detections/T1070.001_event_log_clearing/)<br>[`T1070.001_security_log_cleared`](../../../detect/detections/T1070.001_security_log_cleared/) |
+| wevtutil cl on a dedicated test log (writes System 104) | [`emulate_clear_test_log.ps1`](emulate_clear_test_log.ps1) | admin | [`T1685.005_event_log_clearing`](../../../detect/detections/T1685.005_event_log_clearing/)<br>[`T1685.005_system_log_cleared`](../../../detect/detections/T1685.005_system_log_cleared/) |
+| wevtutil cl Security with a backup first (writes Security 1102) | [`emulate_clear_security_log.ps1`](emulate_clear_security_log.ps1) | admin, `-IncludeSecurityLogClear` | [`T1685.005_event_log_clearing`](../../../detect/detections/T1685.005_event_log_clearing/)<br>[`T1685.005_security_log_cleared`](../../../detect/detections/T1685.005_security_log_cleared/) |
 
 ## Links
 
@@ -47,7 +47,7 @@ Clear an event log with wevtutil the way intruders do and prove all three log-cl
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [event_log_clearing.md](../../../dfir/playbooks/event_log_clearing.md) |
-| Purple scenario | [T1070.001_event_log_clearing.md](../../../purple/scenarios/T1070.001_event_log_clearing.md) |
+| Purple scenario | [T1685.005_event_log_clearing.md](../../../purple/scenarios/T1685.005_event_log_clearing.md) |
 
 ## Cleanup
 
@@ -61,7 +61,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test event_log_clearing -LabConfirmed -IncludeSecurityLogClear
+.\red\Invoke-RasdEmulation.ps1 -Test event_log_clearing -LabConfirmed -IncludeSecurityLogClear
 ```
 
 ---

@@ -1,0 +1,6 @@
+index=web sourcetype=access_combined
+| where (lower('method')="get" AND match('uri_path', "(?i)/(basket|user|account|profile|wallet)s?/\\d+/?$"))
+| where isnotnull('clientip') AND 'clientip'!="" AND isnotnull('uri_path') AND 'uri_path'!=""
+| bin span=60s _time AS window_start
+| stats dc(uri_path) as value_count count as event_count values(uri_path) as distinct_values min(_time) as first_event max(_time) as last_event by window_start clientip
+| where value_count>=3

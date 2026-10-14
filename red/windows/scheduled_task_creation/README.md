@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) Scheduled Task/Job - Scheduled Task |
+| **ATT&CK technique** | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) Scheduled Task/Job: Scheduled Task |
 | **Related** | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) |
-| **Tactics** | persistence, execution, privilege-escalation |
+| **Tactics** | execution, persistence, privilege-escalation |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
 | **Requires** | standard user |
@@ -61,7 +61,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test scheduled_task_creation -LabConfirmed
+.\red\Invoke-RasdEmulation.ps1 -Test scheduled_task_creation -LabConfirmed
 ```
 
 ---

@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import rasd_web  # noqa: E402
+import rasd_web
 
 DEFAULT_ENDPOINTS = ["/rest/basket/1", "/api/Cards", "/api/Users", "/api/Addresss", "/rest/wallet/balance",
                      "/rest/user/authentication-details"]       # protected in OWASP Juice Shop 17

@@ -32,8 +32,8 @@ Base score **40**.
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- −25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
-- −20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+- -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
+- -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - Management agents (SCCM, Intune, RMM tools) that use encoded commands
@@ -41,6 +41,9 @@ Base score **40**.
 ### Never tune
 - Never filter by the Base64 content: the same encoded blob can be re-encoded trivially.
 - Never filter Office, browser or script-host parents: they are the delivery path this rule exists for.
+
+### Close or escalate
+[Closure and escalation notes](../T1059.001_powershell_encoded_command/closure.md) for this detection.
 
 ---
 

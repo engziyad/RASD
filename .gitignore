@@ -11,3 +11,13 @@ lab-export.jsonl
 dc-export.jsonl
 siem-alerts.csv
 lab-readiness.json
+linux-export.jsonl
+web-export.jsonl
+target-export.jsonl
+lab-*.zip
+lab-*.zip.sha256
+*.egg-info/
+/build/
+.mypy_cache/
+.ruff_cache/
+datasets/cache/

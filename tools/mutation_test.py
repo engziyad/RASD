@@ -14,8 +14,8 @@ Two layers
      benign look-alikes that must stay silent.
 
 Usage
-  python tools/mutation_test.py
-  python tools/mutation_test.py --filter T1059
+  rasd mutate
+  rasd mutate --filter T1059
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import DETECTIONS, load_jsonl  # noqa: E402
-from sigma_engine import SigmaError, matches  # noqa: E402
+from common import DETECTIONS, load_jsonl, selected
+from sigma_engine import SigmaError, matches
 
 ROOT = Path(__file__).resolve().parent.parent
 GREEN, RED, BOLD, RESET = "\033[32m", "\033[31m", "\033[1m", "\033[0m"
@@ -68,7 +68,7 @@ def technique_mutations(folder: Path, tps: list[dict]):
 def run(filter_: str | None = None) -> list[dict]:
     results = []
     for folder in sorted(p for p in DETECTIONS.iterdir() if p.is_dir()):
-        if filter_ and filter_.lower() not in folder.name.lower():
+        if not selected(folder.name, filter_):
             continue
         rule = yaml.safe_load((folder / "rule.yml").read_text(encoding="utf-8"))
         tps = load_tp(folder)

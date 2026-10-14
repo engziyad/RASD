@@ -1,0 +1,33 @@
+title: Object ID Enumeration - One Client Walking Single-Owner Objects
+id: 21e06334-9710-4843-a0c4-7a3ec400ca2d
+status: test
+description: |
+  One client address requesting 3 or more distinct object IDs of a single-owner object type
+  (a basket, a user record, an account, a profile, a wallet) in one 1-minute window. Each user
+  owns one such object and has no reason to read another's: walking the IDs is how broken
+  object-level authorization (IDOR / BOLA) is found and then used to scrape data. Requests
+  are counted whatever the response, so a denied walk is visible too.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+  - https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-correlation-rules-specification.md
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.initial-access
+  - attack.t1190
+correlation:
+  type: value_count
+  rules:
+    - web_object_id_request
+  group-by:
+    - c-ip
+  timespan: 1m
+  condition:
+    gte: 3
+    field: cs-uri-stem
+  generate: false
+falsepositives:
+  - Support or administration consoles that open several users' records in a minute
+  - Load tests that request many objects by ID
+level: high

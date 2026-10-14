@@ -14,8 +14,8 @@ mutations:
     base: 1
     set: {Status: "0X18"}
     should_match: true
-  - name: kerberos_unknown_user_not_counted
-    description: 0x6 (unknown principal) is reported in 4768, not as a wrong password
+  - name: kerberos_unknown_user_on_4771_not_counted
+    description: 0x6 (unknown principal) is reported in 4768, which counts it; on 4771 only 0x18 counts
     base: 1
     set: {Status: "0x6"}
     should_match: false

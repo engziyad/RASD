@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1021.006_wsmprovhost_suspicious_child
+name: Suspicious Child Process of a WinRM Session Host
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1021.006
+related_techniques:
+- attack.t1059.001
+- attack.t1218
+data_contract:
+  required_logsource:
+    product: windows
+    category: process_creation
+  required_events:
+  - Sysmon Event ID 1 (ProcessCreate) on the WinRM target - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
+  required_fields:
+  - ParentImage
+  - Image
+  - OriginalFileName
+  - CommandLine
+  optional_fields:
+  - ParentCommandLine
+  - User
+  - ProcessGuid
+  telemetry_risk:
+    missing_parentimage: critical
+    missing_commandline: high
+    missing_originalfilename: medium
+detection_logic:
+  type: single-event
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Commands that run as cmdlets inside wsmprovhost.exe start no child process
+  - Binaries outside the listed shells and proxies (custom tools copied to the target)
+  - WMI and DCOM remote execution, which run under WmiPrvSE.exe and other hosts
+coverage_depth:
+  level: medium
+  reason: Shells, encoded PowerShell and five proxy binaries under both WinRM hosts; blind to cmdlet-only sessions and custom binaries
+risk_model:
+  base_score: 50
+  increase_if:
+  - condition: user_is_privileged
+    add: 15
+  - condition: host_is_critical
+    add: 15
+  - condition: payload_in_user_writable_path
+    add: 10
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 25
+  - condition: approved_change_window
+    subtract: 20
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Identify the source host and account of the WinRM session (Security 4624 type 3 on the target just before)
+  - Read the full command line of the child and its own children
+  - Check whether this account normally administers this host over WinRM
+  escalate_if:
+  - Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe
+  - The source host or account has never used WinRM against this target
+  - The session ran discovery or credential commands (whoami /all, net group, nltest)
+response:
+  l1_action: Record the source host, account and command line, and check them against known administration of this host
+  l2_action: Rebuild the session from the target - 4624, WinRM 91 and every child of the same wsmprovhost.exe ProcessGuid
+  ir_action: Disable or reset the account used, isolate the source host if it is not an administration host, and hunt for the same account's WinRM logons elsewhere
+  evidence:
+  - Process creation of the child, with its parent and command line
+  - Network logon (4624 type 3) and WinRM shell (91) on the target
+  - Every process started by the same wsmprovhost.exe
+  containment:
+  - Disable or reset the account used for the session
+  - Isolate the source host if it is not an administration host
+  - Block WinRM (TCP 5985/5986) from that source until reviewed
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook

@@ -7,11 +7,11 @@
 | | |
 |---|---|
 | **Technique** | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) |
-| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Severity** | `high` · confidence `high` · expected noise `medium` |
 | **Rule** | [`T1110.003_password_spray_burst`](../T1110.003_password_spray_burst/) · Sigma correlation |
 
 ### What triggered
-One client address failing authentication with a wrong password for 5 or more distinct accounts in one 10-minute window: the shape of a password spray, where one or two passwords are tried against many accounts, few enough times per account to stay under the lockout threshold.
+One client address failing authentication for 5 or more distinct accounts in one 10-minute window: the shape of a password spray, where one or two passwords are tried against many accounts, few enough times per account to stay under the lockout threshold.
 
 ### L1 action
 Record the source address, the failed accounts and the window; check for a successful logon from the same source afterwards
@@ -20,6 +20,7 @@ Record the source address, the failed accounts and the window; check for a succe
 1. Identify the source address and resolve it to a host and its owner
 2. List the accounts that failed and check whether any of them then logged on successfully (4624 / 4768 from the same source)
 3. Check whether the source is a workstation, a server or a jump host, and whether a scan or password audit was scheduled
+4. Read the failure codes in the window - wrong passwords (4771 0x18, 4625 0xC000006A) mean passwords were tried; unknown names only (4768 0x6, 4625 0xC0000064) mean account enumeration or a spray over a guessed list
 
 ### Escalate if
 - Any sprayed account logged on successfully from the source after the burst
@@ -30,15 +31,22 @@ Record the source address, the failed accounts and the window; check for a succe
 Base score **60**.
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- −40 if approved change window *(ask: A change ticket covers this host and time)*
+- -40 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
 - Shared jump hosts, VDI brokers and terminal servers where several users mistype their passwords within minutes
+- VPN concentrators, NAT gateways, Citrix and ADFS servers that present many users behind one client address
 - Vulnerability scanners or monitoring tools that test credentials against many accounts
+- Stale credentials of disabled, expired or locked accounts (4768 0x12) on shared devices and scripts
+- Non-Windows Kerberos clients retrying with a wrong default realm or principal (4768 0x6)
+- {'Account enumeration (for example kerbrute userenum) - unknown names only, no password tried - also alerts': 'worth a look, but it is reconnaissance, not a spray'}
 
 ### Never tune
 - Never exclude a source address without a replacement threshold: the host you exclude is the one an attacker will spray from.
 - Never raise the threshold without re-reading the guarantee: a burst of 2T-1 accounts is the smallest that always alerts (9 for T=5).
+
+### Close or escalate
+[Closure and escalation notes](../T1110.003_password_spray_burst/closure.md) for this detection.
 
 ---
 

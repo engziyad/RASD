@@ -35,14 +35,18 @@ Base score **40**.
 - +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +15 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
-- −25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
-- −20 if approved change window *(ask: A change ticket covers this host and time)*
+- -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
 - IT automation that schedules PowerShell maintenance scripts
+- Office Click-to-Run registering Office's update and telemetry tasks from XML files under C:\ProgramData\Microsoft\ClickToRun
 
 ### Never tune
 - Never filter remote creation as SYSTEM (/S with /RU SYSTEM): it is a lateral-movement pattern.
+
+### Close or escalate
+[Closure and escalation notes](../T1053.005_schtasks_suspicious_creation/closure.md) for this detection.
 
 ---
 

@@ -9,10 +9,26 @@
 #                   column everywhere) are read from the EventData XML - see
 #                   `eventdata` below.
 # SPL assumptions : Splunk Add-on for Sysmon / Windows (TA) field extractions.
+# Linux           : Sysmon for Linux. KQL reads it through a parser function named
+#                   `SysmonForLinux` over the Syslog table; SPL reads the Splunk Add-on for
+#                   Sysmon for Linux (sourcetype sysmon:linux). Field names are the Sysmon
+#                   ones (Image, CommandLine, ParentImage), as on Windows.
+# Web             : rules use the W3C / Sigma webserver field names (c-ip, cs-method, cs-uri-stem,
+#                   sc-status ...). KQL reads the stock W3CIISLog table; SPL reads access_combined
+#                   (nginx, Apache, Node). For another access-log table, change the logsource and
+#                   the column names below.
 # --------------------------------------------------------------------------- #
 kql:
   fields:
     Provider_Name: Source      # Event table column for the event provider
+    c-ip: cIP                  # webserver: W3CIISLog columns
+    cs-method: csMethod
+    cs-uri-stem: csUriStem
+    cs-uri-query: csUriQuery
+    sc-status: scStatus
+    cs-user-agent: csUserAgent
+    cs-referer: csReferer
+    cs-username: csUserName
   eventdata:
     # For these log sources every field a rule reads, except the native columns below,
     # is extended from the EventData XML before the filter:
@@ -36,10 +52,23 @@ kql:
     windows/system: |
       Event
       | where EventLog == "System"
+    linux/process_creation: |
+      SysmonForLinux
+      | where EventID == 1
+    webserver: |
+      W3CIISLog
 
 spl:
   fields:
     EventID: EventCode
+    c-ip: clientip             # webserver: access_combined extractions
+    cs-method: method
+    cs-uri-stem: uri_path
+    cs-uri-query: uri_query
+    sc-status: status
+    cs-user-agent: useragent
+    cs-referer: referer
+    cs-username: user
   logsources:
     process_creation: |
       index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
@@ -51,6 +80,46 @@ spl:
       index=wineventlog source="XmlWinEventLog:Security"
     windows/system: |
       index=wineventlog source="XmlWinEventLog:System"
+    linux/process_creation: |
+      index=linux sourcetype="sysmon:linux" EventID=1
+    webserver: |
+      index=web sourcetype=access_combined
+
+# --------------------------------------------------------------------------- #
+# Microsoft Defender XDR advanced hunting (queries/mde). Optional: only the log sources a
+# Defender table carries get a query. The filter is the KQL backend's own, over the rule's
+# field names, which an extend rebuilds from the Defender columns; `rasd parity` proves the
+# result on every test event written the way Defender writes it.
+#   column              the column as it is
+#   {path: [F, N]}      folder F + "\" + file N, or F alone when it already ends with N
+#                       (FolderPath is documented as the folder; exports often hold the full path)
+#   {account: [D, N]}   D\N, or N when there is no domain
+#   {registry: [K, V]}  key K with Defender's hive names written as Sysmon writes them
+#                       (HKEY_LOCAL_MACHINE -> HKLM, HKEY_CURRENT_USER / HKEY_USERS -> HKU,
+#                       HKEY_CLASSES_ROOT -> HKCR), then "\" + value name V, or "\(Default)"
+#                       when V is empty (the key's default value, as Sysmon names it)
+# --------------------------------------------------------------------------- #
+mde:
+  docs: https://learn.microsoft.com/defender-xdr/advanced-hunting-schema-tables
+  logsources:
+    process_creation: |
+      DeviceProcessEvents
+    registry_set: |
+      DeviceRegistryEvents
+      | where ActionType == "RegistryValueSet"
+  extend:
+    process_creation:
+      Image: {path: [FolderPath, FileName]}
+      CommandLine: ProcessCommandLine
+      OriginalFileName: ProcessVersionInfoOriginalFileName
+      ParentImage: {path: [InitiatingProcessFolderPath, InitiatingProcessFileName]}
+      ParentCommandLine: InitiatingProcessCommandLine
+      User: {account: [AccountDomain, AccountName]}
+    registry_set:
+      TargetObject: {registry: [RegistryKey, RegistryValueName]}
+      Details: RegistryValueData
+      Image: {path: [InitiatingProcessFolderPath, InitiatingProcessFileName]}
+      User: {account: [InitiatingProcessAccountDomain, InitiatingProcessAccountName]}
 
 # --------------------------------------------------------------------------- #
 # Correlation rules (detect/correlations): values are normalised before they are grouped or

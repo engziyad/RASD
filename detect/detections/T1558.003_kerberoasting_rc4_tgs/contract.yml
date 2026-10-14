@@ -30,8 +30,9 @@ detection_logic:
   severity: medium
   expected_noise: medium
   blind_spots:
-  - AES ticket requests (Rubeus /aes) - the rule sees only RC4; queries/hunts/kerberoasting_volume counts every encryption type
+  - AES ticket requests (Rubeus /aes) - the rule sees only RC4; queries/hunts/kerberoasting_volume_hunt counts every encryption type
   - Low-and-slow roasting of a single account
+  - Roasting run on a domain controller - tickets requested from ::1 are filtered with the DC's own service traffic
   - Domains where RC4 is still common
 coverage_depth:
   level: medium

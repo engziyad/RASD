@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1190_api_auth_probing
+name: API Probing - One Client Rejected on Many Distinct Paths
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1190
+related_techniques:
+- attack.t1595.002
+data_contract:
+  required_logsource:
+    category: webserver
+  required_events:
+  - Web server or reverse-proxy access log with client address, method, path and status - the generated KQL reads W3CIISLog and the SPL reads sourcetype access_combined; other tables need their columns in tools/mappings.yml
+  required_fields:
+  - c-ip
+  - cs-method
+  - cs-uri-stem
+  - sc-status
+  optional_fields:
+  - cs-user-agent
+  - cs-uri-query
+  - cs-username
+  telemetry_risk:
+    proxy_hides_client_address: critical
+    access_log_not_forwarded: critical
+    path_logged_with_query_string: medium
+detection_logic:
+  type: correlation
+  confidence: medium
+  severity: medium
+  expected_noise: medium
+  blind_spots:
+  - Probes spread over many client addresses (cloud egress pools, botnets), each below 5 paths
+  - Slow probes that stay under 5 rejected paths per client in every 5-minute window
+  - A reverse proxy that logs its own address instead of the client's (use X-Forwarded-For)
+  - A burst of 5 to 8 paths can be split by a window boundary; 9 or more within 5 minutes always alert
+coverage_depth:
+  level: partial
+  reason: Rejected requests on many paths from one client; distributed and slow probing need longer-window hunting
+risk_model:
+  base_score: 45
+  increase_if:
+  - condition: host_is_critical
+    add: 15
+  - condition: outside_business_hours
+    add: 10
+  decrease_if:
+  - condition: approved_change_window
+    subtract: 30
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Resolve the client address - internal host, VPN pool, cloud provider or a known scanner
+  - List the paths and status codes for the window, and the user agent
+  - Check whether any request from the same client then succeeded on a protected path
+  escalate_if:
+  - A protected path answered 200 to the same client after the rejections
+  - The client is not a known scanner and the paths cover administration or user data
+  - The same client also triggered the object-ID enumeration correlation
+response:
+  l1_action: Record the client address, user agent, paths and window; check for a later success from the same client
+  l2_action: Review every request from the client for the window - successes, error pages, sensitive paths - and look for the same pattern from other clients
+  ir_action: Block the client at the WAF or proxy, review and fix any endpoint that answered 200 without valid credentials, and rotate tokens the client may have obtained
+  evidence:
+  - Access-log lines for the client and window
+  - Any successful responses to the same client after the burst
+  - WAF or proxy records for the client
+  containment:
+  - Block or rate-limit the client address at the WAF or proxy
+  - Disable any endpoint found serving data without authentication until it is fixed
+  - Revoke sessions or tokens issued to the client
+governance:
+  evidence_type:
+  - correlation rule
+  - base rule and tests
+  - correlation scenarios and mutants
+  - generated SIEM queries
+  - ATT&CK mapping
+  - response playbook

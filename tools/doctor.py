@@ -20,15 +20,15 @@ Checks per detection
                               (ECS, CIM, 4688 names ...) -> exact mapping to add
   * truncation                CommandLine values piling up at a fixed maximum length
 
-Telemetry profiles (mappings/) translate an export's own field names - Elastic ECS,
+Telemetry profiles (profiles/) translate an export's own field names - Elastic ECS,
 Splunk CIM, Sentinel ASIM, Defender advanced hunting - into the rules' names first:
 --profile <name>, or --profile auto to use the best fit. Without --profile the export is
 read as-is, and doctor says when a profile would fit it better.
 
 Usage
-  python tools/doctor.py my-export.jsonl
-  python tools/doctor.py samples/doctor/ecs-export.jsonl --profile auto
-  python tools/doctor.py samples/doctor/ecs-export.jsonl --profile elastic-ecs --json doctor.json
+  rasd doctor my-export.jsonl
+  rasd doctor samples/doctor/ecs-export.jsonl --profile auto
+  rasd doctor samples/doctor/ecs-export.jsonl --profile elastic-ecs --json doctor.json
 """
 from __future__ import annotations
 
@@ -39,10 +39,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl  # noqa: E402
-from convert import logsource_key  # noqa: E402
-import profiles  # noqa: E402
-from replay import route  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl
+from convert import logsource_key
+import profiles
+from replay import route
 
 ALIASES = {
     "CommandLine": ["process.command_line", "command_line", "cmdline", "CommandLine_", "ProcessCommandLine", "process_command_line"],
@@ -124,11 +124,10 @@ def diagnose(events: list[dict], dets, profile: str | None = None) -> list[dict]
         covers = set((profiles.load(profile) or {}).get("covers") or [])
     flat = [flatten(e) for e in events]
     by_source = defaultdict(list)
-    for raw, f in zip(events, flat):
+    for raw, f in zip(events, flat, strict=True):
         src = route(raw) or route({k.split(".")[-1]: v for k, v in f.items()})
         if src:
             by_source[src].append(f)
-    all_keys = Counter(k for f in flat for k in f)
     results = []
     for d in dets:
         src = logsource_key(d.rule)
@@ -138,9 +137,10 @@ def diagnose(events: list[dict], dets, profile: str | None = None) -> list[dict]
         issues, fixes, coverage = [], [], {}
         verdict = "READY"
         if not evs:
-            why = (f"the {profile} profile has no record for log source '{src}' - collect the native "
-                   "Windows / Sysmon events for this rule" if covers is not None and src not in covers
-                   else f"no events for log source '{src}' in the sample")
+            native = {"linux/process_creation": "Sysmon for Linux events", "webserver": "web server access logs"}.get(
+                src, "native Windows / Sysmon events")
+            why = (f"the {profile} profile has no record for log source '{src}' - collect the {native} for this rule"
+                   if covers is not None and src not in covers else f"no events for log source '{src}' in the sample")
             results.append({"detection": d.id, "logsource": src, "events": 0, "verdict": "BLIND",
                             "issues": [why], "fixes": [], "coverage": {}})
             continue
@@ -149,7 +149,8 @@ def diagnose(events: list[dict], dets, profile: str | None = None) -> list[dict]
             seen_ids = {str(f.get("EventID", f.get("event.code", ""))) for f in evs}
             missing_ids = wanted_ids - seen_ids
             if missing_ids == wanted_ids:
-                verdict = "BLIND"; issues.append(f"EventID {', '.join(sorted(missing_ids))} never appears in the sample")
+                verdict = "BLIND"
+                issues.append(f"EventID {', '.join(sorted(missing_ids))} never appears in the sample")
         scopes = field_event_ids(d.rule)
         for field in required:
             ids = scopes.get(field) or wanted_ids
@@ -166,15 +167,22 @@ def diagnose(events: list[dict], dets, profile: str | None = None) -> list[dict]
                     alias = None
             if pct == 0:
                 issues.append(f"field '{field}' missing, but '{alias}' exists" if alias else f"required field '{field}' missing")
-                verdict = "BLIND"
+                risk = str((dc.get("telemetry_risk") or {}).get(f"missing_{field.lower()}", "critical")).lower()
+                if risk != "critical" and not alias:
+                    # the contract says the rule keeps working without it, on its other branches
+                    issues[-1] += f" - the contract rates this {risk}: the branches that read it are blind"
+                    if verdict != "BLIND":
+                        verdict = "DEGRADED"
+                else:
+                    verdict = "BLIND"
             elif pct < 95:
                 if verdict != "BLIND":
                     verdict = "DEGRADED"
                 issues.append(f"'{field}' empty in {100 - pct:.0f}% of events"
                               + (f" (those events carry it as '{alias}')" if alias else ""))
             if alias:
-                fixes.append(f"add '{field}: [{alias}]' for {src} to a profile in mappings/ and pass --profile")
-        cmds = [f.get("CommandLine") for f in evs if isinstance(f.get("CommandLine"), str)]
+                fixes.append(f"add '{field}: [{alias}]' for {src} to a profile in profiles/ and pass --profile")
+        cmds = [c for c in (f.get("CommandLine") for f in evs) if isinstance(c, str)]
         if cmds:
             lengths = Counter(len(c) for c in cmds)
             for L in TRUNCATION_LENGTHS:
@@ -192,7 +200,7 @@ def main() -> int:
     ap.add_argument("logs", nargs="+")
     ap.add_argument("--filter")
     ap.add_argument("--json")
-    ap.add_argument("--profile", help="telemetry profile from mappings/ (or 'auto') the export is written in")
+    ap.add_argument("--profile", help="telemetry profile from profiles/ (or 'auto') the export is written in")
     args = ap.parse_args()
     raw = [e for p in args.logs for e in load_jsonl(Path(p))]
     events, used = profiles.apply(raw, args.profile)
@@ -215,7 +223,7 @@ def main() -> int:
         if best != profiles.NATIVE and scores[best] > scores[profiles.NATIVE]:
             print(f"\n{YELLOW}This export looks like {best}: {scores[best]} of {min(len(raw), 500)} sampled events reach a "
                   f"RASD log source with it, {scores[profiles.NATIVE]} without.{RESET}")
-            print(f"  python rasd.py doctor {' '.join(args.logs)} --profile {best}")
+            print(f"  rasd doctor {' '.join(args.logs)} --profile {best}")
     if args.json:
         Path(args.json).write_text(json.dumps(res, indent=2) + "\n", encoding="utf-8")
     return 0

@@ -6,7 +6,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1547.001] HKCU Run value pointing to %LOCALAPPDATA%\Temp (file does not exist)
-[cleanup] verified: Run value purplelab_1a2b3c4d removed
+[cleanup] verified: Run value rasd_1a2b3c4d removed
 ```
 
 ## Expected event → T1547.001_registry_run_key_persistence
@@ -18,8 +18,8 @@ This is true positive *red: run_key_persistence emulation* in [`tests/true_posit
   "EventID": 13,
   "EventType": "SetValue",
   "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-  "TargetObject": "HKU\\S-1-5-21-1111-2222-3333-1104\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\purplelab_1a2b3c4d",
-  "Details": "C:\\Users\\labuser\\AppData\\Local\\Temp\\purplelab_1a2b3c4d.exe",
+  "TargetObject": "HKU\\S-1-5-21-1111-2222-3333-1104\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\rasd_1a2b3c4d",
+  "Details": "C:\\Users\\labuser\\AppData\\Local\\Temp\\rasd_1a2b3c4d.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"
 }

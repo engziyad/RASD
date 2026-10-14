@@ -4,8 +4,12 @@ Some attacks are invisible one event at a time. One failed logon is a typo; one 
 
 | Correlation | Condition | Base rule |
 |---|---|---|
-| [T1110.003 Password spray](../detect/correlations/T1110.003_password_spray_burst/) | 5+ distinct `TargetUserName` per `IpAddress` in a 10-minute window | wrong-password failures: 4771 `0x18`, 4625 `0xC000006A` |
-| [T1558.003 Kerberoasting volume](../detect/correlations/T1558.003_kerberoasting_volume/) | 5+ distinct `ServiceName` per `IpAddress` in a 10-minute window | successful service tickets for user-based accounts, any encryption |
+| [Password Spray - One Source Failing Authentication for Many Accounts](../detect/correlations/T1110.003_password_spray_burst/) | 5+ distinct `TargetUserName` per `IpAddress` in a 10-minute window | failed authentication: 4771 `0x18` (wrong password), 4768 `0x6` / `0x12` (unknown or disabled account), 4625 `0xC000006A` / `0xC0000064` (wrong password, no such user); machine accounts and local sources excluded |
+| [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../detect/correlations/T1558.003_kerberoasting_volume/) | 5+ distinct `ServiceName` per `IpAddress` in a 10-minute window | successful service tickets for user-based accounts, any encryption |
+| [API Probing - One Client Rejected on Many Distinct Paths](../detect/correlations/T1190_api_auth_probing/) | 5+ distinct `cs-uri-stem` per `c-ip` in a 5-minute window | web requests answered 401 or 403, CORS preflights excluded |
+| [Object ID Enumeration - One Client Walking Single-Owner Objects](../detect/correlations/T1190_object_id_enumeration/) | 3+ distinct `cs-uri-stem` per `c-ip` in a 1-minute window | `GET` of a single-owner object (basket, user, account, profile, wallet) by numeric ID |
+
+The web correlations read access logs with the W3C / Sigma webserver field names (`c-ip`, `cs-uri-stem`, `sc-status`); [`tools/mappings.yml`](../tools/mappings.yml) renames them to plain column names for each SIEM (`clientip` / `cIP`), so the generated queries stay valid.
 
 ## Folder
 
@@ -15,7 +19,7 @@ detect/correlations/<Technique>_<name>/
 ├── base.yml          the base rule it counts - a normal Sigma rule with a `name:`, never an alert on its own
 ├── contract.yml      as for every detection, with detection_logic.type: correlation
 ├── tuning.yml        every filter of the base rule as an applied tuning; proposals; never-tune rules
-├── triage.md · response.md · README.md
+├── triage.md · response.md · closure.md · README.md
 └── tests/
     ├── true_positive.jsonl · true_negative.jsonl   single events for the base rule
     ├── mutations.yml                               technique mutations of the base rule
@@ -41,7 +45,7 @@ Identical in the offline engine, the generated SPL and the generated KQL - and p
 - **Missing or empty values are ignored**: an event without a group-by value, or without the counted value, is not counted.
 - **Values are compared exactly**, as `dc()` and `make_set()` do, after the normalisations in [`tools/mappings.yml`](../tools/mappings.yml) (`correlation.normalize`). Kerberos events log an IPv4 client as `::ffff:10.0.0.5` and logon events as `10.0.0.5`; without normalisation one spraying host would split into two groups, and each half could stay under the threshold.
 - **Exact distinct counts in KQL**: `array_length(make_set(F))`, not `dcount()`, which is a HyperLogLog estimate and could miss a threshold.
-- **Field names**: offline, the engine and the parity models read field names case-insensitively, while SIEM columns are case-sensitive. The linter checks every rule field against the log source's vocabulary, and exports from other pipelines go through a [telemetry profile](../mappings/README.md) that gives the fields their rule names.
+- **Field names**: offline, the engine and the parity models read field names case-insensitively, while SIEM columns are case-sensitive. The linter checks every rule field against the log source's vocabulary, and exports from other pipelines go through a [telemetry profile](../profiles/README.md) that gives the fields their rule names.
 
 ## Scenarios
 
@@ -104,4 +108,4 @@ The arithmetic is the proof; `rasd correlate` also checks both with the engine -
 | `rasd nearmiss` | Threshold headroom: the highest count a quiet window reached; windows one below the threshold, with the single-event rules that still caught them; and bursts a window boundary split |
 | `rasd doctor` | Readiness through the base rule, with the fields the correlation groups and counts |
 | `rasd benchmark` | Events per second through every correlation |
-| `rasd chain` · `score` · `coverage` | Maturity, Engineering score, the 20-point map and the ATT&CK layer count correlations like rules |
+| `rasd chain` · `score` · `coverage` | Maturity, Engineering Score, the 20-point map and the ATT&CK layer count correlations like rules |

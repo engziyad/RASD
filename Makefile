@@ -1,4 +1,4 @@
-.PHONY: all ci build lint unit test mutate fuzz prove parity correlate nearmiss tune red chain links score replay new clean
+.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity correlate nearmiss tune red chain links score replay new clean
 
 PY ?= python3
 RASD = $(PY) rasd.py
@@ -16,6 +16,10 @@ lint:            ## Rules, contracts, tuning guides, evidence files
 
 unit:            ## Unit tests for the engine and every tool
 	$(PY) -m unittest discover -s tests
+
+codecheck:       ## Code checks of the tools: ruff (lint and security rules) and mypy
+	ruff check .
+	mypy
 
 test:            ## Detection true-positive / true-negative tests
 	$(RASD) test
@@ -50,7 +54,7 @@ chain:           ## 20-point attack-to-defense map, maturity, matrices, metrics
 links:           ## Every relative Markdown link resolves
 	$(RASD) links
 
-score:           ## Engineering and Operational scores
+score:           ## Engineering and Operational Scores
 	$(RASD) score
 
 replay:          ## Replay the lab-day corpus

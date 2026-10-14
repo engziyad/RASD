@@ -1,16 +1,13 @@
 # Detection links · WinRM remote command on a lab host
 
-
-## Coverage gap
-
-**Why there is no rule yet:** WinRM is everyday administration in most estates, so a single-event rule on 4624 or WinRM 91 would page on every admin action. Useful detection needs a baseline of which sources normally use WinRM.
-
-**Planned:** A rule on suspicious children of wsmprovhost.exe (cmd, encoded PowerShell, rundll32) and a hunt for WinRM logons from hosts that never used WinRM before.
+| Step | Detection | Rule | KQL | SPL | Evidence bound by |
+|---|---|---|---|---|---|
+| Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker) | [`T1021.006_wsmprovhost_suspicious_child`](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [rule.yml](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/rule.yml) | [KQL](../../../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) | [SPL](../../../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

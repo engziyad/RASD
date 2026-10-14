@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import rasd_web  # noqa: E402
+import rasd_web
 
 
 def multipart(field: str, filename: str, content_type: str, data: bytes) -> tuple[bytes, str]:

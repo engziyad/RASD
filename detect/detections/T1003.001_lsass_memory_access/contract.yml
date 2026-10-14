@@ -24,7 +24,7 @@ data_contract:
   telemetry_risk:
     processaccess_not_collected: critical
     lsass_excluded_in_sysmon_config: critical
-    missing_calltrace: low
+    missing_calltrace: low          # without it PowerShell process listing is not filtered: more alerts, never fewer
 detection_logic:
   type: single-event
   confidence: high
@@ -33,6 +33,7 @@ detection_logic:
   blind_spots:
   - Handle duplication from another process never opens LSASS directly
   - Access masks outside the listed values
+  - Code injected into a named Windows component (csrss, wininit, WmiPrvSE) - its CallTrace shows a frame with no module (UNKNOWN)
   - Credential Guard / RunAsPPL environments where the real control is prevention
   - ProcessAccess telemetry disabled or filtered for volume
 coverage_depth:

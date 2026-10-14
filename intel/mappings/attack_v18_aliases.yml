@@ -1,0 +1,49 @@
+# RASD maps its detections to ATT&CK v19.2. ATT&CK v19 split Defense Evasion into Stealth (TA0005)
+# and Defense Impairment (TA0112), and moved Clear Windows Event Logs from T1070.001 to T1685.005.
+# The ATT&CK v18 identifiers below stay resolvable, so SIEM content, reports and searches built on
+# them keep finding the same detections:
+#   rasd test --filter T1070.001        runs the T1685.005 detections (any tool's --filter and find)
+#   queries/kql, queries/mde            each generated query names its legacy v18 technique in its header
+#   queries/splunk_app                  each saved search's description names it too
+#   datasets/holdout_labels.json        labels written before v19 keep the v18 detection IDs; the loader maps them
+# tools/chain.py fails when an alias points at a detection that does not exist, when a legacy ID is
+# still a rule's own tag or a folder name, or when a rule still carries a v18-only tactic tag.
+# Checked against ATT&CK v20 (13 October 2026): no ID or tactic of these techniques changed.
+attack_version: "19.2"
+legacy_attack_version: "18"
+techniques:
+  - new_technique: T1685.005
+    new_name: "Disable or Modify Tools: Clear Windows Event Logs"
+    new_tactic: defense-impairment          # TA0112
+    old_technique: T1070.001
+    old_name: "Indicator Removal: Clear Windows Event Logs"
+    old_tactic: defense-evasion             # TA0005 in v18
+    source: https://attack.mitre.org/techniques/T1685/005/
+tactics:
+  - old_tactic: defense-evasion
+    new_tactics: [stealth, defense-impairment]
+    note: Stealth is TA0005 renamed; techniques that disable, modify or clear defensive tools and logs moved to Defense Impairment (TA0112)
+# Other v18 IDs that ATT&CK v19 revoked (release notes, April 2026). RASD maps none of them; the unit
+# tests fail when a page or a rule names one, so a retired ID is never a second name for a live one.
+revoked:
+  - {old: T1562, new: T1685}            # Impair Defenses
+  - {old: T1562.001, new: T1685}        # Disable or Modify Tools
+  - {old: T1562.002, new: T1685.001}    # Disable Windows Event Logging
+  - {old: T1562.003, new: T1690}        # Impair Command History Logging
+  - {old: T1562.004, new: T1686}        # Disable or Modify System Firewall
+  - {old: T1562.006, new: T1685}        # Indicator Blocking
+  - {old: T1562.007, new: T1686.001}    # Disable or Modify Cloud Firewall
+  - {old: T1562.008, new: T1685.002}    # Disable or Modify Cloud Logs
+  - {old: T1562.009, new: T1688}        # Safe Mode Boot
+  - {old: T1562.010, new: T1689}        # Downgrade Attack
+  - {old: T1562.011, new: T1685.003}    # Spoof Security Alerting
+  - {old: T1562.012, new: T1685.004}    # Disable or Modify Linux Audit System
+  - {old: T1562.013, new: T1686.002}    # Disable or Modify Network Device Firewall
+  - {old: T1070.002, new: T1685.006}    # Clear Linux or Mac System Logs
+detections:
+  - id: T1685.005_event_log_clearing
+    legacy_id: T1070.001_event_log_clearing
+  - id: T1685.005_security_log_cleared
+    legacy_id: T1070.001_security_log_cleared
+  - id: T1685.005_system_log_cleared
+    legacy_id: T1070.001_system_log_cleared

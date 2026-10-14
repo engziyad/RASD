@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: full_path_and_double_space
+  description: crontab called by full path, with two spaces before the dash
+  base: 1
+  set:
+    CommandLine: /usr/bin/crontab  -
+  should_match: true
+- name: user_switch_before_file
+  description: -u <user> followed by a file from the user's home
+  base: 3
+  set:
+    CommandLine: crontab -u deploy /home/deploy/.jobs
+  should_match: true
+- name: trailing_space_after_dash
+  description: Trailing whitespace after the dash is still standard input
+  base: 1
+  set:
+    CommandLine: 'crontab - '
+  should_match: true
+- name: list_with_user_is_benign
+  description: Listing another user's table changes nothing
+  base: 2
+  set:
+    CommandLine: crontab -u www-data -l
+  should_match: false
+- name: interactive_edit_is_benign
+  description: crontab -e opens an editor for a person at the keyboard
+  base: 1
+  set:
+    CommandLine: crontab -e
+  should_match: false

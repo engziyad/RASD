@@ -2,12 +2,12 @@
 
 | Step | Detection | Rule | KQL | SPL | Evidence bound by |
 |---|---|---|---|---|---|
-| rundll32 javascript:"\\..\\mshtml,RunHTMLApplication ";var m='&lt;marker&gt;';close(); | [`T1218.011_rundll32_suspicious_execution`](../../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rule.yml](../../../detect/detections/T1218.011_rundll32_suspicious_execution/rule.yml) | [KQL](../../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) | [SPL](../../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) | token `{marker}` (e.g. `purplelab_1a2b3c4d`) |
+| rundll32 javascript:"\\..\\mshtml,RunHTMLApplication ";var m='&lt;marker&gt;';close(); | [`T1218.011_rundll32_suspicious_execution`](../../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rule.yml](../../../detect/detections/T1218.011_rundll32_suspicious_execution/rule.yml) | [KQL](../../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) | [SPL](../../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

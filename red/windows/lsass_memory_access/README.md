@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) OS Credential Dumping - LSASS Memory |
+| **ATT&CK technique** | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) OS Credential Dumping: LSASS Memory |
 | **Related** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) |
 | **Tactics** | credential-access |
 | **Platform** | windows · runner: powershell |
@@ -59,7 +59,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test lsass_memory_access -LabConfirmed -IncludeCredentialAccess
+.\red\Invoke-RasdEmulation.ps1 -Test lsass_memory_access -LabConfirmed -IncludeCredentialAccess
 ```
 
 ---

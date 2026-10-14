@@ -1,11 +1,12 @@
 """Unit tests for the Sigma engine and converter themselves (python -m unittest)."""
 import sys
 import unittest
+from typing import ClassVar
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-from sigma_engine import SigmaError, matches  # noqa: E402
-from convert import convert  # noqa: E402
+from sigma_engine import SigmaError, matches
+from convert import convert
 
 
 def rule(detection, category="process_creation"):
@@ -63,7 +64,7 @@ class EngineModifiers(unittest.TestCase):
 
 
 class EngineConditions(unittest.TestCase):
-    det = {"a": {"X": "1"}, "b": {"Y": "1"}, "f_1": {"Z": "1"}, "f_2": {"W": "1"}}
+    det: ClassVar[dict] = {"a": {"X": "1"}, "b": {"Y": "1"}, "f_1": {"Z": "1"}, "f_2": {"W": "1"}}
 
     def eval(self, cond, ev):
         return matches(rule({**self.det, "condition": cond}), ev)

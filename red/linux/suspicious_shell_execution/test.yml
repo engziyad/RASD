@@ -3,13 +3,14 @@ name: Encoded shell command and execution from /tmp
 platform: linux
 mitre:
   technique: T1059.004
-  technique_name: Command and Scripting Interpreter - Unix Shell
+  technique_name: "Command and Scripting Interpreter: Unix Shell"
   related: [T1027]
-  tactics: [execution, defense-evasion]
+  tactics: [execution]
 objective: >
   Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded command
   piped into sh, and a script dropped in /tmp, made executable and run from there - with
-  payloads that only print the run marker, and record what auditd or Sysmon for Linux sees.
+  payloads that only print the run marker, and prove the Linux shell-execution rule fires on
+  both.
 prerequisites:
   - Linux lab host with bash and coreutils
   - "auditd with execve logging (-a always,exit -F arch=b64 -S execve -k exec) and/or Sysmon for Linux"
@@ -19,18 +20,21 @@ safety:
   - The /tmp script is named after the marker and removed by cleanup.sh
 execution:
   - "python3 red/run_red.py --test suspicious_shell_execution --lab-confirmed"
-  - "echo <base64> | base64 -d | sh"
+  - "python3 red/linux/export_sysmon_linux.py --since <start> --out lab-export.jsonl, then rasd evidence"
+  - "sh -c \"echo <base64> | base64 -d | sh # <marker>\""
   - "printf ... > /tmp/<marker>.sh; chmod +x /tmp/<marker>.sh; /tmp/<marker>.sh"
 steps:
   - id: shell_patterns
     name: Base64 command piped into sh, then a script executed from /tmp
     script: emulate_shell.sh
-    detections: []
+    detections: [T1059.004_linux_suspicious_shell_execution]
+    bind:
+      T1059.004_linux_suspicious_shell_execution: '{marker}'
 scripts:
   cleanup: cleanup.sh
 telemetry:
   - source: auditd
-    event: "EXECVE · base64 -d, sh"
+    event: "EXECVE · sh -c, base64 -d, sh"
     description: The decode-and-pipe chain, one EXECVE record per process
     fields:
       a0: 'base64'
@@ -44,8 +48,9 @@ telemetry:
     event: "1 · ProcessCreate / 11 · FileCreate"
     description: Process creation with the full command line; file creation in /tmp
     fields:
-      CommandLine: 'base64 -d'
+      CommandLine: 'sh -c echo <blob> | base64 -d | sh # <marker>  then  /bin/sh /tmp/<marker>.sh'
       TargetFilename: '/tmp/<marker>.sh'
+    used_by: [T1059.004_linux_suspicious_shell_execution]
 logging:
   - "auditd execve rules for all users (64- and 32-bit)"
 dfir_artifacts:
@@ -57,11 +62,7 @@ dfir_artifacts:
     location: /tmp, /var/tmp, /dev/shm
     collect: "find /tmp /var/tmp /dev/shm -type f -newer /etc/hostname -perm -u+x"
     purpose: Payloads executed from world-writable directories
-gap:
-  reason: RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
-  planned: >
-    Rules for base64 -d piped into a shell and for execution from /tmp, /var/tmp or /dev/shm,
-    on a mapped auditd or Sysmon for Linux source.
+
 cleanup:
   actions:
     - Removes /tmp/<marker>.sh
@@ -69,11 +70,13 @@ cleanup:
 sample_output:
   console: |
     [T1059.004] Base64 command piped into sh, then a script executed from /tmp
-    purplelab_1a2b3c4d
-    purplelab_1a2b3c4d from /tmp
-    [cleanup] verified: /tmp/purplelab_1a2b3c4d.sh removed
-  illustrative_events:
-    - title: auditd EXECVE record for the decode step
-      event:
-        line: 'type=EXECVE msg=audit(1791784801.123:4512): argc=2 a0="base64" a1="-d"'
+    rasd_1a2b3c4d
+    rasd_1a2b3c4d from /tmp
+    [cleanup] verified: /tmp/rasd_1a2b3c4d.sh removed
+  events:
+    - detection: T1059.004_linux_suspicious_shell_execution
+      case: "red: suspicious_shell_execution emulation (Base64 piped into sh)"
+    - detection: T1059.004_linux_suspicious_shell_execution
+      case: "red: suspicious_shell_execution emulation (script run from /tmp)"
 dfir_playbook: dfir/playbooks/linux_persistence.md
+purple_scenario: purple/scenarios/T1059.004_unix_shell.md

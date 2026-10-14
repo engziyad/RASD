@@ -15,7 +15,9 @@
       "parameters": [
         "Target"
       ],
-      "correlations": [],
+      "correlations": [
+        "T1190_api_auth_probing"
+      ],
       "bind": {}
     }
   ],

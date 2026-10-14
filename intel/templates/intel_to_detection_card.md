@@ -15,4 +15,4 @@ A one-page hand-off from CTI to detection engineering.
 | **Owner and due date** | |
 
 ## Acceptance
-The card is done when the detection (or hunt) is merged with tests, its red test passes in the lab, and `python rasd.py chain` shows the technique's row updated.
+The card is done when the detection (or hunt) is merged with tests, its red test passes in the lab, and `rasd chain` shows the technique's row updated.

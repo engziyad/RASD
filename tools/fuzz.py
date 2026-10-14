@@ -22,10 +22,10 @@ Regression gate
   `--update-baseline` after deliberately accepting or fixing bypasses.
 
 Usage
-  python tools/fuzz.py                 # report
-  python tools/fuzz.py --check         # CI gate
-  python tools/fuzz.py --filter T1059 --verbose
-  python tools/fuzz.py --json out.json
+  rasd fuzz                 # report
+  rasd fuzz --check         # CI gate
+  rasd fuzz --filter T1059 --verbose
+  rasd fuzz --json out.json
 """
 from __future__ import annotations
 
@@ -37,8 +37,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, EVASION_BASELINE, GREEN, RED, RESET, YELLOW, load_detections  # noqa: E402
-from sigma_engine import SigmaError, matches  # noqa: E402
+from common import BOLD, DIM, EVASION_BASELINE, GREEN, RED, RESET, YELLOW, load_detections
+from sigma_engine import SigmaError, matches
 
 BASELINE = EVASION_BASELINE
 CASE_FIELDS = ("Image", "CommandLine", "ParentImage", "TargetObject", "Details",
@@ -124,7 +124,7 @@ def t_powershell(ev):
     lead, rest = _split_lead(cmd)
     for name, prefix in (("ps_slash_prefix", "/"), ("ps_en_dash_prefix", "\u2013"), ("ps_em_dash_prefix", "\u2014"),
                          ("ps_horizontal_bar_prefix", "\u2015")):
-        new = re.sub(r"(\s)[-/\u2013\u2014\u2015](?=[A-Za-z])", lambda m: m.group(1) + prefix, rest)
+        new = re.sub(r"(\s)[-/\u2013\u2014\u2015](?=[A-Za-z])", lambda m, p=prefix: m.group(1) + p, rest)
         if new != rest:
             yield name, "semantic", _with(ev, CommandLine=lead + new)
     m = re.search(r"(\s)([-/\u2013\u2014\u2015])(e|ec|en[a-z]*)(\s+)(\S+)", rest, re.I)
@@ -147,7 +147,7 @@ def t_rename(ev):
     if not _get(ev, "OriginalFileName") or not _get(ev, "Image"):
         return
     new_image = "C:\\Users\\Public\\wuauhelper.exe"
-    lead, rest = _split_lead(_get(ev, "CommandLine"))
+    _lead, rest = _split_lead(_get(ev, "CommandLine"))
     yield "binary_renamed", "semantic", _with(ev, Image=new_image, CommandLine=f'"{new_image}"{rest}')
 
 
@@ -165,9 +165,11 @@ def t_schtasks(ev):
     pairs, i = [], 0
     while i < len(tokens):
         if tokens[i].startswith("/") and i + 1 < len(tokens) and not tokens[i + 1].startswith("/"):
-            pairs.append(tokens[i:i + 2]); i += 2
+            pairs.append(tokens[i:i + 2])
+            i += 2
         else:
-            pairs.append(tokens[i:i + 1]); i += 1
+            pairs.append(tokens[i:i + 1])
+            i += 1
     head = [p for p in pairs if p[0].lower() == "/create"]
     tail = [p for p in pairs if p[0].lower() != "/create"]
     if head and len(tail) > 1:
@@ -299,8 +301,10 @@ def main() -> int:
         known = set(baseline.get(det, []))
         ids = {b["id"] for b in r["bypasses"]}
         new, fixed = ids - known, known - ids
-        new_total += len(new); fixed_total += len(fixed)
-        tried_total += r["tried"]; byp_total += len(ids)
+        new_total += len(new)
+        fixed_total += len(fixed)
+        tried_total += r["tried"]
+        byp_total += len(ids)
         colour = GREEN if r["resistance"] == 100 else (YELLOW if not new else RED)
         print(f"{colour}{r['resistance']:5.1f}%{RESET}  {det:<48} {r['tried']:3d} variants  "
               f"{len(ids):2d} bypass{'es' if len(ids) != 1 else ''}"

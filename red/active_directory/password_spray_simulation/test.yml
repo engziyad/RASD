@@ -3,7 +3,7 @@ name: Password spray simulation with a password that cannot be right
 platform: active_directory
 mitre:
   technique: T1110.003
-  technique_name: Brute Force - Password Spraying
+  technique_name: "Brute Force: Password Spraying"
   tactics: [credential-access]
 objective: >
   Produce the telemetry of a password spray - one failed authentication for each of many
@@ -21,10 +21,10 @@ safety:
   - "badPwdCount is kept per domain controller, and fine-grained policies are visible only to accounts allowed to read them (run as a lab admin for a complete check): use lab test accounts only"
   - The password is random and generated per run, so no attempt can succeed
 execution:
-  - "Invoke-PurpleEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList .\\lab-users.txt"
+  - "Invoke-RasdEmulation.ps1 -Test password_spray_simulation -LabConfirmed -UserList .\\lab-users.txt"
   - The step reads the domain lockoutThreshold, each account's resultant fine-grained policy and badPwdCount, and skips accounts one failure could lock
   - For each account it attempts one LDAP bind with the random password
-  - Export the DC Security log (Export-LabTelemetry.ps1 -LogName Security -EventId 4771,4776,4625) and pass it to `rasd correlate --logs` and `rasd evidence`
+  - Export the DC Security log (Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4771,4776,4625) and pass it to `rasd correlate --logs` and `rasd evidence`
 steps:
   - id: spray
     name: One failed LDAP bind per lab account with a random password

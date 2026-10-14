@@ -3,7 +3,7 @@ name: LDAP enumeration of users, groups and SPNs
 platform: active_directory
 mitre:
   technique: T1087.002
-  technique_name: Account Discovery - Domain Account
+  technique_name: "Account Discovery: Domain Account"
   related: [T1069.002, T1018]
   tactics: [discovery]
 objective: >

@@ -9,12 +9,16 @@
       "id": "shell_patterns",
       "name": "Base64 command piped into sh, then a script executed from /tmp",
       "script": "emulate_shell.sh",
-      "detections": [],
+      "detections": [
+        "T1059.004_linux_suspicious_shell_execution"
+      ],
       "needs_admin": null,
       "opt_in": null,
       "parameters": null,
       "correlations": [],
-      "bind": {}
+      "bind": {
+        "T1059.004_linux_suspicious_shell_execution": "{marker}"
+      }
     }
   ],
   "scripts": {

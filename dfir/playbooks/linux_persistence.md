@@ -1,7 +1,7 @@
 ---
 playbook: linux_persistence
 techniques: [T1053.003, T1059.004, T1083, T1548.001]
-detections: []
+detections: [T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution]
 red_tests: [cron_persistence, suspicious_shell_execution, privilege_escalation_checks]
 ---
 

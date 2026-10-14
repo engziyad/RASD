@@ -14,10 +14,10 @@ whose verdict flips.
   - any other event that flips             -> behaviour change, review it
 
 Usage
-  python tools/diff.py                        # working tree vs HEAD
-  python tools/diff.py --base origin/main     # what a pull request changes
-  python tools/diff.py --base HEAD~3 --logs samples/replay/lab-day.jsonl
-  python tools/diff.py --fuzz                 # include evasion variants: shows bypasses fixed/opened
+  rasd diff                        # working tree vs HEAD
+  rasd diff --base origin/main     # what a pull request changes
+  rasd diff --base HEAD~3 --logs samples/replay/lab-day.jsonl
+  rasd diff --fuzz                 # include evasion variants: shows bypasses fixed/opened
 """
 from __future__ import annotations
 
@@ -29,13 +29,14 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DETECTIONS, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections, load_jsonl  # noqa: E402
-from fuzz import variants  # noqa: E402
-from sigma_engine import SigmaError, matches  # noqa: E402
+from common import BOLD, DETECTIONS, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections, load_jsonl
+from fuzz import variants
+from sigma_engine import SigmaError, matches
 
 
 def git(*args: str) -> str:
-    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    # git from PATH, on the developer's own clone
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout  # noqa: S607
 
 
 def old_rule(base: str, rel: str) -> dict | None:
@@ -66,19 +67,19 @@ def main() -> int:
         return 2
 
     dets = load_detections()
-    corpus = []   # (label, event, expectation for its own detection or None)
+    corpus: list[tuple[str, dict, str | None, bool | None]] = []   # (label, event, its detection, expectation) or None for logs
     for d in dets:
-        for kind, exp in (("true_positive", True), ("true_negative", False)):
+        for kind, expect in (("true_positive", True), ("true_negative", False)):
             for i, ev in enumerate(d.tests(kind), 1):
-                corpus.append((f"{d.id} {'TP' if exp else 'TN'}#{i}", ev, d.id, exp))
-                if exp and args.fuzz:
+                corpus.append((f"{d.id} {'TP' if expect else 'TN'}#{i}", ev, d.id, expect))
+                if expect and args.fuzz:
                     for name, _cat, var in variants(ev):
                         corpus.append((f"{d.id} TP#{i}~{name}", var, d.id, True))
     for p in args.logs:
         for i, ev in enumerate(load_jsonl(Path(p)), 1):
             corpus.append((f"{Path(p).name}:{i}", ev, None, None))
 
-    changed = 0; failures = 0
+    changed, failures = 0, 0
     for d in dets:
         rel = str((d.folder / "rule.yml").relative_to(ROOT))
         before = old_rule(args.base, rel)

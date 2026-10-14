@@ -1,0 +1,99 @@
+# Event sequences for the API-probing correlation: 5 or more distinct paths answered with 401 or
+# 403 for one client address in a 5-minute window (windows start at :00, :05, :10 ...).
+#
+# Every event is `defaults` + its own fields, `at` seconds after the scenario's `start`.
+# `count` and `every` repeat an entry; `set` fills {n} with 1, 2, 3 ...; `Field: null` removes
+# a default. `rasd correlate` runs every scenario, then checks that each parameter mutant of
+# the correlation (threshold +-1, window x2, no group-by, events counted instead of paths)
+# gets at least one scenario wrong.
+defaults:
+  c-ip: '127.0.0.1'
+  cs-username: '-'
+  cs-method: GET
+  cs-uri-query: ''
+  sc-status: '401'
+  cs-user-agent: RASD-Red/rasd_1a2b3c4d
+
+scenarios:
+  - name: lab emulation - six protected paths, three token variants each
+    expect: fire
+    groups: ['127.0.0.1']
+    alerts: 1
+    start: '2026-10-13T10:01:00Z'
+    events:
+      - {at: 0.0, every: 0.2, count: 3, cs-uri-stem: /rest/basket/1}
+      - {at: 0.6, every: 0.2, count: 3, cs-uri-stem: /api/Cards}
+      - {at: 1.2, every: 0.2, count: 3, cs-uri-stem: /api/Users}
+      - {at: 1.8, every: 0.2, count: 3, cs-uri-stem: /api/Addresss}
+      - {at: 2.4, every: 0.2, count: 3, cs-uri-stem: /rest/wallet/balance}
+      - {at: 3.0, every: 0.2, count: 3, cs-uri-stem: /rest/user/authentication-details}
+
+  - name: exactly the threshold - five paths in one minute
+    expect: fire
+    groups: ['10.0.0.21']
+    alerts: 1
+    start: '2026-10-13T10:01:00Z'
+    events:
+      - {at: 0, every: 10, count: 5, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/endpoint{n}'}}
+
+  - name: one below the threshold - four paths
+    expect: silent
+    start: '2026-10-13T10:01:00Z'
+    events:
+      - {at: 0, every: 10, count: 4, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/endpoint{n}'}}
+
+  - name: expired session in a single-page app - three calls rejected, then retried
+    expect: silent
+    start: '2026-10-13T09:31:00Z'
+    events:
+      - {at: 0, c-ip: '10.0.2.15', cs-uri-stem: /api/Cards, cs-user-agent: Mozilla/5.0}
+      - {at: 0.1, c-ip: '10.0.2.15', cs-uri-stem: /api/Addresss, cs-user-agent: Mozilla/5.0}
+      - {at: 0.2, c-ip: '10.0.2.15', cs-uri-stem: /rest/wallet/balance, cs-user-agent: Mozilla/5.0}
+      - {at: 30, every: 0.1, count: 3, c-ip: '10.0.2.15', set: {cs-uri-stem: '/api/Cards'}, cs-user-agent: Mozilla/5.0}
+
+  - name: one client hammering one login path
+    expect: silent
+    start: '2026-10-13T09:41:00Z'
+    events:
+      - {at: 0, every: 2, count: 30, c-ip: '10.0.2.40', cs-method: POST, cs-uri-stem: /rest/user/login}
+
+  - name: five clients, each rejected on two paths
+    expect: silent
+    start: '2026-10-13T08:51:00Z'
+    events:
+      - {at: 0, every: 20, count: 5, set: {c-ip: '10.0.3.{n}', cs-uri-stem: '/api/a{n}'}}
+      - {at: 5, every: 20, count: 5, set: {c-ip: '10.0.3.{n}', cs-uri-stem: '/api/b{n}'}}
+
+  - name: slow probe - five paths over four minutes
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-13T11:00:20Z'
+    events:
+      - {at: 0, every: 60, count: 5, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/endpoint{n}'}}
+
+  - name: six paths around a boundary at :05 - three on each side
+    expect: silent
+    start: '2026-10-13T12:02:00Z'
+    events:
+      - {at: 0, every: 50, count: 3, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/left{n}'}}
+      - {at: 250, every: 50, count: 3, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/right{n}'}}
+
+  - name: browsing many paths successfully
+    expect: silent
+    start: '2026-10-13T13:01:00Z'
+    events:
+      - {at: 0, every: 5, count: 12, c-ip: '10.0.2.50', sc-status: '200', set: {cs-uri-stem: '/api/Products/{n}'}}
+
+  - name: CORS preflights refused on many paths
+    expect: silent
+    start: '2026-10-13T13:11:00Z'
+    events:
+      - {at: 0, every: 1, count: 8, c-ip: '10.0.2.60', cs-method: OPTIONS, set: {cs-uri-stem: '/api/p{n}'}}
+
+  - name: eight paths split 4 + 4 by a window boundary
+    expect: silent
+    known_limit: Tumbling windows cut a burst at the boundary; 9 or more distinct paths always alert
+    start: '2026-10-13T14:04:56Z'
+    events:
+      - {at: 0, every: 1, count: 4, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/x{n}'}}
+      - {at: 4.5, every: 1, count: 4, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/y{n}'}}

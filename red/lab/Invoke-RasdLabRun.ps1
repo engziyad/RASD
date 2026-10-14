@@ -4,13 +4,14 @@
 .DESCRIPTION
     The whole evidence run on the Windows lab VM in one command:
       1. Test-LabReadiness.ps1 - stops on a FAIL unless -Force
-      2. Invoke-PurpleEmulation.ps1 -Technique All with the options you pass
+      2. Invoke-RasdEmulation.ps1 -Technique All with the options you pass
       3. waits -SiemWaitMinutes so Splunk's scheduled alerts (every 5 minutes over the
          last 10) see the events
       4. Export-LabTelemetry.ps1 for the run window
       5. zips the workstation side: results, collected artifacts, telemetry export, readiness report
     and prints what is left: the DC export (when Kerberoasting ran), the Splunk alert
-    export, and the rasd evidence command that turns it all into evidence.md.
+    export, and the rasd evidence --run command that turns the zip and those exports into
+    evidence.md.
     Safe by default: credential access and the Security-log clear run only with
     -IncludeCredentialAccess / -IncludeSecurityLogClear (a full validation run).
     Lab use only: an elevated Windows PowerShell 5.1 on a disposable VM, never a
@@ -49,7 +50,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
 
 $red = Split-Path -Parent $PSScriptRoot
-$runner = Join-Path $red 'Invoke-PurpleEmulation.ps1'
+$runner = Join-Path $red 'Invoke-RasdEmulation.ps1'
 $exporter = Join-Path $red 'Export-LabTelemetry.ps1'
 $readinessScript = Join-Path $PSScriptRoot 'Test-LabReadiness.ps1'
 
@@ -137,11 +138,11 @@ Write-Host "    sha256: $zipHash (also in $(Split-Path -Leaf $zip).sha256)" -For
 Write-Host 'Left to do:'
 $n = 1
 if ($needsDc) {
-    Write-Host "  $n. On the lab DC: .\Export-LabTelemetry.ps1 -LogName Security -EventId 4769,4771,4776,4625 -Since '$since' -OutFile .\dc-export.jsonl"
+    Write-Host "  $n. On the lab DC: .\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '$since' -OutFile .\dc-export.jsonl"
     $n++
 }
 Write-Host "  $n. In Splunk: run the report 'RASD - alert export' from $since to now and export it as siem-alerts.csv"
 $n++
-Write-Host "  $n. python rasd.py evidence --results `"$resultsFile`" --logs `"$exportFile`"$(if ($needsDc) { ' dc-export.jsonl' }) --siem-alerts siem-alerts.csv"
+Write-Host "  $n. rasd evidence --run `"$zip`"$(if ($needsDc) { ' dc-export.jsonl' }) siem-alerts.csv"
 Write-Host '     (raw files stay out of the repository; evidence.md records their SHA-256)'
 Write-Host '  Then revert the VM snapshot.'

@@ -1,0 +1,24 @@
+# Telemetry profile: NXLog im_msvistalog events exported as JSON (to_json): the EventData names
+# at the top level, the computer in Hostname and the provider in SourceName. The OTRF
+# Security-Datasets (Mordor) are published in this format, so RASD reads them through it.
+# Security 4688 events give the process rules their image names from NewProcessName and
+# ParentProcessName; they carry no OriginalFileName, as in the windows-security-4688 profile.
+name: nxlog-windows
+description: NXLog im_msvistalog JSON export of Sysmon, Security and System events; also the format of the OTRF Security-Datasets.
+source: NXLog im_msvistalog with to_json(), Windows Event Collector exports, OTRF Security-Datasets
+docs: https://docs.nxlog.co/refman/current/im/msvistalog.html
+covers: [process_creation, process_access, registry_set, windows/security, windows/system]
+event:
+  Channel: [Channel]
+  EventID: [EventID]
+fields:
+  common:
+    Computer: [Computer, Hostname]
+    Provider_Name: [Provider_Name, SourceName]
+  process_creation:                 # Security 4688 events name the images and the account differently
+    Image: [Image, NewProcessName]
+    ParentImage: [ParentImage, ParentProcessName]
+    User:
+      - User
+      - {join: [TargetDomainName, TargetUserName], sep: "\\"}
+      - {join: [SubjectDomainName, SubjectUserName], sep: "\\"}

@@ -3,14 +3,14 @@
 
 ## Coverage gap
 
-**Why there is no rule yet:** RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
+**Why there is no rule yet:** Sysmon for Linux is mapped, but each of these commands is ordinary administration on its own. The signal is the set of them from one session in a short window, and that needs a baseline of Linux administration before it can alert without noise.
 
-**Planned:** A correlation rule for find -perm -4000, getcap -r and sudo -l from one session within a short window, once Linux telemetry and correlations are supported.
+**Planned:** A correlation over Sysmon for Linux process creation: find -perm -4000, getcap -r and sudo -l from one parent session within a short window, measured against a Linux administration baseline before it is enabled.
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

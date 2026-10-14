@@ -15,7 +15,9 @@
       "parameters": [
         "Target"
       ],
-      "correlations": [],
+      "correlations": [
+        "T1190_object_id_enumeration"
+      ],
       "bind": {}
     }
   ],

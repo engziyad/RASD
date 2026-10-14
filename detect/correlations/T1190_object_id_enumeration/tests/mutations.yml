@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: uppercase_path
+  description: Paths are case-insensitive on many frameworks
+  base: 1
+  set:
+    cs-uri-stem: /REST/BASKET/2
+  should_match: true
+- name: plural_object_type
+  description: Plural collection name
+  base: 1
+  set:
+    cs-uri-stem: /api/baskets/2
+  should_match: true
+- name: lowercase_method
+  description: A method logged in lower case
+  base: 2
+  set:
+    cs-method: get
+  should_match: true
+- name: named_object_is_benign
+  description: The current user's own record by name, not by ID
+  base: 2
+  set:
+    cs-uri-stem: /api/Users/me
+  should_match: false
+- name: order_list_is_benign
+  description: An order history endpoint (many orders per user)
+  base: 1
+  set:
+    cs-uri-stem: /rest/order-history/2
+  should_match: false

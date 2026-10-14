@@ -8,7 +8,7 @@
       Sysmon        installed and running; its configuration logs lsass access and Run keys
       Probe         a harmless process creation really reaches the Sysmon log (EID 1)
       Domain        joined (Active Directory tests); on a DC, the audit policy behind
-                    4769, 4771, 4776 and 4625
+                    4768, 4769, 4771, 4776 and 4625
       Logging       PowerShell script block logging (4104) for the DFIR playbooks
       Splunk        Universal Forwarder running, rasd_forwarder app present, connected to
                     an indexer on 9997
@@ -131,7 +131,7 @@ $required = @()
 if ($isDc) {
     $required = @(
         @{ Name = 'Kerberos Service Ticket Operations'; Guid = '0CCE9240-69AE-11D9-BED3-505054503030'; Bit = 1; Why = '4769 (Kerberoasting rule and volume correlation)' },
-        @{ Name = 'Kerberos Authentication Service'; Guid = '0CCE9242-69AE-11D9-BED3-505054503030'; Bit = 2; Why = '4771 failures (password-spray correlation)' },
+        @{ Name = 'Kerberos Authentication Service'; Guid = '0CCE9242-69AE-11D9-BED3-505054503030'; Bit = 2; Why = '4771 and 4768 failures (password-spray correlation)' },
         @{ Name = 'Credential Validation'; Guid = '0CCE923F-69AE-11D9-BED3-505054503030'; Bit = 2; Why = '4776 failures (spray investigation)' },
         @{ Name = 'Logon'; Guid = '0CCE9215-69AE-11D9-BED3-505054503030'; Bit = 2; Why = '4625 failures (password-spray correlation, LDAP binds)' })
 }

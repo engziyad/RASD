@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/engziyad/detection-as-code-purple-lab/schemas/tuning.schema.json",
+  "$id": "https://github.com/engziyad/RASD-v1.0/schemas/tuning.schema.json",
   "title": "RASD Tuning Guide",
   "description": "How a detection may and may not be tuned. Applied tunings point at filters in rule.yml; proposed and rejected ones carry a filter that tools/tune.py measures (attack variants hidden vs corpus alerts removed).",
   "type": "object",

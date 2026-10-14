@@ -2,15 +2,15 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) Remote Services - Windows Remote Management |
-| **Tactics** | lateral-movement, execution |
+| **ATT&CK technique** | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) Remote Services: Windows Remote Management |
+| **Tactics** | lateral-movement |
 | **Platform** | active directory · runner: powershell |
-| **Status** | Detect: **gap** |
+| **Status** | Detect: **covered** |
 | **Requires** | standard user |
 
 ## Objective
 
-Run one harmless command on another lab host over WinRM (Invoke-Command), the way intruders and administrators both move laterally, and record what the target logs: the network logon, the WinRM shell and the wsmprovhost.exe process. RASD has no rule for this yet; the run shows which events a rule could use and how noisy they are.
+Run one harmless command on another lab host over WinRM (Invoke-Command), the way intruders and administrators both move laterally, and record what the target logs: the network logon, the WinRM shell and the wsmprovhost.exe process. The remote command runs through cmd.exe, so the session host starts a child process and the WinRM child-process detection must fire.
 
 ## Prerequisites
 
@@ -20,20 +20,20 @@ Run one harmless command on another lab host over WinRM (Invoke-Command), the wa
 ## Safety notes
 
 - Runs only with -LabConfirmed and an explicit -Target
-- The remote command returns the target's hostname and the marker; it changes nothing
+- The remote command echoes the target's hostname and the marker through cmd.exe; it changes nothing
 - The session closes when the command returns
 
 ## Execution
 
-1. Invoke-PurpleEmulation.ps1 -Test winrm\_access\_validation -LabConfirmed -Target LAB-SRV01
-2. The step runs Invoke-Command -ComputerName &lt;target&gt; -ScriptBlock { "$env:COMPUTERNAME &lt;marker&gt;" }
+1. Invoke-RasdEmulation.ps1 -Test winrm\_access\_validation -LabConfirmed -Target LAB-SRV01
+2. The step runs Invoke-Command -ComputerName &lt;target&gt; -ScriptBlock { cmd.exe /c "echo $env:COMPUTERNAME &lt;marker&gt;" }
 3. Export telemetry from the target (Export-LabTelemetry.ps1 -LogName Security,Microsoft-Windows-WinRM/Operational,Microsoft-Windows-Sysmon/Operational -EventId 1,4624,91)
 
 ### Steps and the detections they must trigger
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Invoke-Command on the target over WinRM (returns hostname and marker) | [`emulate_winrm.ps1`](emulate_winrm.ps1) | `Target` | gap |
+| Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker) | [`emulate_winrm.ps1`](emulate_winrm.ps1) | `Target` | [`T1021.006_wsmprovhost_suspicious_child`](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) |
 
 ## Links
 
@@ -44,6 +44,7 @@ Run one harmless command on another lab host over WinRM (Invoke-Command), the wa
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [lateral_movement.md](../../../dfir/playbooks/lateral_movement.md) |
+| Purple scenario | [T1021.006_winrm.md](../../../purple/scenarios/T1021.006_winrm.md) |
 
 ## Cleanup
 
@@ -56,7 +57,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test winrm_access_validation -LabConfirmed -Target <target>
+.\red\Invoke-RasdEmulation.ps1 -Test winrm_access_validation -LabConfirmed -Target <target>
 ```
 
 ---

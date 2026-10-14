@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RASD-Red · T1083 / T1548 · read-only privilege-escalation reconnaissance.
+# RASD-Red · T1083 / T1548.001 · read-only privilege-escalation reconnaissance.
 # Runs the checks enumeration scripts start with - sudo rights, SUID binaries, file
 # capabilities, sensitive file permissions, writable PATH entries - prints counts and
 # saves the lists to $RASD_OUT_DIR. Changes nothing. Lab use only.
@@ -12,7 +12,7 @@ while [[ $# -gt 0 ]]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-[[ "$marker" =~ ^purplelab_[0-9a-f]{8}$ ]] || { echo "--marker must look like purplelab_1a2b3c4d" >&2; exit 2; }
+[[ "$marker" =~ ^rasd_[0-9a-f]{8}$ ]] || { echo "--marker must look like rasd_1a2b3c4d" >&2; exit 2; }
 [[ $confirmed -eq 1 ]] || { echo "Refusing to run without --lab-confirmed." >&2; exit 2; }
 
 out="${RASD_OUT_DIR:-}"

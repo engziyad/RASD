@@ -5,24 +5,24 @@ Expected output, not a capture from a real host. The run marker is random on eve
 ## Console
 
 ```text
-[T1021.006] Invoke-Command on the target over WinRM (returns hostname and marker)
-LAB-SRV01 purplelab_1a2b3c4d
+[T1021.006] Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker)
+LAB-SRV01 rasd_1a2b3c4d
 [cleanup] verified: nothing persisted
 ```
 
-## Illustrative event · Target Sysmon 1 for the remote session host
+## Expected event → T1021.006_wsmprovhost_suspicious_child
 
-Shape of the telemetry this test produces. No rule consumes it yet (see detection_links.md).
+This is true positive *red: winrm_access_validation emulation* in [`tests/true_positive.jsonl`](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {
-  "Channel": "Microsoft-Windows-Sysmon/Operational",
   "EventID": 1,
-  "Computer": "LAB-SRV01.lab.local",
-  "Image": "C:\\Windows\\System32\\wsmprovhost.exe",
-  "CommandLine": "C:\\Windows\\system32\\wsmprovhost.exe -Embedding",
-  "ParentImage": "C:\\Windows\\System32\\svchost.exe",
-  "User": "LAB\\labuser"
+  "Image": "C:\\Windows\\System32\\cmd.exe",
+  "OriginalFileName": "Cmd.Exe",
+  "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo LAB-SRV01 rasd_1a2b3c4d\"",
+  "ParentImage": "C:\\Windows\\System32\\wsmprovhost.exe",
+  "ParentCommandLine": "wsmprovhost.exe -Embedding",
+  "User": "LAB\\labadmin"
 }
 ```
 

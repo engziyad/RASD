@@ -23,6 +23,7 @@ data_contract:
   - User
   telemetry_risk:
     missing_commandline: critical
+    missing_originalfilename: medium
     script_block_logging_disabled: high
 detection_logic:
   type: single-event

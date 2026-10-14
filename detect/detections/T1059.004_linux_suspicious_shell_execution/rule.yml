@@ -1,0 +1,45 @@
+title: Linux Shell Executing Decoded Base64 or Code From a Temporary Directory
+id: af32f9f8-f4e4-4f9b-94ae-62a53fe5f415
+status: test
+description: |
+  Detects two shell patterns intrusions on Linux rely on: a Base64 blob decoded and piped
+  straight into a shell (echo <blob> | base64 -d | sh), and code started from a world-writable
+  temporary directory - a binary under /tmp, /var/tmp or /dev/shm, or a shell running a script
+  from there.
+references:
+  - https://attack.mitre.org/techniques/T1059/004/
+  - https://attack.mitre.org/techniques/T1027/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-13
+tags:
+  - attack.execution
+  - attack.t1059.004
+  - attack.stealth
+  - attack.t1027
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  susp_b64_pipe:
+    # base64 -d / --decode, then a pipe into sh, bash, dash, zsh or ksh (optionally via sudo)
+    CommandLine|re: '(?i)base64\s+(-d|--decode|-di|-id)\b[^|]*\|\s*(sudo\s+)?(/\S*/)?(ba|da|z|k)?sh\b'
+  susp_tmp_binary:
+    Image|startswith:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+  tmp_script_shell:
+    Image|endswith:
+      - '/sh'
+      - '/bash'
+      - '/dash'
+      - '/zsh'
+      - '/ksh'
+  tmp_script_path:
+    # the shell's first argument is a script in a temporary directory
+    CommandLine|re: '(?i)^"?\S+"?\s+"?(/tmp|/var/tmp|/dev/shm)/'
+  condition: susp_b64_pipe or susp_tmp_binary or (tmp_script_shell and tmp_script_path)
+falsepositives:
+  - Installers and build tools that unpack and run helpers from /tmp
+  - Provisioning scripts that ship small encoded payloads
+level: high

@@ -2,12 +2,12 @@
 
 | Step | Detection | Rule | KQL | SPL | Evidence bound by |
 |---|---|---|---|---|---|
-| HKCU Run value pointing to %LOCALAPPDATA%\\Temp (file does not exist) | [`T1547.001_registry_run_key_persistence`](../../../detect/detections/T1547.001_registry_run_key_persistence/) | [rule.yml](../../../detect/detections/T1547.001_registry_run_key_persistence/rule.yml) | [KQL](../../../queries/kql/T1547.001_registry_run_key_persistence.kql) | [SPL](../../../queries/spl/T1547.001_registry_run_key_persistence.spl) | token `{marker}` (e.g. `purplelab_1a2b3c4d`) |
+| HKCU Run value pointing to %LOCALAPPDATA%\\Temp (file does not exist) | [`T1547.001_registry_run_key_persistence`](../../../detect/detections/T1547.001_registry_run_key_persistence/) | [rule.yml](../../../detect/detections/T1547.001_registry_run_key_persistence/rule.yml) | [KQL](../../../queries/kql/T1547.001_registry_run_key_persistence.kql) | [SPL](../../../queries/spl/T1547.001_registry_run_key_persistence.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

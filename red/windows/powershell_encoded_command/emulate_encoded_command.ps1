@@ -4,11 +4,11 @@
 .DESCRIPTION
     Encodes Write-Output '<marker>' as UTF-16LE Base64 and runs it in a child
     powershell.exe with -NoProfile -enc. Nothing is written to disk.
-    Lab use only: run through red\Invoke-PurpleEmulation.ps1.
+    Lab use only: run through red\Invoke-RasdEmulation.ps1.
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [ValidatePattern('^purplelab_[0-9a-f]{8}$')] [string] $Marker,
+    [Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker,
     [Parameter(Mandatory)] [switch] $LabConfirmed
 )
 Set-StrictMode -Version Latest

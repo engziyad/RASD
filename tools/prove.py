@@ -36,9 +36,9 @@ An acceptance that no longer matches a surviving mutant fails the run, so stale
 exceptions cannot pile up.
 
 Usage
-  python tools/prove.py
-  python tools/prove.py --filter T1218 --suggest
-  python tools/prove.py --json
+  rasd prove
+  rasd prove --filter T1218 --suggest
+  rasd prove --json
 """
 from __future__ import annotations
 
@@ -52,10 +52,10 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections  # noqa: E402
-from fuzz import load_baseline, variants  # noqa: E402
-from mutation_test import generic_mutations, technique_mutations  # noqa: E402
-from sigma_engine import SigmaError, _match_single, matches, resolve_pattern, tokenize  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections
+from fuzz import load_baseline, variants
+from mutation_test import generic_mutations, technique_mutations
+from sigma_engine import SigmaError, _match_single, matches, resolve_pattern, tokenize
 
 
 # --------------------------------------------------------------------------- #

@@ -1,0 +1,85 @@
+# Event sequences for the object-ID enumeration correlation: 3 or more distinct single-owner
+# object paths requested by one client address in a 1-minute window (windows start each minute).
+#
+# Every event is `defaults` + its own fields, `at` seconds after the scenario's `start`.
+# `count` and `every` repeat an entry; `set` fills {n} with 1, 2, 3 ...; `Field: null` removes
+# a default. `rasd correlate` runs every scenario, then checks that each parameter mutant of
+# the correlation (threshold +-1, window x2, no group-by, events counted instead of objects)
+# gets at least one scenario wrong.
+defaults:
+  c-ip: '127.0.0.1'
+  cs-username: alice@lab.local
+  cs-method: GET
+  cs-uri-query: ''
+  sc-status: '200'
+  cs-user-agent: RASD-Red/rasd_1a2b3c4d
+
+scenarios:
+  - name: lab emulation - baskets 1 to 5, one request every 0.2 seconds
+    expect: fire
+    groups: ['127.0.0.1']
+    alerts: 1
+    start: '2026-10-13T10:01:10Z'
+    events:
+      - {at: 0, every: 0.2, count: 5, set: {cs-uri-stem: '/rest/basket/{n}'}}
+
+  - name: exactly the threshold - three baskets
+    expect: fire
+    groups: ['10.0.0.21']
+    alerts: 1
+    start: '2026-10-13T10:01:10Z'
+    events:
+      - {at: 0, every: 10, count: 3, c-ip: '10.0.0.21', set: {cs-uri-stem: '/rest/basket/{n}'}}
+
+  - name: one below the threshold - own basket and one other
+    expect: silent
+    start: '2026-10-13T10:01:10Z'
+    events:
+      - {at: 0, every: 10, count: 2, c-ip: '10.0.0.21', set: {cs-uri-stem: '/rest/basket/{n}'}}
+
+  - name: a user refreshing their own basket twenty times
+    expect: silent
+    start: '2026-10-13T09:20:00Z'
+    events:
+      - {at: 0, every: 2, count: 20, c-ip: '10.0.2.15', cs-uri-stem: /rest/basket/6, cs-user-agent: Mozilla/5.0}
+
+  - name: three users, each reading their own basket
+    expect: silent
+    start: '2026-10-13T09:30:00Z'
+    events:
+      - {at: 0, every: 5, count: 3, set: {c-ip: '10.0.3.{n}', cs-uri-stem: '/rest/basket/1{n}'}, cs-user-agent: Mozilla/5.0}
+
+  - name: four baskets around a minute boundary - two on each side
+    expect: silent
+    start: '2026-10-13T11:00:40Z'
+    events:
+      - {at: 0, every: 10, count: 2, c-ip: '10.0.0.21', set: {cs-uri-stem: '/rest/basket/{n}'}}
+      - {at: 30, every: 10, count: 2, c-ip: '10.0.0.21', set: {cs-uri-stem: '/rest/basket/2{n}'}}
+
+  - name: slow walk - one user record every 25 seconds, inside one minute
+    expect: fire
+    groups: ['10.0.0.21']
+    start: '2026-10-13T12:00:05Z'
+    events:
+      - {at: 0, every: 25, count: 3, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/Users/{n}'}}
+
+  - name: product catalogue browsing by ID
+    expect: silent
+    start: '2026-10-13T13:00:00Z'
+    events:
+      - {at: 0, every: 3, count: 10, c-ip: '10.0.2.50', set: {cs-uri-stem: '/api/Products/{n}'}, cs-user-agent: Mozilla/5.0}
+
+  - name: walk denied by the application - still an enumeration
+    expect: fire
+    groups: ['10.0.0.22']
+    start: '2026-10-13T13:10:00Z'
+    events:
+      - {at: 0, every: 1, count: 4, c-ip: '10.0.0.22', sc-status: '403', set: {cs-uri-stem: '/api/accounts/10{n}'}}
+
+  - name: four objects split 2 + 2 by a window boundary
+    expect: silent
+    known_limit: Tumbling windows cut a burst at the boundary; 5 or more distinct objects always alert
+    start: '2026-10-13T14:00:57Z'
+    events:
+      - {at: 0, every: 1, count: 2, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/wallets/{n}'}}
+      - {at: 3.5, every: 1, count: 2, c-ip: '10.0.0.21', set: {cs-uri-stem: '/api/wallets/1{n}'}}

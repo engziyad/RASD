@@ -1,9 +1,13 @@
 # yaml-language-server: $schema=../../../schemas/tuning.schema.json
 detection_id: T1110.003_password_spray_burst
-expected_noise: low
+expected_noise: medium   # shared egress points and stale credentials, until tuned per estate
 noise_sources:
 - Shared jump hosts, VDI brokers and terminal servers where several users mistype their passwords within minutes
+- VPN concentrators, NAT gateways, Citrix and ADFS servers that present many users behind one client address
 - Vulnerability scanners or monitoring tools that test credentials against many accounts
+- Stale credentials of disabled, expired or locked accounts (4768 0x12) on shared devices and scripts
+- Non-Windows Kerberos clients retrying with a wrong default realm or principal (4768 0x6)
+- Account enumeration (for example kerbrute userenum) - unknown names only, no password tried - also alerts: worth a look, but it is reconnaissance, not a spray
 tunings:
 - id: machine_accounts
   status: applied

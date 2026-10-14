@@ -1,0 +1,27 @@
+# Telemetry profile: Microsoft Defender XDR advanced hunting - DeviceProcessEvents
+# and DeviceRegistryEvents exported as JSON. Defender has no Sysmon-style lsass access
+# record, no 4769 and no 7045: those detections need the native Windows / Sysmon events.
+name: mde-advanced-hunting
+description: Microsoft Defender XDR advanced hunting - DeviceProcessEvents and DeviceRegistryEvents.
+source: Defender XDR / Sentinel export (JSON) of DeviceProcessEvents and DeviceRegistryEvents
+docs: https://learn.microsoft.com/defender-xdr/advanced-hunting-deviceprocessevents-table
+covers: [process_creation, registry_set]
+event:
+  infer:
+    - when: {ActionType: ProcessCreated}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 1}
+    - when: {ActionType: RegistryValueSet}
+      set: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 13}
+fields:
+  common:
+    Computer: [DeviceName]
+  process_creation:
+    Image: [{path: [FolderPath, FileName]}]               # FolderPath is documented as the folder only
+    CommandLine: [ProcessCommandLine]
+    OriginalFileName: [ProcessVersionInfoOriginalFileName]
+    ParentImage: [{path: [InitiatingProcessFolderPath, InitiatingProcessFileName]}]
+    User: [{join: [AccountDomain, AccountName], sep: "\\"}]
+  registry_set:
+    TargetObject: [{join: [RegistryKey, RegistryValueName], sep: "\\"}]
+    Details: [RegistryValueData]
+    User: [{join: [InitiatingProcessAccountDomain, InitiatingProcessAccountName], sep: "\\"}]

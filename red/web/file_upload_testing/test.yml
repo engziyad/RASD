@@ -3,9 +3,9 @@ name: File upload restrictions
 platform: web
 mitre:
   technique: T1505.003
-  technique_name: Server Software Component - Web Shell
+  technique_name: "Server Software Component: Web Shell"
   related: [T1190]
-  tactics: [persistence, initial-access]
+  tactics: [persistence]
   other:
     - framework: OWASP Top 10 (2021)
       id: A04 Insecure Design (unrestricted file upload)
@@ -69,13 +69,13 @@ cleanup:
 sample_output:
   console: |
     [T1505.003] Upload .exe, .pdf.exe, spoofed-type and oversized text files
-      FINDING  upload purplelab_1a2b3c4d.exe (disallowed extension, 56 bytes): HTTP 204
-      FINDING  upload purplelab_1a2b3c4d.pdf.exe (double extension, 56 bytes): HTTP 204
-      FINDING  upload purplelab_1a2b3c4d.html (content type spoofed as PDF, 56 bytes): HTTP 204
-      FINDING  upload purplelab_1a2b3c4d.pdf (over the size limit, 100072 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.exe (disallowed extension, 56 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.pdf.exe (double extension, 56 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.html (content type spoofed as PDF, 56 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.pdf (over the size limit, 100072 bytes): HTTP 204
     4 check(s), 4 finding(s)
   illustrative_events:
     - title: Access log line for an accepted upload (illustrative, Juice Shop log format)
       event:
-        line: '127.0.0.1 - - [12/Oct/2026:02:17:50 +0000] "POST /file-upload HTTP/1.1" 204 - "-" "RASD-Red/purplelab_1a2b3c4d"'
+        line: '127.0.0.1 - - [12/Oct/2026:02:17:50 +0000] "POST /file-upload HTTP/1.1" 204 - "-" "RASD-Red/rasd_1a2b3c4d"'
 dfir_playbook: dfir/playbooks/web_application_attack.md

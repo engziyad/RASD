@@ -12,13 +12,20 @@ Expected output, not a capture from a real host. The run marker is random on eve
 5 check(s), 5 finding(s)
 ```
 
-## Illustrative event · Access log line (OWASP Juice Shop 17.3.0 format, captured from a lab run)
+## Expected sequence → T1190_object_id_enumeration
 
-Shape of the telemetry this test produces. No rule consumes it yet (see detection_links.md).
+Scenario *lab emulation - baskets 1 to 5, one request every 0.2 seconds* in [`tests/scenarios.yml`](../../../detect/correlations/T1190_object_id_enumeration/tests/scenarios.yml): 5 events from one source. CI proves on every change that the correlation fires on it, and that the generated SPL and KQL return the same alert. First event of the sequence:
 
 ```json
 {
-  "line": "127.0.0.1 - - [12/Oct/2026:02:17:45 +0000] \"GET /rest/basket/2 HTTP/1.1\" 200 557 \"-\" \"RASD-Red/purplelab_1a2b3c4d\""
+  "c-ip": "127.0.0.1",
+  "cs-username": "alice@lab.local",
+  "cs-method": "GET",
+  "cs-uri-query": "",
+  "sc-status": "200",
+  "cs-user-agent": "RASD-Red/rasd_1a2b3c4d",
+  "cs-uri-stem": "/rest/basket/1",
+  "TimeCreated": "2026-10-13T10:01:10.000Z"
 }
 ```
 

@@ -14,13 +14,20 @@ Expected output, not a capture from a real host. The run marker is random on eve
 18 check(s), 0 finding(s)
 ```
 
-## Illustrative event · Access log line (OWASP Juice Shop 17.3.0 format, captured from a lab run)
+## Expected sequence → T1190_api_auth_probing
 
-Shape of the telemetry this test produces. No rule consumes it yet (see detection_links.md).
+Scenario *lab emulation - six protected paths, three token variants each* in [`tests/scenarios.yml`](../../../detect/correlations/T1190_api_auth_probing/tests/scenarios.yml): 18 events from one source. CI proves on every change that the correlation fires on it, and that the generated SPL and KQL return the same alert. First event of the sequence:
 
 ```json
 {
-  "line": "127.0.0.1 - - [12/Oct/2026:02:17:41 +0000] \"GET /api/Cards HTTP/1.1\" 401 31 \"-\" \"RASD-Red/purplelab_1a2b3c4d\""
+  "c-ip": "127.0.0.1",
+  "cs-username": "-",
+  "cs-method": "GET",
+  "cs-uri-query": "",
+  "sc-status": "401",
+  "cs-user-agent": "RASD-Red/rasd_1a2b3c4d",
+  "cs-uri-stem": "/rest/basket/1",
+  "TimeCreated": "2026-10-13T10:01:00.000Z"
 }
 ```
 

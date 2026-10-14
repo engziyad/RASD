@@ -39,12 +39,12 @@ SIEM semantics modelled, beyond those of parity.py
   Both: an event is kept by `where` only when the condition is true (three-valued logic).
 
 Usage
-  python tools/correlate.py                     # prove every correlation, print the report
-  python tools/correlate.py --check             # CI: the proofs, plus the generated queries are current
-  python tools/correlate.py --write             # (re)write queries/{spl,kql}/correlations/
-  python tools/correlate.py --filter T1110 -v
-  python tools/correlate.py --json
-  python tools/correlate.py --logs export.jsonl [--profile auto]    # correlation alerts in your own logs
+  rasd correlate                     # prove every correlation, print the report
+  rasd correlate --check             # CI: the proofs, plus the generated queries are current
+  rasd correlate --write             # (re)write queries/{spl,kql}/correlations/
+  rasd correlate --filter T1110 -v
+  rasd correlate --json
+  rasd correlate --logs export.jsonl [--profile auto]    # correlation alerts in your own logs
 """
 from __future__ import annotations
 
@@ -58,19 +58,20 @@ import sys
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections, load_jsonl  # noqa: E402
-from convert import BACKENDS, MAPPINGS, logsource_key  # noqa: E402
-from correlation import (CorrelationError, Correlation, Params, alert_signature, check_guarantee, epoch,  # noqa: E402
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections, load_jsonl, attack_tag_errors
+from convert import BACKENDS, MAPPINGS, logsource_key
+from correlation import (CorrelationError, Correlation, Params, alert_signature, check_guarantee, epoch,
                          evaluate, group_label, human, iso, load_correlations, param_mutants, to_kql, to_spl)
-from fuzz import load_baseline, variants  # noqa: E402
-from parity import (REPLAY_CORPUS, KQLParser, ParseError, SPLParser, base_errors, compile_query,  # noqa: E402
+from fuzz import load_baseline, variants
+from parity import (REPLAY_CORPUS, KQLParser, ParseError, SPLParser, base_errors, compile_query,
                     corpus_for, make_lookup)
-from prove import accepted as accepted_base_mutants, killed_by, mutants as rule_mutants, suite  # noqa: E402
-from replay import parse_time, route  # noqa: E402
-from sigma_engine import SigmaError, _get_field, compile_rule, matches  # noqa: E402
-from validate import (FOLDER, LEVELS, STATUSES, TECH_TAG, WARNINGS, check_contract, evidence_errors,  # noqa: E402
+from prove import accepted as accepted_base_mutants, killed_by, mutants as rule_mutants, suite
+from replay import parse_time, route
+from sigma_engine import SigmaError, _get_field, compile_rule, matches
+from validate import (FOLDER, LEVELS, STATUSES, TECH_TAG, check_contract, evidence_errors,
                       lint_rule, tuning_errors, unexercised_filters)
 
 QUERIES = ROOT / "queries"
@@ -116,6 +117,12 @@ class _Model:
     def field(self, column: str) -> str:
         return self.reverse.get(column, column)
 
+    def normalize(self, row: dict, column: str, rx: re.Pattern) -> None:      # each backend's eval / extend
+        raise NotImplementedError
+
+    def aggregate(self, rows: list[dict], aggs: list, by: list[str], window) -> list[dict]:   # stats / summarize
+        raise NotImplementedError
+
     def rows(self, events: list[dict]) -> list[dict]:
         out = []
         for ev in events:
@@ -128,7 +135,9 @@ class _Model:
         return out
 
     def run(self, events: list[dict]) -> list[tuple]:
-        rows, groups, metric = self.rows(events), None, None
+        rows = self.rows(events)
+        groups: list[dict] = []            # set by the aggregate stage the constructor requires
+        metric = ""
         for stage in self.stages:
             kind = stage[0]
             if kind == "where":
@@ -204,9 +213,9 @@ class SPLModel(_Model):
             buckets.setdefault(key, []).append(r)
         out = []
         for key, members in buckets.items():
-            g = {"window": key[by.index(window)], "group": tuple(k for b, k in zip(by, key) if b != window)}
+            g = {"window": key[by.index(window)], "group": tuple(k for b, k in zip(by, key, strict=True) if b != window)}
             for fn, arg, name in aggs:
-                vals = [self.value(r["ev"], arg) for r in members] if arg and arg != "_time" else None
+                vals = [self.value(r["ev"], arg) for r in members] if arg and arg != "_time" else []
                 if fn == "count":
                     g[name] = len(members)
                 elif fn == "dc":
@@ -274,7 +283,7 @@ class KQLModel(_Model):
         row["ev"][self.field(column)] = rx.sub("", self.text_value(row["ev"], column))
 
     def aggregate(self, rows, aggs, by, span) -> list[dict]:
-        window, keys = by[0], by[1:]
+        keys = by[1:]                                      # by[0] is the window column
         buckets: dict[tuple, list[dict]] = {}
         for r in rows:                                     # summarize by: "" is a group like any other
             key = (math.floor(r["time"] / span) * span,) + tuple(self.text_value(r["ev"], k) for k in keys)
@@ -332,6 +341,8 @@ def structure_errors(corr: Correlation, ids: dict[str, str]) -> tuple[list[str],
     m = FOLDER.match(folder.name)
     if not techniques:
         errs.append("correlation.yml: no ATT&CK technique tag (attack.tXXXX)")
+    errs += [f"correlation.yml: {e}" for e in attack_tag_errors(rule.get("tags", []))]
+    errs += [f"base.yml: {e}" for e in attack_tag_errors(base.get("tags", []))]
     if not m:
         errs.append("folder must be named <TechniqueID>_<snake_case_name>")
     elif f"attack.{m.group(1).lower()}" not in techniques:
@@ -426,7 +437,7 @@ def base_results(corr: Correlation, fn) -> dict:
 
 
 def base_parity(corr: Correlation, fn, dets, replay_events) -> dict:
-    out = {"events": 0, "kql": [], "spl": [], "errors": list(base_errors(corr.base))}
+    out: dict[str, Any] = {"events": 0, "kql": [], "spl": [], "errors": list(base_errors(corr.base))}
     try:
         queries = {b: compile_query(corr.base, b) for b in ("kql", "spl")}
     except (ParseError, SigmaError, re.error) as e:
@@ -469,13 +480,16 @@ def mutant_results(corr: Correlation, params: Params, fn, scenarios: list[dict])
     accept = corr.accepted_mutants()
     rows = []
     for mid, desc, mp in param_mutants(params):
-        wrong = [(sc, problem(sc, evaluate(corr, sc["events"], mp, fn))) for sc in scenarios]
-        wrong = [(sc, why) for sc, why in wrong if why]
+        wrong: list[tuple[dict, str]] = []
+        for sc in scenarios:
+            why = problem(sc, evaluate(corr, sc["events"], mp, fn))
+            if why:
+                wrong.append((sc, why))
         # prefer a scenario whose verdict flips (fires instead of staying silent, or the reverse)
         # over one where only the alerting group or the number of alerts differs
         flips = [sc for sc, why in wrong if why.startswith(("alerted for", "stayed silent"))
                  and (sc["expect"] == "silent") == why.startswith("alerted for")]
-        killer = (flips or [sc for sc, _ in wrong] or [None])[0]
+        killer = flips[0] if flips else (wrong[0][0] if wrong else None)
         rows.append({"id": mid, "description": desc, "killed_by": killer["name"] if killer else None,
                      "verdict_flip": bool(flips), "accepted": accept.get(mid) if killer is None else None})
     survivors = [r for r in rows if r["killed_by"] is None and not r["accepted"]]
@@ -547,8 +561,8 @@ def aggregation_parity(corr: Correlation, params: Params, fn, scenarios: list[di
     variants_ = [("rule", params)] + [(mid, mp) for mid, _d, mp in param_mutants(params)]
     sequences = [(f"scenario '{sc['name']}'", sc["events"]) for sc in scenarios]
     sequences += [(f"random #{i}", seq) for i, seq in enumerate(random_sequences(corr, params), 1)]
-    out = {"parameter_sets": len(variants_), "sequences": len(sequences), "comparisons": 0, "alerts": 0,
-           "spl": [], "kql": [], "errors": []}
+    out: dict[str, Any] = {"parameter_sets": len(variants_), "sequences": len(sequences), "comparisons": 0, "alerts": 0,
+                           "spl": [], "kql": [], "errors": []}
     for label, mp in variants_:
         try:
             models = {"spl": SPLModel(to_spl(corr, mp), corr), "kql": KQLModel(to_kql(corr, mp), corr)}
@@ -607,7 +621,7 @@ def check(filter_: str | None = None, queries: bool = False) -> dict:
         if queries:
             for path, text in query_files(corr).items():
                 if not path.exists() or path.read_text(encoding="utf-8") != text:
-                    r["errors"].append(f"{path.relative_to(ROOT)} is out of date - run: python rasd.py correlate --write")
+                    r["errors"].append(f"{path.relative_to(ROOT)} is out of date - run: rasd correlate --write")
         report[corr.id] = r
     return report
 
@@ -680,7 +694,7 @@ def main() -> int:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("-v", "--verbose", action="store_true", help="list every scenario and mutant")
     ap.add_argument("--logs", nargs="+", help="evaluate the correlations over these JSONL exports instead")
-    ap.add_argument("--profile", help="telemetry profile of --logs (see: python rasd.py profiles), or 'auto'")
+    ap.add_argument("--profile", help="telemetry profile of --logs (see: rasd profiles), or 'auto'")
     args = ap.parse_args()
 
     if args.logs:

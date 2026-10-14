@@ -32,8 +32,8 @@ detection:
       - 'regsvr32'
       - 'cmd /c'
       - 'cmd.exe /c'
-  selection_data_path:     # any AppData/ProgramData/Public/Temp path, '\' or '/' separators
-    Details|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]'
+  selection_data_path:     # any AppData/ProgramData/Public/Temp path, or Windows\Tasks (writable by users); '\' or '/' separators
+    Details|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/](Temp|Tasks)|Downloads)[\\/]'
   filter_onedrive:
     Details|contains: '\AppData\Local\Microsoft\OneDrive\OneDrive.exe'
   filter_teams:

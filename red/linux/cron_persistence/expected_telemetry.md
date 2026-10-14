@@ -1,19 +1,19 @@
 # Expected telemetry · User crontab persistence
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
 | auditd | SYSCALL / EXECVE · key=cron | crontab executed and the spool file written | `exe`: `/usr/bin/crontab`<br>`name`: `/var/spool/cron/crontabs/<user> (Debian) or /var/spool/cron/<user> (RHEL)` | investigation |
 | syslog / journald | crontab[pid]: (&lt;user&gt;) REPLACE (&lt;user&gt;) | The cron package logs every crontab replacement | `program`: `crontab` | investigation |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | crontab process and the spool file write | `Image`: `/usr/bin/crontab`<br>`TargetFilename`: `/var/spool/cron/crontabs/<user>` | investigation |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | crontab process and the spool file write | `Image`: `/usr/bin/crontab`<br>`CommandLine`: `crontab -`<br>`TargetFilename`: `/var/spool/cron/crontabs/<user>` | [`T1053.003_crontab_noninteractive_install`](../../../detect/detections/T1053.003_crontab_noninteractive_install/) |
 
 ## Logging that must be enabled
 
 - auditd: -w /var/spool/cron -p wa -k cron and -w /etc/crontab -p wa -k cron
 - syslog / journald forwarded
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

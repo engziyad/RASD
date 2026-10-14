@@ -2,16 +2,16 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Command and Scripting Interpreter - Unix Shell |
+| **ATT&CK technique** | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Command and Scripting Interpreter: Unix Shell |
 | **Related** | [T1027](https://attack.mitre.org/techniques/T1027/) |
-| **Tactics** | execution, defense-evasion |
+| **Tactics** | execution |
 | **Platform** | linux · runner: bash |
-| **Status** | Detect: **gap** |
+| **Status** | Detect: **covered** |
 | **Requires** | standard user |
 
 ## Objective
 
-Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded command piped into sh, and a script dropped in /tmp, made executable and run from there - with payloads that only print the run marker, and record what auditd or Sysmon for Linux sees.
+Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded command piped into sh, and a script dropped in /tmp, made executable and run from there - with payloads that only print the run marker, and prove the Linux shell-execution rule fires on both.
 
 ## Prerequisites
 
@@ -27,14 +27,15 @@ Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded
 ## Execution
 
 1. python3 red/run\_red.py --test suspicious\_shell\_execution --lab-confirmed
-2. echo &lt;base64&gt; | base64 -d | sh
-3. printf ... &gt; /tmp/&lt;marker&gt;.sh; chmod +x /tmp/&lt;marker&gt;.sh; /tmp/&lt;marker&gt;.sh
+2. python3 red/linux/export\_sysmon\_linux.py --since &lt;start&gt; --out lab-export.jsonl, then rasd evidence
+3. sh -c "echo &lt;base64&gt; | base64 -d | sh # &lt;marker&gt;"
+4. printf ... &gt; /tmp/&lt;marker&gt;.sh; chmod +x /tmp/&lt;marker&gt;.sh; /tmp/&lt;marker&gt;.sh
 
 ### Steps and the detections they must trigger
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Base64 command piped into sh, then a script executed from /tmp | [`emulate_shell.sh`](emulate_shell.sh) | - | gap |
+| Base64 command piped into sh, then a script executed from /tmp | [`emulate_shell.sh`](emulate_shell.sh) | - | [`T1059.004_linux_suspicious_shell_execution`](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/) |
 
 ## Links
 
@@ -45,6 +46,7 @@ Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [linux_persistence.md](../../../dfir/playbooks/linux_persistence.md) |
+| Purple scenario | [T1059.004_unix_shell.md](../../../purple/scenarios/T1059.004_unix_shell.md) |
 
 ## Cleanup
 

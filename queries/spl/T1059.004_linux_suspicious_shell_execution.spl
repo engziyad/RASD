@@ -1,0 +1,2 @@
+index=linux sourcetype="sysmon:linux" EventID=1
+| where (match('CommandLine', "(?i)base64\\s+(-d|--decode|-di|-id)\\b[^|]*\\|\\s*(sudo\\s+)?(/\\S*/)?(ba|da|z|k)?sh\\b") OR (match('Image', "(?i)^/tmp/") OR match('Image', "(?i)^/var/tmp/") OR match('Image', "(?i)^/dev/shm/")) OR ((match('Image', "(?i)/sh$") OR match('Image', "(?i)/bash$") OR match('Image', "(?i)/dash$") OR match('Image', "(?i)/zsh$") OR match('Image', "(?i)/ksh$")) AND match('CommandLine', "(?i)^\"?\\S+\"?\\s+\"?(/tmp|/var/tmp|/dev/shm)/")))

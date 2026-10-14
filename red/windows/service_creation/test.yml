@@ -3,9 +3,9 @@ name: Service installed with a cmd.exe /c binary path
 platform: windows
 mitre:
   technique: T1569.002
-  technique_name: System Services - Service Execution
+  technique_name: "System Services: Service Execution"
   related: [T1543.003, T1021.002]
-  tactics: [execution, persistence]
+  tactics: [execution]
 objective: >
   Install a Windows service whose binary path is a cmd.exe /c command line - the shape
   PsExec-style tools and Impacket leave behind - and prove the System 7045 event reaches the
@@ -84,7 +84,7 @@ sample_output:
   console: |
     [T1569.002] sc.exe create with a cmd.exe /c binary path (never started)
     [SC] CreateService SUCCESS
-    [cleanup] verified: service purplelab_1a2b3c4d does not exist
+    [cleanup] verified: service rasd_1a2b3c4d does not exist
   events:
     - detection: T1569.002_suspicious_service_installation
       case: "red: service_creation emulation"

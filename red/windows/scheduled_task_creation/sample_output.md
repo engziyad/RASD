@@ -6,9 +6,9 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1053.005] schtasks /create with a cmd /c action in %TEMP%
-SUCCESS: The scheduled task "purplelab_1a2b3c4d" has successfully been created.
+SUCCESS: The scheduled task "rasd_1a2b3c4d" has successfully been created.
 [T1053.005] Register-ScheduledTask with an inline action in $env:TEMP
-[cleanup] removed purplelab_1a2b3c4d, purplelab_1a2b3c4d_ps
+[cleanup] removed rasd_1a2b3c4d, rasd_1a2b3c4d_ps
 [cleanup] verified: no marker task remains
 ```
 
@@ -21,7 +21,7 @@ This is true positive *red: scheduled_task_creation emulation (schtasks)* in [`t
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\schtasks.exe",
   "OriginalFileName": "schtasks.exe",
-  "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn purplelab_1a2b3c4d /sc once /st 23:59 /f /tr \"cmd /c echo purplelab_1a2b3c4d > %TEMP%\\purplelab_1a2b3c4d.txt\"",
+  "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_1a2b3c4d /sc once /st 23:59 /f /tr \"cmd /c echo rasd_1a2b3c4d > %TEMP%\\rasd_1a2b3c4d.txt\"",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"
@@ -37,7 +37,7 @@ This is true positive *red: scheduled_task_creation emulation (Register-Schedule
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "OriginalFileName": "PowerShell.EXE",
-  "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName purplelab_1a2b3c4d_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\purplelab_1a2b3c4d.exe) | Out-Null\"",
+  "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_1a2b3c4d_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_1a2b3c4d.exe) | Out-Null\"",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"

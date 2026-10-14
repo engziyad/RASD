@@ -6,7 +6,7 @@ This is a configuration check. It produces no attack telemetry worth alerting on
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

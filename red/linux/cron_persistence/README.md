@@ -2,15 +2,15 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) Scheduled Task/Job - Cron |
-| **Tactics** | persistence, execution |
+| **ATT&CK technique** | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) Scheduled Task/Job: Cron |
+| **Tactics** | execution, persistence, privilege-escalation |
 | **Platform** | linux · runner: bash |
-| **Status** | Detect: **gap** |
+| **Status** | Detect: **covered** |
 | **Requires** | standard user |
 
 ## Objective
 
-Add a crontab entry for the current user - the simplest persistence on Linux - and record what the host logs about it: the crontab process, the write to the spool file and the cron daemon's own log line. The entry only echoes the run marker to /dev/null. RASD has no Linux rule yet; the run tells you which telemetry a rule could use.
+Add a crontab entry for the current user - the simplest persistence on Linux - and record what the host logs about it: the crontab process, the write to the spool file and the cron daemon's own log line. The entry only echoes the run marker to /dev/null. The crontab process installs the table from standard input, which the crontab rule must catch.
 
 ## Prerequisites
 
@@ -27,14 +27,15 @@ Add a crontab entry for the current user - the simplest persistence on Linux - a
 ## Execution
 
 1. python3 red/run\_red.py --test cron\_persistence --lab-confirmed
-2. collect\_artifacts.sh saves only the marker line (never the user's other entries)
-3. cleanup.sh removes the line and confirms it is gone
+2. python3 red/linux/export\_sysmon\_linux.py --since &lt;start&gt; --out lab-export.jsonl, then rasd evidence
+3. collect\_artifacts.sh saves only the marker line (never the user's other entries)
+4. cleanup.sh removes the line and confirms it is gone
 
 ### Steps and the detections they must trigger
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Add a crontab line that echoes the marker every 30 minutes | [`emulate_cron.sh`](emulate_cron.sh) | - | gap |
+| Add a crontab line that echoes the marker every 30 minutes | [`emulate_cron.sh`](emulate_cron.sh) | - | [`T1053.003_crontab_noninteractive_install`](../../../detect/detections/T1053.003_crontab_noninteractive_install/) |
 
 ## Links
 
@@ -45,6 +46,7 @@ Add a crontab entry for the current user - the simplest persistence on Linux - a
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [linux_persistence.md](../../../dfir/playbooks/linux_persistence.md) |
+| Purple scenario | [T1053.003_cron.md](../../../purple/scenarios/T1053.003_cron.md) |
 
 ## Cleanup
 

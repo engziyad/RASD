@@ -8,7 +8,7 @@ file or folder must exist, and a #fragment must match a heading in the target fi
 External links (http, https, mailto) are not fetched - CI must not depend on the internet.
 
 Usage
-  python tools/links.py
+  rasd links
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, GREEN, RED, RESET, ROOT  # noqa: E402
+from common import BOLD, GREEN, RED, RESET, ROOT
 
 LINK = re.compile(r"!?\[(?:[^\]\[]|\[[^\]]*\])*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 IMG = re.compile(r"<img[^>]+src=\"([^\"]+)\"", re.IGNORECASE)

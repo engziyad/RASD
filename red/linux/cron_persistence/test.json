@@ -9,7 +9,9 @@
       "id": "crontab_entry",
       "name": "Add a crontab line that echoes the marker every 30 minutes",
       "script": "emulate_cron.sh",
-      "detections": [],
+      "detections": [
+        "T1053.003_crontab_noninteractive_install"
+      ],
       "needs_admin": null,
       "opt_in": null,
       "parameters": null,

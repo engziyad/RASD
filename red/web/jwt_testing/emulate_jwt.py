@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import rasd_web  # noqa: E402
+import rasd_web
 
 
 def b64d(part: str) -> dict:

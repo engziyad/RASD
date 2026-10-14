@@ -3,13 +3,14 @@ name: User crontab persistence
 platform: linux
 mitre:
   technique: T1053.003
-  technique_name: Scheduled Task/Job - Cron
-  tactics: [persistence, execution]
+  technique_name: "Scheduled Task/Job: Cron"
+  tactics: [execution, persistence, privilege-escalation]
 objective: >
   Add a crontab entry for the current user - the simplest persistence on Linux - and
   record what the host logs about it: the crontab process, the write to the spool file and
   the cron daemon's own log line. The entry only echoes the run marker to /dev/null.
-  RASD has no Linux rule yet; the run tells you which telemetry a rule could use.
+  The crontab process installs the table from standard input, which the crontab rule
+  must catch.
 prerequisites:
   - Linux lab host with cron (Debian/Ubuntu) or cronie (RHEL) installed
   - "auditd with a watch on the cron spool (-w /var/spool/cron -p wa -k cron) and/or Sysmon for Linux"
@@ -20,13 +21,14 @@ safety:
   - cleanup.sh removes exactly the lines containing the marker
 execution:
   - "python3 red/run_red.py --test cron_persistence --lab-confirmed"
+  - "python3 red/linux/export_sysmon_linux.py --since <start> --out lab-export.jsonl, then rasd evidence"
   - collect_artifacts.sh saves only the marker line (never the user's other entries)
   - cleanup.sh removes the line and confirms it is gone
 steps:
   - id: crontab_entry
     name: Add a crontab line that echoes the marker every 30 minutes
     script: emulate_cron.sh
-    detections: []
+    detections: [T1053.003_crontab_noninteractive_install]
 scripts:
   cleanup: cleanup.sh
   collect: collect_artifacts.sh
@@ -47,7 +49,9 @@ telemetry:
     description: crontab process and the spool file write
     fields:
       Image: '/usr/bin/crontab'
+      CommandLine: 'crontab -'
       TargetFilename: '/var/spool/cron/crontabs/<user>'
+    used_by: [T1053.003_crontab_noninteractive_install]
 logging:
   - "auditd: -w /var/spool/cron -p wa -k cron and -w /etc/crontab -p wa -k cron"
   - "syslog / journald forwarded"
@@ -64,11 +68,7 @@ dfir_artifacts:
     location: /var/log/syslog or /var/log/cron, journalctl -u cron
     collect: journalctl -u cron --since "-1h"
     purpose: Whether and when the entry already ran
-gap:
-  reason: RASD's rules and offline engine target Windows telemetry; no Linux log source is mapped yet.
-  planned: >
-    A linux/auditd log source in tools/mappings.yml and a rule for crontab writes by
-    interactive users outside configuration management.
+
 cleanup:
   actions:
     - Removes every crontab line containing the marker (or the empty crontab if nothing else was in it)
@@ -76,10 +76,10 @@ cleanup:
 sample_output:
   console: |
     [T1053.003] Add a crontab line that echoes the marker every 30 minutes
-    added crontab entry: */30 * * * * /bin/echo purplelab_1a2b3c4d >/dev/null 2>&1 # purplelab_1a2b3c4d
-    [cleanup] verified: no crontab line contains purplelab_1a2b3c4d
-  illustrative_events:
-    - title: syslog line written by crontab (Debian format)
-      event:
-        line: "Oct 12 06:00:01 lab-lnx01 crontab[2481]: (labuser) REPLACE (labuser)"
+    added crontab entry: */30 * * * * /bin/echo rasd_1a2b3c4d >/dev/null 2>&1 # rasd_1a2b3c4d
+    [cleanup] verified: no crontab line contains rasd_1a2b3c4d
+  events:
+    - detection: T1053.003_crontab_noninteractive_install
+      case: "red: cron_persistence emulation"
 dfir_playbook: dfir/playbooks/linux_persistence.md
+purple_scenario: purple/scenarios/T1053.003_cron.md

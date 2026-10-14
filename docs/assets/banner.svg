@@ -152,7 +152,7 @@
 <rect x="65.2" y="262.0" width="14.4" height="9.6" fill="#d7af87"/>
 <rect x="118.0" y="262.0" width="14.4" height="9.6" fill="#d7af87"/>
 </g>
-<text x="434.8" y="74.2" fill="#af875f" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15" textLength="38.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">v2.1</text>
+<text x="434.8" y="74.2" fill="#af875f" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15" textLength="38.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">v1.0</text>
 <text x="194.8" y="227.8" fill="#e4dccb" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15" textLength="364.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Attack-to-Defense Validation Framework</text>
 <text x="194.8" y="247.0" fill="#8a8a8a" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15" textLength="28.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Red</text>
 <text x="223.6" y="247.0" fill="#af875f" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15" textLength="28.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> → </text>

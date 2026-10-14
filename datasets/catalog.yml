@@ -1,0 +1,4068 @@
+# Public attack datasets RASD replays through every detection and correlation.
+#
+# Each file is pinned to a commit of its source repository and to its SHA-256; `rasd datasets
+# fetch` downloads and verifies it, `rasd datasets run` replays it and compares the result with
+# what is written here:
+#   expect   detections whose behaviour is part of the recorded attack, checked event by event:
+#            each must fire
+#   also     every other detection that fires on the file, with the kind and the reason:
+#            harness (the lab's test harness did it: automation that set up, launched and
+#            cleaned up the recorded attack), benign (other legitimate activity did it: an
+#            agent, a log reset) or false-positive (the behaviour did not happen). An alert
+#            without an entry fails the run. With `where` (field: text it contains) the entry
+#            explains only the alerts that match, for example a harness launcher beside the
+#            recorded attack: the other alerts must be the attack (expect) or none (quiet)
+#   quiet    detections for the file's technique that stay quiet: the kind (gap: public data
+#            shows the behaviour and no rule reads it yet, with the next rule; scope: outside
+#            what the rule is written to detect; blind-spot: a limit the rule documents;
+#            telemetry: the event the rule reads is missing; negative: the file does not hold
+#            the behaviour) and the reason - each re-checked on every run
+#   overlap  earlier files that hold some of the same records (same record number, host,
+#            channel and time), and why: alerts on those records are counted once
+#   gaps     detections no public dataset exercises yet, and why
+#   next     rules public data asks for: behaviours of covered techniques that no RASD rule reads
+#            yet, each with the files that show them
+#   holdout  a held-out file: added after the rule changes, its expect and quiet entries taken
+#            unchanged from labels written before its first replay (datasets/holdout_labels.json);
+#            missed and found record what the first replay did that the labels did not say
+#   changed_after_replay  rules changed after these files were replayed: their result here is
+#            in-sample
+#   member   the file read inside a zip, with its own SHA-256; lfs: false marks a file its Git LFS
+#            source keeps in the repository itself (downloaded from the raw host, or with --git)
+# How the files are read and what a public dataset proves: datasets/README.md
+format: 1
+sources:
+  splunk-attack-data:
+    title: Splunk Attack Data
+    home: https://github.com/splunk/attack_data
+    repo: https://github.com/splunk/attack_data
+    commit: eac2f8f675ec31a6618003399dcc53641524e673
+    license: Apache-2.0
+    license_file: datasets/LICENSES/splunk-attack-data.txt
+    url: https://media.githubusercontent.com/media/splunk/attack_data/{commit}/{path}
+    lfs: true
+    redistribute: true
+  otrf-security-datasets:
+    title: OTRF Security-Datasets
+    home: https://github.com/OTRF/Security-Datasets
+    repo: https://github.com/OTRF/Security-Datasets
+    commit: d9d40ef123d2c87d5d3df28c96bcab4f0faccc87
+    license: MIT
+    license_file: datasets/LICENSES/otrf-security-datasets.txt
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/{commit}/{path}
+    lfs: false
+    redistribute: true
+  evtx-attack-samples:
+    title: EVTX-ATTACK-SAMPLES
+    home: https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES
+    repo: https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES
+    commit: 4ceed2f4706daf601c212a8f91c113dd85349a2c
+    license: GPL-3.0
+    url: https://raw.githubusercontent.com/sbousseaden/EVTX-ATTACK-SAMPLES/{commit}/{path}
+    lfs: false
+    redistribute: false
+datasets:
+- id: splunk/T1003.001/atomic_red_team/createdump_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/createdump_windows-sysmon.log
+  sha256: b898327b2b446ba63c13934d50c899eb4b2ee2c722a7c6c4a1dae6c515720001
+  size: 10636
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1003.001
+  title: LSASS dump with the .NET createdump.exe shipped with PowerShell 7
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: gap
+      reason: 'the file keeps only the process creation of createdump.exe (-u -f ...lsass.dmp), not the Sysmon 10 handle to LSASS: nothing
+        for a process-access rule to read'
+      next: lsass_dump_command_lines
+- id: splunk/T1003.001/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/windows-sysmon.log
+  sha256: a1905850598f1e943708c3329190e29c6cb046389c1575cb2afd6369b5f269f1
+  size: 14235927
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1003.001
+  title: 'LSASS dumping with Atomic Red Team: procdump, comsvcs MiniDump, Outflank Dumpert, Task Manager, mimikatz'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1003.001_lsass_memory_access
+  - T1218.011_rundll32_suspicious_execution
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1003.001/atomic_red_team/windows-sysmon_creddump
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/windows-sysmon_creddump.log
+  sha256: a37b69dce32eaff6b5c1fdb4bb9cbea6dec78a4fbd22cd41362ab0e377f075ef
+  size: 65428
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1003.001
+  title: Credential dumping tools (Atomic Red Team)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1003.001_lsass_memory_access
+- id: splunk/T1021.006/lateral_movement/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/lateral_movement/windows-sysmon.log
+  sha256: 6370f139b06c5de9e6b76ba81d9247c7c869879e74dfee1603f4d8b3682ab1c4
+  size: 5835542
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1021.006
+  title: Commands run over winrs (cmd.exe under winrshost.exe)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1021.006_wsmprovhost_suspicious_child
+- id: splunk/T1021.006/lateral_movement_lolbas/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/lateral_movement_lolbas/windows-sysmon.log
+  sha256: 9f1c677780ef9b423033b9c4b9d97a914c3bf1eada80a30c21834e8aba42ce81
+  size: 6564240
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1021.006
+  title: rundll32 run remotely over winrs and PowerShell remoting
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1021.006_wsmprovhost_suspicious_child
+- id: splunk/T1021.006/lateral_movement_psh/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/lateral_movement_psh/windows-sysmon.log
+  sha256: 8746e04aa131b0eae39270a260808688b9ff69da25271022566972eea19f2227
+  size: 6143107
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1021.006
+  title: PowerShell remoting running ipconfig
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: 'the only child of the remoting host is ipconfig.exe: a discovery command, not one of the children this rule treats as
+        suspicious (shells, proxy binaries, encoded PowerShell)'
+- id: splunk/T1021.006/wirm_execute_shell/winrshost_pwh
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/wirm_execute_shell/winrshost_pwh.log
+  sha256: 548ad04f39f8ec27feb9b17c8099168c145f2e06bff0141b6dff597ece2fd093
+  size: 1178235
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1021.006
+  title: Encoded PowerShell commands run over winrs
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1021.006_wsmprovhost_suspicious_child
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      where:
+        CommandLine:
+        - -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell -NoProfile -NonInteractive
+        -ExecutionPolicy Unrestricted -EncodedCommand under winrshost.exe. The recorded attack is the commands run with winrs beside
+        them (cmd /C powershell -encodedcommand ..., cmd /C echo): those are the expected alerts. An estate managed with Ansible over
+        WinRM sees the launcher''s alerts too (benign positives); scope a tuning to the automation host and that exact command line,
+        never to the account'
+- id: splunk/T1053.003/cronjobs_entry/sysmon_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.003/cronjobs_entry/sysmon_linux.log
+  sha256: 2dbdc98578403d1636bcdab4d4214377779c17ae0ab94fab2508e30815634a7b
+  size: 59662955
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.003
+  title: Cron persistence by writing cron files (same session as crontab_edit_parameter)
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  expect:
+  - T1059.004_linux_suspicious_shell_execution
+  quiet:
+    T1053.003_crontab_noninteractive_install:
+      kind: gap
+      reason: file writes into the cron directories, not the crontab command this rule watches
+      next: cron_directory_write
+- id: splunk/T1053.003/cronjobs_entry/sysmon_linux_cron_append
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.003/cronjobs_entry/sysmon_linux_cron_append.log
+  sha256: a85c1f37adf0cb8cdbadcc5c34e92e4cdb724938b4a4d83dd19e3528374e82ed
+  size: 7622749
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.003
+  title: Cron persistence by appending to cron files
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  quiet:
+    T1053.003_crontab_noninteractive_install:
+      kind: gap
+      reason: 'appends to /etc/crontab and cron directories from the shell: file writes, not the crontab command'
+      next: cron_directory_write
+- id: splunk/T1053.003/crontab_edit_parameter/sysmon_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.003/crontab_edit_parameter/sysmon_linux.log
+  sha256: 7adcca8fbccf071c41b030af0b7c4542b9bc70d7eaabf539780a950f69a2cfe4
+  size: 57897542
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.003
+  title: Cron persistence by copying a script into /etc/cron.hourly and /etc/cron.weekly
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  expect:
+  - T1059.004_linux_suspicious_shell_execution
+  quiet:
+    T1053.003_crontab_noninteractive_install:
+      kind: gap
+      reason: the persistence is a file copy into /etc/cron.hourly and /etc/cron.weekly and an append to cron files, not the crontab
+        command this rule watches
+      next: cron_directory_write
+  overlap:
+    splunk/T1053.003/cronjobs_entry/sysmon_linux: 'both files are exports of the same Linux host over overlapping hours: the shared
+      records include both alerts of the shell rule'
+- id: splunk/T1053.003/crontab_list_parameter/sysmon_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.003/crontab_list_parameter/sysmon_linux.log
+  sha256: 3db8d0c36b2a4be1aa9563132c24139c48babb27ade3fe3879cc6d8ac6bc9a33
+  size: 394625
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.003
+  title: A cron table installed from a file with crontab
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  expect:
+  - T1053.003_crontab_noninteractive_install
+- id: splunk/T1053.005/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/atomic_red_team/windows-sysmon.log
+  sha256: d346ab6c75b3151217dfc2c4c166c951fc16d68c31b7d5a8f3e577d9545ff9f0
+  size: 11410982
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: 'Scheduled tasks with Atomic Red Team: schtasks and PowerShell Register-ScheduledTask'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+  - T1053.005_powershell_scheduled_task_creation
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1053.005/lateral_movement/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/lateral_movement/windows-sysmon.log
+  sha256: b2fba83212dba31492fe34b90786e9019437ab25da78e22bc9688021c5e36825
+  size: 6297522
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: Scheduled task created on a remote host
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: splunk/T1053.005/schtasks/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/schtasks/windows-sysmon.log
+  sha256: 2af70b9815a95c0be345a10e7c833cbcd5c4dd6919040d7652396b008475acba
+  size: 626881
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: Scheduled tasks created with schtasks
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: splunk/T1059.001/encoded_powershell/explorer_spawns_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/encoded_powershell/explorer_spawns_windows-sysmon.log
+  sha256: 9200692ad74037b5234fe6f7da733d3e416b0ea8bb7f6d8ebb5bd16fc39b8b22
+  size: 13142
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Encoded PowerShell started from Explorer
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1059.001_powershell_encoded_command
+- id: splunk/T1059.001/encoded_powershell/padded_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/encoded_powershell/padded_windows-sysmon.log
+  sha256: 0324ee4e5f2cb4c761e10862808c37a046097a2ad800d034490e3980c3e86dec
+  size: 11135
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Encoded PowerShell with the command line padded by whitespace
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1059.001_powershell_encoded_command
+  overlap:
+    splunk/T1059.001/encoded_powershell/explorer_spawns_windows-sysmon: 'the file is the first three records of the explorer_spawns
+      file, its alert included: the same events, not a second recording'
+- id: splunk/T1059.001/encoded_powershell/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/encoded_powershell/windows-security.log
+  sha256: 9f4cc04679371d7e7699a85bb812adae3e2f000def8ac73213b868845e389371
+  size: 1409
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1059.001
+  title: PowerShell download cradle in a Security 4688 event
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: 'the 4688 command is a download cradle (-Command ... DownloadString), not an encoded command: outside this rule, which
+        keys on -EncodedCommand. The event is read through the windows-security-4688 profile'
+- id: splunk/T1059.001/encoded_powershell/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/encoded_powershell/windows-sysmon.log
+  sha256: b9c8438a0d8cd62714a38ed093fc583c3318d1cac768c6513ad40a3b8203fd05
+  size: 2012605
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Encoded PowerShell started from cmd.exe
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1059.001_powershell_encoded_command
+- id: splunk/T1059.001/hidden_powershell/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/hidden_powershell/windows-sysmon.log
+  sha256: bac9c10fe7ae07c2ede09014c44f92df074055d9764a92cde4161c0c8e19ef96
+  size: 32626602
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Hidden-window PowerShell tests, including Invoke-Mimikatz -DumpCreds
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1003.001_lsass_memory_access
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1059.001/malicious_cmd_line_samples/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/malicious_cmd_line_samples/windows-sysmon.log
+  sha256: 64ab32d34f2e6aef53f80ae092a6caf9e3f737e362c522b9c1791e91b7defab4
+  size: 32017
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Renamed PowerShell reading its script from standard input
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: 'PowerShell renamed (lVN8MeO.exe) and fed its script through standard input (-) by cmd /c echo: no encoded command, which
+        is what this rule keys on'
+- id: splunk/T1059.001/powershell_testing/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_testing/windows-sysmon.log
+  sha256: fa2961e63bef58669c7a634b1466bfa540fc836730cffb2959bf6fc56ad01eb4
+  size: 13630939
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: 'PowerShell attack tests: encoded stagers launched from HTA files, Invoke-Mimikatz'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1059.001_powershell_encoded_command
+  - T1003.001_lsass_memory_access
+- id: splunk/T1059.004/linux_discovery_tools/sysmon_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.004/linux_discovery_tools/sysmon_linux.log
+  sha256: 045e49f0528173351671de2e12817670d5be95485c6fc1c4a8aad80c620215f7
+  size: 2850747
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.004
+  title: 'Discovery commands from a shell: ps, find, id, crontab -l for every account'
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: scope
+      reason: 'discovery commands from an interactive shell: no encoded payload piped into a shell and nothing run from /tmp'
+    T1053.003_crontab_noninteractive_install:
+      kind: negative
+      reason: crontab -l -u <account> for every account lists cron tables; only installing one is in scope
+- id: splunk/T1059.004/snapattack/snapattack_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.004/snapattack/snapattack_linux.log
+  sha256: 9f3396fccefec9d9db47bdf83e0d8988fe8865a0cfa3fa1f7a8e25a3a5d4fdc7
+  size: 4404
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.004
+  title: Netcat reverse shells
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: gap
+      reason: 'ncat -c bash and nc -e /bin/sh: a reverse shell through netcat, which this rule does not cover (encoded pipes and /tmp
+        execution only)'
+      next: netcat_exec
+- id: splunk/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security.log
+  sha256: 8c23ac6554c0f02775b9ac46647bd58e42b15dc60123aac192b14d1e4268272d
+  size: 190306
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: Kerberos spray against disabled accounts (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_explicit_credential_spray_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_explicit_credential_spray_xml/windows-security.log
+  sha256: 5569e9be2a25a2780a3bbc2eefefa63956304a6ed0ce3cb333f4ea78d123fe3a
+  size: 179782
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: Spray through explicit-credential logons (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      reason: '4648 explicit-credential logons on the source host and 4776 on the domain controller: no 4625, 4768 or 4771 with a client
+        address'
+      next: ntlm_spray_by_workstation
+- id: splunk/T1110.003/purplesharp_invalid_users_kerberos_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_invalid_users_kerberos_xml/windows-security.log
+  sha256: 5fdf6d4ff1d9495d7b99621de2ac537d4e07d6000d6c24a6b82878ce75085360
+  size: 190256
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: Kerberos spray against accounts that do not exist (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+  overlap:
+    splunk/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security: 'the same 137 records (record numbers and times): 87
+      identical and 50 with Status 0x6 where the disabled-users file has 0x12. One file is an edited copy of the other and upstream
+      does not say which. The 0x12 branch has its own evidence in the classic export of the disabled-users scenario, a separate run
+      nobody edited'
+- id: splunk/T1110.003/purplesharp_invalid_users_ntlm_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_invalid_users_ntlm_xml/windows-security.log
+  sha256: 5c7354784cef32c1ffcd6f5a56919741e35f03d361404ea275ab79b2db5576d1
+  size: 173185
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: NTLM spray against unknown accounts, run on the host itself (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      reason: 'local logon attempts (4625 without a remote address) and 4776 at the domain controller by workstation name: not counted
+        by this correlation'
+      next: ntlm_spray_by_workstation
+- id: splunk/T1110.003/purplesharp_multiple_users_from_process_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_multiple_users_from_process_xml/windows-security.log
+  sha256: b9886899bdceb4c3c99aa19eeb23ef00da7df93013e9526815d40bdd1c2c81c1
+  size: 311246
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: One process failing local logons for many accounts (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      reason: local logon attempts by one process (4625 logon type 2, no remote address)
+      next: local_logon_spray_by_process
+- id: splunk/T1110.003/purplesharp_remote_spray_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_remote_spray_xml/windows-security.log
+  sha256: 92ab741ca691f9b7308cc684864bee0b0bff1bb1e01440c4ab874a3afa3f4307
+  size: 292831
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: Password spray from a remote host (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_valid_users_kerberos_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_valid_users_kerberos_xml/windows-security.log
+  sha256: f786402e2336f80ef4202129ccc5809b8fdf6372301e647b48d2c69faeb55a96
+  size: 195548
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: Kerberos password spray against existing accounts (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_valid_users_ntlm_xml/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_valid_users_ntlm_xml/windows-security.log
+  sha256: e3d316fde69dc39af7cd391f9141329a2693d531facbba30a564683cbc8d941a
+  size: 172183
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: NTLM spray run on the host itself (PurpleSharp)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      reason: 'the spray runs on the host itself: its 4625 events carry no remote address (logon type 2) and the domain controller logs
+        4776 by workstation name, which this correlation does not count'
+      next: ntlm_spray_by_workstation
+- id: splunk/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux.log
+  sha256: 71f4ee71a3cc72d9c70801594f1137593b15c3ba6f4a8678645da5367d9e02bb
+  size: 3408
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'RocketMQ exploitation: the broker running a netcat reverse shell through sh'
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  quiet:
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: 'Sysmon for Linux process creation only: the broker is exploited over its own protocol, and the file holds no web or API
+        access log'
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: 'Sysmon for Linux process creation only: no web or API access log'
+    T1059.004_linux_suspicious_shell_execution:
+      kind: gap
+      reason: 'sh -c piping echo nc ... -e /bin/bash into sh: a netcat reverse shell, which this rule does not cover (encoded pipes
+        and /tmp execution only)'
+      next: netcat_exec
+- id: splunk/T1190/linux_suspicious_child_of_postgresql/snapattack_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/linux_suspicious_child_of_postgresql/snapattack_linux.log
+  sha256: 4f1548f6626cf538a57e182b9e5d73d9ba2704c800cc3764616f31eed58405f7
+  size: 1577
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: A shell started under the PostgreSQL server account (one Sysmon for Linux record)
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  quiet:
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: 'Sysmon for Linux process creation only: no web or API access log'
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: 'Sysmon for Linux process creation only: no web or API access log'
+    T1059.004_linux_suspicious_shell_execution:
+      kind: scope
+      reason: 'an interactive bash under the database account in its data directory: no encoded payload piped into a shell and nothing
+        run from a temporary directory'
+- id: splunk/T1218.011/atomic_red_team/ordinal_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/atomic_red_team/ordinal_windows-sysmon.log
+  sha256: 441b465a0e8fb2c2989b11a37aed0485c17dbc75db54eae46fd54f16e4590450
+  size: 21974
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1218.011
+  title: Rundll32 calling a DLL export by ordinal
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: scope
+      reason: 'rundll32 calls a DLL in C:\AtomicRedTeam by ordinal: no script handler, writable path, dump export or proxy export -
+        an ordinal call on its own is not in this rule''s scope'
+- id: splunk/T1218.011/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/atomic_red_team/windows-sysmon.log
+  sha256: 0805f7d8a89371dee4f75c001ef11574c2d759d91626c1625bca7c9174cfe29f
+  size: 23784139
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1218.011
+  title: Rundll32 abuse with Atomic Red Team
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+  - T1003.001_lsass_memory_access
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1218.011/rundll32_dll_in_temp/sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/rundll32_dll_in_temp/rundll32_tmp.log
+  sha256: 5ac4747551f733d673cd6828a55732b7b542d3552698325cbdac2df2a69aa62f
+  size: 4057
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1218.011
+  title: Rundll32 loading a DLL from a Temp folder
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: splunk/T1547.001/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1547.001/atomic_red_team/windows-sysmon.log
+  sha256: 11d8c6f7ca60994936ae9332ea67e5c220027ae1addad48203df6bdde9d46f5d
+  size: 11357100
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1547.001
+  title: Run and RunOnce key persistence with Atomic Red Team
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1547.001_registry_run_key_persistence
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1558.003/kerberoasting_spn_request_with_rc4_encryption/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/kerberoasting_spn_request_with_rc4_encryption/windows-xml.log
+  sha256: fd4d9e35bd90964710a2f67bd90476ac69301310256bb319b16662aa04821d79
+  size: 1127
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1558.003
+  title: A service ticket requested with RC4
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1558.003_kerberoasting_rc4_tgs
+- id: splunk/T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml.log
+  sha256: e3e40630126969786c1a4c9cfcfea91773c5a4e3feb89cea28ac29fa6ef4117e
+  size: 174355
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1558.003
+  title: RC4 service tickets requested by one client, padded with edited copies of one record
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1558.003_kerberoasting_rc4_tgs
+  quiet:
+    T1558.003_kerberoasting_volume:
+      kind: negative
+      reason: 'read once, the file holds too few distinct service tickets from one client for the threshold: its unusual number comes
+        from one record copied 86 times with the service name edited and the time moved by nanoseconds (115 repeats in all, 85 of them
+        edited). RASD reads each record once'
+- id: splunk/T1569.002/malicious_powershell_executed_as_a_service/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/malicious_powershell_executed_as_a_service/windows-xml.log
+  sha256: 17ecd8e5711484349afaa259d7b1167a360370dd9c417c3fb52d1dbf1ab792c3
+  size: 2801
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1569.002
+  title: A service that runs PowerShell, beside the cmd.exe and C:\Temp services
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:System
+  expect:
+  - T1569.002_suspicious_service_installation
+- id: splunk/T1569.002/windows_service_created_with_suspicious_service_path/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/windows_service_created_with_suspicious_service_path/windows-xml.log
+  sha256: e53292f778590f2661d8b6874e89590d02587ff14ca632e04a236259e38a679b
+  size: 1816
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1569.002
+  title: Services whose binary is a bare cmd.exe or sits in C:\Temp
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:System
+  expect:
+  - T1569.002_suspicious_service_installation
+  overlap:
+    splunk/T1569.002/malicious_powershell_executed_as_a_service/windows-xml: 'both alerting records (the bare cmd.exe and the C:\Temp
+      service) are records of the other file: two exports of one host over overlapping time'
+- id: splunk/T1070.001/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/atomic_red_team/windows-sysmon.log
+  sha256: 58a5e3465bdced284a1c0b625063c539be77beca8f9921e29238bbdc4d26de11
+  size: 11267266
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: Event logs cleared with wevtutil (Atomic Red Team)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1685.005_event_log_clearing
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1070.001/windows_event_log_cleared/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/windows_event_log_cleared/windows-security.log
+  sha256: fd483a9c03b1cf5b10b4cc8b1500abd782da334647e93db61edee7f7040dce87
+  size: 878
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: Security log cleared (event 1102)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1685.005_security_log_cleared
+- id: splunk/T1070.001/windows_event_log_cleared/windows-system
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/windows_event_log_cleared/windows-system.log
+  sha256: 5e5298e558860f09a89cf1a503e34d3412f2e4a6dbeb312ec44282f383d96e6f
+  size: 878
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: System log cleared (event 104)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:System
+  expect:
+  - T1685.005_system_log_cleared
+- id: otrf/empire_mimikatz_logonpasswords
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/credential_access/host/empire_mimikatz_logonpasswords.zip
+  sha256: bb4c057b62d781be5426e011872ba1a15070c07afbb24848a14458f4b22b06fb
+  size: 716749
+  member: empire_mimikatz_logonpasswords_2020-08-07103224.json
+  member_sha256: eee28c885baa43b564ee1c123aecf0d2a5e456b5e2ff756a83180bd92e8c4ba8
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: Empire Invoke-Mimikatz logonpasswords
+  expect:
+  - T1003.001_lsass_memory_access
+- id: otrf/metasploit_comsvcs_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_03/metasploit_comsvcs_lsass_memory_dump.zip
+  sha256: 97a834cd72b0803d544c62cc45a41b18a4cc04a605735096be4bc5dad5e9fe7b
+  size: 2332754
+  member: metasploit_comsvcs_lsass_memory_dump.json
+  member_sha256: 43e755d5b2379960b2567286a06ade47ee2c4142221231553491a686351380dc
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: 'Metasploit: getsystem, then comsvcs.dll MiniDump of LSASS'
+  expect:
+  - T1003.001_lsass_memory_access
+  - T1218.011_rundll32_suspicious_execution
+  - T1569.002_suspicious_service_installation
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/metasploit_logonpasswords_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_01/metasploit_logonpasswords_lsass_memory_dump.zip
+  sha256: 79045fcc5a8689efed8db4911cadc11b554ef8b0bed1428ee490bb8c3f2578e6
+  size: 3405389
+  member: metasploit_logonpasswords_lsass_memory_dump.json
+  member_sha256: 4bca511ef19fb759c31b7721e4b14a8d5462675eccdc9a5d7ef59c93f6481671
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: 'Metasploit: getsystem through a rundll32 service, then kiwi logonpasswords from a session migrated into svchost'
+  expect:
+  - T1003.001_lsass_memory_access
+  - T1218.011_rundll32_suspicious_execution
+  - T1569.002_suspicious_service_installation
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/metasploit_nanodump_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_07/metasploit_nanodump_lsass_memory_dump.zip
+  sha256: 5335635ef2bce0fb3f8704e17fb04a3be7400ac7c4bcd6ec7c14454632acaaaf
+  size: 3545590
+  member: metasploit_nanodump_lsass_memory_dump.json
+  member_sha256: 868e7eac0a66a9d312f043b6f9c76cddaedccbe49f5d9ccc97d73f65de675a09
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: Metasploit session running nanodump dropped into System32
+  expect:
+  - T1003.001_lsass_memory_access
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/metasploit_out-minidump_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_04/metasploit_out-minidump_lsass_memory_dump.zip
+  sha256: d6150eab4013ed0a7fc9c6b7266187214706c543c9dc3a370603f524def5de63
+  size: 2431111
+  member: metasploit_out-minidump_lsass_memory_dump.json
+  member_sha256: 7e2d82f2f1c90527737c2bfdec737e7ea1e2a961789bff79ee0a67c9a0960b3c
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: Metasploit session running Out-Minidump against LSASS
+  expect:
+  - T1003.001_lsass_memory_access
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/metasploit_outflank-dumpert_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_06/metasploit_outflank-dumpert_lsass_memory_dump.zip
+  sha256: ee996c0ddc32611c572f59a68869f7d4327aaac04a3aeee65916b7221347dc1d
+  size: 3326923
+  member: metasploit_outflank-dumpert_lsass_memory_dump.json
+  member_sha256: 3380aebcf72a532a529a27a18b646632d74adc4a2ec8f1b4a8080e56399d7d45
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: Metasploit session running Outflank Dumpert against LSASS
+  expect:
+  - T1003.001_lsass_memory_access
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/metasploit_procdump_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_02/metasploit_procdump_lsass_memory_dump.zip
+  sha256: 2b32f11b1465f49df8bb4040652b001e4bb8a92de6ae7e84c2977abe68273f04
+  size: 2551462
+  member: metasploit_procdump_lsass_memory_dump.json
+  member_sha256: f3163e1db187ba614975bfc1a5ebf656caf19537d361f60c8b3da7eb343c5f00
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: Metasploit session running procdump against LSASS
+  expect:
+  - T1003.001_lsass_memory_access
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/metasploit_sharpdump_lsass_memory_dump
+  source: otrf-security-datasets
+  path: datasets/compound/LSASS_campaign_05/metasploit_sharpdump_lsass_memory_dump.zip
+  sha256: 79e347b411beefaf5c7d0c951fdcb9d308fce20f8eabe666c11fa7b6165053b8
+  size: 3428302
+  member: metasploit_sharpdump_lsass_memory_dump.json
+  member_sha256: 8b9625e09fa155ee0f37f1408970fff92226bd43582fa83e9e5b8b5d45332189
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: Metasploit session running SharpDump against LSASS
+  expect:
+  - T1003.001_lsass_memory_access
+  also:
+    T1685.005_system_log_cleared:
+      kind: benign
+      reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
+- id: otrf/psh_lsass_memory_dump_comsvcs
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/credential_access/host/psh_lsass_memory_dump_comsvcs.zip
+  sha256: 0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae
+  size: 17957
+  member: psh_lsass_memory_dump_comsvcs_2020-10-18T19500924.json
+  member_sha256: 264d9048698e79bb7dbca12a770edd9ed947ea8a518965af747ed64e57f176e5
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1003.001
+  title: LSASS dump with rundll32 comsvcs.dll MiniDump from PowerShell
+  expect:
+  - T1003.001_lsass_memory_access
+  - T1218.011_rundll32_suspicious_execution
+  also:
+    T1685.005_security_log_cleared:
+      kind: benign
+      reason: 'the dataset author cleared the Security log when the recording started: it is the first event of the file, 26 seconds
+        before the attack'
+- id: otrf/covenant_psremoting_command
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/covenant_psremoting_command.zip
+  sha256: 4a2e0f9688c87a90b17b608ff38fb2230ceb7305ea0368703dcfe53269e3f096
+  size: 359550
+  member: covenant_psremoting_command_2020-08-06115603.json
+  member_sha256: 2e749fa04bf44837d8bf78db303cdd1937b05e15f89f5cd67bb982f14f103de2
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1021.006
+  title: Covenant command run through PowerShell remoting
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: 'Covenant runs its command inside the remoting host (wsmprovhost.exe) without starting a child process: nothing for a
+        child-process rule to see. PowerShell script block logging (4104) on the target would show it'
+- id: otrf/empire_psremoting_stager
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/empire_psremoting_stager.zip
+  sha256: 214355730c8cf903f4423c96aa7459fed7b74258e2a6766b794ba316e9d3a46e
+  size: 409741
+  member: empire_psremoting_stager_2020-09-20170827.json
+  member_sha256: b4df08b4731f9a22d11a07fd2f710e29cf68f087d328ffd9aa79bf3eba40d7c7
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1021.006
+  title: Empire stager launched through PowerShell remoting
+  expect:
+  - T1021.006_wsmprovhost_suspicious_child
+  - T1059.001_powershell_encoded_command
+- id: otrf/empire_schtasks_creation_execution_elevated_user
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/persistence/host/empire_schtasks_creation_execution_elevated_user.zip
+  sha256: 74662dc5c52f4ac2fc9dcb336bae7fb4e101217169c65adf5784b03015501d3b
+  size: 4241110
+  member: empire_schtasks_creation_execution_elevated_user_2020-09-21175806.json
+  member_sha256: 1e595a94305c7a2283fb9109ae79f52906aefc0c19e2064a27fad9da2d0e27e9
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1053.005
+  title: Empire scheduled task persistence as an elevated user
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: otrf/empire_schtasks_creation_standard_user
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/persistence/host/empire_schtasks_creation_standard_user.zip
+  sha256: b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4
+  size: 263732
+  member: empire_schtasks_creation_standard_user_2020-09-21031526.json
+  member_sha256: 6ba0e877d1e0757ddd7dbe9edc7abc885fa92f9ee01fe8fdfa2f16241eeaff0f
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1053.005
+  title: Empire scheduled task persistence as a standard user
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: otrf/schtask_create
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/schtask_create.zip
+  sha256: 74394c64b660d5b229936d00ea8b3ceb900126cd9e261f58fa2be766579ec5de
+  size: 126281
+  member: schtask_create_2020-12-1907003032.json
+  member_sha256: b206c5200ccbe96eecf99d6f96c2362fa45035df2d3a6417f3ae11a1779473d8
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1053.005
+  title: Scheduled task created on a remote host
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: otrf/empire_launcher_vbs
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/execution/host/empire_launcher_vbs.zip
+  sha256: 812da270cf8cda6f1948fb6275410f15dc1794d0bd6b623c9c25b2518285019c
+  size: 313016
+  member: empire_launcher_vbs_2020-09-04160940.json
+  member_sha256: d569bc556907e23acf638b762c0acfbbecba016b6b2e07a86356151a799b661c
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1059.001
+  title: Empire VBS launcher starting an encoded PowerShell stager
+  expect:
+  - T1059.001_powershell_encoded_command
+- id: otrf/empire_persistence_registry_modification_run_keys_elevated_user
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/persistence/host/empire_persistence_registry_modification_run_keys_elevated_user.zip
+  sha256: 2809354d679025859d723be3ceb1e2c9f9e5dde2ebec5bbea7c398e165a9b67d
+  size: 102384
+  member: empire_persistence_registry_modification_run_keys_elevated_user_2020-07-22001847.json
+  member_sha256: 0dbdf804174d25208341210dbaba6dc0e994e2e5da0a5806540fb543ad42ee6e
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1547.001
+  title: Empire Run key persistence as an elevated user
+  expect:
+  - T1547.001_registry_run_key_persistence
+- id: otrf/empire_persistence_registry_modification_run_keys_standard_user
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/persistence/host/empire_persistence_registry_modification_run_keys_standard_user.zip
+  sha256: 2965f791bcaf5e6ccfc4059985e81fd7e67ec87f17855b6c383edd1b03a19c36
+  size: 3550216
+  member: empire_persistence_registry_modification_run_keys_standard_user_2020-09-04030609.json
+  member_sha256: 9a781f7c44c2f625c6eb66f673261d7820a7c8d662dc9c91668acd50e51b9725
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1547.001
+  title: Empire Run key persistence as a standard user, starting an encoded stager
+  expect:
+  - T1547.001_registry_run_key_persistence
+  - T1059.001_powershell_encoded_command
+- id: otrf/purplesharp_ad_playbook_I
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/purplesharp_ad_playbook_I.zip
+  sha256: 2a2d80e7b8d8ee6821a1754118f3ab908b4bac84cf4ed3d018e281f631bd2870
+  size: 1362498
+  member: purplesharp_ad_playbook_I_2020-10-22042947.json
+  member_sha256: d86d22f0c02ab851564bb5e0c90c220e9df0319f5948bfc90dfa605b4511d4f0
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1558.003
+  title: 'PurpleSharp Active Directory playbook: Kerberoasting'
+  expect:
+  - T1558.003_kerberoasting_rc4_tgs
+  - T1558.003_kerberoasting_volume
+- id: otrf/covenant_sharpsc_create_dcerpc_smb_svcctl
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/covenant_sharpsc_create_dcerpc_smb_svcctl.zip
+  sha256: 77487bbd1fc7954adbc9ba07bfeeeb9d57192b0f0e0f54e1ee5a05c71a5be84a
+  size: 276984
+  member: covenant_sharpsc_create_dcerpc_smb_svcctl_2020-08-06022635.json
+  member_sha256: e958724950b4363db2ae2bd868b91c3d728045e7704a49f45026b0077f3838b6
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1569.002
+  title: Covenant SharpSC creating a remote service
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: scope
+      reason: 'the service binary is an implant copied into System32 under a plain name (GruntHTTP2.exe): no shell, script, writable
+        path or known tool name to key on. A hunt for new binaries in System32 covers it'
+- id: otrf/empire_psexec_dcerpc_tcp_svcctl
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/empire_psexec_dcerpc_tcp_svcctl.zip
+  sha256: 8f40e7fc86bbbf31ebd50b3ba537cf0f4378392ae3e74de84bee00aeb0de1fa5
+  size: 656179
+  member: empire_psexec_dcerpc_tcp_svcctl_2020-09-20121608.json
+  member_sha256: 968c4b699f7239d106577b2b8e206edfaf812f193a60e663966258af67a56acc
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1569.002
+  title: 'Empire psexec: a remote service running an encoded PowerShell stager'
+  expect:
+  - T1569.002_suspicious_service_installation
+  - T1059.001_powershell_encoded_command
+- id: otrf/empire_smbexec_dcerpc_smb_svcctl
+  source: otrf-security-datasets
+  path: datasets/atomic/windows/lateral_movement/host/empire_smbexec_dcerpc_smb_svcctl.zip
+  sha256: c0fc435c9ce0ecdc7cd57b4055977b949ac6b1cae9d7f4ce7aa0f0e5eae7d7f1
+  size: 753172
+  member: empire_smbexec_dcerpc_smb_svcctl_2020-09-20025716.json
+  member_sha256: 04411a61f42eb9723d4e4abaa1ef9bba9883d118d0e55091993e577e6cb49ff7
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1569.002
+  title: 'Empire smbexec: a remote service running an encoded PowerShell stager'
+  expect:
+  - T1569.002_suspicious_service_installation
+  - T1059.001_powershell_encoded_command
+  also:
+    T1003.001_lsass_memory_access:
+      kind: benign
+      reason: the Azure guest agent's log collector (C:\WindowsAzure\GuestAgent_...\CollectGuestLogs.exe) reads LSASS with 0x1410 on
+        this Azure virtual machine. The proposed tuning azure_guest_agent covers estates on Azure
+- id: evtx/credential-access/CA_sysmon_hashdump_cmd_meterpreter
+  source: evtx-attack-samples
+  path: Credential Access/CA_sysmon_hashdump_cmd_meterpreter.evtx
+  sha256: 897206ca4c3c427753fde880970048494cd5a99be9aaba6154b4e3ac499e24c9
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: Meterpreter hashdump opening LSASS with 0x1f1fff
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/babyshark_mimikatz_powershell
+  source: evtx-attack-samples
+  path: Credential Access/babyshark_mimikatz_powershell.evtx
+  sha256: 3747c33a60a32142bf4e30bf023f155b2c0d6e7a018bce8b7bafbd5aa7ec109c
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: BabyShark-style mimikatz in PowerShell
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/ppl_bypass_ppldump_knowdll_hijack_sysmon_security
+  source: evtx-attack-samples
+  path: Credential Access/ppl_bypass_ppldump_knowdll_hijack_sysmon_security.evtx
+  sha256: 9ac47a1ab7ac5e899dede49a4ea3512f0d3628edb9605981fe78bc0aec6f296f
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: 'PPLdump: a fresh services.exe dumping LSASS through a hijacked KnownDLL'
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/sysmon_10_11_lsass_memdump
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_10_11_lsass_memdump.evtx
+  sha256: 915f0859251552b6c33efc32f6184d2c25419c5859852124a7f14ed6ec1a3723
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: LSASS dumps with procdump and Task Manager
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/sysmon_10_11_outlfank_dumpert_and_andrewspecial_memdump
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_10_11_outlfank_dumpert_and_andrewspecial_memdump.evtx
+  sha256: f0d11bf8e186947aaf64c3a57debb1b665f518e2dab13acdaafb30c7e8d262af
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: LSASS dumps with Outflank Dumpert (EXE and DLL) and AndrewSpecial
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/sysmon_10_lsass_mimikatz_sekurlsa_logonpasswords
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_10_lsass_mimikatz_sekurlsa_logonpasswords.evtx
+  sha256: 9a1689574ed08c1fb18e7ff3f3bed612109aedcb7bf8efbf3537d756e669e96f
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: mimikatz sekurlsa::logonpasswords
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/sysmon_2x10_lsass_with_different_pid_RtlCreateProcessReflection
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_2x10_lsass_with_different_pid_RtlCreateProcessReflection.evtx
+  sha256: 7d160c1b636f8eb3642e9c2c15c941c136d9ecbf19116b18b19f981324d44e00
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: procdump against LSASS, including through process reflection
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/sysmon_3_10_Invoke-Mimikatz_hosted_Github
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_3_10_Invoke-Mimikatz_hosted_Github.evtx
+  sha256: 59c28ff11e4b9b329ee6b0859a5514f772913e95ef9ba8f94c46e02c4d78be17
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: Invoke-Mimikatz downloaded and run in PowerShell
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/credential-access/sysmon_rdrleakdiag_lsass_dump
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_rdrleakdiag_lsass_dump.evtx
+  sha256: 17f010bff45a34212e5c5ff13ed1106274f65e3524fc508f7481db8aaeef0434
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: LSASS dump with rdrleakdiag.exe
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: gap
+      reason: 'rdrleakdiag.exe, a signed Windows binary, snapshots LSASS through a reflected clone: the file has no Sysmon 10 to an
+        lsass.exe target'
+      next: lsass_dump_command_lines
+- id: evtx/credential-access/tutto_malseclogon
+  source: evtx-attack-samples
+  path: Credential Access/tutto_malseclogon.evtx
+  sha256: 7f8651fa3ed49bb02a0760e3b4124e08aa0579d580395ea1b1c8c24332fce092
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: MalSeclogon LSASS handle through the seclogon service
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/defense-evasion/DE_BYOV_Zam64_CA_Memdump_sysmon_7_10
+  source: evtx-attack-samples
+  path: Defense Evasion/DE_BYOV_Zam64_CA_Memdump_sysmon_7_10.evtx
+  sha256: 329b2a8c70d43789e03bad581e971c4f84aeb2852c5a7c960fa57454225e5199
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: LSASS dump after loading a vulnerable driver (bring your own driver)
+  expect:
+  - T1003.001_lsass_memory_access
+- id: evtx/lateral-movement/LM_PowershellRemoting_sysmon_1_wsmprovhost
+  source: evtx-attack-samples
+  path: Lateral Movement/LM_PowershellRemoting_sysmon_1_wsmprovhost.evtx
+  sha256: c890d2b67dc2902b2fa5a094e517674920911a15b273f43c674fbfaa69540658
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1021.006
+  title: PowerShell remoting running hostname.exe
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: 'the remote command is hostname.exe: a discovery command, not a child this rule treats as suspicious'
+- id: evtx/lateral-movement/LM_winrm_exec_sysmon_1_winrshost
+  source: evtx-attack-samples
+  path: Lateral Movement/LM_winrm_exec_sysmon_1_winrshost.evtx
+  sha256: 7115c48511d18d934d1e63417b7b1d5d2b4fef903e716852b00ebc481ee5f2e9
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1021.006
+  title: Command run over winrs
+  expect:
+  - T1021.006_wsmprovhost_suspicious_child
+- id: evtx/automatedtestingtools/malware/rundll32_cmd_schtask
+  source: evtx-attack-samples
+  path: AutomatedTestingTools/Malware/rundll32_cmd_schtask.evtx
+  sha256: 4ee3de8ac48d973a800666c3e1d757d11eaf9a960e7144db566bb51d903b4b09
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1053.005
+  title: 'Malware: rundll32 loader creating a scheduled task from an XML file'
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: blind-spot
+      reason: 'the loader reaches its DLL through the 8.3 short name of ProgramData (C:\PROGRA~3\...) and by a bare name in the working
+        folder: the path branch reads long folder names only. 8.3 names are listed as a blind spot'
+- id: evtx/lateral-movement/LM_sysmon_remote_task_src_powershell
+  source: evtx-attack-samples
+  path: Lateral Movement/LM_sysmon_remote_task_src_powershell.evtx
+  sha256: 3b047a264a341faa16e33af4cbf4097f6db3aec75e5c87082f7b9551a3cc0e5b
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1053.005
+  title: Source side of a scheduled task created on a remote host from PowerShell
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: 'the source host''s Sysmon events only: PowerShell loading the Task Scheduler library and connecting to the target over
+        RPC. No schtasks process creation, and the target''s task registration is not in the file'
+    T1053.005_powershell_scheduled_task_creation:
+      kind: telemetry
+      reason: 'PowerShell''s image load and RPC connections only: no process creation with the cmdlets, and no script block logging'
+- id: evtx/privilege-escalation/sysmon_1_11_exec_as_system_via_schedtask
+  source: evtx-attack-samples
+  path: Privilege Escalation/sysmon_1_11_exec_as_system_via_schedtask.evtx
+  sha256: 6b2ae54c6e3926f62101c2f8f85e7003869de534af1b17d309a0a84298e70edd
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1053.005
+  title: Running as SYSTEM through a scheduled task
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: evtx/other/emotet/exec_emotet_sysmon_1
+  source: evtx-attack-samples
+  path: Other/emotet/exec_emotet_sysmon_1.evtx
+  sha256: 5d7347a786943c3d4cd0e5d10e8941df3218ce6f3b473ed7a76ff89997c3b83b
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1059.001
+  title: 'Emotet: PowerShell starting the payload it dropped, a renamed binary in a user''s Temp folder'
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: the one record is the payload's process creation; its parent PowerShell ran without arguments, so there is no encoded
+        command for this rule to read
+- id: evtx/credential-access/kerberos_pwd_spray_4771
+  source: evtx-attack-samples
+  path: Credential Access/kerberos_pwd_spray_4771.evtx
+  sha256: 4a0a1c7132e216dbc704c806e9429df9ae3ac00485d5238e50c776e3099ae11d
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1110.003
+  title: Kerberos spray over a list of mostly unknown names
+  expect:
+  - T1110.003_password_spray_burst
+  also:
+    T1685.005_security_log_cleared:
+      kind: benign
+      reason: 'the author cleared the Security log nine seconds before recording the spray: the first event of the file'
+- id: evtx/credential-access/sysmon_10_1_memdump_comsvcs_minidump
+  source: evtx-attack-samples
+  path: Credential Access/sysmon_10_1_memdump_comsvcs_minidump.evtx
+  sha256: d1bf591cabf7d21f49936150bfaf433da7665211ba3fd00bc806f4912a6f96b4
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: comsvcs.dll MiniDump run by rundll32 from a VBScript
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: negative
+      reason: 'the dump targets notepad.exe, not LSASS: correctly quiet'
+- id: evtx/execution/exec_persist_rundll32_mshta_scheduledtask_sysmon_1_3_11
+  source: evtx-attack-samples
+  path: Execution/exec_persist_rundll32_mshta_scheduledtask_sysmon_1_3_11.evtx
+  sha256: fb5679aec77dc45a35902f705b513811dfea0f2f93c9c8503464a20270c3222f
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 and mshta execution with a scheduled task for persistence
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+  - T1053.005_schtasks_suspicious_creation
+- id: evtx/execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler
+  source: evtx-attack-samples
+  path: Execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler.evtx
+  sha256: 11150ee64363501f5f5ca7ab359e696a6a7bb51a1c76f5fb182c38682a5e7a07
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 url.dll FileProtocolHandler
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/execution/exec_sysmon_1_11_lolbin_rundll32_shdocvw_openurl
+  source: evtx-attack-samples
+  path: Execution/exec_sysmon_1_11_lolbin_rundll32_shdocvw_openurl.evtx
+  sha256: a958cf481c4a9fb6e434dfdd6cad6974e577bad6716926b6ff5b6c6a2acce74c
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 shdocvw.dll OpenURL
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/execution/exec_sysmon_1_11_lolbin_rundll32_zipfldr_RouteTheCall
+  source: evtx-attack-samples
+  path: Execution/exec_sysmon_1_11_lolbin_rundll32_zipfldr_RouteTheCall.evtx
+  sha256: 03a43d28ce470db4b3a9e40bda8147a7fa254cbf3237ff2219c3c09e8ddb8847
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 zipfldr.dll RouteTheCall starting a binary
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/execution/exec_sysmon_1_lolbin_rundll32_advpack_RegisterOCX
+  source: evtx-attack-samples
+  path: Execution/exec_sysmon_1_lolbin_rundll32_advpack_RegisterOCX.evtx
+  sha256: 6d5b52398a67b36c160ec22db8e027efbc3e40943075d2d79c748931bc8d9982
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 advpack.dll RegisterOCX starting a binary
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/execution/exec_sysmon_1_rundll32_pcwutl_LaunchApplication
+  source: evtx-attack-samples
+  path: Execution/exec_sysmon_1_rundll32_pcwutl_LaunchApplication.evtx
+  sha256: d5f8d2c619562d8dcfc6c68ee51131436e060d036447aae1e88c89518a191f9a
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 pcwutl.dll LaunchApplication starting a binary
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/execution/sysmon_1_11_rundll32_cpl_ostap
+  source: evtx-attack-samples
+  path: Execution/sysmon_1_11_rundll32_cpl_ostap.evtx
+  sha256: 3a343508ea71725bf118a85971840257bbba793d25336993cea73274743c3550
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: Ostap-style rundll32 running a control panel item
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/execution/sysmon_lolbas_rundll32_zipfldr_routethecall_shell
+  source: evtx-attack-samples
+  path: Execution/sysmon_lolbas_rundll32_zipfldr_routethecall_shell.evtx
+  sha256: 5f83c2a19819cf21098ff7047b52d5ece20303bb95332e4020660da6de9c6050
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 zipfldr.dll RouteTheCall opening a shell folder
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/other/maldoc_mshta_via_shellbrowserwind_rundll32
+  source: evtx-attack-samples
+  path: Other/maldoc_mshta_via_shellbrowserwind_rundll32.evtx
+  sha256: fd59102d39891a81ee0e002bec2a855998c57e6439a10608fd9f4b12861e34a5
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1218.011
+  title: Malicious document starting mshta and rundll32 through ShellBrowserWindow
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: evtx/automatedtestingtools/malware/DE_timestomp_and_dll_sideloading_and_RunPersist
+  source: evtx-attack-samples
+  path: AutomatedTestingTools/Malware/DE_timestomp_and_dll_sideloading_and_RunPersist.evtx
+  sha256: ce94f2bd83c0adf2381afee0f3714b41aef4ae0997350b3aa039d7947865164c
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1547.001
+  title: 'Malware: timestomping, side-loading and Run key persistence'
+  expect:
+  - T1547.001_registry_run_key_persistence
+- id: evtx/automatedtestingtools/malware/sideloading_injection_persistence_run_key
+  source: evtx-attack-samples
+  path: AutomatedTestingTools/Malware/sideloading_injection_persistence_run_key.evtx
+  sha256: 7a58c4055659045dbdba8e8bc83252711455f0c4d54e2b963147ef9349822699
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1547.001
+  title: 'Malware: DLL side-loading with Run key persistence'
+  expect:
+  - T1547.001_registry_run_key_persistence
+- id: evtx/persistence/evasion_persis_hidden_run_keyvalue_sysmon_13
+  source: evtx-attack-samples
+  path: Persistence/evasion_persis_hidden_run_keyvalue_sysmon_13.evtx
+  sha256: b8df8232d917fed223e2bf9abebb249489f84c6204c40b72dab6a74157d6f8bd
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1547.001
+  title: Hidden Run value starting a binary from Windows\Tasks
+  expect:
+  - T1547.001_registry_run_key_persistence
+- id: evtx/lateral-movement/LM_Remote_Service02_7045
+  source: evtx-attack-samples
+  path: Lateral Movement/LM_Remote_Service02_7045.evtx
+  sha256: af758eb492b6d5ab6665f7e4c44b31490f57be78c37dc0a8b1da714bb0d3d458
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1569.002
+  title: Remote services whose binary is cmd.exe (and one calc.exe, out of scope)
+  expect:
+  - T1569.002_suspicious_service_installation
+- id: evtx/lateral-movement/LM_sysmon_psexec_smb_meterpreter
+  source: evtx-attack-samples
+  path: Lateral Movement/LM_sysmon_psexec_smb_meterpreter.evtx
+  sha256: 18ffdda9c24e593d6b1414b6e05c7f7a5dbffb8588a387c165431b61ab52d76f
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1569.002
+  title: Metasploit psexec recorded by Sysmon only
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: gap
+      reason: 'the file holds Sysmon events only, no System log: the service appears as a Sysmon 13 write of its ImagePath, which this
+        7045 rule does not read'
+      next: service_imagepath_registry
+- id: evtx/privilege-escalation/System_7045_namedpipe_privesc
+  source: evtx-attack-samples
+  path: Privilege Escalation/System_7045_namedpipe_privesc.evtx
+  sha256: 21a62694861beff246ea9fb357b908541b4acefaefdb7ecd6281b64df96cb187
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1569.002
+  title: Named-pipe impersonation service (getsystem)
+  expect:
+  - T1569.002_suspicious_service_installation
+- id: evtx/defense-evasion/DE_104_system_log_cleared
+  source: evtx-attack-samples
+  path: Defense Evasion/DE_104_system_log_cleared.evtx
+  sha256: 5579cdca073ee4864ea82d656aa2d25400b5c1e85b8e688db5d85f6dc558c2af
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1685.005
+  title: System log cleared (event 104)
+  expect:
+  - T1685.005_system_log_cleared
+- id: evtx/defense-evasion/DE_1102_security_log_cleared
+  source: evtx-attack-samples
+  path: Defense Evasion/DE_1102_security_log_cleared.evtx
+  sha256: a0615707b547a2ac254688fd725c3c590f62440fc9b7947c2843dd40498a39e8
+  size: 1118208
+  format: evtx
+  profile: sysmon-native
+  technique: T1685.005
+  title: Security log cleared (event 1102)
+  expect:
+  - T1685.005_security_log_cleared
+- id: evtx/automatedtestingtools/PanacheSysmon_vs_AtomicRedTeam01
+  source: evtx-attack-samples
+  path: AutomatedTestingTools/PanacheSysmon_vs_AtomicRedTeam01.evtx
+  sha256: 6903dff9f218fa027c704c8c445b74e08b952c8d71be79bd0327f1e792d4aa01
+  size: 1118208
+  format: evtx
+  profile: sysmon-native
+  technique: multiple
+  title: Atomic Red Team test run (many techniques) on a Sysmon host
+  expect:
+  - T1547.001_registry_run_key_persistence
+  - T1003.001_lsass_memory_access
+- id: evtx/automatedtestingtools/panache_sysmon_vs_EDRTestingScript
+  source: evtx-attack-samples
+  path: AutomatedTestingTools/panache_sysmon_vs_EDRTestingScript.evtx
+  sha256: 9c1371a0632de15095b6ffe2e38991b764d4beaddb1722178e93aa476f83f52f
+  size: 1118208
+  format: evtx
+  profile: sysmon-native
+  technique: multiple
+  title: EDR testing script (many techniques) on a Sysmon host
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: splunk/T1110.003/purplesharp_disabled_users_kerberos/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_disabled_users_kerberos/windows-security.log
+  sha256: fdd7f3fc5bd4881eb207a6fa329a4f9f0fdd32608b6effbaa77ec141b283fcbe
+  size: 359635
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp Kerberos spray over disabled accounts (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_explicit_credential_spray/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_explicit_credential_spray/windows-security.log
+  sha256: 0502dc684b8215be84674a6eaa6f11c6f72993a94c462138c22c15b80101e177
+  size: 117051
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp spray with explicit credentials (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      next: explicit_credential_spray
+      reason: '4648 explicit-credential logons on the source host only (this export holds no 4776): no 4625, 4768 or 4771 with a client
+        address'
+- id: splunk/T1110.003/purplesharp_invalid_users_kerberos/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_invalid_users_kerberos/windows-security.log
+  sha256: 005ad47d0a035cee20c0ddf7391a655eb1d693ba3d9e1c2063a416c3470b8086
+  size: 307641
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp Kerberos spray over unknown names (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_invalid_users_ntlm/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_invalid_users_ntlm/windows-security.log
+  sha256: 4260eb5e3d0f275aa88f17f0f1b037b31466f0ba01ac4ec20f57f5364f1d433d
+  size: 303830
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp NTLM spray over unknown names (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      next: ntlm_spray_by_workstation
+      reason: 'the spray runs on the host itself: its 4625 events carry no remote address and the domain controller logs 4776 by workstation
+        name, which this correlation does not count'
+- id: splunk/T1110.003/purplesharp_multiple_users_from_process/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_multiple_users_from_process/windows-security.log
+  sha256: 960fa944504331360e79c7e86a2686200e6a5e2301eceec278513d849938b38d
+  size: 138383
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp local logon spray by one process (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      next: local_logon_spray_by_process
+      reason: local logon attempts by one process (4625 logon type 2, no remote address)
+- id: splunk/T1110.003/purplesharp_remote_spray/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_remote_spray/windows-security.log
+  sha256: 183b41e3edf93ccc716b67f5ecf665da2d4ff87e97e03e087a3e090ce25fc9bc
+  size: 211115
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp remote spray (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_valid_users_kerberos/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_valid_users_kerberos/windows-security.log
+  sha256: 22f366f056fe03a1263e10e1ce94642019f810c0e6fd4f55f448185b5da57e85
+  size: 314175
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp Kerberos spray over valid accounts (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  expect:
+  - T1110.003_password_spray_burst
+- id: splunk/T1110.003/purplesharp_valid_users_ntlm/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/purplesharp_valid_users_ntlm/windows-security.log
+  sha256: 0f6f6b2206cb791ef1f5369be52f9711cea4e59780e583e2db796b0e2ba0d40a
+  size: 298474
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1110.003
+  title: PurpleSharp NTLM spray over valid accounts (classic export of a separate run)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: gap
+      next: ntlm_spray_by_workstation
+      reason: 'the spray runs on the host itself: its 4625 events carry no remote address and the domain controller logs 4776 by workstation
+        name, which this correlation does not count'
+- id: splunk/T1059.001/snapattack/snapattack
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/snapattack/snapattack.log
+  sha256: 032234c9d1c8f150fac1b4047dd1dbb8018ae77e5a4f5796c05edf9f3cc68d4d
+  size: 136185
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1059.001
+  title: 'SnapAttack PowerShell samples from many hosts: script blocks, a reverse shell and cradles in plain command lines'
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: benign
+      where:
+        CommandLine:
+        - -s -NoLogo -NoProfile -EncodedCommand
+      reason: the one encoded command in the file is Set-Location 'C:\', started by dllhost.exe with the switches Windows PowerShell
+        uses for an out-of-process runspace (-Version 5.1 -s -NoLogo -NoProfile). Nothing in the record is an attack, so it is not counted
+        as evidence, although upstream files the whole compilation as Cobalt Strike PowerShell
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: the attack samples run PowerShell with plain commands - a TCP reverse shell, a Base64 decoding function, a binary in C:\Users\Public
+        starting powershell -ExecutionPolicy Bypass -C, a download cradle piped to iex (in a 4104 script block) - and no encoded command,
+        which is what this rule keys on
+- id: splunk/T1059.001/threat_allow_switch/threat_allow_salat.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/threat_allow_switch/threat_allow_salat.log
+  sha256: c59e0199afa92b0713de08136b927e800ae59db2edccab3ddc0e5dc3ef2a1543
+  size: 5046
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: A disguised binary running hidden PowerShell that sets Defender's threat actions to allow
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: 'powershell -WindowStyle Hidden -Command Set-MpPreference ...: a plain command, not an encoded one, which is what this
+        rule keys on'
+- id: splunk/T1003.001/atomic_red_team/procdump_windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/procdump_windows-security.log
+  sha256: 86be8a91228678b0639f5cc192722b40acb81f06eb998bbc34916cf08f436abd
+  size: 14595
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1003.001
+  title: ProcDump dumping LSASS (Atomic Red Team), Security 4688 only
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H01
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: telemetry
+      reason: ProcDump opening LSASS to dump it is exactly what the rule targets, but the rule reads only Sysmon EID 10 with TargetImage
+        lsass.exe (Telemetry required) and the file has none.
+- id: splunk/T1003.001/snapattack/snapattack
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/snapattack/snapattack.log
+  sha256: c22994ec5fa481609dfbb3403dc51d803cb1f0665d3aab29da8f5e8a9766f4af
+  size: 58587
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1003.001
+  title: LSASS credential-access samples from several hosts (WER dump, PPLBlade, mimikatz, PsExec), no Sysmon 10
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H02
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: telemetry
+      reason: Several LSASS-dumping attacks are recorded, but the rule reads only Sysmon EID 10 against lsass.exe, which the file lacks;
+        the .dmp file creation (EID 11) is the README's complementary signal, not this rule's input.
+    T1569.002_suspicious_service_installation:
+      kind: telemetry
+      reason: PsExec remote execution creates the default PSEXESVC service on the target (susp_name), but the rule reads System 7045
+        / Security 4697 and the file has neither. The PPLBlade driver service (ImagePath under C:\users\user, not a listed writable
+        path, no listed name) would not match a fingerprint even with 7045.
+- id: splunk/T1021.006/compmgtm_access/compmgmt_load
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/compmgtm_access/compmgmt_load.log
+  sha256: 31159e87ede769315c099aada31b6632dd4f8a2fd982efdcda1daa879e2fdbc3
+  size: 4023
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1021.006
+  title: Computer Management opened against a remote host from Explorer
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H03
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: 'Remote administration launched on the client. The rule keys only on cmd.exe / encoded PowerShell / proxy binaries whose
+        parent is wsmprovhost.exe or winrshost.exe on the WinRM target; here the parent is explorer.exe, mmc.exe is in no selection,
+        and compmgmt.msc /computer: uses RPC/DCOM rather than a WinRM session (cf. the documented gap "Other remote execution - WMI
+        and DCOM").'
+- id: splunk/T1021.006/wsman_trustedhost/wsman_pwh
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/wsman_trustedhost/wsman_pwh.log
+  sha256: 17654c941a11e47ee26c7d316ec1c29b684b7dde95d1c23eb2c6473b318c1c66
+  size: 988
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1021.006
+  title: WinRM TrustedHosts changed with Set-Item (PowerShell 4104)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H04
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: Changing TrustedHosts is WinRM client configuration done by a cmdlet; it starts no process under wsmprovhost.exe/winrshost.exe,
+        which is all the rule keys on, so it is outside scope even with Sysmon EID 1 (which the file also lacks).
+- id: splunk/T1053.005/asyncrat_highest_priv_schtasks/sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/asyncrat_highest_priv_schtasks/sysmon.log
+  sha256: 068cba2851e13e3708d353247c37891e2cdc5b78bc94f5d7099ada494ae644d9
+  size: 16999744
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: AsyncRAT opening LSASS and persisting with schtasks /create into AppData
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H05
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+  - T1003.001_lsass_memory_access
+- id: splunk/T1053.005/atomic_red_team/4698_windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/atomic_red_team/4698_windows-security.log
+  sha256: caecdaf2af3ae17bb835f63f7bee7c7e6269f00d17aa6fe5423aaf8d0abb9c0a
+  size: 46373
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: Tasks registered through the Task Scheduler GUI (Security 4698)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H06
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: blind-spot
+      reason: Windows\Temp in the \atomic action would be susp_writable_path on a schtasks.exe command line, but the XML is the Task
+        Scheduler wizard's (schtasks.exe writes whole-second Date/StartBoundary and PT72H, as in H08), i.e. COM API registration, which
+        the rule documents as never spawning schtasks.exe (cover with 4698). The file also has no process creation at all; the vendor
+        tasks point into Program Files.
+- id: splunk/T1053.005/atomic_red_team/4698_shell_windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/atomic_red_team/4698_shell_windows-security.log
+  sha256: a3ad53ea74a834f1fc90f4844766c0be5ecd688e7768f4b4b5af25eb65a0ecff
+  size: 9685
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: A PowerShell task registered through the Task Scheduler GUI (Security 4698)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H07
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: blind-spot
+      reason: A PowerShell action is susp_action when it sits on a schtasks.exe command line, but these tasks were registered through
+        the GUI/COM API (Description field, fractional-second timestamps, P3D), which the rule documents as never spawning schtasks.exe;
+        the file also contains no process creation.
+- id: splunk/T1053.005/lateral_movement/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/lateral_movement/windows-security-task.log
+  sha256: fdfe5a2436d1ed610384101a4b1291509f66d5130b4e6bc0f459f202e3a2831a
+  size: 3595
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: 'Target side of a remote scheduled task: 4698 and 4699 only'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H08
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: Remote creation as SYSTEM is susp_system_remote, but it is only visible on the schtasks.exe command line of the source
+        host; the file holds the target's 4698/4699 only, and the rule reads process creation (4698 is a documented complement, not
+        its input).
+- id: splunk/T1053.005/lateral_movement_lolbas/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/lateral_movement_lolbas/windows-sysmon.log
+  sha256: 722963980c277664e31993c1b4c4007906a014a9a718dd21cce04cf19e2ef799
+  size: 5583791
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: Remote schtasks /create running regsvr32 scrobj.dll as SYSTEM
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H09
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: splunk/T1053.005/schtask_shutdown/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/schtask_shutdown/windows-sysmon.log
+  sha256: cafa411c6706fab418e8f26735a96298de18bc7d041d8702a8c2ad0c819eb98e
+  size: 15400399
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: A shutdown task created with schtasks, beside Ansible WinRM provisioning
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H10
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: scope
+      reason: 'The /create switch is there but the action (shutdown -s) matches no susp_* selection: no %TEMP%/%APPDATA%, PowerShell,
+        cmd /c, mshta/wscript/cscript/regsvr32 or URL, no user-writable path, and not remote creation as SYSTEM.'
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible''s WinRM connection starts every step as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe; none of it is the recorded attack. Scope a tuning to the automation host and the launcher''s exact command line'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible builds and reboots the host over WinRM, every step as encoded PowerShell (the WinRM
+        launcher, its module bootstrap, the reboot and its checks); none of these alerts is the recorded attack. An estate managed with
+        Ansible sees the same alerts (benign positives): tune by the bootstrap''s exact command line, never by the account'
+- id: splunk/T1053.005/schtask_system/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/schtask_system/windows-sysmon.log
+  sha256: 598b761436a1a39b1561c3f0ce59cd8b0439601f4137c73aaf32a4f9bc35077e
+  size: 2142
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: schtasks /create of a logon task running an EXE from a Documents folder as SYSTEM
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H11
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: scope
+      reason: The action is an EXE in a user's Documents folder, which is not in the susp_writable_path list (AppData, ProgramData,
+        Users\Public, Windows\Temp, Downloads) and is no interpreter or URL; /RU SYSTEM only counts together with /S <host>, and this
+        creation is local.
+- id: splunk/T1053.005/svchost_lolbas_execution_process_spawn/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/svchost_lolbas_execution_process_spawn/windows-xml.log
+  sha256: 44d9f8b1c6d7e29221c87bfbc57e72a585d5a04f1d3686d6c012dfb9e587a342
+  size: 1045277
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1053.005
+  title: 'A doctored sample: svchost spawning a renamed cmd.exe, and sc create of a service'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H12
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: scope
+      reason: 'The installed service runs a bare LOLBin name: no command interpreter or share path, no user-writable path, no .bat/.cmd,
+        not a PsExec/PAExec/RemCom/CSExec/BTOBTO name and not %SystemRoot%\<8 random letters>.exe, so none of the documented fingerprints
+        matches.'
+    T1053.005_schtasks_suspicious_creation:
+      kind: scope
+      reason: The sample's T1053.005 behaviour is task execution (a svchost task host spawning a LOLBin); the rule only covers task
+        creation or change through schtasks.exe.
+  overlap:
+    splunk/T1569.002/malicious_powershell_executed_as_a_service/windows-xml: 'its 7045 record is a record of that file with the ImagePath
+      changed from cmd.exe to Ftp.exe: the file is a doctored sample built from it'
+- id: splunk/T1053.005/taskschedule/sd_delete_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/taskschedule/sd_delete_windows-sysmon.log
+  sha256: dc674b9030db4675edb2c205c71e8366850e7c7dc8ab3d94de1001a2c35a691f
+  size: 376865
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: Scheduled tasks hidden by deleting their SD registry value
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H13
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: blind-spot
+      reason: Hiding tasks by deleting the TaskCache SD value is the registry-based 'hidden task' tradecraft the rule lists as a gap
+        (it names TaskCache-based hidden tasks; here applied to existing tasks). The registrations themselves appear only as Schedule-service
+        registry writes because the export keeps only reg.exe, cmd.exe and conhost.exe process creations, so no schtasks.exe /create
+        is present either.
+    T1218.011_rundll32_suspicious_execution:
+      kind: telemetry
+      reason: An argument-less rundll32.exe acting as the attacker's SYSTEM process is susp_noargs, but its own process-creation record
+        (Image rundll32.exe), which the rule matches, is not in the file; it is visible only through the children's Parent* fields.
+- id: splunk/T1053.005/winevent_scheduled_task_created_to_spawn_shell/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/winevent_scheduled_task_created_to_spawn_shell/windows-xml.log
+  sha256: a6c0a6f8cfffd860b8c3d41ff37f9b6d926ecd6a00ea1f77358569d39943384e
+  size: 2829
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: A logon task registered through the ScheduledTasks cmdlets (Security 4698)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H14
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: blind-spot
+      reason: Registered through the cmdlets/COM API rather than schtasks.exe, which the rule documents as outside its reach (COM/WMI
+        never spawn schtasks.exe; the cmdlets have their own rule). The action would miss every susp_* selection anyway (c:\temp is
+        not in the writable-path list, no /c), and the file has no process creation.
+    T1053.005_powershell_scheduled_task_creation:
+      kind: telemetry
+      reason: The cmdlet-style XML and the task name point to a Register-ScheduledTask one-liner, which with an inline New-ScheduledTaskAction
+        -Execute is susp_action, but the file holds only the 4698 outcome, not the command line or script block the rule reads.
+- id: splunk/T1053.005/winevent_scheduled_task_with_suspect_name/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/winevent_scheduled_task_with_suspect_name/windows-xml.log
+  sha256: 4af0e2d1b8dfae2e6e7cd18dcb85db50a028effc8d46f9fe3cfc21b633b2e6c0
+  size: 3373
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1053.005
+  title: A task with a known-malicious name registered through the GUI (Security 4698)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H15
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: blind-spot
+      reason: The wizard fingerprint (fractional-second Date/StartBoundary, P3D) means GUI/COM registration, which the rule documents
+        as never spawning schtasks.exe; even through schtasks.exe a calc.exe action matches no susp_* selection and the rule does not
+        look at task names; the file has no process creation.
+- id: splunk/T1059.001/atomic_red_team/captcha_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/atomic_red_team/captcha_windows-sysmon.log
+  sha256: 2349326b9042ba212dc16a4764a2cd1fbfa318a792c5591594b77bbfd20ddc9e
+  size: 2153
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: 'Fake CAPTCHA lure: PowerShell with a plain-text download cradle'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H16
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: blind-spot
+      reason: The command is not encoded. It is an IEX download cradle inside a plain -Command, which the README lists under Evasion
+        & coverage gaps ('Obfuscation inside a non-encoded command (IEX, ...)', covered by 4104).
+- id: splunk/T1059.001/atomic_red_team/windows-security-2
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/atomic_red_team/windows-security-2.log
+  sha256: 3223e7385a0325fc0a50d3103c1cc690aa57a4d04ec19a0259054af32d13448c
+  size: 1384
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1059.001
+  title: PowerShell download cradle in a Security 4688 event
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H17
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: PowerShell execution (T1059.001), but with a plain -Command and no encoded-command parameter, so the event falls outside
+        the scope ('a dash-like prefix, then e, ec or en*, then whitespace and a Base64 blob of 16+ chars'). 4688 is readable after
+        remapping.
+- id: splunk/T1059.001/atomic_red_team/enableat_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/atomic_red_team/enableat_windows-sysmon.log
+  sha256: 277289fa911c6c7999f338f735c29a9811d03249e8d9584ec722af85aa051ded
+  size: 2285
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: PowerShell re-enabling the legacy at scheduler through the registry
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H18
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: 'The PowerShell activity of the test is visible only as a registry write. The detection reads process creation (Sysmon
+        1 or 4688 command lines), which the file does not contain, so it cannot tell whether an encoded command was used. Other rules:
+        EnableAt is not a Run key (T1547.001), and no schtasks or ScheduledTasks cmdlet is involved (T1053.005).'
+- id: splunk/T1059.001/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/atomic_red_team/windows-sysmon.log
+  sha256: 8f71b2a0ef81892551cd6a9ad115b8ec5c42d9f2071547b064c496511898c4e9
+  size: 38928903
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: 'Atomic Red Team PowerShell tests: encoded-command variations, Invoke-Mimikatz, download cradles'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H19
+  expect:
+  - T1059.001_powershell_encoded_command
+  - T1003.001_lsass_memory_access
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: blind-spot
+      reason: A PowerShell remoting session was opened but started no process. The README lists 'Cmdlet-only sessions - commands that
+        stay inside PowerShell start no child process' as a gap. The ATH children launched through WmiPrvSE.exe are local WMI execution,
+        which the README also leaves to other rules.
+- id: splunk/T1059.001/msix_powershell/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/msix_powershell/windows-sysmon.log
+  sha256: 3f349b90eead3e2eda89bcc776b5f250f1ece2bd1a2c9d128ca79ad087d72e93
+  size: 7346
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: PowerShell scripts started from MSIX package stubs with -ExecutionPolicy Bypass
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H20
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: Malicious PowerShell script execution with no encoded-command parameter. The README states that -ExecutionPolicy / -ep
+        do not trigger the rule, so this is outside the documented scope.
+- id: splunk/T1059.001/obfuscated_powershell/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/obfuscated_powershell/windows-sysmon.log
+  sha256: 70d3c6982eb05a2897b9e4adcba25da2a5f1fbfbf07eca373cf4ca0c063f56a3
+  size: 54722634
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Invoke-Obfuscation command piped to iex, beside Ansible WinRM provisioning
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H21
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible''s WinRM connection starts every step as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe; none of it is the recorded attack. Scope a tuning to the automation host and the launcher''s exact command line'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible builds and reboots the host over WinRM, every step as encoded PowerShell (the WinRM
+        launcher, its module bootstrap, the reboot and its checks); none of these alerts is the recorded attack. An estate managed with
+        Ansible sees the same alerts (benign positives): tune by the bootstrap''s exact command line, never by the account'
+- id: splunk/T1059.001/powershell_execution_policy/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_execution_policy/windows-sysmon.log
+  sha256: 7854054b5fa788e7c430b7045ddbebb09be43300d2b0b2478cb893e70aaaca41
+  size: 14601853
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Execution policy set to Bypass in the registry editor, beside Ansible WinRM provisioning
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H22
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible''s WinRM connection starts every step as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe; none of it is the recorded attack. Scope a tuning to the automation host and the launcher''s exact command line'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible builds and reboots the host over WinRM, every step as encoded PowerShell (the WinRM
+        launcher, its module bootstrap, the reboot and its checks); none of these alerts is the recorded attack. An estate managed with
+        Ansible sees the same alerts (benign positives): tune by the bootstrap''s exact command line, never by the account'
+- id: splunk/T1059.001/powershell_remotesigned/remotesigned_sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_remotesigned/remotesigned_sysmon.log
+  sha256: a47baee10e74c0f675a26a9f3153a35109938a6570b9b75cb5047be03eea78c5
+  size: 2017
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: PowerShell -ExecutionPolicy RemoteSigned running a script from C:\Temp
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H23
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: Malicious script run through PowerShell with no encoded-command parameter. The README states that -ExecutionPolicy does
+        not trigger the rule, so this is outside the documented scope.
+- id: splunk/T1059.001/powershell_script_block_logging/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_script_block_logging/windows-sysmon.log
+  sha256: 04daf83b69e4b798e21f74fde0dc68d9de1732f139ce4a4463fcaa36d4995589
+  size: 18183460
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: Cobalt Strike and Empire HTA files starting encoded PowerShell stagers
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H24
+  expect:
+  - T1059.001_powershell_encoded_command
+- id: splunk/T1059.001/powershell_xml_requests/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_xml_requests/windows-sysmon.log
+  sha256: c9c7f3a36611ed52e40b4f29440a45a07f1aac601a340f5ee4bf07fe5afa97b8
+  size: 10784074
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: PowerShell XML request cradle run by Invoke-AtomicTest over Ansible WinRM
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H25
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+- id: splunk/T1059.001/sharphound/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/sharphound/windows-sysmon.log
+  sha256: 29f4f1a561c219f2fe98db0e1269417a7632804c1431a9f1fadfccfba4f170c0
+  size: 14699348
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: SharpHound and AzureHound run from PowerShell, and a renamed SharpHound
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H26
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: The attack runs PowerShell in plain text (import-module / Invoke-AzureHound) and as a .NET collector binary. Neither has
+        an encoded-command parameter, so both are outside the documented scope.
+- id: splunk/T1059.001/soaphound/sysmon_soaphound
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/soaphound/sysmon_soaphound.log
+  sha256: 99d01ead83b5a6d435c25fc101a1886a698ca0880c8da769d6914bbd23a475cc
+  size: 118213
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: SOAPHound run from PowerShell through cmd.exe
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H27
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: The T1059.001-tagged test runs a .NET binary from a PowerShell host with no encoded-command parameter, so it is outside
+        the documented scope (a PowerShell image with an encoded command).
+- id: splunk/T1059.001/trickbot_cmd_powershell/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/trickbot_cmd_powershell/windows-sysmon.log
+  sha256: 7ba1d02c6b44d877cfef9f4c690515ae04edb2347581ea93bb9657cb864aeec7
+  size: 46116
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: TrickBot injected in wermgr.exe starting cmd.exe /c powershell -encodedcommand
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H28
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: The attack ran encoded PowerShell, but the file records only the cmd.exe parent. The rule matches the PowerShell process
+        itself (powershell.exe/pwsh.exe by path or OriginalFileName, the 'renamed-binary branch'), and the powershell.exe creation event
+        it reads is missing from the recording.
+- id: splunk/T1059.001/unmanaged_powershell_execution/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/unmanaged_powershell_execution/windows-sysmon.log
+  sha256: e7905b25fc39c794cf37e7c6ddfab273dc3f4ce61786556f9e61bd0bcc57300a
+  size: 89107
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.001
+  title: NimPlant hosting unmanaged PowerShell (image loads only)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H29
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: blind-spot
+      reason: PowerShell hosted inside a custom binary is listed under Evasion & coverage gaps ('PowerShell hosted in another process
+        (System.Management.Automation.dll loaded by a custom binary - Sysmon EID 7)'). No PowerShell process or command line exists
+        for the rule to read.
+- id: splunk/T1059.004/linux_netcat_outbound_connection/snapattack_linux
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.004/linux_netcat_outbound_connection/snapattack_linux.log
+  sha256: 0b1c6400747eb6d1026980823e7f4eaa7890584bd3200f5bc9e25f210ce275f5
+  size: 2578
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1059.004
+  title: ncat outbound connection on Linux (network event only)
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  holdout: H30
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: telemetry
+      reason: 'The rule reads Sysmon for Linux EID 1 command lines, which are absent, so the command that started the netcat session
+        cannot be checked. Note: the visible ncat binary is in /usr/bin (not /tmp, /var/tmp, /dev/shm), so the netcat process itself
+        would not meet susp_tmp_binary; only a launching command that piped decoded Base64 into a shell would be in scope.'
+  overlap:
+    splunk/T1059.004/snapattack/snapattack_linux: its network record is a record of that file with the destination address changed
+- id: splunk/T1070.001/suspicious_event_log_service_behavior/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/suspicious_event_log_service_behavior/windows-xml.log
+  sha256: 2e21a593c8d04de1db696bec2e9842360b69ee72ea97e2063a67888e83e8159c
+  size: 10030
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: EventLog service shut down on five hosts (Security 1100)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Eventlog
+  holdout: H31
+  quiet:
+    T1685.005_security_log_cleared:
+      kind: blind-spot
+      reason: The recorded behaviour is the EventLog service stopping, not a clear; the README lists "Stopping the EventLog service
+        or tampering with forwarding before clearing" as a gap to cover with log-volume heartbeat monitoring.
+    T1685.005_system_log_cleared:
+      kind: blind-spot
+      reason: 'Same documented gap: stopping the EventLog service writes no 104; the README sends it to heartbeat (log-volume gap) monitoring.'
+    T1685.005_event_log_clearing:
+      kind: blind-spot
+      reason: Stopping the logging service is log tampering, not one of the covered clearing commands (wevtutil cl, Clear-/Remove-/Limit-EventLog,
+        ClearLog, WMI ClearEventLog); the README puts log tampering under "detect via gaps in log volume instead".
+- id: splunk/T1070.001/suspicious_kerberos_service_ticket_request/windows-xml
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/suspicious_kerberos_service_ticket_request/windows-xml.log
+  sha256: b5accc7e16fb3cda3fe214b45a801420d897b4568298e34adc51e6d7490c0012
+  size: 1106
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: A machine account requesting a service ticket for itself (4769)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H32
+- id: splunk/T1218.011/random_dll_extension/random_dll_rundll32.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/random_dll_extension/random_dll_rundll32.log
+  sha256: fcab984bb700abbd3fd27a150cbd70b907f608ea177c3487cb04796946f2e614
+  size: 8253
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1218.011
+  title: rundll32 loading a DLL with a random extension by relative path
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H33
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: scope
+      reason: 'None of the four selections applies: no javascript:/RunHTMLApplication, the DLL is not in AppData/ProgramData/Users\Public/Windows\Temp/Downloads
+        (relative path in C:\sdwl), no comsvcs MiniDump, and arguments are present. Random DLL extensions in arbitrary folders are outside
+        the documented scope.'
+- id: splunk/T1218.011/rundll32_random_dll_ext/rundll32_random_ext.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/rundll32_random_dll_ext/rundll32_random_ext.log
+  sha256: 35ff5c023ba0d709145e91fb3623b3563e094fa065c3e5b181b11a0504212d45
+  size: 5620
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1218.011
+  title: 'gh0st RAT: rundll32 loading a DLL from a root folder, and a Run value pointing to it'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H34
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: scope
+      reason: Malware proxy execution, but the DLL is loaded from c:\qhccl (random root folder, .max extension), not from a susp_path
+        location. The only AppData path is an argument passed to the export (the dropper's own path), and the parent location is not
+        a selection. Outside the documented patterns; an implementation that matches \AppData\ anywhere in the command line would still
+        fire on the argument.
+    T1547.001_registry_run_key_persistence:
+      kind: scope
+      reason: A Run value is written, but its data points to rundll32 (a LOLBin, not a script interpreter) loading a DLL from c:\qhccl,
+        not to one of the user-writable locations the rule looks for (AppData and the like); outside the documented data condition.
+  found:
+    T1218.011_rundll32_suspicious_execution: the path branch matches a writable path anywhere in rundll32's command line - here the
+      dropper's own path under AppData\Local\Temp, passed as an argument - where the README said the DLL is loaded from it. The alert
+      is on the recorded attack (gh0st RAT); the README now describes the branch as it is
+    T1547.001_registry_run_key_persistence: the rule counts rundll32, regsvr32 and cmd /c in a Run value as launchers beside script
+      interpreters, which its README did not list. The value runs the RAT's DLL through rundll32, so the alert is on the recorded attack;
+      the README now names them
+- id: splunk/T1218.011/snapattack/snapattack
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/snapattack/snapattack.log
+  sha256: b863e5f3e63c90061ad8c74d4a6c009cc203bf227b70711a00d634484f4ad5df
+  size: 9450
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1218.011
+  title: 'rundll32 samples: a DLL in C:\Users\Public, a syssetup INF install from AppData'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H35
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+- id: splunk/T1547.001/atomic_red_team/bootexecute-windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1547.001/atomic_red_team/bootexecute-windows-sysmon.log
+  sha256: 250282b2b0ccfe81a2d40f2fd21ccdaeba15d1b17f46ba102f9fd67f61d6b284
+  size: 21929
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1547.001
+  title: BootExecute registry persistence (Atomic Red Team)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H36
+  quiet:
+    T1547.001_registry_run_key_persistence:
+      kind: blind-spot
+      reason: BootExecute is an autostart location other than CurrentVersion\Run/RunOnce; the README gap "Other autostart locations
+        ... Each deserves its own rule" covers it (BootExecute is not named in that example list).
+- id: splunk/T1547.001/snapattack/snapattack
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1547.001/snapattack/snapattack.log
+  sha256: 1ca1e343e12e99abb1381e180cc0b191dc53ef37786973b2fa4b65bcb893fa84
+  size: 1384
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1547.001
+  title: 'POWERSTATS-style Run value: rundll32 advpack LaunchINFSection on a file in ProgramData'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H37
+  expect:
+  - T1547.001_registry_run_key_persistence
+- id: splunk/T1558.003/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/atomic_red_team/windows-sysmon.log
+  sha256: e3a1a1d540d28e4e8d5e59d0e3c505d1904ec44067127fd6bcfa963d20fab704
+  size: 18090394
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1558.003
+  title: Kerberoasting run recorded with Sysmon only, beside Ansible WinRM provisioning
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H38
+  quiet:
+    T1558.003_kerberoasting_rc4_tgs:
+      kind: telemetry
+      reason: Kerberoasting with RC4 (per the description) is detected from 4769 on the DC; none is in the file.
+    T1558.003_kerberoasting_volume:
+      kind: telemetry
+      reason: The correlation counts distinct ServiceName per client in 4769 events; the file has none.
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible''s WinRM connection starts every step as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe; none of it is the recorded attack. Scope a tuning to the automation host and the launcher''s exact command line'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s provisioning: Ansible builds and reboots the host over WinRM, every step as encoded PowerShell (the WinRM
+        launcher, its module bootstrap, the reboot and its checks); none of these alerts is the recorded attack. An estate managed with
+        Ansible sees the same alerts (benign positives): tune by the bootstrap''s exact command line, never by the account'
+- id: splunk/T1558.003/atomic_red_team/windows-sysmon_setspn
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/atomic_red_team/windows-sysmon_setspn.log
+  sha256: bfb8c159969b27160534564e99642c737dcf9839bd4e303c37edbc7ff8a102bd
+  size: 1435463
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1558.003
+  title: setspn SPN discovery and registration (Sysmon only)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H39
+  quiet:
+    T1558.003_kerberoasting_rc4_tgs:
+      kind: telemetry
+      reason: Only the SPN discovery/registration part of the RC4 Kerberoasting run is visible; the ticket requests the rule reads (4769
+        on the DC) are not in the file.
+    T1558.003_kerberoasting_volume:
+      kind: telemetry
+      reason: The correlation counts 4769 service tickets per client; the file contains none.
+- id: splunk/T1558.003/rubeus/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/rubeus/windows-sysmon.log
+  sha256: dcae856a516c000816cc825d35286105bd6b842df51eb87056c83a2abe76b811
+  size: 22377812
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1558.003
+  title: Rubeus kerberoast recorded with Sysmon only; Process Explorer opening LSASS
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H40
+  quiet:
+    T1558.003_kerberoasting_rc4_tgs:
+      kind: telemetry
+      reason: Rubeus roasting produces a 4769 per SPN account on the DC; the rule reads 4769 and the file has none.
+    T1558.003_kerberoasting_volume:
+      kind: telemetry
+      reason: Volume roasting is exactly what the correlation counts, but its input (4769 on the DC) is absent.
+  also:
+    T1003.001_lsass_memory_access:
+      kind: benign
+      reason: 'Sysinternals Process Explorer, run on both hosts from a Downloads folder and from C:\Tools, opens every process with
+        full rights (0x1fffff), LSASS included: an administrator''s tool, not the recorded Rubeus run. Expect it wherever administrators
+        use it; allow it by signer and exact path, and watch for the dump files it can also write'
+- id: splunk/T1569.002/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/atomic_red_team/windows-sysmon.log
+  sha256: 6864968926d7ef6b7fb97d6a5d8ee3478ca4c880d3f048a919f5a16d9e5d4982
+  size: 13756037
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1569.002
+  title: A cmd.exe /c powershell service created by Invoke-AtomicTest (Sysmon only)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H41
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: telemetry
+      reason: The ARTService ImagePath contains "cmd.exe /c" and PowerShell (susp_path), so its 7045 would be in scope, but the file
+        has no 7045/4697.
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+- id: splunk/T1569.002/remcom/4688_remcom_windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/remcom/4688_remcom_windows-security.log
+  sha256: 2811f674e503b48107fff94f6c51bd4cf4d885bd8aa1b2b44bdf0425d1a57e24
+  size: 10322
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1569.002
+  title: RemCom remote execution (Security 4688)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H42
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: telemetry
+      reason: RemCom installs its RemComSvc service on the target (susp_name lists RemCom), but the rule reads 7045/4697 and the file
+        has neither.
+- id: splunk/T1569.002/remcom/remcom_windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/remcom/remcom_windows-sysmon.log
+  sha256: 111cefde6d681ec4b881ec42873bd79e8473676f0934859b220109806d44ecfb
+  size: 23294
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1569.002
+  title: RemCom launches against localhost (Sysmon 1 only)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H43
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: telemetry
+      reason: RemCom service execution would install the RemComSvc service (susp_name), but the file has no 7045/4697.
+- id: splunk/T1569.002/scmanager_sddl_tamper/scmanager_sddl_tamper_sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/scmanager_sddl_tamper/scmanager_sddl_tamper_sysmon.log
+  sha256: 1de36fdd7b94b387f3bda47a6df391550e440f195cc61c905167d70e9172855c
+  size: 2000
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1569.002
+  title: sc sdset granting Everyone control of the Service Control Manager
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H44
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: scope
+      reason: Rewriting the SCM security descriptor installs no service; the rule keys on new-service fingerprints in 7045/4697 (ImagePath,
+        service name), so SCM permission tampering is outside its scope (and the file has no 7045 anyway).
+- id: splunk/T1003.001/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/windows-security.log
+  sha256: 962debff1935335a6c6396a19d778127af1316b964226ba4427fae4fb9c9361b
+  size: 8480
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1003.001
+  title: rundll32 comsvcs.dll MiniDump of LSASS from Invoke-AtomicTest (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H45
+  expect:
+  - T1218.011_rundll32_suspicious_execution
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: telemetry
+      reason: LSASS was dumped, but the detection reads Sysmon 10 ProcessAccess with TargetImage lsass.exe, which the file lacks.
+- id: splunk/T1003.001/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/windows-system.log
+  sha256: 4ac7ed133d6a44788d841735605aa70644897749201d5a9b7afdc93f2d9518e7
+  size: 392544
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1003.001
+  title: 'System log of an Atomic LSASS run: a credential tool''s service installed from a Temp folder'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H46
+  expect:
+  - T1569.002_suspicious_service_installation
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: telemetry
+      reason: WCE accesses LSASS memory, but the detection reads Sysmon 10 ProcessAccess, which a System log cannot contain.
+- id: splunk/T1021.006/lateral_movement/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/lateral_movement/windows-security.log
+  sha256: dd8c5e27b2e629972bc0339fb6eea1bf8667d14dc2a1110555a4bec366de9448
+  size: 628648
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1021.006
+  title: winrs commands run on a remote host (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H47
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: telemetry
+      reason: cmd.exe under winrshost.exe is the susp_shell selection, but this rule's telemetry section names only Sysmon EID 1 (unlike
+        the other process rules it does not allow a 4688 remapping), and the file holds only Security 4688.
+  found:
+    T1021.006_wsmprovhost_suspicious_child: 'the rule reads process creation, and the windows-security-4688 profile makes Security 4688
+      into process creation: cmd.exe started by winrshost.exe fired. The README named only Sysmon 1; it now says 4688 works too'
+- id: splunk/T1021.006/lateral_movement_lolbas/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/lateral_movement_lolbas/windows-security.log
+  sha256: d0eb2de4d141d8fdabb7d454303f3c7224be29442bcb6b41a64beca5708b3191
+  size: 568378
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1021.006
+  title: 'rundll32 on a DLL at the root of C: run through winrs and PowerShell remoting (Security 4688)'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H48
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: telemetry
+      reason: cmd.exe (susp_shell) and rundll32 (susp_proxy) started by WinRM hosts are in scope, but the rule reads Sysmon EID 1 only
+        and the file holds only Security 4688.
+    T1218.011_rundll32_suspicious_execution:
+      kind: scope
+      reason: rundll32 loads a DLL from the root of C:\. That is not javascript:/RunHTMLApplication, not an AppData/ProgramData/Users\Public/Windows\Temp/Downloads
+        path, and not comsvcs MiniDump, and the call has an argument (not no-args), so none of the four susp_* patterns applies.
+  found:
+    T1021.006_wsmprovhost_suspicious_child: 'the rule reads process creation, and the windows-security-4688 profile makes Security 4688
+      into process creation: cmd.exe and rundll32 started by the WinRM hosts fired. The README named only Sysmon 1; it now says 4688
+      works too'
+- id: splunk/T1021.006/lateral_movement_psh/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1021.006/lateral_movement_psh/windows-security.log
+  sha256: 451355037496a9194541de356beba7cbfb33d2c6d8ae5dc199f7c4183aee8c10
+  size: 439162
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1021.006
+  title: Invoke-Command running ipconfig on a remote host (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H49
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: The only WinRM-host child is ipconfig.exe, which is not cmd.exe, encoded PowerShell or one of the listed proxy binaries
+        (rundll32/regsvr32/mshta/certutil/bitsadmin). The file also lacks the Sysmon EID 1 the rule reads (it has only 4688).
+- id: splunk/T1053.005/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/atomic_red_team/windows-security.log
+  sha256: e0726abafdb7f4951d0a9c0e4ad51aad38c9841feb6a51a12b3131d321077a1f
+  size: 560019
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: 'Atomic scheduled-task tests: schtasks with cmd /c actions and Register-ScheduledTask (Security 4688) - held out until a reader
+    fix after its replay'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  demoted_from: H50
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+  - T1053.005_powershell_scheduled_task_creation
+- id: splunk/T1053.005/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/atomic_red_team/windows-system.log
+  sha256: 7c8556b7fec2e3e6eb77e498254fe527e5e53435da9a8be508513b15aee41654
+  size: 384355
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1053.005
+  title: System log of an Atomic scheduled-task run (lab build only)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H51
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: The atomic schtasks /create tests are visible only in process creation (Sysmon 1 / 4688), which a System log does not
+        contain.
+    T1053.005_powershell_scheduled_task_creation:
+      kind: telemetry
+      reason: The atomic Register-ScheduledTask/New-ScheduledTaskAction test needs Sysmon 1, 4688 or 4104, none of which a System log
+        contains.
+- id: splunk/T1053.005/lateral_movement/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/lateral_movement/windows-security.log
+  sha256: f2cc79c1561b2767620d50d1e857321b76f1f9c55fc9d8ca891371ce9c7a9455
+  size: 495772
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: Remote schtasks /create of a task running as SYSTEM (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H52
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+  overlap:
+    splunk/T1053.005/lateral_movement/windows-security: 'the target''s 4698 and 4699 here are the two records of that file (H08), exported
+      there as XML: the same records in another format, not edited ones'
+- id: splunk/T1053.005/lateral_movement_lolbas/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/lateral_movement_lolbas/windows-security.log
+  sha256: b7ec97db6e42b62ef2fa5a52bae36ce68bdc8a535d52032e6a240b32386eab48
+  size: 451544
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: Remote schtasks /create with a regsvr32 scrobj.dll action (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H53
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: splunk/T1053.005/schtask_shutdown/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/schtask_shutdown/windows-security.log
+  sha256: c4d1c1c2e2cbbbac3c4bbf947fb2a1d4023521aef6429268da10d6e83761f248
+  size: 5591914
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: Security log of a shutdown-task run (lab build only)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H54
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: The task created by the schtask_shutdown scenario is not in this log. The file has no command-line process creation covering
+        it, and the detection reads only process creation (Sysmon 1 / 4688).
+- id: splunk/T1053.005/schtask_shutdown/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/schtask_shutdown/windows-system.log
+  sha256: dab50bd527c2a577954dd188f25b66003d654af7e1533b6f787bdcd757cf9e77
+  size: 388874
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1053.005
+  title: System log of a shutdown-task run (lab build only)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H55
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: The schtasks task creation is visible only in process creation (Sysmon 1 / 4688), which a System log lacks.
+- id: splunk/T1053.005/schtasks/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/schtasks/windows-security.log
+  sha256: a260d80c6fa8d00b4ad1eaaa44a69c5467428254efd44a301a29bcac7ae922a5
+  size: 168534
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: schtasks /create of tasks with actions in C:\Users\Public (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H56
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+- id: splunk/T1053.005/tasksched/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/tasksched/windows-security.log
+  sha256: 43de4c250c95ef580b714d85e89a7486100e78adb6b1500c1c0d55117842d2af
+  size: 2914116
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: Tasks re-created on a host (4698 only), with internet RDP brute force on the DC
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H57
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: The task actions (mshta with a URL; a DLL in AppData) are suspicious, but the detection reads process creation, with 4698
+        only a documented complement. The file has no process creation from win-host-797, so the creating command (schtasks or COM)
+        is not visible.
+    T1110.003_password_spray_burst:
+      kind: blind-spot
+      reason: Background internet RDP brute force (not the recorded T1053.005 attack). In-scope failures, but at most 4 distinct accounts
+        per source per 10-minute window, below the threshold of 5. This is the documented "distributed sources" / "low and slow" gap,
+        so no alert is expected.
+- id: splunk/T1053.005/taskschedule/windows-security-publicpath.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/taskschedule/windows-security-publicpath.log
+  sha256: 0ae8abdceb9589b330045b5b6013efc585a88125c4a4a9934ffdd56eaad33e42
+  size: 6944
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1053.005
+  title: A task with an action in C:\Users\Public (4698 only)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H58
+  quiet:
+    T1053.005_schtasks_suspicious_creation:
+      kind: telemetry
+      reason: A Users\Public action would be suspicious (susp_writable_path), but the rule reads schtasks process creation (Sysmon 1
+        / 4688), with 4698 only a complement. The file holds only 4698, and the creating command is not recorded.
+- id: splunk/T1053.005/taskschedule/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/taskschedule/windows-security.log
+  sha256: 8be52f3353471629e16246dbb1307996c564ae7815634571102219170ccd3c08
+  size: 29810944
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1053.005
+  title: A Word macro registering a task through COM, beside Office's own schtasks runs (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H59
+  quiet:
+    T1053.005_powershell_scheduled_task_creation:
+      kind: blind-spot
+      reason: The persistence task was created from the macro document through the COM API, the documented gap "COM API (Schedule.Service)
+        from VBScript, JScript or .NET"; no PowerShell ScheduledTasks cmdlet was used.
+  also:
+    T1053.005_schtasks_suspicious_creation:
+      kind: benign
+      reason: Office Click-to-Run's Integrator.exe registers Office's update and telemetry tasks with schtasks /Create /XML pointing
+        into C:\ProgramData\Microsoft\ClickToRun, and the writable-path branch reads the whole command line. Expect it on every host
+        where Office is installed or updated; the tuning guide proposes a filter on that parent and that folder
+- id: splunk/T1059.001/atomic_red_team/downloadfile_windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/atomic_red_team/downloadfile_windows-security.log
+  sha256: 00adb56890d8bce43960928562f370cd62fd687d0e087ff7fdcd03fe4ab513cd
+  size: 3161
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: PowerShell download cradle obfuscated in a plain command (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H60
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: blind-spot
+      reason: 'PowerShell attack obfuscated with IEX and variable/string tricks inside a non-encoded command: documented gap "Obfuscation
+        inside a non-encoded command (IEX, string concatenation, tick marks) - cover with 4104".'
+- id: splunk/T1059.001/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/atomic_red_team/windows-security.log
+  sha256: aed5d2956ff35417d5b971b45d84004f8e8361db3e2c8924b96f3bd0ed57bfb9
+  size: 593281
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: Invoke-AtomicTest PowerShell tests, encoded-command variations included (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H61
+  expect:
+  - T1059.001_powershell_encoded_command
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: telemetry
+      reason: Invoke-Mimikatz -DumpCreds reads LSASS memory, but this detection needs Sysmon EID 10, absent from the file.
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: blind-spot
+      reason: 'A PowerShell remoting session was opened but started no child process: documented gap "Cmdlet-only sessions". (The rule
+        also reads Sysmon EID 1 only; this file has 4688.)'
+- id: splunk/T1059.001/hidden_powershell/hidden_windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/hidden_powershell/hidden_windows-security.log
+  sha256: 16e1365ee54b13cbc8a5291eca2b6f0da51608de3f923ca87a0699c47f0904c7
+  size: 353307
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: Hidden PowerShell launches with an abbreviated -Enco payload (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H62
+  expect:
+  - T1059.001_powershell_encoded_command
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      where:
+        CommandLine:
+        - -NonInteractive -ExecutionPolicy Unrestricted -EncodedCommand
+      reason: 'the lab''s test harness: Ansible runs every task as PowerShell -NoProfile -NonInteractive -ExecutionPolicy Unrestricted
+        -EncodedCommand, its WinRM launcher and module bootstrap. The recorded attack is the hidden launches with an abbreviated flag
+        (-ExecutionPolicy ByPass -WindowStyle Hidden -Enco ...): those are the expected alerts. Tune the launcher by its exact command
+        line on the automation hosts, never by the account'
+- id: splunk/T1059.001/hidden_powershell/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/hidden_powershell/windows-security.log
+  sha256: 864e3e421ec612224c4b5f6a3d6615740a72d918fdb1473d08c542a1dcf1513d
+  size: 6584410
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: Security log of a hidden-PowerShell run (lab build, no process creation for the attack)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H63
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: The hidden-PowerShell execution left no process-creation event in this file (process creation was not recorded after boot),
+        so the detection has nothing to read.
+- id: splunk/T1059.001/hidden_powershell/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/hidden_powershell/windows-system.log
+  sha256: aaa58d5998d561927dc5e931b9ca511e79fefed255ed85a77c7de64881e13a91
+  size: 399900
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1059.001
+  title: System log of a hidden-PowerShell run
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H64
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: The PowerShell attack cannot appear in a System log; the detection reads process creation.
+- id: splunk/T1059.001/powershell_execution_policy/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_execution_policy/windows-security.log
+  sha256: d7904e836ee3d9f0fdce2a89db537e8d62f11bb1ba04128b8de441564ca51fdf
+  size: 5522929
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: Security log of an execution-policy run (lab build, no process creation for the attack)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H65
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: 'No process creation for the attack window, so the detection has nothing to read. (An execution-policy bypass would also
+        be out of scope with telemetry: -ExecutionPolicy/-ep do not trigger the rule.)'
+- id: splunk/T1059.001/powershell_execution_policy/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_execution_policy/windows-system.log
+  sha256: a9beb302b323a0ff57192726b7668d43287c13b69280365842409cb9a70f6f39
+  size: 390696
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1059.001
+  title: System log of an execution-policy run
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H66
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: The PowerShell attack cannot appear in a System log; the detection reads process creation.
+- id: splunk/T1059.001/powershell_remotesigned/remotesigned_security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_remotesigned/remotesigned_security.log
+  sha256: 8e6aa4ac6893e467c73939c9ba3987774d53f35e564532599c9fff27d4fc6c0d
+  size: 1377
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1059.001
+  title: PowerShell -ExecutionPolicy RemoteSigned running a script (Security 4688)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H67
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: PowerShell runs a script file after setting the execution policy; there is no encoded command, and the documentation states
+        -ExecutionPolicy / -ep do not trigger the rule.
+- id: splunk/T1059.001/powershell_testing/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_testing/windows-security.log
+  sha256: 5aed1de746485d43fe96782aa5f3d298e1ead5d2969f8dc56e18186685969007
+  size: 2441617
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: Invoke-AtomicTest PowerShell tests with encoded stagers launched from HTA files (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H68
+  expect:
+  - T1059.001_powershell_encoded_command
+  quiet:
+    T1003.001_lsass_memory_access:
+      kind: telemetry
+      reason: Invoke-Mimikatz -DumpCreds reads LSASS memory, but this detection needs Sysmon EID 10, absent from the file.
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: blind-spot
+      reason: 'The remoting session started no child process: documented gap "Cmdlet-only sessions". (The rule also reads Sysmon EID
+        1 only; this file has 4688.)'
+- id: splunk/T1059.001/powershell_xml_requests/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_xml_requests/windows-security.log
+  sha256: 78cded986f1fbfc85246c0b8a1c50f061ed061a774acfcddad8935daf2b0dd60
+  size: 5965107
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1059.001
+  title: Security log of an XML-request cradle run (lab build, no process creation for the attack)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H69
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: No process creation for the attack window, so the detection has nothing to read.
+- id: splunk/T1059.001/powershell_xml_requests/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1059.001/powershell_xml_requests/windows-system.log
+  sha256: 8335c821c68b10b7d9d3e7e3244b12643144c497555b280cfae6e250f10896ca
+  size: 383739
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1059.001
+  title: System log of an XML-request cradle run
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H70
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: telemetry
+      reason: The PowerShell attack cannot appear in a System log; the detection reads process creation.
+- id: splunk/T1070.001/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/atomic_red_team/windows-security.log
+  sha256: 0548e1aef0aae426b28fffd3929dd16a9ed30fa0d8c6f97eed52867524e5db8c
+  size: 6411630
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1685.005
+  title: Security log cleared during an Atomic run (1102)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H71
+  expect:
+  - T1685.005_security_log_cleared
+  quiet:
+    T1685.005_event_log_clearing:
+      kind: telemetry
+      reason: The clearing command (wevtutil / Clear-EventLog) was not recorded as process creation, so the command-line rule has nothing
+        to read; only the 1102 outcome is present.
+    T1685.005_system_log_cleared:
+      kind: telemetry
+      reason: The rule reads System 104; the log-clearing run cannot show it in a Security log.
+- id: splunk/T1070.001/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/atomic_red_team/windows-system.log
+  sha256: fcc3ed3862432b2053b71fc41a8b14087d020f174615ec0ef4895d3811a33cca
+  size: 391793
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1685.005
+  title: 'System log of an Atomic run: four logs cleared (104)'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H72
+  expect:
+  - T1685.005_system_log_cleared
+  quiet:
+    T1685.005_event_log_clearing:
+      kind: telemetry
+      reason: The clearing command line cannot appear in a System log.
+    T1685.005_security_log_cleared:
+      kind: telemetry
+      reason: The rule reads Security 1102; it cannot appear in a System log.
+- id: splunk/T1070.001/ssa_wevtutil/clear_evt.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/ssa_wevtutil/clear_evt.log
+  sha256: 5b79963279b6bcc30c58e11dd4f6bb0e0dec5cd82e2b243ac0900998c75f3049
+  size: 5799
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1685.005
+  title: wevtutil cl of three logs, as edited copies of one record (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H73
+  expect:
+  - T1685.005_event_log_clearing
+  quiet:
+    T1685.005_security_log_cleared:
+      kind: telemetry
+      reason: The Security log was cleared, but this outcome rule reads Security 1102, which the file does not contain.
+    T1685.005_system_log_cleared:
+      kind: telemetry
+      reason: Application and System were cleared, which writes System 104 (Microsoft-Windows-Eventlog); the file has no System 104.
+- id: splunk/T1070.001/ssa_wevtutil/disable_evt.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/ssa_wevtutil/disable_evt.log
+  sha256: 00b7a2dc26cbd9befd17546cc9d2a57c9d973c6807d3f43d334f70043e9f9101
+  size: 3892
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1685.005
+  title: wevtutil sl /e:false disabling logs (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H74
+  quiet:
+    T1685.005_event_log_clearing:
+      kind: scope
+      reason: Event-log tampering by disabling channels (wevtutil sl /e:false); the documented wevtutil selection covers only cl / clear-log
+        (and the PowerShell/WMI clear, remove and Limit-EventLog methods), so set-log is outside scope. Nothing is cleared, so no 1102/104
+        outcome is expected either.
+- id: splunk/T1070.001/ssa_wevtutil/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/ssa_wevtutil/windows-security.log
+  sha256: 9f789960dbad4f425fdb57e1af129f89d472ea74225dae19f8d99c472c6dccde
+  size: 1255335
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1685.005
+  title: A malware-style batch stopping services and clearing the Application log (Security 4688)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H75
+  expect:
+  - T1685.005_event_log_clearing
+  quiet:
+    T1685.005_system_log_cleared:
+      kind: telemetry
+      reason: Clearing the Application log writes System 104, which this Security-only file does not contain.
+  overlap:
+    splunk/T1070.001/ssa_wevtutil/clear_evt.log: its wevtutil cl Application record (the one that fires) is the first record of that
+      file
+    splunk/T1070.001/ssa_wevtutil/disable_evt.log: its first wevtutil sl record is the first record of that file
+- id: splunk/T1070.001/windows_pwh_log_cleared/wevtutil_clear_log.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/windows_pwh_log_cleared/wevtutil_clear_log.log
+  sha256: f84a71b701ac5474554b961a28161f0d0a744a1665800f587a081cdfa702dbcb
+  size: 29947
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1685.005
+  title: ShrinkLocker script clearing logs with wevtutil (Sysmon and Security 4688)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H76
+  expect:
+  - T1685.005_event_log_clearing
+  quiet:
+    T1685.005_system_log_cleared:
+      kind: telemetry
+      reason: Two non-Security logs were cleared (System 104 expected), but the file has no System log.
+- id: splunk/T1110.003/generic_password_spray/password_spray_attack.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1110.003/generic_password_spray/password_spray_attack.log
+  sha256: 0b1f90ae5e05cac0d21aa10dbc921734b74e9259674f79c9484ea54d77930807
+  size: 59355
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1110.003
+  title: NTLM logon failures for many accounts without a client address (4625)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H77
+  quiet:
+    T1110.003_password_spray_burst:
+      kind: scope
+      reason: A spray shape (11 accounts, one workstation, 4 minutes), but the documented base rule drops attempts without a remote
+        address and the correlation groups by IpAddress, so no failure is counted.
+- id: splunk/T1218.011/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/atomic_red_team/windows-security.log
+  sha256: 3826342e101d8dae7c43c56642e5b3a7fd1a918b0bd420f5501ad23791b06265
+  size: 6317975
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1218.011
+  title: Security log of an Atomic rundll32 run (lab build, no process creation for the attack)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H78
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: telemetry
+      reason: 'The rundll32 tests left no process-creation record: the file has no command-line 4688 or Sysmon 1 for the attack window.'
+- id: splunk/T1218.011/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/atomic_red_team/windows-system.log
+  sha256: 3ff54b9323b77ea60d0b11b33b8ed86692b426075ea5dcdbad14c07bc4df3e7b
+  size: 389918
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1218.011
+  title: System log of an Atomic rundll32 run
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H79
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: telemetry
+      reason: Rundll32 proxy execution is seen through process creation, which a System log does not hold.
+- id: splunk/T1218.011/update_per_user_system/rundll32_updateperusersystem.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1218.011/update_per_user_system/rundll32_updateperusersystem.log
+  sha256: 458df92c3189c54c80d656600bd3a9a9892b585a77f4abbba0d13bf321d4e024
+  size: 3370
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1218.011
+  title: rundll32 user32.dll,UpdatePerUserSystemParameters from a batch file
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H80
+  quiet:
+    T1218.011_rundll32_suspicious_execution:
+      kind: scope
+      reason: 'Rundll32 proxying a System32 DLL export by name: no javascript:/RunHTMLApplication, no AppData/ProgramData/Users\Public/Windows\Temp/Downloads
+        path in its command line (C:\Temp is not a listed path and appears only in the parent), not comsvcs MiniDump, and it has arguments
+        - it misses all four susp_* selections.'
+- id: splunk/T1547.001/atomic_red_team/t1547001-runonce.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1547.001/atomic_red_team/t1547001-runonce.log
+  sha256: 734596074b0bc33598fae148a395d671128411b03ffe12784bf32b743da3b3cc
+  size: 78245
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1547.001
+  title: 'Atomic RunOnce tests: a RunOnce value starting PowerShell (Sysmon records inside a classic export)'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H81
+  expect:
+  - T1547.001_registry_run_key_persistence
+- id: splunk/T1547.001/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1547.001/atomic_red_team/windows-security.log
+  sha256: 70787fcec2ce392259d442b47602177b5544be2f81a7326eb5d553362f235c06
+  size: 5978889
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1547.001
+  title: Security log of an Atomic Run key run (no registry telemetry)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H82
+  quiet:
+    T1547.001_registry_run_key_persistence:
+      kind: telemetry
+      reason: The rule reads Sysmon 13 on Run/RunOnce keys; the file has none.
+- id: splunk/T1547.001/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1547.001/atomic_red_team/windows-system.log
+  sha256: 793762c6cb4fff1350baf91e59cd4a480e627e4c85abff895a75cc5364ba1c54
+  size: 386972
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1547.001
+  title: System log of an Atomic Run key run
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H83
+  quiet:
+    T1547.001_registry_run_key_persistence:
+      kind: telemetry
+      reason: Run key writes are seen through Sysmon 13, which a System log does not hold.
+- id: splunk/T1558.003/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/atomic_red_team/windows-security.log
+  sha256: 1647b6eb3c96c336463a2443a029a2f066d59501f2ffde62485a0d07e927cbd6
+  size: 1278
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1558.003
+  title: One RC4 service ticket for the DC's own machine account (4769)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H84
+  quiet:
+    T1558.003_kerberoasting_rc4_tgs:
+      kind: scope
+      reason: 'An RC4 ticket, but its ServiceName is a machine account ($), which the rule excludes. Uncertain: this lone ticket may
+        be the atomic test (DC-self tickets in the other attack-range logs are AES) or ordinary DC self-traffic.'
+    T1558.003_kerberoasting_volume:
+      kind: scope
+      reason: The base rule drops computer-account services and requests from the DC itself (::1); a single service would also be below
+        the threshold of 5.
+- id: splunk/T1558.003/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/atomic_red_team/windows-system.log
+  sha256: c226e7febc575119fc94524ec32112517749aa5af4ad7c5d32d8d84a47a90f3d
+  size: 619674
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1558.003
+  title: System log of a Kerberoasting run, with a test service running notepad.exe
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H85
+  quiet:
+    T1558.003_kerberoasting_rc4_tgs:
+      kind: telemetry
+      reason: Kerberoasting is visible only in DC Security 4769, which this file does not contain.
+    T1558.003_kerberoasting_volume:
+      kind: telemetry
+      reason: The correlation reads DC Security 4769, absent here.
+    T1569.002_suspicious_service_installation:
+      kind: blind-spot
+      reason: 'A test-style service with a non-default name and a System32 binary: no interpreter, share or writable path, not .bat/.cmd,
+        name not in the default list, not %SystemRoot%\<8 letters>.exe - the documented gap "service name and binary randomized + binary
+        placed in System32". Origin uncertain (not part of kerberoasting); the other 7045s are agents and match nothing.'
+- id: splunk/T1558.003/rubeus/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1558.003/rubeus/windows-security.log
+  sha256: b5d694ca38e0ad78f779cfd91421cb37bf2514cbbc6c25afa7ac84c1b24e9313
+  size: 459580
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1558.003
+  title: 'Rubeus kerberoast on the domain controller: 30 RC4 service tickets (4769)'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H86
+  expect:
+  - T1558.003_kerberoasting_rc4_tgs
+  quiet:
+    T1558.003_kerberoasting_volume:
+      kind: scope
+      reason: Volume roasting, but the documented base rule drops requests from the domain controller itself, and all 30 come from ::1
+        because Rubeus ran on the DC.
+  missed:
+    T1558.003_kerberoasting_rc4_tgs: 'the rule drops tickets requested from ::1, the domain controller itself, a filter its README did
+      not list: Rubeus ran on the domain controller and requested all 30 RC4 tickets from there. The README now lists it as a blind
+      spot'
+- id: splunk/T1569.002/atomic_red_team/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/atomic_red_team/windows-security.log
+  sha256: 10f6e20475b6c0513b5b2fd1ea0716b53f50c6de733b9df0f3595b68864281cb
+  size: 8876220
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1569.002
+  title: Security log of an Atomic service run (no 4697)
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H87
+  quiet:
+    T1569.002_suspicious_service_installation:
+      kind: telemetry
+      reason: The rule reads System 7045 or Security 4697; neither is in this file.
+- id: splunk/T1569.002/atomic_red_team/windows-system.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1569.002/atomic_red_team/windows-system.log
+  sha256: 097f16e7d92b0c75797244543e88a9eeaad80b861a31b053feddeb68fcd1772e
+  size: 396124
+  format: windows-classic
+  profile: sysmon-native
+  technique: T1569.002
+  title: 'System log of an Atomic service run: ARTService running cmd.exe /c powershell (7045)'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:System
+  holdout: H88
+  expect:
+  - T1569.002_suspicious_service_installation
+- id: splunk/T1190/crushftp/windows-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/crushftp/windows-sysmon.log
+  sha256: 2e9efea0d5421db1f9f2889ba418fc5f868fd38cb9654dc7312a9d31c0e28d0c
+  size: 1931
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'CrushFTP exploitation: the FTP service starting cmd.exe /c whoami'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H89
+  quiet:
+    T1190_api_auth_probing:
+      kind: scope
+      reason: Exploitation of the CrushFTP server (T1190) is visible only as host-side outcome (the FTP server process spawning cmd.exe
+        /c whoami); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window,
+        and nothing here shows rejected-path probing
+    T1190_object_id_enumeration:
+      kind: scope
+      reason: Exploitation of the CrushFTP server (T1190) is visible only as host-side outcome (the FTP server process spawning cmd.exe
+        /c whoami); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs
+        per minute in a web access log, and nothing here shows object-ID walking
+- id: splunk/T1190/java/java_spawn_shell_nix.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/java/java_spawn_shell_nix.log
+  sha256: eab1d19a5fe4cd073270105c69002e0f6e4270ffc7fdbc368a10272db32a1e02
+  size: 66761
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: Java packages and a Maven build of a Log4Shell tool on Linux, with a shell Maven started
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  holdout: H90
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: scope
+      reason: A Java process spawning a Unix shell is T1059.004 behaviour, but it is outside the documented scope. Nothing is Base64-decoded
+        into a shell (susp_b64_pipe). Image /bin/dash is not under /tmp, /var/tmp or /dev/shm (susp_tmp_binary). The shell's first argument
+        is -c, not a script in those directories (tmp_script_shell/tmp_script_path). The shell comes from a Maven build of the attack
+        tooling, not from exploitation.
+- id: splunk/T1190/outbound_java/linux-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/outbound_java/linux-sysmon.log
+  sha256: 92b164b049a2feedeace6d1726e2e7f2a7b199fd2c3558ef53468e2bdc9e9118
+  size: 11979224
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'Log4Shell on Linux: the Java application''s callbacks and a bash reverse shell'
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  holdout: H91
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: scope
+      reason: The reverse shell the exploited Java process spawns is Unix-shell execution (T1059.004), but it is outside the documented
+        scope. No Base64 is decoded into a shell (susp_b64_pipe). The binary is /bin/bash, not under /tmp, /var/tmp or /dev/shm (susp_tmp_binary).
+        The shell's first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path).
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. The exploitation is a single JNDI-injection request, so even with an access log it
+        would not be the 5+ distinct 401/403 paths per client in 5 minutes that this correlation counts.
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. Nothing indicates a walk over numeric single-owner object IDs either; the exploit is
+        one injected request.
+- id: splunk/T1190/outbound_java/windows-security.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/outbound_java/windows-security.log
+  sha256: 538ce1324d054f60fa2565cef79467956c8731c93dc79d4f384d45dfb47a4db4
+  size: 22000109
+  format: windows-classic
+  profile: windows-security-4688
+  technique: T1190
+  title: 'Security log of the Log4Shell run on Windows: no trace of the attack'
+  splunk:
+    sourcetype: WinEventLog
+    source: WinEventLog:Security
+  holdout: H92
+  quiet:
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. This Security log records none of the exploitation either. The exploit is a single
+        JNDI-injection request, not 401/403 probing across many paths.
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk.
+- id: splunk/T1190/outbound_java/windows-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/outbound_java/windows-sysmon.log
+  sha256: fb3444c80a907bf0301fb65979cd1d1a4e595f83e5bd0aa4d1eaabaf5d28c6bd
+  size: 7025034
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'Log4Shell on Windows: java.exe calling back to the attacker''s LDAP server, no child process'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H93
+  quiet:
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. The exploit is a single JNDI-injection request, so even with an access log it would
+        not be the 5+ distinct 401/403 paths per client this correlation counts.
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk.
+- id: splunk/T1190/papercut/papercutng-app-spawn_windows-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/papercut/papercutng-app-spawn_windows-sysmon.log
+  sha256: a45f2d037622fb5d11305a5e3e21fe3032c8ffd4bbf115b07293c8317a6bcc21
+  size: 28196
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'PaperCut NG exploitation: the application server starting calc, cmd and encoded PowerShell'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H94
+  expect:
+  - T1059.001_powershell_encoded_command
+  quiet:
+    T1190_api_auth_probing:
+      kind: scope
+      reason: Exploitation of the PaperCut NG server (T1190) is visible only as host-side outcome (pc-app.exe spawning calc.exe, cmd.exe
+        and an encoded PowerShell command); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct
+        paths in a 5-minute window, and nothing here shows rejected-path probing
+    T1190_object_id_enumeration:
+      kind: scope
+      reason: Exploitation of the PaperCut NG server (T1190) is visible only as host-side outcome (pc-app.exe spawning calc.exe, cmd.exe
+        and an encoded PowerShell command); the detection's scope is one client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet
+        IDs per minute in a web access log, and nothing here shows object-ID walking
+- id: splunk/T1190/proxyshell/msexchangehmworker_windows-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/proxyshell/msexchangehmworker_windows-sysmon.log
+  sha256: bd8380ed6ce986130fa86a6ee291d0daf8c0b50579e1a45d89b8d825c9c04846
+  size: 66144
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: Exchange Health Manager worker probes (netsh, nslookup, nltest)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H95
+- id: splunk/T1190/pswa/4648_4624_pswa_pool.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/pswa/4648_4624_pswa_pool.log
+  sha256: 19789140997fc63ed2dc67232b73baeb62b1c6866bee825393c1fae9c6819e03
+  size: 22290
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: PowerShell Web Access gateway logons with administrator credentials (4648, 4624)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H96
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: 'PSWA runs the session through PowerShell remoting (WinRM: HTTP/<host> as the target), but only the logons are recorded,
+        and the README puts those outside the rule (''A WinRM logon alone ... is everyday administration, so the rule keys on what the
+        session started, not on the connection''). No cmd/encoded PowerShell/proxy child of a WinRM host is shown.'
+- id: splunk/T1190/pswa/4648_pswa_pool.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/pswa/4648_pswa_pool.log
+  sha256: 1d5830749f11100e4d5737526e535f33f78a387c210fdd3b72d04c8b0d068466
+  size: 63363
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: PowerShell Web Access gateway explicit-credential logons over five days (4648)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H97
+  quiet:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: scope
+      reason: PSWA remoting sessions (WinRM, TargetInfo HTTP/<host>) are shown only through the gateway's explicit-credential logons,
+        which the README puts outside the rule ('A WinRM logon alone ... the rule keys on what the session started'). No cmd/encoded
+        PowerShell/proxy child of a WinRM host is shown.
+- id: splunk/T1190/sap/windows-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/sap/windows-sysmon.log
+  sha256: f8e0bfd644360e21f49b528561e48d5482fd85f9407dab77cf13bb2d5ea57387
+  size: 2267
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'MSBuild building a project file staged in ProgramData: an edited copy of H89''s record'
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H98
+  overlap:
+    splunk/T1190/crushftp/windows-sysmon.log: 'its one record is that file''s record (same host, record number, time and process GUID)
+      with the image, command line and parent changed to an MSBuild run: an edited copy'
+- id: splunk/T1190/screenconnect/4663_connectwise_aspx_app_extensions.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/screenconnect/4663_connectwise_aspx_app_extensions.log
+  sha256: 580f70175cb41dc8ef6a6d6b00a1472bd36d8b8f80e0bf85c6e225622c25ec3a
+  size: 10022
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: ScreenConnect web shells written into App_Extensions (Security 4663)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  holdout: H99
+  quiet:
+    T1190_api_auth_probing:
+      kind: scope
+      reason: Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe writing
+        .aspx files into App_Extensions, recorded as 4663); the detection's scope is a web access log in which one client gets 401/403
+        on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing
+    T1190_object_id_enumeration:
+      kind: scope
+      reason: Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe writing
+        .aspx files into App_Extensions, recorded as 4663); the detection's scope is one client sending GETs for >=3 distinct numeric
+        basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking
+- id: splunk/T1190/screenconnect/sysmon_app_extensions.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/screenconnect/sysmon_app_extensions.log
+  sha256: 29ec567a1492996969c3fa4afe3251d460edbe3173849f2f7ce203887ab3831d
+  size: 2228
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: ScreenConnect web shells created in App_Extensions (Sysmon 11)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H100
+  quiet:
+    T1190_api_auth_probing:
+      kind: scope
+      reason: Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe creating
+        .aspx files in App_Extensions, recorded as Sysmon 11); the detection's scope is a web access log in which one client gets 401/403
+        on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path probing
+    T1190_object_id_enumeration:
+      kind: scope
+      reason: Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe creating
+        .aspx files in App_Extensions, recorded as Sysmon 11); the detection's scope is one client sending GETs for >=3 distinct numeric
+        basket/user/account/profile/wallet IDs per minute in a web access log, and nothing here shows object-ID walking
+- id: splunk/T1190/snapattack/snapattack.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/snapattack/snapattack.log
+  sha256: 73f63a6768163a114ba748cd42f909d0efa56a663a408b2e0889c21cc3319774
+  size: 42369
+  format: windows-xml
+  profile: windows-security-4688
+  technique: T1190
+  title: Exploited servers (ActiveMQ, MOVEit, Idera, OFBiz, ScreenConnect, TeamCity) starting shells and payloads
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  holdout: H101
+  quiet:
+    T1059.001_powershell_encoded_command:
+      kind: scope
+      reason: The attack runs PowerShell (download and Start-Process) with a plain, unobfuscated command line; the detection's scope
+        is only a dash-like -e/-ec/-en* switch followed by a 16+ char Base64 blob, and the powershell.exe process record itself is absent
+        (only its cmd.exe parent).
+    T1190_api_auth_probing:
+      kind: scope
+      reason: Exploitation of ActiveMQ, MOVEit, Idera, OFBiz, ScreenConnect, TeamCity, Splunk and Confluence servers (T1190) is visible
+        only as host-side outcome (server processes spawning shells or payloads and writing web shells); the detection's scope is a
+        web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window, and nothing here shows rejected-path
+        probing
+    T1190_object_id_enumeration:
+      kind: scope
+      reason: Exploitation of ActiveMQ, MOVEit, Idera, OFBiz, ScreenConnect, TeamCity, Splunk and Confluence servers (T1190) is visible
+        only as host-side outcome (server processes spawning shells or payloads and writing web shells); the detection's scope is one
+        client sending GETs for >=3 distinct numeric basket/user/account/profile/wallet IDs per minute in a web access log, and nothing
+        here shows object-ID walking
+- id: splunk/T1190/snapattack/snapattack_linux.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/snapattack/snapattack_linux.log
+  sha256: 5a0b799e30cf4d85683ec737b7815309977e13a5481693005b7b628311bd409d
+  size: 5830
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: 'ActiveMQ and RocketMQ exploitation on Linux: a downloaded ELF and a netcat reverse shell'
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  holdout: H102
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: scope
+      reason: 'Exploited services run Unix shell commands (T1059.004), but none is in the documented scope:
+
+        - no Base64 is decoded; RocketMQ pipes plain `echo` output into sh (susp_b64_pipe needs a Base64 decode piped into the shell);
+
+        - the downloaded ELF is written to and run from the ActiveMQ working directory, not /tmp, /var/tmp or /dev/shm (the README lists
+        other writable directories as a coverage gap), and its own process start is not recorded;
+
+        - each shell''s first argument is -c or nothing, not a temp-directory script.'
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. ActiveMQ and RocketMQ are exploited over their broker protocols, which an HTTP access
+        log would not record. The Splunk XSLT upload is a handful of authenticated requests, not 401/403 probing across 5+ paths.
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk.
+  overlap:
+    splunk/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux: its RocketMQ record is a record of that file
+    splunk/T1190/linux_suspicious_child_of_postgresql/snapattack_linux: its PostgreSQL record is that file's record (same host, record
+      number and time), exported with other attributes on the Event element
+- id: splunk/T1190/spring4shell/java_write_jsp-linux-sysmon.log
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1190/spring4shell/java_write_jsp-linux-sysmon.log
+  sha256: 0d4a7a7cd53cbac2cc2b552921d9f2aad9bea9fcc3a1381b81c4d5dff3be3264
+  size: 159446
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1190
+  title: Spring4Shell web shells and a Spring Cloud Function Base64 dropper on Linux
+  splunk:
+    sourcetype: sysmon:linux
+    source: Syslog:Linux-Sysmon/Operational
+  holdout: H103
+  quiet:
+    T1059.004_linux_suspicious_shell_execution:
+      kind: scope
+      reason: 'A web-app RCE running a Base64 dropper through sh -c is T1059.004 behaviour, but this record is outside the documented
+        scope:
+
+        - the decoded output is redirected into a file, not piped into sh/bash/dash/zsh/ksh (susp_b64_pipe);
+
+        - Image /bin/dash is not under a temp directory (susp_tmp_binary);
+
+        - the shell''s first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path).
+
+        The next step, starting /tmp/mBZXM, would match susp_tmp_binary, but its process creation is not in this Java-filtered export.'
+    T1190_api_auth_probing:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. Spring4Shell and the Spring Cloud Function SpEL injection are single crafted requests,
+        so even with an access log they would not be 401/403 rejections on 5+ distinct paths per client.
+    T1190_object_id_enumeration:
+      kind: telemetry
+      reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
+        none, so it cannot see the exploitation. Nothing indicates a numeric object-ID walk.
+- id: splunk/T1053.005/atomic_red_team/attack_data.json
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1053.005/atomic_red_team/attack_data.json
+  sha256: 75f0cca49b74873e922ec27b3256a0b5d1ab3113eb70c91ab5df2c5ad402cb1e
+  size: 25338314
+  format: nxlog-json
+  profile: nxlog-windows
+  technique: T1053.005
+  title: Atomic scheduled-task tests run by Ansible on a domain controller (NXLog JSON)
+  holdout: H104
+  expect:
+  - T1053.005_schtasks_suspicious_creation
+  - T1053.005_powershell_scheduled_task_creation
+  also:
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+- id: splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Microsoft-Windows-Sysmon-Operational.evtx
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/procdump_t1003.001_capattack.zip
+  sha256: 3ed28b9348498dd694eb1b478e312594893c3ad505c8276ebf90ca062bc744ed
+  size: 2852243
+  member: 162ed664-f0db-4552-8e57-d4b41825dec1\logs\Microsoft-Windows-Sysmon%4Operational.evtx
+  member_sha256: 1bace6bea924430db1e9555ce7895b64b46d356198bce85ea87bf97681a1d7fb
+  lfs: false
+  format: evtx
+  profile: sysmon-native
+  technique: T1003.001
+  title: 'Sysmon log of a SnapAttack capture of a ProcDump test: the capture''s start-up only'
+  holdout: H105
+- id: splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Security.evtx
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1003.001/atomic_red_team/procdump_t1003.001_capattack.zip
+  sha256: 3ed28b9348498dd694eb1b478e312594893c3ad505c8276ebf90ca062bc744ed
+  size: 2852243
+  member: 162ed664-f0db-4552-8e57-d4b41825dec1\logs\Security.evtx
+  member_sha256: 10156c3115cff2cfa7eb11fbbbb861dde1546e459136a8e87aad8db7450f3c5f
+  lfs: false
+  format: evtx
+  profile: windows-security-4688
+  technique: T1003.001
+  title: 'Security log of the same capture: the capture tool clearing every log'
+  holdout: H106
+  also:
+    T1685.005_event_log_clearing:
+      kind: harness
+      reason: the capture tool (SnapAttack's capattack) clears every event log with wevtutil cl before it starts recording - its own
+        set-up, run by its PowerShell process, seconds before the capture; not the recorded ProcDump test, which is not in the file
+    T1685.005_security_log_cleared:
+      kind: harness
+      reason: 'the 1102 the capture tool''s wevtutil cl Security wrote while setting up the recording: its own set-up, not the recorded
+        test'
+gaps:
+  T1190_api_auth_probing: 'No public dataset holds web or API access logs of credential probing against an API: the public web datasets
+    checked (Splunk Attack Data nginx and Apache files) are single exploit requests, not a probing sequence, and the T1190 files in
+    the catalog hold the exploited servers'' process and file telemetry, not access logs. The lab run (red/web) is the evidence path.'
+  T1190_object_id_enumeration: No public dataset holds access logs of object-ID enumeration against an API; the T1190 files in the catalog
+    hold the exploited servers' process and file telemetry. The lab run (red/web) is the evidence path.
+next:
+- id: cron_directory_write
+  technique: T1053.003
+  detection: T1053.003_crontab_noninteractive_install
+  rule: Process creation for cp, mv, tee or install writing into /etc/cron.d, /etc/cron.hourly|daily|weekly|monthly, /etc/crontab or
+    /var/spool/cron, and shells appending there
+  evidence:
+  - splunk/T1053.003/crontab_edit_parameter/sysmon_linux
+  - splunk/T1053.003/cronjobs_entry/sysmon_linux
+  - splunk/T1053.003/cronjobs_entry/sysmon_linux_cron_append
+- id: netcat_exec
+  technique: T1059.004
+  detection: T1059.004_linux_suspicious_shell_execution
+  rule: nc, ncat or netcat with -e or -c handing a shell to a network connection, directly or inside sh -c
+  evidence:
+  - splunk/T1059.004/snapattack/snapattack_linux
+  - splunk/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux
+- id: ntlm_spray_by_workstation
+  technique: T1110.003
+  detection: T1110.003_password_spray_burst
+  rule: A value_count correlation over domain controller 4776 failures (0xC000006A, 0xC0000064) grouped by Workstation
+  evidence:
+  - splunk/T1110.003/purplesharp_valid_users_ntlm_xml/windows-security
+  - splunk/T1110.003/purplesharp_invalid_users_ntlm_xml/windows-security
+  - splunk/T1110.003/purplesharp_explicit_credential_spray_xml/windows-security
+  - splunk/T1110.003/purplesharp_valid_users_ntlm/windows-security
+  - splunk/T1110.003/purplesharp_invalid_users_ntlm/windows-security
+- id: explicit_credential_spray
+  technique: T1110.003
+  detection: T1110.003_password_spray_burst
+  rule: A value_count correlation over 4648 explicit-credential logons grouped by host and process, counting distinct target accounts
+  evidence:
+  - splunk/T1110.003/purplesharp_explicit_credential_spray_xml/windows-security
+  - splunk/T1110.003/purplesharp_explicit_credential_spray/windows-security
+- id: local_logon_spray_by_process
+  technique: T1110.003
+  detection: T1110.003_password_spray_burst
+  rule: Failed logons (4625) for many accounts from one process on one host, logon type 2 or 3 without a remote address
+  evidence:
+  - splunk/T1110.003/purplesharp_multiple_users_from_process_xml/windows-security
+  - splunk/T1110.003/purplesharp_multiple_users_from_process/windows-security
+- id: service_imagepath_registry
+  technique: T1569.002
+  detection: T1569.002_suspicious_service_installation
+  rule: Sysmon 13 writes to HKLM\System\CurrentControlSet\Services\*\ImagePath with the suspicious-path logic of the 7045 rule, for
+    estates that collect Sysmon but not the System log
+  evidence:
+  - evtx/lateral-movement/LM_sysmon_psexec_smb_meterpreter
+- id: lsass_dump_command_lines
+  technique: T1003.001
+  detection: T1003.001_lsass_memory_access
+  rule: Process creation for createdump.exe -f and rdrleakdiag.exe /fullmemdmp naming an LSASS process or dump
+  evidence:
+  - splunk/T1003.001/atomic_red_team/createdump_windows-sysmon
+  - evtx/credential-access/sysmon_rdrleakdiag_lsass_dump
+changed_after_replay:
+  T1003.001_lsass_memory_access: 'the System32 folder filter became a list of named Windows components and a Windows PowerShell process-listing
+    filter, and the 0x1f1fff mask was added: public data showed the folder filter hiding Invoke-Mimikatz, a migrated Meterpreter session,
+    nanodump dropped into System32 and PPLdump'
+  T1569.002_suspicious_service_installation: a bare cmd.exe service binary and C:\Temp were added to what the rule treats as suspicious
+  T1218.011_rundll32_suspicious_execution: three LOLBAS proxy exports were added (zipfldr RouteTheCall, advpack RegisterOCX, pcwutl
+    LaunchApplication)
+  T1547.001_registry_run_key_persistence: C:\Windows\Tasks was added to the writable folders
+  T1110.003_password_spray_burst: the base rule now also counts TGTs refused for unknown or disabled accounts (4768 0x6, 0x12) and failed
+    logons for unknown accounts (4625 0xC0000064)

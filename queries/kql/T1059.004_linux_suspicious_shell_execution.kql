@@ -1,0 +1,4 @@
+// Linux Shell Executing Decoded Base64 or Code From a Temporary Directory | af32f9f8-f4e4-4f9b-94ae-62a53fe5f415
+SysmonForLinux
+| where EventID == 1
+| where (CommandLine matches regex @"(?i)base64\s+(-d|--decode|-di|-id)\b[^|]*\|\s*(sudo\s+)?(/\S*/)?(ba|da|z|k)?sh\b" or (Image startswith @"/tmp/" or Image startswith @"/var/tmp/" or Image startswith @"/dev/shm/") or ((Image endswith @"/sh" or Image endswith @"/bash" or Image endswith @"/dash" or Image endswith @"/zsh" or Image endswith @"/ksh") and CommandLine matches regex @"(?i)^""?\S+""?\s+""?(/tmp|/var/tmp|/dev/shm)/"))

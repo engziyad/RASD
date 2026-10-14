@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) Steal or Forge Kerberos Tickets - Kerberoasting |
+| **ATT&CK technique** | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) Steal or Forge Kerberos Tickets: Kerberoasting |
 | **Related** | [T1110.002](https://attack.mitre.org/techniques/T1110/002/) |
 | **Tactics** | credential-access |
 | **Platform** | active directory · runner: powershell |
@@ -28,7 +28,7 @@ Request a Kerberos service ticket for a service account's SPN from an ordinary d
 
 ## Execution
 
-1. Invoke-PurpleEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn MSSQLSvc/sql01.lab.local:1433
+1. Invoke-RasdEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn MSSQLSvc/sql01.lab.local:1433
 2. The step purges the session's Kerberos ticket cache (a cached ticket would be reused and the DC would log nothing), then requests the ticket with System.IdentityModel KerberosRequestorSecurityToken
 3. collect\_artifacts.ps1 saves klist output, which shows the ticket's encryption type
 4. Export the domain controller's Security log too (Export-LabTelemetry.ps1 -LogName Security -EventId 4769) and pass both exports to evidence
@@ -61,7 +61,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn <spn>
+.\red\Invoke-RasdEmulation.ps1 -Test kerberoasting -LabConfirmed -Spn <spn>
 ```
 
 ---

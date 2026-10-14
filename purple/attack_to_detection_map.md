@@ -20,6 +20,40 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [lsass_access](../dfir/playbooks/lsass_access.md) · **Purple:** [T1003.001_lsass_access](scenarios/T1003.001_lsass_access.md) · **Intel:** HAFNIUM
 
+## [T1021.006](https://attack.mitre.org/techniques/T1021/006/) Remote Services: Windows Remote Management
+
+**Red:** [WinRM remote command on a lab host](../red/active_directory/winrm_access_validation/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| Security (target) | 4624 · An account was successfully logged on | investigation |
+| Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | investigation |
+| Sysmon (target) | 1 · ProcessCreate | investigation |
+| Sysmon (target) | 1 · ProcessCreate | `T1021.006_wsmprovhost_suspicious_child` |
+| Sysmon (source) | 3 · NetworkConnect | investigation |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | SIEM-Ready | [kql](../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) | [spl](../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) | [triage](../detect/detections/T1021.006_wsmprovhost_suspicious_child/triage.md) | [response](../detect/detections/T1021.006_wsmprovhost_suspicious_child/response.md) |
+
+**DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **Purple:** [T1021.006_winrm](scenarios/T1021.006_winrm.md) · **Intel:** Wizard Spider
+
+## [T1053.003](https://attack.mitre.org/techniques/T1053/003/) Scheduled Task/Job: Cron
+
+**Red:** [User crontab persistence](../red/linux/cron_persistence/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| auditd | SYSCALL / EXECVE · key=cron | investigation |
+| syslog / journald | crontab[pid]: (<user>) REPLACE (<user>) | investigation |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | `T1053.003_crontab_noninteractive_install` |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | SIEM-Ready | [kql](../queries/kql/T1053.003_crontab_noninteractive_install.kql) | [spl](../queries/spl/T1053.003_crontab_noninteractive_install.spl) | [triage](../detect/detections/T1053.003_crontab_noninteractive_install/triage.md) | [response](../detect/detections/T1053.003_crontab_noninteractive_install/response.md) |
+
+**DFIR:** [linux_persistence](../dfir/playbooks/linux_persistence.md) · **Purple:** [T1053.003_cron](scenarios/T1053.003_cron.md) · **Intel:** Rocke
+
 ## [T1053.005](https://attack.mitre.org/techniques/T1053/005/) Scheduled Task/Job: Scheduled Task
 
 **Red:** [Scheduled task with a suspicious action (schtasks and PowerShell)](../red/windows/scheduled_task_creation/)
@@ -54,23 +88,21 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [phishing_triage](../dfir/playbooks/phishing_triage.md) · **DFIR:** [suspicious_powershell](../dfir/playbooks/suspicious_powershell.md) · **Purple:** [T1059.001_powershell_encoded](scenarios/T1059.001_powershell_encoded.md) · **Intel:** MuddyWater, APT29
 
-## [T1070.001](https://attack.mitre.org/techniques/T1070/001/) Indicator Removal: Clear Windows Event Logs
+## [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Command and Scripting Interpreter: Unix Shell
 
-**Red:** [Event log clearing (dedicated test log, optional Security log)](../red/windows/event_log_clearing/)
+**Red:** [Encoded shell command and execution from /tmp](../red/linux/suspicious_shell_execution/)
 
 | Telemetry | Event | Used by |
 |---|---|---|
-| Sysmon | 1 · ProcessCreate | `T1070.001_event_log_clearing` |
-| System | 104 · The log file was cleared | `T1070.001_system_log_cleared` |
-| Security | 1102 · The audit log was cleared | `T1070.001_security_log_cleared` |
+| auditd | EXECVE · sh -c, base64 -d, sh | investigation |
+| auditd | EXECVE · /tmp/<marker>.sh | investigation |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | `T1059.004_linux_suspicious_shell_execution` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1070.001_event_log_clearing](../detect/detections/T1070.001_event_log_clearing/) | SIEM-Ready | [kql](../queries/kql/T1070.001_event_log_clearing.kql) | [spl](../queries/spl/T1070.001_event_log_clearing.spl) | [triage](../detect/detections/T1070.001_event_log_clearing/triage.md) | [response](../detect/detections/T1070.001_event_log_clearing/response.md) |
-| [T1070.001_security_log_cleared](../detect/detections/T1070.001_security_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1070.001_security_log_cleared.kql) | [spl](../queries/spl/T1070.001_security_log_cleared.spl) | [triage](../detect/detections/T1070.001_security_log_cleared/triage.md) | [response](../detect/detections/T1070.001_security_log_cleared/response.md) |
-| [T1070.001_system_log_cleared](../detect/detections/T1070.001_system_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1070.001_system_log_cleared.kql) | [spl](../queries/spl/T1070.001_system_log_cleared.spl) | [triage](../detect/detections/T1070.001_system_log_cleared/triage.md) | [response](../detect/detections/T1070.001_system_log_cleared/response.md) |
+| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | SIEM-Ready | [kql](../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) | [spl](../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) | [triage](../detect/detections/T1059.004_linux_suspicious_shell_execution/triage.md) | [response](../detect/detections/T1059.004_linux_suspicious_shell_execution/response.md) |
 
-**DFIR:** [event_log_clearing](../dfir/playbooks/event_log_clearing.md) · **Purple:** [T1070.001_event_log_clearing](scenarios/T1070.001_event_log_clearing.md) · **Intel:** APT28
+**DFIR:** [linux_persistence](../dfir/playbooks/linux_persistence.md) · **Purple:** [T1059.004_unix_shell](scenarios/T1059.004_unix_shell.md) · **Intel:** Rocke
 
 ## [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Brute Force: Password Spraying
 
@@ -88,6 +120,28 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [password_spray](../dfir/playbooks/password_spray.md) · **Purple:** [T1110.003_password_spray](scenarios/T1110.003_password_spray.md) · **Intel:** APT33, APT28
 
+## [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application
+
+**Red:** [API authentication enforcement](../red/web/api_auth_testing/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | `T1190_api_auth_probing` |
+| Application log | authentication failure | investigation |
+
+**Red:** [Object-level authorization (IDOR / BOLA)](../red/web/idor_testing/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| Web server / reverse proxy access log | HTTP request · sequential object IDs | `T1190_object_id_enumeration` |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1190_api_auth_probing.kql) | [spl](../queries/spl/correlations/T1190_api_auth_probing.spl) | [triage](../detect/correlations/T1190_api_auth_probing/triage.md) | [response](../detect/correlations/T1190_api_auth_probing/response.md) |
+| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1190_object_id_enumeration.kql) | [spl](../queries/spl/correlations/T1190_object_id_enumeration.spl) | [triage](../detect/correlations/T1190_object_id_enumeration/triage.md) | [response](../detect/correlations/T1190_object_id_enumeration/response.md) |
+
+**DFIR:** [web_application_attack](../dfir/playbooks/web_application_attack.md) · **Purple:** [T1190_api_auth_probing](scenarios/T1190_api_auth_probing.md) · **Purple:** [T1190_object_id_enumeration](scenarios/T1190_object_id_enumeration.md) · **Intel:** HAFNIUM
+
 ## [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32
 
 **Red:** [rundll32 javascript: proxy execution](../red/windows/rundll32_execution/)
@@ -103,7 +157,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [lsass_access](../dfir/playbooks/lsass_access.md) · **DFIR:** [rundll32_proxy_execution](../dfir/playbooks/rundll32_proxy_execution.md) · **Purple:** [T1218.011_rundll32](scenarios/T1218.011_rundll32.md) · **Intel:** APT28, Lazarus Group
 
-## [T1547.001](https://attack.mitre.org/techniques/T1547/001/) Boot or Logon Autostart Execution: Registry Run Keys
+## [T1547.001](https://attack.mitre.org/techniques/T1547/001/) Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder
 
 **Red:** [HKCU Run value pointing into a user-writable folder](../red/windows/run_key_persistence/)
 
@@ -148,5 +202,23 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 | [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | SIEM-Ready | [kql](../queries/kql/T1569.002_suspicious_service_installation.kql) | [spl](../queries/spl/T1569.002_suspicious_service_installation.spl) | [triage](../detect/detections/T1569.002_suspicious_service_installation/triage.md) | [response](../detect/detections/T1569.002_suspicious_service_installation/response.md) |
 
 **DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **DFIR:** [service_installation](../dfir/playbooks/service_installation.md) · **Purple:** [T1569.002_service_execution](scenarios/T1569.002_service_execution.md) · **Intel:** Wizard Spider
+
+## [T1685.005](https://attack.mitre.org/techniques/T1685/005/) Disable or Modify Tools: Clear Windows Event Logs
+
+**Red:** [Event log clearing (dedicated test log, optional Security log)](../red/windows/event_log_clearing/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| Sysmon | 1 · ProcessCreate | `T1685.005_event_log_clearing` |
+| System | 104 · The log file was cleared | `T1685.005_system_log_cleared` |
+| Security | 1102 · The audit log was cleared | `T1685.005_security_log_cleared` |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | SIEM-Ready | [kql](../queries/kql/T1685.005_event_log_clearing.kql) | [spl](../queries/spl/T1685.005_event_log_clearing.spl) | [triage](../detect/detections/T1685.005_event_log_clearing/triage.md) | [response](../detect/detections/T1685.005_event_log_clearing/response.md) |
+| [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1685.005_security_log_cleared.kql) | [spl](../queries/spl/T1685.005_security_log_cleared.spl) | [triage](../detect/detections/T1685.005_security_log_cleared/triage.md) | [response](../detect/detections/T1685.005_security_log_cleared/response.md) |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1685.005_system_log_cleared.kql) | [spl](../queries/spl/T1685.005_system_log_cleared.spl) | [triage](../detect/detections/T1685.005_system_log_cleared/triage.md) | [response](../detect/detections/T1685.005_system_log_cleared/response.md) |
+
+**DFIR:** [event_log_clearing](../dfir/playbooks/event_log_clearing.md) · **Purple:** [T1685.005_event_log_clearing](scenarios/T1685.005_event_log_clearing.md) · **Intel:** APT28
 
 <sub>Generated by tools/chain.py · RASD · Attack-to-Defense Validation Framework</sub>

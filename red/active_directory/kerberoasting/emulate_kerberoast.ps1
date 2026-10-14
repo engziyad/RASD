@@ -8,7 +8,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [ValidatePattern('^purplelab_[0-9a-f]{8}$')] [string] $Marker,
+    [Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker,
     [Parameter(Mandatory)] [switch] $LabConfirmed,
     [Parameter(Mandatory)] [ValidatePattern('^[A-Za-z0-9\-]+/[^\s]+$')] [string] $Spn
 )

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: head_request_rejected
+  description: HEAD requests are refused the same way
+  base: 1
+  set:
+    cs-method: HEAD
+  should_match: true
+- name: status_as_number
+  description: A pipeline that types the status code as a number
+  base: 1
+  set:
+    sc-status: 401
+  should_match: true
+- name: query_string_variant
+  description: The same path with a query string
+  base: 3
+  set:
+    cs-uri-query: page=2
+  should_match: true
+- name: accepted_request_is_benign
+  description: The same request accepted
+  base: 1
+  set:
+    sc-status: '200'
+  should_match: false
+- name: lowercase_options_preflight_is_benign
+  description: A preflight logged with a lower-case method
+  base: 1
+  set:
+    cs-method: options
+  should_match: false

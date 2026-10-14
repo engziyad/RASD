@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) Command and Scripting Interpreter - PowerShell |
+| **ATT&CK technique** | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) Command and Scripting Interpreter: PowerShell |
 | **Related** | [T1027](https://attack.mitre.org/techniques/T1027/) |
-| **Tactics** | execution, defense-evasion |
+| **Tactics** | execution |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
 | **Requires** | standard user |
@@ -28,7 +28,7 @@ Prove that an encoded PowerShell command line reaches the SIEM intact and fires 
 
 1. Run the step through the runner so the marker, timing and cleanup are recorded
 2. The runner starts a child powershell.exe with -NoProfile -enc &lt;Base64 of the payload&gt;
-3. Export telemetry with Export-LabTelemetry.ps1 and run `python rasd.py evidence`
+3. Export telemetry with Export-LabTelemetry.ps1 and run `rasd evidence`
 
 ### Steps and the detections they must trigger
 
@@ -59,7 +59,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test powershell_encoded_command -LabConfirmed
+.\red\Invoke-RasdEmulation.ps1 -Test powershell_encoded_command -LabConfirmed
 ```
 
 ---

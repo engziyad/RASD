@@ -5,14 +5,14 @@ Expected output, not a capture from a real host. The run marker is random on eve
 ## Console
 
 ```text
-[T1070.001] wevtutil cl on a dedicated test log (writes System 104)
-WARNING: [T1070.001] wevtutil cl Security with a backup first - skipped (opt-in: add -IncludeSecurityLogClear)
+[T1685.005] wevtutil cl on a dedicated test log (writes System 104)
+WARNING: [T1685.005] wevtutil cl Security with a backup first - skipped (opt-in: add -IncludeSecurityLogClear)
 [cleanup] verified: test log R1a2b3c4d removed
 ```
 
-## Expected event → T1070.001_event_log_clearing
+## Expected event → T1685.005_event_log_clearing
 
-This is true positive *red: event_log_clearing emulation (test log)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1070.001_event_log_clearing/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
+This is true positive *red: event_log_clearing emulation (test log)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1685.005_event_log_clearing/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {
@@ -26,9 +26,9 @@ This is true positive *red: event_log_clearing emulation (test log)* in [`tests/
 }
 ```
 
-## Expected event → T1070.001_system_log_cleared
+## Expected event → T1685.005_system_log_cleared
 
-This is true positive *red: event_log_clearing emulation (System 104)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1070.001_system_log_cleared/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
+This is true positive *red: event_log_clearing emulation (System 104)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1685.005_system_log_cleared/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {
@@ -42,25 +42,25 @@ This is true positive *red: event_log_clearing emulation (System 104)* in [`test
 }
 ```
 
-## Expected event → T1070.001_event_log_clearing
+## Expected event → T1685.005_event_log_clearing
 
-This is true positive *red: event_log_clearing emulation (Security log, opt-in)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1070.001_event_log_clearing/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
+This is true positive *red: event_log_clearing emulation (Security log, opt-in)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1685.005_event_log_clearing/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {
   "EventID": 1,
   "Image": "C:\\Windows\\System32\\wevtutil.exe",
   "OriginalFileName": "wevtutil.exe",
-  "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl Security /bu:C:\\Users\\labuser\\AppData\\Local\\Temp\\security-before-clear-purplelab_1a2b3c4d.evtx",
+  "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl Security /bu:C:\\Users\\labuser\\AppData\\Local\\Temp\\security-before-clear-rasd_1a2b3c4d.evtx",
   "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "User": "LAB\\labuser",
   "Computer": "LAB-WS01.lab.local"
 }
 ```
 
-## Expected event → T1070.001_security_log_cleared
+## Expected event → T1685.005_security_log_cleared
 
-This is true positive *red: event_log_clearing emulation (Security 1102, opt-in)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1070.001_security_log_cleared/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
+This is true positive *red: event_log_clearing emulation (Security 1102, opt-in)* in [`tests/true_positive.jsonl`](../../../detect/detections/T1685.005_security_log_cleared/tests/true_positive.jsonl): CI proves on every change that it matches the rule.
 
 ```json
 {

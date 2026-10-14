@@ -1,17 +1,17 @@
 # Expected telemetry · API authentication enforcement
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | A burst of rejected requests across many API paths from one client | `user_agent`: `RASD-Red/<marker>`<br>`status`: `401`<br>`path`: `/api/Cards, /api/Users, /rest/basket/1 ...` | investigation |
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | A burst of rejected requests across many API paths from one client | `c-ip`: `<client address, 127.0.0.1 for an application on the same host>`<br>`cs-user-agent`: `RASD-Red/<marker>`<br>`sc-status`: `401`<br>`cs-uri-stem`: `/api/Cards, /api/Users, /rest/basket/1 ...` | [`T1190_api_auth_probing`](../../../detect/correlations/T1190_api_auth_probing/) |
 | Application log | authentication failure | Token validation errors (missing header, invalid signature), when the application logs them | `message`: `UnauthorizedError: No authorization token was found / invalid signature` | investigation |
 
 ## Logging that must be enabled
 
 - Access logs from the web server, load balancer or WAF, with client IP, path, status and user agent
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

@@ -1,16 +1,19 @@
-title: Authentication Failure With a Wrong Password
+title: Authentication Failure for an Account - Wrong Password, Unknown or Disabled
 id: 2e32a46d-cb7c-4dca-831e-09f3e1abe585
-name: auth_failure_wrong_password
+name: auth_failure
 status: test
 description: |
-  A failed authentication whose reason is a wrong password for an existing account:
-  Kerberos pre-authentication failed (4771, failure code 0x18) on a domain controller, or a
-  failed logon (4625, sub-status 0xC000006A) on the server that received the attempt.
-  Machine accounts and attempts without a remote client address are excluded. This is the
-  base rule of the password-spray correlation and never alerts on its own: one failure is
-  a typo, many accounts from one source are a spray.
+  A failed authentication for one account: Kerberos pre-authentication failed with a wrong
+  password (4771, 0x18), a TGT refused because the account does not exist or is disabled,
+  expired or locked (4768, 0x6 or 0x12), or a failed logon with a wrong password or an
+  unknown account (4625, sub-status 0xC000006A or 0xC0000064) on the server that received the
+  attempt. A spray list holds guessed and stale names as well as real ones, so every account
+  the attempt failed for counts. Machine accounts and attempts without a remote client address
+  are excluded. This is the base rule of the password-spray correlation and never alerts on
+  its own: one failure is a typo, many accounts from one source are a spray.
 references:
   - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4771
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4768
   - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625
 author: Ziyad (github.com/engziyad)
 date: 2026-10-12
@@ -26,11 +29,20 @@ detection:
     Status:             # KDC_ERR_PREAUTH_FAILED, hex or decimal depending on the pipeline
       - '0x18'
       - '24'
+  kerberos_tgt_refused: # a spray list with names that do not exist or are disabled (public data: kerbrute-style and PurpleSharp sprays)
+    EventID: 4768
+    Status:
+      - '0x6'           # KDC_ERR_C_PRINCIPAL_UNKNOWN
+      - '6'
+      - '0x12'          # KDC_ERR_CLIENT_REVOKED: disabled, expired or locked
+      - '18'
   logon_failure:
     EventID: 4625
-    SubStatus:          # STATUS_WRONG_PASSWORD, hex or decimal depending on the pipeline
-      - '0xc000006a'
+    SubStatus:
+      - '0xc000006a'    # STATUS_WRONG_PASSWORD
       - '3221225578'
+      - '0xc0000064'    # STATUS_NO_SUCH_USER
+      - '3221225572'
   filter_machine:
     TargetUserName|endswith: '$'
   filter_local:
@@ -39,7 +51,7 @@ detection:
       - '::1'
       - '127.0.0.1'
       - '::ffff:127.0.0.1'
-  condition: (kerberos_preauth or logon_failure) and not 1 of filter_*
+  condition: (kerberos_preauth or kerberos_tgt_refused or logon_failure) and not 1 of filter_*
 falsepositives:
   - Every mistyped password - which is why this rule only feeds the correlation
 level: informational

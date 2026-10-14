@@ -32,16 +32,26 @@ Base score **60**.
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
 - +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
-- −30 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
-- −20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+- -30 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
+- -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - EDR, AV and backup agents that open LSASS for inspection
+- Defender running from C:\Program Files\Windows Defender (builds without platform updates) and EDR sensors
+- svchost-hosted services, Task Manager, WerFault and the Malicious Software Removal Tool on some builds
+- {'PowerShell 7 (pwsh.exe) Get-Process': 'its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply'}
+- VMware Tools, configuration managers (SCCM) and other management agents
+- Cloud virtual machine agents (the Azure guest agent's log collector)
+- Windows components outside the named list on builds not covered by public data (add them by full path)
 - Administrators creating LSASS dumps for a Microsoft support case
 
 ### Never tune
 - Never allow-list by process name alone (MsMpEng.exe, procdump.exe): a renamed copy in a writable folder would pass.
-- Never filter rundll32.exe or taskmgr.exe: they are the LOLBins this rule exists for.
+- Never filter a whole folder such as System32: public data shows a dumper dropped into System32 (nanodump), a fresh services.exe dumping through dbgcore (PPLdump) and rundll32 and Task Manager dumps - all from that folder.
+- Never filter PowerShell without the access mask and the .NET frame: Invoke-Mimikatz runs inside powershell.exe.
+
+### Close or escalate
+[Closure and escalation notes](../T1003.001_lsass_memory_access/closure.md) for this detection.
 
 ---
 

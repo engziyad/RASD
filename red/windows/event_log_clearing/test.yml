@@ -2,9 +2,9 @@ id: event_log_clearing
 name: Event log clearing (dedicated test log, optional Security log)
 platform: windows
 mitre:
-  technique: T1070.001
-  technique_name: Indicator Removal - Clear Windows Event Logs
-  tactics: [defense-evasion]
+  technique: T1685.005
+  technique_name: "Disable or Modify Tools: Clear Windows Event Logs"
+  tactics: [defense-impairment]
 objective: >
   Clear an event log with wevtutil the way intruders do and prove all three log-clearing
   detections fire: the wevtutil process, the System 104 record of the clear and - only when
@@ -28,18 +28,18 @@ steps:
     name: wevtutil cl on a dedicated test log (writes System 104)
     script: emulate_clear_test_log.ps1
     needs_admin: true
-    detections: [T1070.001_event_log_clearing, T1070.001_system_log_cleared]
+    detections: [T1685.005_event_log_clearing, T1685.005_system_log_cleared]
     bind:
-      T1070.001_event_log_clearing: 'R{hex}'
-      T1070.001_system_log_cleared: 'R{hex}'
+      T1685.005_event_log_clearing: 'R{hex}'
+      T1685.005_system_log_cleared: 'R{hex}'
   - id: clear_security_log
     name: wevtutil cl Security with a backup first (writes Security 1102)
     script: emulate_clear_security_log.ps1
     needs_admin: true
     opt_in: IncludeSecurityLogClear
-    detections: [T1070.001_event_log_clearing, T1070.001_security_log_cleared]
+    detections: [T1685.005_event_log_clearing, T1685.005_security_log_cleared]
     bind:
-      T1070.001_event_log_clearing: '{marker}'
+      T1685.005_event_log_clearing: '{marker}'
 scripts:
   cleanup: cleanup.ps1
   collect: collect_artifacts.ps1
@@ -50,7 +50,7 @@ telemetry:
     fields:
       Image: '...\System32\wevtutil.exe'
       CommandLine: 'cl R<hex>  /  cl Security /bu:<path>\security-before-clear-<marker>.evtx'
-    used_by: [T1070.001_event_log_clearing]
+    used_by: [T1685.005_event_log_clearing]
   - source: System
     event: "104 · The log file was cleared"
     description: "Written by Microsoft-Windows-Eventlog for every cleared log except Security. The cleared log's name sits in UserData/LogFileCleared/Channel; Export-LabTelemetry.ps1 names it Channel_Cleared so it does not overwrite the event's own Channel (System) - in a SIEM look for the UserData field instead"
@@ -58,13 +58,13 @@ telemetry:
       Provider_Name: Microsoft-Windows-Eventlog
       Channel_Cleared: 'R<hex>'
       SubjectUserName: '<user>'
-    used_by: [T1070.001_system_log_cleared]
+    used_by: [T1685.005_system_log_cleared]
   - source: Security
     event: "1102 · The audit log was cleared"
     description: Written when the Security log is cleared (opt-in step only)
     fields:
       SubjectUserName: '<user>'
-    used_by: [T1070.001_security_log_cleared]
+    used_by: [T1685.005_security_log_cleared]
 logging:
   - "Sysmon process creation (Event ID 1)"
   - "System and Security logs forwarded off the host before the test - the point of the attack is to destroy the local copy"
@@ -88,17 +88,17 @@ cleanup:
   verify: The test log no longer exists
 sample_output:
   console: |
-    [T1070.001] wevtutil cl on a dedicated test log (writes System 104)
-    WARNING: [T1070.001] wevtutil cl Security with a backup first - skipped (opt-in: add -IncludeSecurityLogClear)
+    [T1685.005] wevtutil cl on a dedicated test log (writes System 104)
+    WARNING: [T1685.005] wevtutil cl Security with a backup first - skipped (opt-in: add -IncludeSecurityLogClear)
     [cleanup] verified: test log R1a2b3c4d removed
   events:
-    - detection: T1070.001_event_log_clearing
+    - detection: T1685.005_event_log_clearing
       case: "red: event_log_clearing emulation (test log)"
-    - detection: T1070.001_system_log_cleared
+    - detection: T1685.005_system_log_cleared
       case: "red: event_log_clearing emulation (System 104)"
-    - detection: T1070.001_event_log_clearing
+    - detection: T1685.005_event_log_clearing
       case: "red: event_log_clearing emulation (Security log, opt-in)"
-    - detection: T1070.001_security_log_cleared
+    - detection: T1685.005_security_log_cleared
       case: "red: event_log_clearing emulation (Security 1102, opt-in)"
 dfir_playbook: dfir/playbooks/event_log_clearing.md
-purple_scenario: purple/scenarios/T1070.001_event_log_clearing.md
+purple_scenario: purple/scenarios/T1685.005_event_log_clearing.md

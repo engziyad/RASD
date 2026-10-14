@@ -18,6 +18,14 @@ What it answers
                                       privileged user, off-hours, writable path, Office
                                       parent, remote execution); conditions only a human
                                       can answer are listed as questions
+  5. What goes in the ticket?         --case-dir writes one folder per storyline:
+                                      case_summary.md, timeline.json (every alert with
+                                      the event fields its rule read), observables.csv
+                                      (hosts, accounts, processes, command lines, keys,
+                                      services, addresses) and analyst_closure.md (the
+                                      escalation, benign and false positive notes,
+                                      pre-filled with what the logs show). Observed
+                                      facts only: the replay never sets a disposition
 
 Input   JSONL, one event per line (Sysmon / Security / System as exported from a SIEM).
         Events are routed to rules by log source, so a Security event is never tested
@@ -28,10 +36,11 @@ Assets  Optional CSV (ip,host,role) to resolve network events (e.g. Kerberos 476
 Users   Optional CSV (user,privileged) marking privileged accounts for risk.
 
 Usage
-  python tools/replay.py samples/replay/lab-day.jsonl --assets samples/replay/assets.csv
-  python tools/replay.py logs.jsonl --html report.html --json alerts.json --window 60
-  python tools/replay.py logs.jsonl --assets assets.csv --users users.csv --hours 7-19 --utc-offset 3
-  python tools/replay.py elastic-export.jsonl --profile elastic-ecs
+  rasd replay samples/replay/lab-day.jsonl --assets samples/replay/assets.csv
+  rasd replay logs.jsonl --html report.html --json alerts.json --window 60
+  rasd replay logs.jsonl --assets assets.csv --users users.csv --hours 7-19 --utc-offset 3
+  rasd replay elastic-export.jsonl --profile elastic-ecs
+  rasd replay logs.jsonl --assets assets.csv --case-dir reports/cases
 
 Event times are compared in UTC; --hours are local business hours, so pass --utc-offset
 for the off-hours risk condition to use the right clock.
@@ -40,26 +49,30 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import html
 import json
 import re
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
+from itertools import pairwise
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import yaml  # noqa: E402
+import yaml
 
-from common import BOLD, DIM, GOLD, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl  # noqa: E402
-from convert import logsource_key  # noqa: E402
-from sigma_engine import SigmaError, compile_rule, matches  # noqa: E402
+from common import ATTACK_TACTICS, BOLD, DIM, GOLD, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl
+from convert import logsource_key
+from sigma_engine import SigmaError, compile_rule
 
-TACTIC_ORDER = ["initial-access", "execution", "persistence", "privilege-escalation", "defense-evasion",
-                "credential-access", "discovery", "lateral-movement", "collection", "command-and-control",
-                "exfiltration", "impact"]
+TACTIC_ORDER = list(ATTACK_TACTICS)
 LEVEL_WEIGHT = {"informational": 1, "low": 2, "medium": 4, "high": 7, "critical": 10}
-TIME_FIELDS = ("UtcTime", "TimeCreated", "@timestamp", "_time", "timestamp", "TimeGenerated")
+# the record time first: TimeCreated is the clock every channel of a host shares. Sysmon writes its own
+# UtcTime too, and public captures show it hours away from TimeCreated when a pipeline re-renders one
+# of them, which would put a Sysmon event and the Security event beside it hours apart
+TIME_FIELDS = ("TimeCreated", "UtcTime", "@timestamp", "_time", "timestamp", "TimeGenerated")
 HOST_FIELDS = ("Computer", "host", "Hostname", "DeviceName")
 USER_FIELDS = ("User", "SubjectUserName", "TargetUserName", "AccountName")
 NETWORK_EVENTS = {4768, 4769, 4771, 4776, 4624, 4625}   # logged by a DC / target about a client: entity = client
@@ -78,6 +91,12 @@ def route(ev: dict) -> str | None:
     """Map an event to the Sigma logsource key used by rules."""
     ch = str(ev.get("Channel") or ev.get("channel") or ev.get("source") or "").lower()
     eid = str(ev.get("EventID") or ev.get("EventCode") or ev.get("event_id") or ev.get("code") or "")
+    if not ch and ("cs-uri-stem" in ev or "sc-status" in ev):
+        return "webserver"
+    if "linux" in ch and "sysmon" in ch:
+        return {"1": "linux/process_creation"}.get(eid)
+    if not ch and str(ev.get("Image") or "").startswith("/"):
+        return "linux/process_creation" if eid in ("", "1") else None
     if "sysmon" in ch or (not ch and ("Image" in ev or "TargetImage" in ev or "TargetObject" in ev)):
         return {"1": "process_creation", "10": "process_access", "13": "registry_set"}.get(eid)
     if ch.endswith("security") or (not ch and eid in {"4769", "4768", "4624", "4625", "1102", "4698", "4688"}):
@@ -91,10 +110,10 @@ _FRACTION = re.compile(r"\.(\d+)")
 
 
 def parse_time(ev: dict) -> datetime | None:
-    """First parseable timestamp field, returned as naive UTC.
+    """First parseable timestamp field in TIME_FIELDS order, returned as naive UTC.
 
-    Accepts Sysmon UtcTime ('2026-10-12 06:00:01.120'), Windows SystemTime with 7
-    fractional digits ('...01.1234567Z') and any ISO 8601 offset, which is converted to UTC.
+    Accepts Windows SystemTime with 7 fractional digits ('...01.1234567Z'), Sysmon UtcTime
+    ('2026-10-12 06:00:01.120') and any ISO 8601 offset, which is converted to UTC.
     """
     for f in TIME_FIELDS:
         v = ev.get(f)
@@ -211,10 +230,22 @@ def correlation_alerts(events: list[dict], corrs, assets: dict, risk: RiskContex
     """One alert per correlation window and group, at the event that made it reach its threshold.
     The entity is the group's client address resolved through the assets file, so a spray joins
     the storyline of the host it came from."""
-    from correlation import evaluate, group_label, human, iso   # imported here: correlation imports replay
+    from correlation import (  # imported here: correlation imports replay
+        evaluate,
+        group_label,
+        human,
+        iso,
+        value_reader,
+    )
     out = []
     for corr in corrs:
         p = corr.params
+        read = value_reader(p)
+        try:
+            base, src = compile_rule(corr.base), logsource_key(corr.base)
+            counted = [ev for ev in events if route(ev) == src and base(ev)] if p.counted else []
+        except SigmaError:
+            counted = []
         for a in evaluate(corr, events):
             label = group_label(a)
             ent = assets.get(label, {}).get("host", label) if p.group_by else "-"
@@ -222,7 +253,16 @@ def correlation_alerts(events: list[dict], corrs, assets: dict, risk: RiskContex
             score, factors, questions = (risk or RiskContext(assets)).score(corr, ev, ent)
             what = f"{a['value_count']} distinct {p.field}" if p.counted else f"{a['event_count']} events"
             values = ", ".join(a["values"][:6]) + ("…" if len(a["values"]) > 6 else "")
+            seen: dict[str, list[datetime]] = {}
+            lo, group = a["window_start"], tuple(a["group"].values())
+            for ev in counted:
+                t = parse_time(ev)
+                if t and lo <= t < lo + timedelta(seconds=p.timespan) and tuple(read(ev, g) for g in p.group_by) == group:
+                    v = read(ev, p.counted)
+                    if v:
+                        seen.setdefault(v, []).append(t)
             out.append({
+                "_value_times": {v: (min(ts), max(ts)) for v, ts in seen.items()},
                 "time": a["crossed_at"], "entity": ent, "host": "-", "user": "-", "rule": corr.id,
                 "title": corr.title, "level": corr.level, "technique": corr.technique, "tactics": corr.tactics,
                 "summary": f"{what} from {label} in the {human(p.timespan)} window from {a['window_start']:%H:%M}"
@@ -230,7 +270,7 @@ def correlation_alerts(events: list[dict], corrs, assets: dict, risk: RiskContex
                 "risk": score, "risk_factors": factors, "risk_questions": questions,
                 "correlation": {"window_start": a["window_start"], "group": a["group"], "metric": a["metric"],
                                 "event_count": a["event_count"], "first_event": a["first_event"],
-                                "last_event": a["last_event"]},
+                                "last_event": a["last_event"], "values": a["values"]},
             })
     return out
 
@@ -238,7 +278,8 @@ def correlation_alerts(events: list[dict], corrs, assets: dict, risk: RiskContex
 def replay(events: list[dict], dets, assets: dict, risk: RiskContext | None = None,
            corrs=()) -> tuple[list[dict], dict]:
     by_source = defaultdict(list)
-    alerts, stats = [], {"events": len(events), "routed": 0, "unrouted": 0, "errors": 0}
+    alerts: list[dict] = []
+    stats: dict[str, Any] = {"events": len(events), "routed": 0, "unrouted": 0, "errors": 0}
     compiled = {}
     for d in dets:
         try:
@@ -262,6 +303,7 @@ def replay(events: list[dict], dets, assets: dict, risk: RiskContext | None = No
                     "user": first(ev, USER_FIELDS), "rule": d.id, "title": d.title, "level": d.level,
                     "technique": d.technique, "tactics": d.tactics,
                     "summary": summary(ev), "risk": score, "risk_factors": factors, "risk_questions": questions,
+                    "_event": ev,
                 })
     alerts += correlation_alerts(events, corrs, assets, risk)
     alerts.sort(key=lambda a: (a["time"] or datetime.min, a["rule"]))
@@ -301,7 +343,8 @@ def storylines(alerts: list[dict], window_min: int) -> list[dict]:
             if (a["time"] - group[-1]["time"]).total_seconds() <= window_min * 60:
                 group.append(a)
             else:
-                stories.append(_story(ent, group)); group = [a]
+                stories.append(_story(ent, group))
+                group = [a]
         stories.append(_story(ent, group))
     stories = sorted([s for s in stories if s["techniques"] >= 2], key=lambda s: -s["score"])
     # Possible pivots: lateral-movement alerts on OTHER entities shortly after a storyline starts
@@ -328,14 +371,15 @@ def _story(ent: str, group: list[dict]) -> dict:
         tactic_seq.append(a["_rank"])
     techniques = sorted({a["technique"] for a in group})
     tactics = sorted({t for a in group for t in a["tactics"] if t in TACTIC_ORDER}, key=TACTIC_ORDER.index)
-    progression = sum(1 for x, y in zip(tactic_seq, tactic_seq[1:]) if y > x)
+    progression = sum(1 for x, y in pairwise(tactic_seq) if y > x)
     base = sum(LEVEL_WEIGHT.get(a["level"], 4) for a in {a["rule"]: a for a in group}.values())
     score = min(100, round(base * (1 + 0.15 * len(tactics)) + 4 * progression))
     minutes = (group[-1]["time"] - group[0]["time"]).total_seconds() / 60
     steps, seen = [], set()
     for a in group:
         if a["rule"] not in seen:
-            seen.add(a["rule"]); steps.append(a)
+            seen.add(a["rule"])
+            steps.append(a)
     narrative = (f"On {ent}, within {minutes:.0f} minutes: "
                  + " → ".join(f"{s['title']} ({s['technique']})" for s in steps) + ".")
     return {"entity": ent, "start": group[0]["time"], "end": group[-1]["time"], "minutes": round(minutes, 1),
@@ -420,6 +464,284 @@ th,td{{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font
     Path(path).write_text(doc, encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- #
+# case files (--case-dir)
+# --------------------------------------------------------------------------- #
+CASE_FORMAT = 1
+OBSERVABLES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("host", HOST_FIELDS),
+    ("account", USER_FIELDS),
+    ("process", ("Image", "NewProcessName")),
+    ("parent_process", ("ParentImage", "ParentProcessName")),
+    ("command_line", ("CommandLine",)),
+    ("parent_command_line", ("ParentCommandLine",)),
+    ("source_process", ("SourceImage",)),
+    ("target_process", ("TargetImage",)),
+    ("registry_key", ("TargetObject",)),
+    ("registry_data", ("Details",)),
+    ("service_name", ("ServiceName",)),
+    ("service_path", ("ImagePath",)),
+    ("task_name", ("TaskName",)),
+    ("address", ("IpAddress", "SourceAddress", "ClientAddress", "c-ip")),
+    ("url", ("cs-uri-stem",)),
+    ("user_agent", ("cs(User-Agent)",)),
+)
+OBSERVABLE_TYPE = {f: kind for kind, fields in OBSERVABLES for f in fields}
+NOT_OBSERVABLE = {"", "-", "null", "none", "n/a", "::1", "127.0.0.1", "0.0.0.0"}  # noqa: S104 (values, not a bind)
+CONTEXT_FIELDS = ("EventID", "Channel", "Provider_Name", *TIME_FIELDS, *HOST_FIELDS)
+
+
+def _utc(t: datetime | None) -> str | None:
+    return None if t is None else t.isoformat(timespec="milliseconds") + "Z"
+
+
+def _slug(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9.-]+", "-", str(text).lower()).strip("-.")
+    return slug[:48] or "unknown"
+
+
+def _cell(text) -> str:
+    """Text in Markdown, read from logs or not: one line, HTML escaped, and every character that
+    could start a link, an image, emphasis or a table cell escaped, so a logged value is shown
+    and never rendered."""
+    text = re.sub(r"([\\`*_\[\]|~])", r"\\\1", html.escape(" ".join(str(text).split()), quote=False))
+    return re.sub(r"(?i)\bwww\.", "www\\.", text.replace("://", "\\://"))      # no bare-URL autolinks
+
+
+def _one_line(text) -> str:
+    return " ".join(str(text).split())
+
+
+def _code(text, limit: int = 160) -> str:
+    """Logged text in a Markdown table cell, shown as written: a code span whose fence is longer
+    than any backtick run inside it (PowerShell escapes with backticks), pipes escaped."""
+    text = " ".join(str(text).split())
+    if len(text) > limit:
+        text = text[:limit - 1] + "…"
+    if not text:
+        return ""
+    fence = "`" * (max((len(m) for m in re.findall(r"`+", text)), default=0) + 1)
+    pad = " " if text[0] == "`" or text[-1] == "`" else ""
+    return f"{fence}{pad}{text.replace('|', chr(92) + '|')}{pad}{fence}"
+
+
+def _spreadsheet_safe(value: str) -> str:
+    """A spreadsheet runs a cell that starts with = + - @ as a formula; logged command lines are
+    attacker-controlled, so such values get a leading apostrophe in the CSV (timeline.json keeps
+    them exact)."""
+    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
+
+
+def _observed(kind: str, field: str, value) -> list[tuple[str, str, str]]:
+    text = str(value).strip()
+    if kind == "address":
+        text = text.removeprefix("::ffff:")
+    if text.lower() in NOT_OBSERVABLE:
+        return []
+    return [(kind, text, field)]
+
+
+Observable = tuple[str, str, str, datetime, datetime]          # type, value, field, first seen, last seen
+
+
+def alert_observables(alert: dict, rules: dict) -> list[Observable]:
+    """Every observable an alert's event carries, at the event's time; for a correlation, its group
+    over the counted window and each counted value at the times it was seen in that window."""
+    out: list[Observable] = []
+    t = alert["time"]
+    ev = alert.get("_event")
+    if ev is not None:
+        for kind, fields in OBSERVABLES:
+            for f in fields:
+                if ev.get(f) not in (None, ""):
+                    out += [(k, v, fl, t, t) for k, v, fl in _observed(kind, f, ev[f])]
+        for part in str(ev.get("Hashes") or "").split(","):
+            alg, sep, digest = part.partition("=")
+            if sep and digest.strip():
+                out.append((alg.strip().lower(), digest.strip().lower(), "Hashes", t, t))
+        return out
+    corr = alert.get("correlation") or {}
+    first, last = corr.get("first_event") or t, corr.get("last_event") or t
+    for f, v in (corr.get("group") or {}).items():
+        out += [(k, val, fl, first, last) for k, val, fl in _observed(OBSERVABLE_TYPE.get(f, "value"), f, v)]
+    rule = rules.get(alert["rule"])
+    counted = getattr(getattr(rule, "params", None), "field", None) or "value"
+    times = alert.get("_value_times") or {}
+    for v in corr.get("values") or []:
+        lo, hi = times.get(v, (first, last))
+        out += [(k, val, fl, lo, hi) for k, val, fl in _observed(OBSERVABLE_TYPE.get(counted, "value"), counted, v)]
+    return out
+
+
+def _alert_record(alert: dict, rules: dict) -> dict:
+    """An alert as the case timeline keeps it: the event fields its rule read, plus where and
+    when it was logged; for a correlation, its window, group, counts and values."""
+    rec = {"time_utc": _utc(alert["time"]), "rule": alert["rule"], "title": alert["title"],
+           "technique": alert["technique"], "tactics": alert["tactics"], "level": alert["level"],
+           "entity": alert["entity"], "host": alert["host"], "user": alert["user"],
+           "risk": alert.get("risk"), "risk_factors": alert.get("risk_factors") or [],
+           "risk_questions": alert.get("risk_questions") or [], "summary": alert["summary"]}
+    ev = alert.get("_event")
+    if ev is not None:
+        from validate import rule_fields
+        rule = rules.get(alert["rule"])
+        reads = rule_fields(rule.rule["detection"]) if rule is not None else set(ev)
+        rec["event"] = {k: v for k, v in ev.items() if k in reads or k in CONTEXT_FIELDS or k in USER_FIELDS}
+    elif alert.get("correlation"):
+        corr = alert["correlation"]
+        rec["correlation"] = {**corr, **{k: _utc(corr.get(k)) for k in ("window_start", "first_event", "last_event")}}
+    return rec
+
+
+def _card_folder(rule) -> str:
+    folder = getattr(rule, "folder", None)
+    if folder is None:
+        return ""
+    try:
+        return Path(folder).resolve().relative_to(Path(__file__).resolve().parent.parent).as_posix() + "/"
+    except ValueError:
+        return str(folder)
+
+
+def closure_draft(n: int, name: str, story: dict, rules: dict) -> str:
+    """analyst_closure.md: the three notes a case can end with, pre-filled only with what the logs
+    show. The analyst picks one and fills in what they checked; the replay never picks."""
+    steps, pivots = story["steps"], story.get("pivots") or []
+    entity = _one_line(story["entity"])
+    case = f"{name} · {entity} · {story['start']:%Y-%m-%d %H:%M:%S} → {story['end']:%H:%M:%S} UTC"
+    accounts = list(dict.fromkeys(_one_line(a["user"]) for a in steps if a["user"] != "-"))
+    sources = list(dict.fromkeys(_one_line(o[1]) for a in steps for o in alert_observables(a, rules) if o[0] == "address"))
+    who = f"{', '.join(accounts) or '-'} on {entity}" + (f"; source {', '.join(sources)}" if sources else "")
+    pad = " " * 14
+    observed = [f"{a['time']:%H:%M:%S} {a['technique']} {a['title']}" for a in steps]
+    risks = [a for a in steps if a.get("risk") is not None]
+    top = max(risks, key=lambda a: a["risk"]) if risks else None
+    alerts = (f"{len(steps)} alerts, {story['techniques']} techniques on {entity} "
+              f"({story['start']:%H:%M:%S} → {story['end']:%H:%M:%S} UTC)")
+    escalation = [f"Case:         {case}", f"Observed:     {observed[0]}", *(pad + o for o in observed[1:])]
+    if pivots:
+        other = [f"{a['time']:%H:%M:%S} {_one_line(a['entity'])} {a['technique']} {a['title']}" for a in pivots]
+        escalation += [f"Other hosts:  {other[0]}", *(pad + o for o in other[1:])]
+    escalation += [f"Who / where:  {who}",
+                   f"Risk:         storyline {story['score']}/100"
+                   + (f" · highest alert {top['risk']} ({top['technique']})" if top else ""),
+                   "Escalated:    <the condition met, from the detection cards>",
+                   "Preserved:    <what is saved, and where>",
+                   "Containment:  none yet | <action taken, time UTC>"]
+    benign = [f"Case:         {case}", f"Alerts:       {alerts}",
+              "Checked:      <the triage step from each detection card> -> <result>",
+              "Benign:       <the approved activity> - confirmed by <change record, owner or ticket>",
+              "Disposition:  Benign Positive"]
+    false_positive = [f"Case:         {case}", f"Alerts:       {alerts}",
+                      "Why not:      <the field that matched, and what it really was>",
+                      "Disposition:  False Positive",
+                      "Follow-up:    <events sent to detection engineering as true negatives | not yet>"]
+
+    def block(rows: list[str]) -> list[str]:
+        """A text block whose fence is longer than any backtick run inside it, so no logged value closes it."""
+        fence = "`" * max(3, max((len(m) for r in rows for m in re.findall(r"`+", r)), default=0) + 1)
+        return [fence + "text", *rows, fence]
+
+    lines = [f"# Analyst notes · Case {n:02d} · {_cell(entity)}", "",
+             "Drafted by `rasd replay` from the logs only. Fill in only what you checked. A storyline is escalated, "
+             "not closed from the queue, unless every alert in it is explained.", "",
+             "## Escalation to incident response", "", *block(escalation), "",
+             "## Benign Positive", "", *block(benign), "",
+             "## False Positive", "", *block(false_positive), ""]
+    return "\n".join(lines)
+
+
+def write_cases(case_dir: str | Path, stories: list[dict], rules: dict, sources: list[str]) -> list[Path]:
+    """One folder per storyline: case_summary.md, timeline.json, observables.csv and analyst_closure.md.
+    Only what the logs show is written; the disposition is left to the analyst."""
+    out = Path(case_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    inputs = [{"file": Path(p).name, "sha256": hashlib.sha256(Path(p).read_bytes()).hexdigest()} for p in sources]
+    written = []
+    for n, s in enumerate(stories, 1):
+        name = f"case-{n:02d}-{_slug(s['entity'])}"
+        folder = out / name
+        folder.mkdir(exist_ok=True)
+        steps, pivots = s["steps"], s.get("pivots") or []
+        observed: dict[tuple[str, str], dict] = {}
+        for a in [*steps, *pivots]:
+            for kind, value, field, first_seen, last_seen in alert_observables(a, rules):
+                o = observed.setdefault((kind, value), {"first": first_seen, "last": last_seen, "alerts": 0,
+                                                         "rules": set(), "fields": set()})
+                o["first"], o["last"] = min(o["first"], first_seen), max(o["last"], last_seen)
+                o["alerts"] += 1
+                o["rules"].add(a["rule"])
+                o["fields"].add(field)
+        order = {kind: i for i, (kind, _) in enumerate(OBSERVABLES)}
+        with open(folder / "observables.csv", "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["type", "value", "first_seen_utc", "last_seen_utc", "alerts", "detections", "fields"])
+            for (kind, value), o in sorted(observed.items(), key=lambda kv: (order.get(kv[0][0], 99), kv[0][0],
+                                                                              kv[1]["first"], kv[0][1])):
+                w.writerow([kind, _spreadsheet_safe(value), _utc(o["first"]), _utc(o["last"]), o["alerts"],
+                            " ".join(sorted(o["rules"])), " ".join(sorted(o["fields"]))])
+        narrative = s["narrative"].split(" Possible pivot: ")[0]
+        timeline = {"rasd_case": CASE_FORMAT, "case": name, "entity": s["entity"], "start_utc": _utc(s["start"]),
+                    "end_utc": _utc(s["end"]), "minutes": s["minutes"], "score": s["score"],
+                    "techniques": sorted({a["technique"] for a in steps}), "tactics": s["tactics"],
+                    "narrative": narrative, "disposition": None, "sources": inputs,
+                    "alerts": [_alert_record(a, rules) for a in steps],
+                    "other_hosts": [_alert_record(a, rules) for a in pivots]}
+        (folder / "timeline.json").write_text(json.dumps(timeline, indent=2, ensure_ascii=False, default=str) + "\n",
+                                              encoding="utf-8")
+        risks = [a for a in steps if a.get("risk") is not None]
+        top = max(risks, key=lambda a: a["risk"]) if risks else None
+        questions: dict[str, dict[str, str]] = {}
+        for a in steps:
+            for q in a.get("risk_questions") or []:
+                m = re.fullmatch(r"([+-]\d+) if (.+)\?", q)
+                if m:
+                    questions.setdefault(m.group(2), {}).setdefault(a["rule"], m.group(1))
+        lines = [f"# Case {n:02d} · {_cell(s['entity'])}", "",
+                 "| | |", "|---|---|",
+                 f"| Window (UTC) | {s['start']:%Y-%m-%d %H:%M:%S} → {s['end']:%H:%M:%S} ({s['minutes']:.0f} min) |",
+                 f"| Storyline | score {s['score']}/100 · {s['techniques']} techniques · {len(s['tactics'])} tactics · "
+                 f"{s['alerts']} alerts |",
+                 f"| Tactics | {' → '.join(s['tactics']) or '-'} |",
+                 "| Highest alert risk | " + (f"{top['risk']} · {top['technique']} at {top['time']:%H:%M:%S}" if top else "-")
+                 + " |",
+                 "| Disposition | not set: the replay reports what the logs show; the analyst sets it after triage |",
+                 "| Built from | " + " · ".join(f"{_cell(i['file'])} (SHA-256 {i['sha256'][:12]}…)" for i in inputs) + " |",
+                 "", "## What the logs show", "", _cell(narrative), "",
+                 "## Timeline", "",
+                 "| Time (UTC) | Technique | Detection | Host | Account | Risk | Observed |",
+                 "|---|---|---|---|---|---:|---|"]
+        lines += [f"| {a['time']:%H:%M:%S} | {a['technique']} | {_cell(a['title'])} | {_cell(a['host'])} | "
+                  f"{_cell(a['user'])} | {'' if a.get('risk') is None else a['risk']} | {_code(a['summary'])} |"
+                  for a in steps]
+        if pivots:
+            lines += ["", "## Other hosts in the same window", "",
+                      "| Time (UTC) | Host | Detection | Observed |", "|---|---|---|---|"]
+            lines += [f"| {a['time']:%H:%M:%S} | {_cell(a['entity'])} | {_cell(a['title'])} | {_code(a['summary'])} |"
+                      for a in pivots]
+        if questions:
+            lines += ["", "## Open questions", "",
+                      "The detections' risk models score these only after an analyst answers them.", "",
+                      "| Question | Risk change if yes |", "|---|---|"]
+            lines += [f"| {_cell(q.capitalize())}? | " + " · ".join(f"{r} {v}" for r, v in changes.items()) + " |"
+                      for q, changes in questions.items()]
+        lines += ["", "## Detection cards", ""]
+        for rule_id in dict.fromkeys(a["rule"] for a in [*steps, *pivots]):
+            card = _card_folder(rules.get(rule_id))
+            lines.append(f"- {rule_id}" + (f": `{card}` triage.md · response.md · closure.md" if card else ""))
+        lines += ["", "## Files", "",
+                  "- `timeline.json`: every alert in order, with the event fields its rule read",
+                  f"- `observables.csv`: {len(observed)} values seen in these alerts (hosts, accounts, processes, "
+                  "command lines, registry keys, services, addresses, hashes); seen in the logs, not judged",
+                  "- `analyst_closure.md`: the escalation, benign positive and false positive notes, pre-filled with "
+                  "what the logs show; the analyst picks one",
+                  "", "<sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>", ""]
+        (folder / "case_summary.md").write_text("\n".join(lines), encoding="utf-8")
+        (folder / "analyst_closure.md").write_text(closure_draft(n, name, s, rules), encoding="utf-8")
+        written.append(folder)
+    return written
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("logs", nargs="+", help="JSONL log files")
@@ -433,14 +755,18 @@ def main() -> int:
     ap.add_argument("--filter", help="only replay detections matching this text")
     ap.add_argument("--html", help="write a self-contained HTML report")
     ap.add_argument("--json", help="write alerts, forecast and storylines as JSON")
-    ap.add_argument("--profile", help="telemetry profile from mappings/ (or 'auto') the logs are written in")
+    ap.add_argument("--profile", help="telemetry profile from profiles/ (or 'auto') the logs are written in")
+    ap.add_argument("--case-dir", help="write one case folder per storyline: case_summary.md, timeline.json, "
+                                       "observables.csv, analyst_closure.md")
     args = ap.parse_args()
 
-    import profiles                                     # imported here: profiles itself imports replay
+    import profiles  # imported here: profiles itself imports replay
     events, used = profiles.apply([ev for p in args.logs for ev in load_jsonl(Path(p))], args.profile)
     if used != profiles.NATIVE:
         print(f"telemetry profile: {used}")
-    from correlation import load_correlations           # imported here: correlation imports replay
+    from correlation import (
+        load_correlations,  # imported here: correlation imports replay
+    )
     dets = load_detections(args.filter)
     corrs = load_correlations(args.filter)
     assets = load_assets(args.assets)
@@ -455,10 +781,21 @@ def main() -> int:
         print(f"\n[+] HTML report: {args.html}")
     if args.json:
         clean = lambda o: o.isoformat() if isinstance(o, datetime) else str(o)
-        out = {"stats": stats, "forecast": fc, "storylines": [{k: v for k, v in s.items() if k != "steps"} for s in stories],
-               "alerts": [{k: v for k, v in a.items() if not k.startswith("_")} for a in alerts]}
+        public = lambda a: {k: v for k, v in a.items() if not k.startswith("_")}
+        out = {"stats": stats, "forecast": fc,
+               "storylines": [{**{k: v for k, v in s.items() if k not in ("steps", "pivots")},
+                               "pivots": [public(a) for a in s.get("pivots") or []]} for s in stories],
+               "alerts": [public(a) for a in alerts]}
         Path(args.json).write_text(json.dumps(out, indent=2, default=clean, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"[+] JSON: {args.json}")
+    if args.case_dir:
+        if not stories:
+            print(f"\nno storyline, so no case folder written to {args.case_dir}")
+        else:
+            rules: dict[str, Any] = {d.id: d for d in dets}
+            rules.update({c.id: c for c in corrs})
+            cases = write_cases(args.case_dir, stories, rules, args.logs)
+            print(f"\n[+] {len(cases)} case folder(s) in {args.case_dir}: " + ", ".join(c.name for c in cases))
     return 0
 
 

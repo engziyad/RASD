@@ -7,7 +7,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [ValidatePattern('^purplelab_[0-9a-f]{8}$')] [string] $Marker,
+    [Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker,
     [Parameter(Mandatory)] [string] $OutDir
 )
 Set-StrictMode -Version Latest
@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Continue'   # the runner's 'Stop' is inherited; native
 $since = (Get-Date).AddMinutes(-30)
 $records = @()
 $records += @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 104; StartTime = $since } -ErrorAction SilentlyContinue |
-    Where-Object { $_.Message -match [regex]::Escape('R' + $Marker.Substring(10)) })
+    Where-Object { $_.Message -match [regex]::Escape('R' + $Marker.Substring($Marker.Length - 8)) })
 $records += @(Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = 1102; StartTime = $since } -ErrorAction SilentlyContinue)
 if ($records.Count -eq 0) { Write-Warning '[collect] no 104 or 1102 record found'; return }
 $path = Join-Path $OutDir 'log-clear-records.json'

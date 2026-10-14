@@ -7,7 +7,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 ```text
 [T1569.002] sc.exe create with a cmd.exe /c binary path (never started)
 [SC] CreateService SUCCESS
-[cleanup] verified: service purplelab_1a2b3c4d does not exist
+[cleanup] verified: service rasd_1a2b3c4d does not exist
 ```
 
 ## Expected event → T1569.002_suspicious_service_installation
@@ -20,8 +20,8 @@ This is true positive *red: service_creation emulation* in [`tests/true_positive
   "Provider_Name": "Service Control Manager",
   "Channel": "System",
   "Computer": "LAB-WS01.lab.local",
-  "ServiceName": "purplelab_1a2b3c4d",
-  "ImagePath": "cmd.exe /c echo purplelab_1a2b3c4d",
+  "ServiceName": "rasd_1a2b3c4d",
+  "ImagePath": "cmd.exe /c echo rasd_1a2b3c4d",
   "ServiceType": "user mode service",
   "StartType": "demand start",
   "AccountName": "LocalSystem"

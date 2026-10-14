@@ -2,12 +2,12 @@
 
 | Step | Detection | Rule | KQL | SPL | Evidence bound by |
 |---|---|---|---|---|---|
-| sc.exe create with a cmd.exe /c binary path (never started) | [`T1569.002_suspicious_service_installation`](../../../detect/detections/T1569.002_suspicious_service_installation/) | [rule.yml](../../../detect/detections/T1569.002_suspicious_service_installation/rule.yml) | [KQL](../../../queries/kql/T1569.002_suspicious_service_installation.kql) | [SPL](../../../queries/spl/T1569.002_suspicious_service_installation.spl) | token `{marker}` (e.g. `purplelab_1a2b3c4d`) |
+| sc.exe create with a cmd.exe /c binary path (never started) | [`T1569.002_suspicious_service_installation`](../../../detect/detections/T1569.002_suspicious_service_installation/) | [rule.yml](../../../detect/detections/T1569.002_suspicious_service_installation/rule.yml) | [KQL](../../../queries/kql/T1569.002_suspicious_service_installation.kql) | [SPL](../../../queries/spl/T1569.002_suspicious_service_installation.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

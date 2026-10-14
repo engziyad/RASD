@@ -9,9 +9,9 @@ For each detect/detections/<technique>/:
 Exit code is non-zero on any failure, so CI blocks the merge.
 
 Usage
-  python tools/run_tests.py
-  python tools/run_tests.py --junit reports/junit.xml
-  python tools/run_tests.py --filter T1059
+  rasd test
+  rasd test --junit reports/junit.xml
+  rasd test --filter T1059
 """
 from __future__ import annotations
 
@@ -25,10 +25,10 @@ from xml.sax.saxutils import escape, quoteattr
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sigma_engine import SigmaError, matches  # noqa: E402
+from sigma_engine import SigmaError, matches
 
 ROOT = Path(__file__).resolve().parent.parent
-from common import DETECTIONS, load_jsonl  # noqa: E402  (BOM-tolerant, reports file:line on bad JSON)
+from common import DETECTIONS, load_jsonl, selected  # noqa: E402  (BOM-tolerant, reports file:line on bad JSON)
 
 GREEN, RED, DIM, BOLD, RESET = "\033[32m", "\033[31m", "\033[2m", "\033[1m", "\033[0m"
 if not sys.stdout.isatty() or os.environ.get("NO_COLOR"):
@@ -38,7 +38,7 @@ if not sys.stdout.isatty() or os.environ.get("NO_COLOR"):
 def run(filter_: str | None) -> list[dict]:
     results = []
     for folder in sorted(p for p in DETECTIONS.iterdir() if p.is_dir()):
-        if filter_ and filter_.lower() not in folder.name.lower():
+        if not selected(folder.name, filter_):
             continue
         rule = yaml.safe_load((folder / "rule.yml").read_text(encoding="utf-8"))
         for kind, expected in (("true_positive", True), ("true_negative", False)):
@@ -80,8 +80,8 @@ def print_report(results: list[dict]) -> None:
 def write_junit(results: list[dict], path: str) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     failures = sum(not r["passed"] for r in results)
-    lines = [f'<?xml version="1.0" encoding="UTF-8"?>',
-             f'<testsuite name="purple-lab-detections" tests="{len(results)}" failures="{failures}">']
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             f'<testsuite name="rasd-detections" tests="{len(results)}" failures="{failures}">']
     for r in results:
         name = quoteattr(f"{r['kind']}: {r['case']}")
         lines.append(f'  <testcase classname={quoteattr(r["detection"])} name={name} time="{r["ms"]/1000:.4f}">')

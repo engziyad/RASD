@@ -3,9 +3,9 @@ name: PowerShell -EncodedCommand with a benign payload
 platform: windows
 mitre:
   technique: T1059.001
-  technique_name: Command and Scripting Interpreter - PowerShell
+  technique_name: "Command and Scripting Interpreter: PowerShell"
   related: [T1027]
-  tactics: [execution, defense-evasion]
+  tactics: [execution]
 objective: >
   Prove that an encoded PowerShell command line reaches the SIEM intact and fires the
   encoded-command detection. The payload only writes the run marker to the console, so the
@@ -20,7 +20,7 @@ safety:
 execution:
   - Run the step through the runner so the marker, timing and cleanup are recorded
   - The runner starts a child powershell.exe with -NoProfile -enc <Base64 of the payload>
-  - Export telemetry with Export-LabTelemetry.ps1 and run `python rasd.py evidence`
+  - Export telemetry with Export-LabTelemetry.ps1 and run `rasd evidence`
 steps:
   - id: encoded_command
     name: powershell.exe -enc with a benign Write-Output payload
@@ -74,7 +74,7 @@ cleanup:
 sample_output:
   console: |
     [T1059.001] powershell.exe -enc with a benign Write-Output payload
-    purplelab_1a2b3c4d
+    rasd_1a2b3c4d
     [cleanup] verified: nothing persisted
   events:
     - detection: T1059.001_powershell_encoded_command

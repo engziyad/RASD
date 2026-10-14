@@ -1,16 +1,13 @@
 # Detection links · API authentication enforcement
 
-
-## Coverage gap
-
-**Why there is no rule yet:** RASD's rules cover Windows endpoint and AD telemetry. Web access logs have no shared field schema across servers, so a portable rule needs a log-source mapping first.
-
-**Planned:** A web log source in tools/mappings.yml and a rule for one client receiving 401/403 on 10+ distinct API paths within 5 minutes.
+| Step | Detection | Rule | KQL | SPL | Evidence bound by |
+|---|---|---|---|---|---|
+| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`T1190_api_auth_probing`](../../../detect/correlations/T1190_api_auth_probing/) | [correlation.yml](../../../detect/correlations/T1190_api_auth_probing/correlation.yml) · [base.yml](../../../detect/correlations/T1190_api_auth_probing/base.yml) | [KQL](../../../queries/kql/correlations/T1190_api_auth_probing.kql) | [SPL](../../../queries/spl/correlations/T1190_api_auth_probing.spl) | host, time window |
 
 Validate the chain after a lab run:
 
 ```bash
-python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl
 ```
 
 ---

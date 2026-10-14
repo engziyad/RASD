@@ -1,0 +1,49 @@
+# Detection backlog: the techniques RASD exercises with an offensive test but does not detect yet.
+# tools/chain.py renders intel/outputs/detection_backlog.md from this file, the red tests' gap
+# blocks and the actor rows in actors.yml. CI fails when a red test documents a gap that has no
+# entry here, when an entry's technique is covered by a detection (move it to the "Built" table
+# in detection_ideas.md), or when its red test does not exist.
+#
+# Rank: first the gaps whose rule can be written and validated in the lab today (RASD maps the
+# telemetry and the red test produces it), then those that only need a red test step, then
+# those that need a new log source; ties go to the number of tracked groups (actors.yml) with a
+# documented ATT&CK procedure for the technique.
+actors_checked: 2026-10-13      # the gap techniques' rows in actors.yml, against attack.mitre.org
+gaps:
+  - technique: T1083
+    name: "File and Directory Discovery"
+    red_test: privilege_escalation_checks
+    log_source_mapped: true
+    red_test_produces: true
+    telemetry: Sysmon for Linux process creation for find -perm -4000, getcap -r and sudo -l
+    missing: A Linux administration baseline, because each command alone is ordinary administration
+    next: The planned correlation of the three commands from one session, measured with rasd nearmiss on a baseline export before it alerts
+    validation: The red test already runs the three commands
+    actors_note: "These are Windows file searches. The red test emulates Linux SUID and capability discovery, for which ATT&CK (T1548.001, Abuse Elevation Control Mechanism: Setuid and Setgid) names no group, only two malware families"
+  - technique: T1505.003
+    name: "Server Software Component: Web Shell"
+    red_test: file_upload_testing
+    log_source_mapped: true
+    red_test_produces: false
+    telemetry: Process creation on the web server (Sysmon 1, Sysmon for Linux 1), where a web shell runs its commands
+    missing: The uploaded file name, which only a WAF or the application records
+    next: A process-creation rule for a web server process (w3wp, httpd, nginx, php-fpm, java, node) starting a shell or script host
+    validation: The upload test does not run what it uploads; the rule needs a lab step in which the lab application starts a harmless command
+  - technique: T1087.002
+    name: "Account Discovery: Domain Account"
+    red_test: ldap_enumeration
+    log_source_mapped: true
+    red_test_produces: false
+    telemetry: Process creation (Sysmon 1, Security 4688) for net user and net group queries with /domain and the PowerShell AD cmdlets, which the groups below are documented running
+    missing: The filter of in-process LDAP queries like the red test's, which only Directory Service event 1644 on the DCs records (verbose)
+    next: A correlation over process creation for several domain enumeration commands from one account in a short window, tuned for the administration hosts
+    validation: A read-only `net group "Domain Admins" /domain` step in ldap_enumeration would produce the process event
+  - technique: T1606
+    name: "Forge Web Credentials"
+    red_test: jwt_testing
+    log_source_mapped: false
+    red_test_produces: false
+    telemetry: Not mapped. Access logs do not carry the Authorization header
+    missing: An application log source with token validation failures
+    next: Map the application's authentication log, then a rule on algorithm none and signature failures
+    validation: The red test already sends unsigned and tampered tokens; the application has to log the failures

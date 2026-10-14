@@ -1,18 +1,18 @@
 # Expected telemetry · Encoded shell command and execution from /tmp
 
-Search key: every artifact this test creates carries the run marker (for example `purplelab_1a2b3c4d`).
+Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
-| auditd | EXECVE · base64 -d, sh | The decode-and-pipe chain, one EXECVE record per process | `a0`: `base64`<br>`a1`: `-d` | investigation |
+| auditd | EXECVE · sh -c, base64 -d, sh | The decode-and-pipe chain, one EXECVE record per process | `a0`: `base64`<br>`a1`: `-d` | investigation |
 | auditd | EXECVE · /tmp/&lt;marker&gt;.sh | Execution of a file under /tmp | `exe`: `/tmp/<marker>.sh (or /bin/sh with a0=/tmp/<marker>.sh)` | investigation |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | Process creation with the full command line; file creation in /tmp | `CommandLine`: `base64 -d`<br>`TargetFilename`: `/tmp/<marker>.sh` | investigation |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | Process creation with the full command line; file creation in /tmp | `CommandLine`: `sh -c echo <blob> \| base64 -d \| sh # <marker> then /bin/sh /tmp/<marker>.sh`<br>`TargetFilename`: `/tmp/<marker>.sh` | [`T1059.004_linux_suspicious_shell_execution`](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/) |
 
 ## Logging that must be enabled
 
 - auditd execve rules for all users (64- and 32-bit)
 
-If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`python rasd.py doctor <export>` checks the last two).
+If an event is missing, check it in this order: the audit policy or Sysmon configuration that writes it, the collector that forwards it, and the parser that maps its fields (`rasd doctor <export>` checks the last two).
 
 ---
 

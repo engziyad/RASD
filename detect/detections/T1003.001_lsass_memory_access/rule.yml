@@ -4,8 +4,10 @@ status: test
 description: |
   Detects a process opening a handle to lsass.exe with access rights commonly
   required to read its memory (credential dumping via MiniDumpWriteDump,
-  procdump, comsvcs.dll, Mimikatz-style tooling). Known-good system and
-  security components are excluded.
+  procdump, comsvcs.dll, Mimikatz-style tooling). Only named Windows components,
+  PowerShell listing processes through .NET and the Defender scanner are
+  excluded - never a whole folder, because dumpers are dropped into System32 and
+  System32 binaries are abused to dump.
 references:
   - https://attack.mitre.org/techniques/T1003/001/
   - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
@@ -26,23 +28,31 @@ detection:
       - '0x1438'
       - '0x143a'
       - '0x1fffff'   # PROCESS_ALL_ACCESS
+      - '0x1f1fff'   # all-access variant some tools request (public data: a Meterpreter session)
       - '4112'
       - '5136'
       - '5176'
       - '5178'
       - '2097151'
-  filter_system:
-    SourceImage|startswith:
-      - 'C:\Windows\System32\'
-      - 'C:\Windows\SysWOW64\'
+      - '2039807'
+  filter_os_components:      # Windows components seen opening LSASS in normal operation, each by its full path
+    SourceImage:
+      - 'C:\Windows\System32\csrss.exe'
+      - 'C:\Windows\System32\wininit.exe'
+      - 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+      - 'C:\Windows\SysWOW64\wbem\WmiPrvSE.exe'
+  filter_process_listing:    # Windows PowerShell and its remoting host reading process details through .NET (Get-Process)
+    SourceImage:
+      - 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      - 'C:\Windows\System32\wsmprovhost.exe'
+    GrantedAccess:
+      - '0x1410'
+      - '5136'
+    CallTrace|contains: '\System.ni.dll+'   # the .NET Process class; Invoke-Mimikatz and P/Invoke code have no such frame
   filter_defender:
     SourceImage|startswith: 'C:\ProgramData\Microsoft\Windows Defender\Platform\'
     SourceImage|endswith: '\MsMpEng.exe'
-  lolbin_exception:          # System32 binaries abused for dumping must NOT be filtered
-    SourceImage|endswith:
-      - '\rundll32.exe'
-      - '\taskmgr.exe'
-  condition: selection and (not (filter_system or filter_defender) or lolbin_exception)
+  condition: selection and not 1 of filter_*
 falsepositives:
   - EDR / AV / backup agents not covered by filters (tune by signed path)
   - Administrators creating LSASS dumps for Microsoft support cases

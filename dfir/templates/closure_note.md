@@ -12,6 +12,8 @@ Tuning:       <none | tuning.yml proposal id>
 
 Confirmed malicious activity is not closed from the queue: it is escalated to incident response with the evidence table and timeline attached.
 
+Every detection also has this note already shaped for it, with its own first checks, known benign sources, tuning ids, escalation conditions and evidence list: `closure.md` next to its rule, for example [T1021.006_wsmprovhost_suspicious_child](../../detect/detections/T1021.006_wsmprovhost_suspicious_child/closure.md).
+
 ## Example
 
 ```text

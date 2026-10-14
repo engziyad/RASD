@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1190_object_id_enumeration
+expected_noise: low
+noise_sources:
+- Support or administration consoles that open several users' records in a minute
+- Load tests that request many objects by ID
+tunings:
+- id: support_console
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: The support team's console runs on 10.0.8.20 and opens customer records by ID all day.
+  filter:
+    c-ip: 10.0.8.20
+  alternative: Better, serve the support console from its own path prefix and leave it out of the base rule's object list.
+never_tune:
+- Never remove the denied walks (401 / 403) from the count - a denied walk is the attacker learning where the check holds.
+- 'Never raise the threshold without re-reading the guarantee: 2T-1 distinct objects is the smallest walk that always alerts (5 for T=3).'
+review:
+  owner: detection-engineering
+  cadence_days: 90

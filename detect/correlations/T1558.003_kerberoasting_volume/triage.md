@@ -30,7 +30,7 @@ Record the source address, the requesting user, the service accounts and the enc
 Base score **65**.
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +10 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- −30 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+- -30 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - Application or monitoring servers that connect to many services running under different user accounts
@@ -39,6 +39,9 @@ Base score **65**.
 ### Never tune
 - Never filter by requesting user: Kerberoasting runs as an ordinary domain user.
 - Never filter by encryption type: AES roasting is exactly what this correlation exists to catch.
+
+### Close or escalate
+[Closure and escalation notes](../T1558.003_kerberoasting_volume/closure.md) for this detection.
 
 ---
 

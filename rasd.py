@@ -4,6 +4,7 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
 
   author      new        scaffold a detection that fails CI until it is complete
   verify      lint       rules, contracts, tuning guides, evidence, deep static checks
+              sigma      the Sigma subset RASD supports, proven in the engine, SPL and KQL; the rest refused
               test       true-positive / true-negative samples
               mutate     hand-written + generic evasion mutations
               fuzz       automatic evasion fuzzing against a regression baseline
@@ -15,34 +16,44 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               diff       semantic diff: which events change verdict vs a git ref
               overlap    detections that co-fire on the same events
   understand  explain    why a rule matched (or did not) an event, field by field
-              score      Engineering Quality Score and Operational Validation Score
-  deploy      build      KQL + SPL (rules and correlations), Splunk app, cards, views, coverage, scores, banner, red docs, chain outputs
+              score      Engineering Score and Operational Score
+  deploy      build      KQL + SPL (rules and correlations), Defender XDR queries, Splunk app, cards, views, coverage, scores,
+                         banner, red docs, chain outputs
               convert    print queries for one backend
               doctor     check YOUR log export: READY / DEGRADED / BLIND per rule (--profile for ECS, CIM ...)
               profiles   telemetry profiles: which one fits an export (--detect), what each covers
               splunk     the detections as a Splunk app: scheduled alerts, indexes, forwarder inputs
   operate     red        validate and render every offensive test from its test.yml
-              replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines
+              replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines,
+                         --case-dir: one case folder per storyline
               benchmark  events/s, memory, slowest rule and regex - on an export or N synthetic events
-              evidence   turn a real lab run into verifiable evidence.md (fired / missed)
+              evidence   turn a real lab run into verifiable evidence.md (fired / missed);
+                         --run reads the lab run's zip or folder (--strict: hashes and manifest required)
+              datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
               chain      the 20-point attack-to-defense map, maturity, matrices, metrics
               links      every relative link in every Markdown file resolves
   all         ci         everything the pipeline runs, in order
 
+Install the `rasd` command into a virtual environment with `pip install -e .` and run `rasd <command>`;
+without installing, `python rasd.py <command>` from a clone runs the same command.
+
 Examples
-  python rasd.py ci
-  python rasd.py chain
-  python rasd.py prove --filter T1218 --suggest
-  python rasd.py parity --filter T1558 -v
-  python rasd.py correlate -v
-  python rasd.py correlate --logs dc-export.jsonl
-  python rasd.py nearmiss my-export.jsonl --profile auto --suggest
-  python rasd.py explain T1218 --tp 5
-  python rasd.py replay samples/replay/lab-day.jsonl --assets samples/replay/assets.csv --html report.html
-  python rasd.py doctor my-export.jsonl --profile auto
-  python rasd.py benchmark --generate 100000
-  python rasd.py evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv
-  python rasd.py diff --base origin/main --fuzz
+  rasd ci
+  rasd chain
+  rasd prove --filter T1218 --suggest
+  rasd parity --filter T1558 -v
+  rasd correlate -v
+  rasd correlate --logs dc-export.jsonl
+  rasd nearmiss my-export.jsonl --profile auto --suggest
+  rasd explain T1218 --tp 5
+  rasd replay samples/replay/lab-day.jsonl --assets samples/replay/assets.csv --html report.html
+  rasd replay my-export.jsonl --assets assets.csv --case-dir reports/cases
+  rasd doctor my-export.jsonl --profile auto
+  rasd benchmark --generate 100000
+  rasd evidence --run lab-20261012-101500.zip dc-export.jsonl siem-alerts.csv
+  rasd datasets fetch && rasd datasets run
+  rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv
+  rasd diff --base origin/main --fuzz
 """
 from __future__ import annotations
 
@@ -63,18 +74,24 @@ COMMANDS = {
     "replay": ["replay.py"], "evidence": ["evidence.py"], "chain": ["chain.py"], "links": ["links.py"],
     "coverage": ["coverage.py"], "views": ["generate_views.py"], "splunk": ["splunk_app.py"],
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
-    "nearmiss": ["nearmiss.py"],
+    "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
-         ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["splunk_app.py"], ["profiles.py", "--readme"], ["chain.py"]]
-CI = [["validate.py"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
+         ["sigma_support.py"],
+         ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
+         ["datasets.py", "render"], ["chain.py"]]
+CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
       ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
+      ["datasets.py", "check"],
       *BUILD, ["chain.py", "--check"], ["links.py"]]
 
 
-def run(argv: list[str]) -> int:
+def run(argv: list[str], cwd: Path = ROOT) -> int:
+    """Run one tool. The build and CI steps run from the repository root; a single command runs
+    from the folder it was typed in, so the paths it is given mean what they mean there (the
+    tools find the repository's own files from their location)."""
     cmd = [PY, *argv] if argv[0] == "-m" else [PY, str(TOOLS / argv[0]), *argv[1:]]
-    return subprocess.call(cmd, cwd=ROOT, env={**os.environ, "NO_BANNER": "1"})
+    return subprocess.call(cmd, cwd=cwd, env={**os.environ, "NO_BANNER": "1"})
 
 
 def steps(seq: list[list[str]], title: str) -> int:
@@ -90,6 +107,10 @@ def steps(seq: list[list[str]], title: str) -> int:
 
 
 def main() -> int:
+    if not TOOLS.is_dir():
+        # a plain `pip install .` copies only this file; the detections and tools live in the clone
+        print("rasd runs from a clone of the repository. Inside the clone: pip install -e .", file=sys.stderr)
+        return 2
     args = sys.argv[1:]
     if not args or args[0] in ("-h", "--help", "help"):
         subprocess.call([PY, str(TOOLS / "banner.py")])
@@ -105,9 +126,9 @@ def main() -> int:
         subprocess.call([PY, str(TOOLS / "banner.py")])
         return steps(CI if cmd == "ci" else BUILD, cmd)
     if cmd not in COMMANDS:
-        print(f"Unknown command '{cmd}'. Run: python rasd.py help")
+        print(f"Unknown command '{cmd}'. Run: rasd help")
         return 2
-    return run(COMMANDS[cmd] + rest)
+    return run(COMMANDS[cmd] + rest, cwd=Path.cwd())
 
 
 if __name__ == "__main__":

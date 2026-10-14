@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder |
+| **ATT&CK technique** | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder |
 | **Related** | [T1112](https://attack.mitre.org/techniques/T1112/) |
 | **Tactics** | persistence, privilege-escalation |
 | **Platform** | windows · runner: powershell |
@@ -57,7 +57,7 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-PurpleEmulation.ps1 -Test run_key_persistence -LabConfirmed
+.\red\Invoke-RasdEmulation.ps1 -Test run_key_persistence -LabConfirmed
 ```
 
 ---

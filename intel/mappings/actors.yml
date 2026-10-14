@@ -1,9 +1,11 @@
-# Threat groups whose published ATT&CK procedure examples include techniques RASD validates.
+# Threat groups whose published ATT&CK procedure examples include techniques RASD detects, or
+# exercises with an offensive test and does not detect yet (those rank the detection backlog).
 # Every entry links the ATT&CK group page that publishes the procedure; re-check it when
 # ATT&CK releases a new version, because wording and IDs can change. tools/chain.py renders
 # actor_tradecraft_map.md from this file and fails on a technique RASD does not know.
 # last_checked: the date someone opened every source page and confirmed the rows (null = not yet).
-last_checked: null
+# Technique IDs follow ATT&CK v19.2, like the rules; the v18 aliases are in attack_v18_aliases.yml.
+last_checked: 2026-10-13
 actors:
   - group: OilRig
     id: G0049
@@ -12,6 +14,10 @@ actors:
     techniques:
       - id: T1053.005
         note: Scheduled tasks for persistence of its backdoors
+      - id: T1087.002
+        note: net user /domain and net group "domain admins" /domain to list domain accounts
+      - id: T1505.003
+        note: Web shells to maintain access to victim networks
   - group: MuddyWater
     id: G0069
     source: https://attack.mitre.org/groups/G0069/
@@ -21,6 +27,8 @@ actors:
         note: PowerShell-based backdoors and loaders
       - id: T1547.001
         note: Registry Run key values for persistence
+      - id: T1087.002
+        note: cmd.exe net user /domain to enumerate domain users
   - group: APT33
     id: G0064
     source: https://attack.mitre.org/groups/G0064/
@@ -38,18 +46,26 @@ actors:
       - id: T1558.003
         note: Kerberoasting with Rubeus and Invoke-Kerberoast
       - id: T1569.002
-        note: PsExec to run payloads on remote hosts
+        note: services.exe to run scripts and executables during lateral movement
+      - id: T1021.006
+        note: Windows Remote Management to move laterally through a victim network
+      - id: T1087.002
+        note: net group "Domain admins" /DOMAIN, and Get-ADComputer to collect account names
   - group: APT28
     id: G0007
     source: https://attack.mitre.org/groups/G0007/
     context: Russia-linked espionage group
     techniques:
-      - id: T1070.001
-        note: Clearing the System and Security logs with wevtutil
+      - id: T1685.005
+        note: Clearing the System and Security logs with wevtutil (T1070.001 in ATT&CK v18)
       - id: T1218.011
         note: rundll32 to execute its implants
       - id: T1110.003
         note: Brute-force and password-spray campaign against enterprise and cloud accounts
+      - id: T1505.003
+        note: A modified, obfuscated reGeorg web shell for persistence
+      - id: T1083
+        note: Forfiles to locate PDF, Excel and Word documents
   - group: Lazarus Group
     id: G0032
     source: https://attack.mitre.org/groups/G0032/
@@ -57,6 +73,8 @@ actors:
     techniques:
       - id: T1218.011
         note: rundll32 to load malicious DLLs
+      - id: T1083
+        note: Malware that finds files by extension and lists the files on every drive
   - group: HAFNIUM
     id: G0125
     source: https://attack.mitre.org/groups/G0125/
@@ -64,6 +82,12 @@ actors:
     techniques:
       - id: T1003.001
         note: procdump to dump LSASS memory
+      - id: T1190
+        note: Exploited vulnerabilities in on-premises Exchange servers and edge devices
+      - id: T1505.003
+        note: Several web shells on compromised servers, including SIMPLESEESHARP and SPORTSBALL
+      - id: T1083
+        note: Searched file contents on a compromised host
   - group: APT29
     id: G0016
     source: https://attack.mitre.org/groups/G0016/
@@ -71,3 +95,45 @@ actors:
     techniques:
       - id: T1059.001
         note: PowerShell for execution and in-memory tooling
+      - id: T1505.003
+        note: Web shells on exploited Microsoft Exchange servers
+      - id: T1606
+        note: In the SolarWinds compromise (C0024), SAML tokens forged with stolen signing certificates and an OWA cookie generated from a stolen key (T1606.002, T1606.001)
+  - group: Rocke
+    id: G0106
+    source: https://attack.mitre.org/groups/G0106/
+    context: Cryptojacking group that targets Linux servers
+    techniques:
+      - id: T1053.003
+        note: A cron job that downloaded and executed files from its command-and-control server
+      - id: T1059.004
+        note: Shell scripts to gain persistence and run its cryptocurrency miner
+  - group: Fox Kitten
+    id: G0117
+    source: https://attack.mitre.org/groups/G0117/
+    context: Iran-linked actor targeting oil and gas, government and technology organisations in the Middle East and beyond
+    techniques:
+      - id: T1087.002
+        note: The Softerra LDAP browser to browse documentation on service accounts
+      - id: T1505.003
+        note: Web shells on compromised hosts to maintain access
+      - id: T1083
+        note: WizTree to list network files and directories
+  - group: APT39
+    id: G0087
+    source: https://attack.mitre.org/groups/G0087/
+    context: Espionage activity attributed to Iran's Ministry of Intelligence, focused on travel, hospitality and telecommunications
+    techniques:
+      - id: T1505.003
+        note: ANTAK and ASPXSPY web shells
+      - id: T1083
+        note: Tools that search for files on a compromised host
+  - group: Volt Typhoon
+    id: G1017
+    source: https://attack.mitre.org/groups/G1017/
+    context: China state-sponsored actor targeting critical infrastructure, known for living-off-the-land tradecraft
+    techniques:
+      - id: T1087.002
+        note: net group /dom and net group "Domain Admins" /dom for account discovery
+      - id: T1505.003
+        note: Web shells including AuditReport.jspx and iisstart.aspx

@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+mutations:
+- name: cmd_quiet_switches
+  description: cmd.exe with /Q before /c, as remote-execution tools write it
+  base: 1
+  set:
+    CommandLine: cmd.exe /Q /c "echo LAB-SRV01 rasd_1a2b3c4d"
+  should_match: true
+- name: uppercase_image_path
+  description: The same binary logged with an upper-case path
+  base: 2
+  set:
+    Image: C:\WINDOWS\SYSTEM32\CMD.EXE
+  should_match: true
+- name: powershell_short_switch
+  description: -ec abbreviation of -EncodedCommand
+  base: 5
+  set:
+    CommandLine: powershell.exe -ec SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkA
+  should_match: true
+- name: powershell_unicode_dash
+  description: An en dash instead of a hyphen before the switch
+  base: 5
+  set:
+    CommandLine: powershell.exe –enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkA
+  should_match: true
+- name: rundll32_over_winrs
+  description: The proxy binary started through winrs instead of PowerShell remoting
+  base: 7
+  set:
+    ParentImage: C:\Windows\System32\winrshost.exe
+  should_match: true
+- name: ipconfig_over_winrm_is_benign
+  description: A native diagnostic command over remoting is everyday administration
+  base: 1
+  set:
+    Image: C:\Windows\System32\ipconfig.exe
+    OriginalFileName: ipconfig.exe
+    CommandLine: ipconfig.exe /all
+  should_match: false
+- name: powershell_script_file_is_benign
+  description: A script file run over remoting, without an encoded command
+  base: 5
+  set:
+    CommandLine: powershell.exe -NoProfile -File C:\Scripts\patch-report.ps1
+  should_match: false

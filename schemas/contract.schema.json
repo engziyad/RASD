@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/engziyad/detection-as-code-purple-lab/schemas/contract.schema.json",
+  "$id": "https://github.com/engziyad/RASD-v1.0/schemas/contract.schema.json",
   "title": "RASD Detection Contract",
   "description": "Operational contract that sits next to every rule.yml (RASD contract v2). Enforced by tools/validate.py and tools/chain.py; this schema gives editors autocomplete and inline validation.",
   "type": "object",

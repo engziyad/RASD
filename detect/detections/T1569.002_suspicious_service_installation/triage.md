@@ -32,14 +32,17 @@ Base score **60**.
 - +15 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- −25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
-- −20 if approved change window *(ask: A change ticket covers this host and time)*
+- -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
 - Sysinternals PsExec used by administrators
 
 ### Never tune
 - Never filter by service name or by LocalSystem: both are what attackers' tooling uses by default.
+
+### Close or escalate
+[Closure and escalation notes](../T1569.002_suspicious_service_installation/closure.md) for this detection.
 
 ---
 
