@@ -4,7 +4,7 @@
 # ATT&CK releases a new version, because wording and IDs can change. tools/chain.py renders
 # actor_tradecraft_map.md from this file and fails on a technique RASD does not know.
 # last_checked: the date someone opened every source page and confirmed the rows (null = not yet).
-# Technique IDs follow ATT&CK v18, like the rules: see the note on ATT&CK v19 in intel/README.md.
+# Technique IDs follow ATT&CK v19.2, like the rules; the v18 aliases are in attack_v18_aliases.yml.
 last_checked: 2026-10-13
 actors:
   - group: OilRig
@@ -56,8 +56,8 @@ actors:
     source: https://attack.mitre.org/groups/G0007/
     context: Russia-linked espionage group
     techniques:
-      - id: T1070.001
-        note: Clearing the System and Security logs with wevtutil (listed under T1685.005 since ATT&CK v19)
+      - id: T1685.005
+        note: Clearing the System and Security logs with wevtutil (T1070.001 in ATT&CK v18)
       - id: T1218.011
         note: rundll32 to execute its implants
       - id: T1110.003

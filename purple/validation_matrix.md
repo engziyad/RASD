@@ -12,17 +12,17 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
-| [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1190](https://attack.mitre.org/techniques/T1190/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
+| [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 
 ## 20-point completeness map
 
-| Item | T1003.001 | T1021.006 | T1053.003 | T1053.005 | T1059.001 | T1059.004 | T1070.001 | T1110.003 | T1190 | T1218.011 | T1547.001 | T1558.003 | T1569.002 |
+| Item | T1003.001 | T1021.006 | T1053.003 | T1053.005 | T1059.001 | T1059.004 | T1110.003 | T1190 | T1218.011 | T1547.001 | T1558.003 | T1569.002 | T1685.005 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Red emulation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Expected telemetry | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -58,13 +58,13 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 | [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | T1053.005 | **SIEM-Ready** | 100/100 | pending |
 | [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | T1059.001 | **SIEM-Ready** | 100/100 | pending |
 | [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | T1059.004 | **SIEM-Ready** | 100/100 | pending |
-| [T1070.001_event_log_clearing](../detect/detections/T1070.001_event_log_clearing/) | T1070.001 | **SIEM-Ready** | 100/100 | pending |
-| [T1070.001_security_log_cleared](../detect/detections/T1070.001_security_log_cleared/) | T1070.001 | **SIEM-Ready** | 100/100 | pending |
-| [T1070.001_system_log_cleared](../detect/detections/T1070.001_system_log_cleared/) | T1070.001 | **SIEM-Ready** | 100/100 | pending |
 | [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | T1218.011 | **SIEM-Ready** | 100/100 | pending |
 | [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | T1547.001 | **SIEM-Ready** | 100/100 | pending |
 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | T1558.003 | **SIEM-Ready** | 100/100 | pending |
 | [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | T1569.002 | **SIEM-Ready** | 100/100 | pending |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | T1685.005 | **SIEM-Ready** | 100/100 | pending |
+| [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | T1685.005 | **SIEM-Ready** | 100/100 | pending |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | T1685.005 | **SIEM-Ready** | 100/100 | pending |
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) · correlation | T1110.003 | **SIEM-Ready** | 100/100 | pending |
 | [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) · correlation | T1190 | **SIEM-Ready** | 100/100 | pending |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) · correlation | T1190 | **SIEM-Ready** | 100/100 | pending |

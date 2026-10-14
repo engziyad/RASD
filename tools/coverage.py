@@ -24,7 +24,7 @@ from typing import Any
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import ATTACK_TACTICS, ATTACK_VERSION, COVERAGE_DIR, DETECTIONS, TECHNIQUE_TACTICS
+from common import ATTACK_TACTICS, ATTACK_VERSION, COVERAGE_DIR, DETECTIONS, TECHNIQUE_TACTICS, legacy_technique
 from run_tests import run
 from sigma_engine import compile_rule
 
@@ -114,7 +114,8 @@ def navigator_layer(rules: list[dict]) -> dict:
                                  f"{'tests pass' if r['all_pass'] else 'FAILING TESTS'}" for r in rs),
             "enabled": True,
             "showSubtechniques": True,
-            "metadata": [{"name": "rules", "value": str(len(rs))}],
+            "metadata": [{"name": "rules", "value": str(len(rs))}]
+                        + ([{"name": "ATT&CK v18", "value": legacy_technique(tid)}] if legacy_technique(tid) else []),
         })
     return {
         "name": "RASD - Tested Detection Coverage",

@@ -17,12 +17,6 @@
   "tuning:T1059.001_powershell_encoded_command": "f5bc0f80ef818d79b1207885eb62c00392f109beab46cbbc100d14108befcc80",
   "rule:T1059.004_linux_suspicious_shell_execution": "ea1df3685262a4c7d3445cf42f594b5e34e47da404e179b2854070f0785e8fff",
   "tuning:T1059.004_linux_suspicious_shell_execution": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1070.001_event_log_clearing": "17feced8a4f7ff95902ce29b3b76b00fa120e2c8f6c35ede4a68345da4cf0db8",
-  "tuning:T1070.001_event_log_clearing": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1070.001_security_log_cleared": "f5ea128cbf61d4fe146c1a9cf4b39cb3d4965255d2b7f7f836c54eea126c7d5b",
-  "tuning:T1070.001_security_log_cleared": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1070.001_system_log_cleared": "2b1bad0a7753cfa68ae91b34c9c863d66c011e0ddec101695ae4a50460a277c6",
-  "tuning:T1070.001_system_log_cleared": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1218.011_rundll32_suspicious_execution": "6be32da2964b950793fd2fbc0f6d50f0e9c3f1d68f63b775457105d5ff3a6fb5",
   "tuning:T1218.011_rundll32_suspicious_execution": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1547.001_registry_run_key_persistence": "08b42012f4c3c136c4ceb75733abe3dde38e8281929cd6cf9b454cf0472d094c",
@@ -31,6 +25,12 @@
   "tuning:T1558.003_kerberoasting_rc4_tgs": "15eb68c6b42f9b7ac945d8d0312ffebf762aef2572ebe3ce55090c9628a3bc43",
   "rule:T1569.002_suspicious_service_installation": "9ec795fc1f63fc6bc8054cc81e1dbf5251f9ee70e2c570c48cbdf642a69950ac",
   "tuning:T1569.002_suspicious_service_installation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "rule:T1685.005_event_log_clearing": "17feced8a4f7ff95902ce29b3b76b00fa120e2c8f6c35ede4a68345da4cf0db8",
+  "tuning:T1685.005_event_log_clearing": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "rule:T1685.005_security_log_cleared": "f5ea128cbf61d4fe146c1a9cf4b39cb3d4965255d2b7f7f836c54eea126c7d5b",
+  "tuning:T1685.005_security_log_cleared": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "rule:T1685.005_system_log_cleared": "2b1bad0a7753cfa68ae91b34c9c863d66c011e0ddec101695ae4a50460a277c6",
+  "tuning:T1685.005_system_log_cleared": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1110.003_password_spray_burst": "c811307ab82d330e74a9e4473405e30a4556a0cf6fe4b6983ea8112bf69bcc44",
   "tuning:T1110.003_password_spray_burst": "690c5d66be2864489e3fccb07eb405cd7b29a01f725729e37b80493dc5727d61",
   "rule:T1190_api_auth_probing": "7dd76f5d0cdd93b4adb0f4405bb07c4341ba9a34889a141cee8c664985536bc1",
@@ -69,9 +69,6 @@
   "dataset:splunk/T1059.001/powershell_testing/windows-sysmon": "be5d446d2cd4d7bf1174f7f22dc0921400bb0ecea0cd060047424544efea2418",
   "dataset:splunk/T1059.004/linux_discovery_tools/sysmon_linux": "84f5be68af1364065cfc9e66c417224e8ecaf1d93df84190d403db51e511ba6d",
   "dataset:splunk/T1059.004/snapattack/snapattack_linux": "a29ed08e6e3afc7335bb3aa0c29779fbd98db2a527e8b87ccf77d692b4339da5",
-  "dataset:splunk/T1070.001/atomic_red_team/windows-sysmon": "e68c39d282f42dfcb5d5b9a1353614d3581072c82258d06ffb1dcaca5b789f02",
-  "dataset:splunk/T1070.001/windows_event_log_cleared/windows-security": "9280e7ab29382fae306c40602f1f9a2eae9900b501849ef6b59cf0da5ba7e5ad",
-  "dataset:splunk/T1070.001/windows_event_log_cleared/windows-system": "1a87b0d14499a3f60cd45de2c8a85d6d51d16b1e21528321057c5c84762b4f21",
   "dataset:splunk/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security": "a759cef3264f30ccd13a83ac97b68babc906e3ed151cad7a5c7ff8cf43d3f6c3",
   "dataset:splunk/T1110.003/purplesharp_explicit_credential_spray_xml/windows-security": "27561fbbb41c4ac549ff888802053b5174069c82056b0e55c0e3f894fe8534ad",
   "dataset:splunk/T1110.003/purplesharp_invalid_users_kerberos_xml/windows-security": "ee0d4db48cc8b95fc6fc531c0b32e965ff0f6cb17b18c1fdad042d92e04d6c6f",
@@ -90,15 +87,18 @@
   "dataset:splunk/T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml": "2d03ba9c0a879e61d51ed6dd1cea306d2dd171986aa8e7c16d0b48aa59c01b69",
   "dataset:splunk/T1569.002/malicious_powershell_executed_as_a_service/windows-xml": "a3b8ce3b8a13887f6ff57e7edceb59644fd0837fdb61f7712d57956be1e14c85",
   "dataset:splunk/T1569.002/windows_service_created_with_suspicious_service_path/windows-xml": "3243aaf4d08de76a3b173cdd7de59712d48b7bd876d22c3e1326e78a540a8c79",
+  "dataset:splunk/T1070.001/atomic_red_team/windows-sysmon": "5345dd6443b171a81a5688e11dc75ec47abe1aaafc019e10ab1cc16e1927e0b0",
+  "dataset:splunk/T1070.001/windows_event_log_cleared/windows-security": "c9490512e5c4f75cf7652eade47b25c88b34ecde299d65d27802678d160ec9e1",
+  "dataset:splunk/T1070.001/windows_event_log_cleared/windows-system": "f6cc4f96df4a25e0c41a6b126a5ad66ec81493f309e1291418403fdf2dd9e83b",
   "dataset:otrf/empire_mimikatz_logonpasswords": "39b2b299fea7daea5ba423b7f46fbad868f033b92a141e6d9574e9f343840e88",
-  "dataset:otrf/metasploit_comsvcs_lsass_memory_dump": "d9c89f61b8cf378e687e6a3f9e849218ceea4ed89c795aca417d09146413f429",
-  "dataset:otrf/metasploit_logonpasswords_lsass_memory_dump": "1aa5e52c511d4df4a3bc6ee032f311cba54649e6ad5ff8ecd83b0337f66b9824",
-  "dataset:otrf/metasploit_nanodump_lsass_memory_dump": "71bd11788569036429738034dc596a9240f96459155bfb3880601739910b9ae4",
-  "dataset:otrf/metasploit_out-minidump_lsass_memory_dump": "1381e496750dedd07c5e78b94b35260c180e89f004bef000f494649999fc1a8a",
-  "dataset:otrf/metasploit_outflank-dumpert_lsass_memory_dump": "bf94a37eac2f22bf57ee0ef5f84666824a317ac453d68eaae3de62e19fc2fb4b",
-  "dataset:otrf/metasploit_procdump_lsass_memory_dump": "f25a28aaa77a0dd8385a482f08757ac9ef1310a069cc3b20abf38ddb6a39624a",
-  "dataset:otrf/metasploit_sharpdump_lsass_memory_dump": "57d0494c337f67efaf712b918af0cac289c8ea8ccb4c9cf07347a1c8a479d538",
-  "dataset:otrf/psh_lsass_memory_dump_comsvcs": "fed83671c904449fdf551ece50d5841dd1193c6cc9328b61b874f7d0918de1f5",
+  "dataset:otrf/metasploit_comsvcs_lsass_memory_dump": "82589b9e666e93beea7c754e3d9a77d59c4536183dc6d0a6045172ebb547e34c",
+  "dataset:otrf/metasploit_logonpasswords_lsass_memory_dump": "1dda20bfa5f30407ae6fb7c1fc04068328176db68845140f0adc9dcb18445b53",
+  "dataset:otrf/metasploit_nanodump_lsass_memory_dump": "6bc4d2f00c62d3062e8af573eb3402a5e9c6d2e53627a1d389abf7670227ece1",
+  "dataset:otrf/metasploit_out-minidump_lsass_memory_dump": "76ebe3668ed0dad8d0c168d384b9b3f2e3eb05c39762cca65005e8202fb38191",
+  "dataset:otrf/metasploit_outflank-dumpert_lsass_memory_dump": "8bea841400a0f0da8c51a2944410873b7fe9450bc6b5b3d68de6e9f4292ebe1a",
+  "dataset:otrf/metasploit_procdump_lsass_memory_dump": "4a2df9833616268fc982c99f08d523cc88f4802d8e4bd18f89a1b0c133868ebe",
+  "dataset:otrf/metasploit_sharpdump_lsass_memory_dump": "9dad89139236cc74798f9ad51e39a1403d0cac46f6aab6361614361644aad51e",
+  "dataset:otrf/psh_lsass_memory_dump_comsvcs": "1432618879040654e5ef949d8494e919e642ea2e74c971ccbfd7722183939c22",
   "dataset:otrf/covenant_psremoting_command": "afdf118f7e720a211601d83f961dd8a0bba79f236c6c2aa34dda5ca6ab4f7bc8",
   "dataset:otrf/empire_psremoting_stager": "232897c1a22543329330e58723a7857a8bfeb02d8298690b999209b7578537c0",
   "dataset:otrf/empire_schtasks_creation_execution_elevated_user": "c7625eb9415d24ef774ded93c6461809683ce4d7bee2250f12bba433dcd01630",
@@ -128,9 +128,7 @@
   "dataset:evtx/lateral-movement/LM_sysmon_remote_task_src_powershell": "5754a40ccad6ddff2027dc11e31fd310c2acc79c1647237f4f8b9344197f157b",
   "dataset:evtx/privilege-escalation/sysmon_1_11_exec_as_system_via_schedtask": "4e8f56e21df7dd90848774d920e99811ae83eb95524fcf609ce4ee52bf165ac8",
   "dataset:evtx/other/emotet/exec_emotet_sysmon_1": "e98b61c36123244c52e39b9001e8dbcc663c7d5026bd6cc66dca6931ac695081",
-  "dataset:evtx/defense-evasion/DE_104_system_log_cleared": "1fce66f41fb1358f857d5ebde7e482d9fc298efd3da9af2ecfe7cb51f5c41181",
-  "dataset:evtx/defense-evasion/DE_1102_security_log_cleared": "e57e785697da717afdfc7db16ae7049b49b7119f8cd82e4f0260a25687f0971e",
-  "dataset:evtx/credential-access/kerberos_pwd_spray_4771": "32bb3e52f848e83238aa5497a2ae5023333a98af53e9aaa0438a34dfb4555cf0",
+  "dataset:evtx/credential-access/kerberos_pwd_spray_4771": "0186fec6da145f75a1babdbd2d5815462d7efc002ac00a04c1d24d8dd7980437",
   "dataset:evtx/credential-access/sysmon_10_1_memdump_comsvcs_minidump": "dd5ad3f076f36da490d6ef5a06519db3b43f1dc123167af99cf4da7199a9b810",
   "dataset:evtx/execution/exec_persist_rundll32_mshta_scheduledtask_sysmon_1_3_11": "c9e9a7025e0f1bf01147e27e578c4d286be5e3d7cc5b73aca49fda70256a6238",
   "dataset:evtx/execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler": "5ee07185a203533930239fb41569b135db034dbc8f50758209a455a5f8be4d12",
@@ -147,6 +145,8 @@
   "dataset:evtx/lateral-movement/LM_Remote_Service02_7045": "619b46a17b4147aca81b1469ee92c54423cf61ea3453b069a5c871197c673e29",
   "dataset:evtx/lateral-movement/LM_sysmon_psexec_smb_meterpreter": "b9d5037f66ef399b324835318027cabc968803d36aba6aa28c298f9ab56f180a",
   "dataset:evtx/privilege-escalation/System_7045_namedpipe_privesc": "2f3452f4b76940b8620811d3a48250996807248a064c4d0ed7e4058c6a407725",
+  "dataset:evtx/defense-evasion/DE_104_system_log_cleared": "9915da7cf09c8c46703bfa0ae7d199e6b876e5cbd6ff426daee892f5065d7047",
+  "dataset:evtx/defense-evasion/DE_1102_security_log_cleared": "c10f6d2aaa5fb550154cc7e7126cda1a1c87959ba387a544197b24989d89b684",
   "dataset:evtx/automatedtestingtools/PanacheSysmon_vs_AtomicRedTeam01": "a9be62b184ee805900e86e56b8fd715548314b4976889854e4e891dbe85bf762",
   "dataset:evtx/automatedtestingtools/panache_sysmon_vs_EDRTestingScript": "fd6ffb0633185e026f3b21676ff2b4f30e77c50e9f03cbb7cd3d6b1cab452b9f",
   "dataset:splunk/T1110.003/purplesharp_disabled_users_kerberos/windows-security": "ec6f9979d0feabb3bb3cd529dd8cb535d5b18cb9ef625c0a76796361e0779e58",
@@ -189,7 +189,7 @@
   "dataset:splunk/T1059.001/trickbot_cmd_powershell/windows-sysmon": "e17851644aa8fb934f6ece644567322500f9a7ebe78dc9c68e3504874e26d76c",
   "dataset:splunk/T1059.001/unmanaged_powershell_execution/windows-sysmon": "ff9d748fe1518261cade221c388b71f92d4903ddc76d7e17eb7e340bc9360bc0",
   "dataset:splunk/T1059.004/linux_netcat_outbound_connection/snapattack_linux": "38efc7a6526bc0fc77c56238eb8ae474b6e4c93d43f4b2ac9fd859127c91f95a",
-  "dataset:splunk/T1070.001/suspicious_event_log_service_behavior/windows-xml": "665f094c8d164204630ecaa09cfa2e42616c48879a2fd5122d432571b7e1bcfb",
+  "dataset:splunk/T1070.001/suspicious_event_log_service_behavior/windows-xml": "fd50ce111e2d583bb6bf931f594136924b92de9389dc56808a56f1133f0493c2",
   "dataset:splunk/T1070.001/suspicious_kerberos_service_ticket_request/windows-xml": "34389bb48b85598eab7c41b59df1698b95986c797128c10ef2a56357423c784b",
   "dataset:splunk/T1218.011/random_dll_extension/random_dll_rundll32.log": "639080063afb4df926810ea3f9319967dc06e2e02c33916ac7b7bb867522d54d",
   "dataset:splunk/T1218.011/rundll32_random_dll_ext/rundll32_random_ext.log": "8b2115840d823dc552df1a6787d7ced81c25328a52f97e069a191714b249562b",
@@ -229,12 +229,12 @@
   "dataset:splunk/T1059.001/powershell_testing/windows-security.log": "8c82156bf06376caf1ef00cc2743d720135fc03c153dcacbd2cb5290fa033009",
   "dataset:splunk/T1059.001/powershell_xml_requests/windows-security.log": "0b80f02c563e92727c658c3a139ddd6459be4ada869709885f1392033da0c357",
   "dataset:splunk/T1059.001/powershell_xml_requests/windows-system.log": "3c9593ffc79b72f5615b05e7b239a645f40071c538f44e6c4ede3cc901a4b20c",
-  "dataset:splunk/T1070.001/atomic_red_team/windows-security.log": "584ed9b7379fea8f0761c051bf6658a7e4b4696d6d6873f5f223c41bca9eb34b",
-  "dataset:splunk/T1070.001/atomic_red_team/windows-system.log": "b14943d5955074181ff015a48c47347401fd964b9a2d04cd35bb583146b9b84a",
-  "dataset:splunk/T1070.001/ssa_wevtutil/clear_evt.log": "427ed56f057aba67d7756c6a6a7ab86c7c5aaa1c0fbdd2fc81a9f33af5729315",
-  "dataset:splunk/T1070.001/ssa_wevtutil/disable_evt.log": "c4b91b8d83c32a55810d08444ab4a531eb988afe95c4d84aa4fb766cd69d3640",
-  "dataset:splunk/T1070.001/ssa_wevtutil/windows-security.log": "946915943990cddaeda5f612d76bb1ed1663c7a988c3fe813887c051c7480d86",
-  "dataset:splunk/T1070.001/windows_pwh_log_cleared/wevtutil_clear_log.log": "f2cb9da5f3305866a9e5aa489d3dba228c3d896504854fa997e0b109e220828a",
+  "dataset:splunk/T1070.001/atomic_red_team/windows-security.log": "a2ddb5c18863a78cdbd523533b37538f232a7c8b5507a97ac3b66408a8b87bb4",
+  "dataset:splunk/T1070.001/atomic_red_team/windows-system.log": "bf41c8ab0542bd98c77e9e3f66fe951a7e2d77c7082a32796f43d001e15825df",
+  "dataset:splunk/T1070.001/ssa_wevtutil/clear_evt.log": "72bb53305315ef19af4171de6ca75be2bb7fb84efe709d17118f641829068dc6",
+  "dataset:splunk/T1070.001/ssa_wevtutil/disable_evt.log": "5159f2932bec0864b300f9f8a314c2c68e806a52abfa55c8a75b83543c77b422",
+  "dataset:splunk/T1070.001/ssa_wevtutil/windows-security.log": "e74607f607daa7a362733d34fb26d2bd90e2eb3f437cc12e03f1390e1b502f2b",
+  "dataset:splunk/T1070.001/windows_pwh_log_cleared/wevtutil_clear_log.log": "a45e2bffc29d89f5f4fcb7e39869bc0eb1a58252fb12c15b9a34edacbb43b806",
   "dataset:splunk/T1110.003/generic_password_spray/password_spray_attack.log": "beb3ad6b9a030443c7925f8d780fbf270c37620539f705908e2cb45ebb2e599a",
   "dataset:splunk/T1218.011/atomic_red_team/windows-security.log": "394b989727aa80ff32b25bac2cd2a851c9fc609a9aa4dc95dafd0dd59b4aa1af",
   "dataset:splunk/T1218.011/atomic_red_team/windows-system.log": "e7137abd28a4fba9c7cb9efb577763b832891c1a651d3b4230cea8ba6067138f",
@@ -264,7 +264,7 @@
   "dataset:splunk/T1190/spring4shell/java_write_jsp-linux-sysmon.log": "0a8e943fed18d1bca0668cd37031dcd19ac37b68e0068cda29a706615bab139b",
   "dataset:splunk/T1053.005/atomic_red_team/attack_data.json": "b8e0bf1a5d3e32a68129bec9e7ad7d870e0b8dc4cf282b88b5a4324e4380c79d",
   "dataset:splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Microsoft-Windows-Sysmon-Operational.evtx": "d11eadba299e50038c6947b04ce37fd51b51e6728ade8da058b9581bd5440e80",
-  "dataset:splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Security.evtx": "2d18820036f2a2eb6f0f590767d09657388d3c5dffc6514b73630dfeff09f4e5"
+  "dataset:splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Security.evtx": "9a1175cd4a21a4de51a241aaf3872a6c3eb40fb92fec9e411e096068f56e247c"
  },
  "datasets": {
   "splunk/T1003.001/atomic_red_team/createdump_windows-sysmon": {
@@ -1529,213 +1529,6 @@
     "found_silent": []
    }
   },
-  "splunk/T1070.001/atomic_red_team/windows-sysmon": {
-   "sha256": "58a5e3465bdced284a1c0b625063c539be77beca8f9921e29238bbdc4d26de11",
-   "events": 6226,
-   "unparsed": 0,
-   "duplicates": 0,
-   "duplicates_edited": 0,
-   "overlap": {},
-   "routed": {
-    "process_access": 5508,
-    "process_creation": 340,
-    "registry_set": 31
-   },
-   "start": "2020-10-09T09:08:38.685Z",
-   "end": "2020-10-09T09:17:20.089Z",
-   "alerts": {
-    "T1021.006_wsmprovhost_suspicious_child": {
-     "count": 18,
-     "unique": 18,
-     "first": "2020-10-09T09:08:39.986Z",
-     "last": "2020-10-09T09:10:57.102Z",
-     "hosts": [
-      "win-dc-1796611.attackrange.local"
-     ],
-     "records": [
-      57,
-      226,
-      320,
-      414,
-      511
-     ]
-    },
-    "T1059.001_powershell_encoded_command": {
-     "count": 37,
-     "unique": 37,
-     "first": "2020-10-09T09:08:39.999Z",
-     "last": "2020-10-09T09:10:58.123Z",
-     "hosts": [
-      "win-dc-1796611.attackrange.local"
-     ],
-     "records": [
-      41,
-      150,
-      193,
-      212,
-      287
-     ]
-    },
-    "T1070.001_event_log_clearing": {
-     "count": 2,
-     "unique": 2,
-     "first": "2020-10-09T09:10:56.379Z",
-     "last": "2020-10-09T09:10:56.426Z",
-     "hosts": [
-      "win-dc-1796611.attackrange.local"
-     ],
-     "records": [
-      4273,
-      4286
-     ]
-    }
-   },
-   "correlations": {},
-   "tuning": {
-    "T1003.001_lsass_memory_access": {
-     "powershell_process_listing": {
-      "kind": "filter",
-      "events": 1,
-      "values": {
-       "SourceImage": [
-        [
-         "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-         1
-        ]
-       ],
-       "GrantedAccess": [
-        [
-         "0x1410",
-         1
-        ]
-       ],
-       "CallTrace": [
-        [
-         "C:\\Windows\\SYSTEM32\\ntdll.dll+a5ec4|C:\\Windows\\System32\\KERNELBASE.dll+221bd|C:\\Windows\\assembly\\NativeImages_v4.0.30319_64\\System\\78b8fb2c58a4cdcc3a44547b9bbd8",
-         1
-        ]
-       ]
-      }
-     },
-     "windows_components": {
-      "kind": "filter",
-      "events": 2,
-      "values": {
-       "SourceImage": [
-        [
-         "C:\\Windows\\system32\\csrss.exe",
-         1
-        ],
-        [
-         "C:\\Windows\\system32\\wininit.exe",
-         1
-        ]
-       ]
-      }
-     }
-    }
-   },
-   "extract": {
-    "file": "datasets/extracts/splunk/T1070.001/atomic_red_team/windows-sysmon.jsonl",
-    "events": 57
-   },
-   "assessment": {
-    "missed": [],
-    "unexplained": {},
-    "quiet_fired": [],
-    "also_silent": [],
-    "overlap_undeclared": [],
-    "overlap_gone": [],
-    "holdout_changed": [],
-    "found_silent": []
-   }
-  },
-  "splunk/T1070.001/windows_event_log_cleared/windows-security": {
-   "sha256": "fd483a9c03b1cf5b10b4cc8b1500abd782da334647e93db61edee7f7040dce87",
-   "events": 1,
-   "unparsed": 0,
-   "duplicates": 0,
-   "duplicates_edited": 0,
-   "overlap": {},
-   "routed": {
-    "windows/security": 1
-   },
-   "start": "2024-07-22T16:25:54.942Z",
-   "end": "2024-07-22T16:25:54.942Z",
-   "alerts": {
-    "T1070.001_security_log_cleared": {
-     "count": 1,
-     "unique": 1,
-     "first": "2024-07-22T16:25:54.942Z",
-     "last": "2024-07-22T16:25:54.942Z",
-     "hosts": [
-      "ar-win-dc.attackrange.local"
-     ],
-     "records": [
-      1
-     ]
-    }
-   },
-   "correlations": {},
-   "tuning": {},
-   "extract": {
-    "file": "datasets/extracts/splunk/T1070.001/windows_event_log_cleared/windows-security.jsonl",
-    "events": 1
-   },
-   "assessment": {
-    "missed": [],
-    "unexplained": {},
-    "quiet_fired": [],
-    "also_silent": [],
-    "overlap_undeclared": [],
-    "overlap_gone": [],
-    "holdout_changed": [],
-    "found_silent": []
-   }
-  },
-  "splunk/T1070.001/windows_event_log_cleared/windows-system": {
-   "sha256": "5e5298e558860f09a89cf1a503e34d3412f2e4a6dbeb312ec44282f383d96e6f",
-   "events": 1,
-   "unparsed": 0,
-   "duplicates": 0,
-   "duplicates_edited": 0,
-   "overlap": {},
-   "routed": {
-    "windows/system": 1
-   },
-   "start": "2024-07-22T16:38:18.385Z",
-   "end": "2024-07-22T16:38:18.385Z",
-   "alerts": {
-    "T1070.001_system_log_cleared": {
-     "count": 1,
-     "unique": 1,
-     "first": "2024-07-22T16:38:18.385Z",
-     "last": "2024-07-22T16:38:18.385Z",
-     "hosts": [
-      "ar-win-dc.attackrange.local"
-     ],
-     "records": [
-      1
-     ]
-    }
-   },
-   "correlations": {},
-   "tuning": {},
-   "extract": {
-    "file": "datasets/extracts/splunk/T1070.001/windows_event_log_cleared/windows-system.jsonl",
-    "events": 1
-   },
-   "assessment": {
-    "missed": [],
-    "unexplained": {},
-    "quiet_fired": [],
-    "also_silent": [],
-    "overlap_undeclared": [],
-    "overlap_gone": [],
-    "holdout_changed": [],
-    "found_silent": []
-   }
-  },
   "splunk/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security": {
    "sha256": "8c23ac6554c0f02775b9ac46647bd58e42b15dc60123aac192b14d1e4268272d",
    "events": 137,
@@ -2809,6 +2602,213 @@
     "found_silent": []
    }
   },
+  "splunk/T1070.001/atomic_red_team/windows-sysmon": {
+   "sha256": "58a5e3465bdced284a1c0b625063c539be77beca8f9921e29238bbdc4d26de11",
+   "events": 6226,
+   "unparsed": 0,
+   "duplicates": 0,
+   "duplicates_edited": 0,
+   "overlap": {},
+   "routed": {
+    "process_access": 5508,
+    "process_creation": 340,
+    "registry_set": 31
+   },
+   "start": "2020-10-09T09:08:38.685Z",
+   "end": "2020-10-09T09:17:20.089Z",
+   "alerts": {
+    "T1021.006_wsmprovhost_suspicious_child": {
+     "count": 18,
+     "unique": 18,
+     "first": "2020-10-09T09:08:39.986Z",
+     "last": "2020-10-09T09:10:57.102Z",
+     "hosts": [
+      "win-dc-1796611.attackrange.local"
+     ],
+     "records": [
+      57,
+      226,
+      320,
+      414,
+      511
+     ]
+    },
+    "T1059.001_powershell_encoded_command": {
+     "count": 37,
+     "unique": 37,
+     "first": "2020-10-09T09:08:39.999Z",
+     "last": "2020-10-09T09:10:58.123Z",
+     "hosts": [
+      "win-dc-1796611.attackrange.local"
+     ],
+     "records": [
+      41,
+      150,
+      193,
+      212,
+      287
+     ]
+    },
+    "T1685.005_event_log_clearing": {
+     "count": 2,
+     "unique": 2,
+     "first": "2020-10-09T09:10:56.379Z",
+     "last": "2020-10-09T09:10:56.426Z",
+     "hosts": [
+      "win-dc-1796611.attackrange.local"
+     ],
+     "records": [
+      4273,
+      4286
+     ]
+    }
+   },
+   "correlations": {},
+   "tuning": {
+    "T1003.001_lsass_memory_access": {
+     "powershell_process_listing": {
+      "kind": "filter",
+      "events": 1,
+      "values": {
+       "SourceImage": [
+        [
+         "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+         1
+        ]
+       ],
+       "GrantedAccess": [
+        [
+         "0x1410",
+         1
+        ]
+       ],
+       "CallTrace": [
+        [
+         "C:\\Windows\\SYSTEM32\\ntdll.dll+a5ec4|C:\\Windows\\System32\\KERNELBASE.dll+221bd|C:\\Windows\\assembly\\NativeImages_v4.0.30319_64\\System\\78b8fb2c58a4cdcc3a44547b9bbd8",
+         1
+        ]
+       ]
+      }
+     },
+     "windows_components": {
+      "kind": "filter",
+      "events": 2,
+      "values": {
+       "SourceImage": [
+        [
+         "C:\\Windows\\system32\\csrss.exe",
+         1
+        ],
+        [
+         "C:\\Windows\\system32\\wininit.exe",
+         1
+        ]
+       ]
+      }
+     }
+    }
+   },
+   "extract": {
+    "file": "datasets/extracts/splunk/T1070.001/atomic_red_team/windows-sysmon.jsonl",
+    "events": 57
+   },
+   "assessment": {
+    "missed": [],
+    "unexplained": {},
+    "quiet_fired": [],
+    "also_silent": [],
+    "overlap_undeclared": [],
+    "overlap_gone": [],
+    "holdout_changed": [],
+    "found_silent": []
+   }
+  },
+  "splunk/T1070.001/windows_event_log_cleared/windows-security": {
+   "sha256": "fd483a9c03b1cf5b10b4cc8b1500abd782da334647e93db61edee7f7040dce87",
+   "events": 1,
+   "unparsed": 0,
+   "duplicates": 0,
+   "duplicates_edited": 0,
+   "overlap": {},
+   "routed": {
+    "windows/security": 1
+   },
+   "start": "2024-07-22T16:25:54.942Z",
+   "end": "2024-07-22T16:25:54.942Z",
+   "alerts": {
+    "T1685.005_security_log_cleared": {
+     "count": 1,
+     "unique": 1,
+     "first": "2024-07-22T16:25:54.942Z",
+     "last": "2024-07-22T16:25:54.942Z",
+     "hosts": [
+      "ar-win-dc.attackrange.local"
+     ],
+     "records": [
+      1
+     ]
+    }
+   },
+   "correlations": {},
+   "tuning": {},
+   "extract": {
+    "file": "datasets/extracts/splunk/T1070.001/windows_event_log_cleared/windows-security.jsonl",
+    "events": 1
+   },
+   "assessment": {
+    "missed": [],
+    "unexplained": {},
+    "quiet_fired": [],
+    "also_silent": [],
+    "overlap_undeclared": [],
+    "overlap_gone": [],
+    "holdout_changed": [],
+    "found_silent": []
+   }
+  },
+  "splunk/T1070.001/windows_event_log_cleared/windows-system": {
+   "sha256": "5e5298e558860f09a89cf1a503e34d3412f2e4a6dbeb312ec44282f383d96e6f",
+   "events": 1,
+   "unparsed": 0,
+   "duplicates": 0,
+   "duplicates_edited": 0,
+   "overlap": {},
+   "routed": {
+    "windows/system": 1
+   },
+   "start": "2024-07-22T16:38:18.385Z",
+   "end": "2024-07-22T16:38:18.385Z",
+   "alerts": {
+    "T1685.005_system_log_cleared": {
+     "count": 1,
+     "unique": 1,
+     "first": "2024-07-22T16:38:18.385Z",
+     "last": "2024-07-22T16:38:18.385Z",
+     "hosts": [
+      "ar-win-dc.attackrange.local"
+     ],
+     "records": [
+      1
+     ]
+    }
+   },
+   "correlations": {},
+   "tuning": {},
+   "extract": {
+    "file": "datasets/extracts/splunk/T1070.001/windows_event_log_cleared/windows-system.jsonl",
+    "events": 1
+   },
+   "assessment": {
+    "missed": [],
+    "unexplained": {},
+    "quiet_fired": [],
+    "also_silent": [],
+    "overlap_undeclared": [],
+    "overlap_gone": [],
+    "holdout_changed": [],
+    "found_silent": []
+   }
+  },
   "otrf/empire_mimikatz_logonpasswords": {
    "sha256": "bb4c057b62d781be5426e011872ba1a15070c07afbb24848a14458f4b22b06fb",
    "events": 6026,
@@ -2885,20 +2885,6 @@
       22031
      ]
     },
-    "T1070.001_system_log_cleared": {
-     "count": 3,
-     "unique": 3,
-     "first": "2023-08-18T08:56:04.310Z",
-     "last": "2023-08-18T08:56:04.310Z",
-     "hosts": [
-      "PRD01.pandalab.com"
-     ],
-     "records": [
-      38349,
-      38350,
-      38351
-     ]
-    },
     "T1218.011_rundll32_suspicious_execution": {
      "count": 4,
      "unique": 4,
@@ -2924,6 +2910,20 @@
      ],
      "records": [
       38353
+     ]
+    },
+    "T1685.005_system_log_cleared": {
+     "count": 3,
+     "unique": 3,
+     "first": "2023-08-18T08:56:04.310Z",
+     "last": "2023-08-18T08:56:04.310Z",
+     "hosts": [
+      "PRD01.pandalab.com"
+     ],
+     "records": [
+      38349,
+      38350,
+      38351
      ]
     }
    },
@@ -3003,19 +3003,6 @@
       34637
      ]
     },
-    "T1070.001_system_log_cleared": {
-     "count": 2,
-     "unique": 2,
-     "first": "2023-08-15T09:53:46.118Z",
-     "last": "2023-08-15T09:53:46.118Z",
-     "hosts": [
-      "MKT01.pandalab.com"
-     ],
-     "records": [
-      50142,
-      50143
-     ]
-    },
     "T1218.011_rundll32_suspicious_execution": {
      "count": 2,
      "unique": 2,
@@ -3039,6 +3026,19 @@
      ],
      "records": [
       50145
+     ]
+    },
+    "T1685.005_system_log_cleared": {
+     "count": 2,
+     "unique": 2,
+     "first": "2023-08-15T09:53:46.118Z",
+     "last": "2023-08-15T09:53:46.118Z",
+     "hosts": [
+      "MKT01.pandalab.com"
+     ],
+     "records": [
+      50142,
+      50143
      ]
     }
    },
@@ -3103,7 +3103,7 @@
       35890
      ]
     },
-    "T1070.001_system_log_cleared": {
+    "T1685.005_system_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2023-09-06T07:14:16.718Z",
@@ -3162,7 +3162,7 @@
       19172
      ]
     },
-    "T1070.001_system_log_cleared": {
+    "T1685.005_system_log_cleared": {
      "count": 4,
      "unique": 4,
      "first": "2023-08-27T03:04:13.260Z",
@@ -3225,7 +3225,7 @@
       34151
      ]
     },
-    "T1070.001_system_log_cleared": {
+    "T1685.005_system_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2023-09-05T10:43:28.158Z",
@@ -3286,7 +3286,7 @@
       23380
      ]
     },
-    "T1070.001_system_log_cleared": {
+    "T1685.005_system_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2023-08-15T05:33:51.685Z",
@@ -3360,7 +3360,7 @@
       48339
      ]
     },
-    "T1070.001_system_log_cleared": {
+    "T1685.005_system_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2023-09-05T09:51:51.442Z",
@@ -3419,18 +3419,6 @@
       76
      ]
     },
-    "T1070.001_security_log_cleared": {
-     "count": 1,
-     "unique": 1,
-     "first": "2020-10-18T07:49:39.776Z",
-     "last": "2020-10-18T07:49:39.776Z",
-     "hosts": [
-      "WORKSTATION5"
-     ],
-     "records": [
-      36
-     ]
-    },
     "T1218.011_rundll32_suspicious_execution": {
      "count": 2,
      "unique": 2,
@@ -3442,6 +3430,18 @@
      "records": [
       17,
       107
+     ]
+    },
+    "T1685.005_security_log_cleared": {
+     "count": 1,
+     "unique": 1,
+     "first": "2020-10-18T07:49:39.776Z",
+     "last": "2020-10-18T07:49:39.776Z",
+     "hosts": [
+      "WORKSTATION5"
+     ],
+     "records": [
+      36
      ]
     }
    },
@@ -4929,82 +4929,6 @@
     "found_silent": []
    }
   },
-  "evtx/defense-evasion/DE_104_system_log_cleared": {
-   "sha256": "5579cdca073ee4864ea82d656aa2d25400b5c1e85b8e688db5d85f6dc558c2af",
-   "events": 1,
-   "unparsed": 0,
-   "duplicates": 0,
-   "duplicates_edited": 0,
-   "overlap": {},
-   "routed": {
-    "windows/system": 1
-   },
-   "start": "2019-03-19T23:34:25.894Z",
-   "end": "2019-03-19T23:34:25.894Z",
-   "alerts": {
-    "T1070.001_system_log_cleared": {
-     "count": 1,
-     "unique": 1,
-     "first": "2019-03-19T23:34:25.894Z",
-     "last": "2019-03-19T23:34:25.894Z",
-     "hosts": [],
-     "records": [
-      1
-     ]
-    }
-   },
-   "correlations": {},
-   "tuning": {},
-   "extract": null,
-   "assessment": {
-    "missed": [],
-    "unexplained": {},
-    "quiet_fired": [],
-    "also_silent": [],
-    "overlap_undeclared": [],
-    "overlap_gone": [],
-    "holdout_changed": [],
-    "found_silent": []
-   }
-  },
-  "evtx/defense-evasion/DE_1102_security_log_cleared": {
-   "sha256": "a0615707b547a2ac254688fd725c3c590f62440fc9b7947c2843dd40498a39e8",
-   "events": 112,
-   "unparsed": 0,
-   "duplicates": 0,
-   "duplicates_edited": 0,
-   "overlap": {},
-   "routed": {
-    "windows/security": 112
-   },
-   "start": "2019-03-19T23:35:07.524Z",
-   "end": "2019-03-19T23:35:15.365Z",
-   "alerts": {
-    "T1070.001_security_log_cleared": {
-     "count": 1,
-     "unique": 1,
-     "first": "2019-03-19T23:35:07.524Z",
-     "last": "2019-03-19T23:35:07.524Z",
-     "hosts": [],
-     "records": [
-      1
-     ]
-    }
-   },
-   "correlations": {},
-   "tuning": {},
-   "extract": null,
-   "assessment": {
-    "missed": [],
-    "unexplained": {},
-    "quiet_fired": [],
-    "also_silent": [],
-    "overlap_undeclared": [],
-    "overlap_gone": [],
-    "holdout_changed": [],
-    "found_silent": []
-   }
-  },
   "evtx/credential-access/kerberos_pwd_spray_4771": {
    "sha256": "4a0a1c7132e216dbc704c806e9429df9ae3ac00485d5238e50c776e3099ae11d",
    "events": 12,
@@ -5018,7 +4942,7 @@
    "start": "2020-07-22T20:29:27.321Z",
    "end": "2020-07-22T20:29:36.437Z",
    "alerts": {
-    "T1070.001_security_log_cleared": {
+    "T1685.005_security_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2020-07-22T20:29:27.321Z",
@@ -5651,6 +5575,82 @@
      "unique": 1,
      "first": "2019-05-12T12:52:43.702Z",
      "last": "2019-05-12T12:52:43.702Z",
+     "hosts": [],
+     "records": [
+      1
+     ]
+    }
+   },
+   "correlations": {},
+   "tuning": {},
+   "extract": null,
+   "assessment": {
+    "missed": [],
+    "unexplained": {},
+    "quiet_fired": [],
+    "also_silent": [],
+    "overlap_undeclared": [],
+    "overlap_gone": [],
+    "holdout_changed": [],
+    "found_silent": []
+   }
+  },
+  "evtx/defense-evasion/DE_104_system_log_cleared": {
+   "sha256": "5579cdca073ee4864ea82d656aa2d25400b5c1e85b8e688db5d85f6dc558c2af",
+   "events": 1,
+   "unparsed": 0,
+   "duplicates": 0,
+   "duplicates_edited": 0,
+   "overlap": {},
+   "routed": {
+    "windows/system": 1
+   },
+   "start": "2019-03-19T23:34:25.894Z",
+   "end": "2019-03-19T23:34:25.894Z",
+   "alerts": {
+    "T1685.005_system_log_cleared": {
+     "count": 1,
+     "unique": 1,
+     "first": "2019-03-19T23:34:25.894Z",
+     "last": "2019-03-19T23:34:25.894Z",
+     "hosts": [],
+     "records": [
+      1
+     ]
+    }
+   },
+   "correlations": {},
+   "tuning": {},
+   "extract": null,
+   "assessment": {
+    "missed": [],
+    "unexplained": {},
+    "quiet_fired": [],
+    "also_silent": [],
+    "overlap_undeclared": [],
+    "overlap_gone": [],
+    "holdout_changed": [],
+    "found_silent": []
+   }
+  },
+  "evtx/defense-evasion/DE_1102_security_log_cleared": {
+   "sha256": "a0615707b547a2ac254688fd725c3c590f62440fc9b7947c2843dd40498a39e8",
+   "events": 112,
+   "unparsed": 0,
+   "duplicates": 0,
+   "duplicates_edited": 0,
+   "overlap": {},
+   "routed": {
+    "windows/security": 112
+   },
+   "start": "2019-03-19T23:35:07.524Z",
+   "end": "2019-03-19T23:35:15.365Z",
+   "alerts": {
+    "T1685.005_security_log_cleared": {
+     "count": 1,
+     "unique": 1,
+     "first": "2019-03-19T23:35:07.524Z",
+     "last": "2019-03-19T23:35:07.524Z",
      "hosts": [],
      "records": [
       1
@@ -9339,7 +9339,7 @@
    "start": "2020-10-09T08:38:43.000Z",
    "end": "2020-10-09T09:16:48.000Z",
    "alerts": {
-    "T1070.001_security_log_cleared": {
+    "T1685.005_security_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2020-10-09T09:10:56.000Z",
@@ -9397,7 +9397,7 @@
    "start": "2020-10-09T08:38:37.000Z",
    "end": "2020-10-09T09:15:25.000Z",
    "alerts": {
-    "T1070.001_system_log_cleared": {
+    "T1685.005_system_log_cleared": {
      "count": 4,
      "unique": 4,
      "first": "2020-10-09T09:10:56.000Z",
@@ -9443,7 +9443,7 @@
    "start": "2021-06-15T12:00:19.000Z",
    "end": "2021-06-15T12:04:09.000Z",
    "alerts": {
-    "T1070.001_event_log_clearing": {
+    "T1685.005_event_log_clearing": {
      "count": 3,
      "unique": 3,
      "first": "2021-06-15T12:00:19.000Z",
@@ -9528,7 +9528,7 @@
    "start": "2021-06-15T11:33:22.000Z",
    "end": "2021-06-15T12:03:21.000Z",
    "alerts": {
-    "T1070.001_event_log_clearing": {
+    "T1685.005_event_log_clearing": {
      "count": 1,
      "unique": 0,
      "first": "2021-06-15T12:00:19.000Z",
@@ -9571,7 +9571,7 @@
    "start": "2024-06-17T16:00:09.387Z",
    "end": "2024-06-17T17:00:09.392Z",
    "alerts": {
-    "T1070.001_event_log_clearing": {
+    "T1685.005_event_log_clearing": {
      "count": 3,
      "unique": 3,
      "first": "2024-06-17T16:00:09.387Z",
@@ -10743,7 +10743,7 @@
    "start": "2022-08-31T19:18:41.676Z",
    "end": "2022-08-31T19:18:41.743Z",
    "alerts": {
-    "T1070.001_event_log_clearing": {
+    "T1685.005_event_log_clearing": {
      "count": 15,
      "unique": 15,
      "first": "2022-08-31T19:18:41.676Z",
@@ -10759,7 +10759,7 @@
       2786339
      ]
     },
-    "T1070.001_security_log_cleared": {
+    "T1685.005_security_log_cleared": {
      "count": 1,
      "unique": 1,
      "first": "2022-08-31T19:18:41.742Z",

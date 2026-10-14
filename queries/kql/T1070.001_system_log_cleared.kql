@@ -1,4 +1,0 @@
-// Windows Event Log Cleared (System Event 104) | 97e2e414-a0ff-499a-8730-58dda9c04201
-Event
-| where EventLog == "System"
-| where (EventID == 104 and Source =~ @"Microsoft-Windows-Eventlog")

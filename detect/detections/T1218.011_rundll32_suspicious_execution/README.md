@@ -3,7 +3,7 @@
 <!-- rasd:facts:start -->
 | | |
 |---|---|
-| **ATT&CK** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32 (defense-evasion) |
+| **ATT&CK** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32 (stealth) |
 | **Severity** | `high` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |

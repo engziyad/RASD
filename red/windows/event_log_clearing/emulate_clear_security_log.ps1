@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    RASD-Red · T1070.001 · wevtutil cl Security with a backup first (writes Security 1102).
+    RASD-Red · T1685.005 · wevtutil cl Security with a backup first (writes Security 1102).
 .DESCRIPTION
     Backs the Security log up to %TEMP%\security-before-clear-<marker>.evtx and clears it in
     one wevtutil call (cl /bu:). Refuses to run if the backup file already exists. Only run

@@ -17,6 +17,7 @@
 | Purple | Scenarios for every covered technique, generated validation, evidence and latency matrices |
 | Operations | Replay with contract risk scoring, storylines (single-event and correlation alerts) and noise forecast; tuning impact analysis; telemetry doctor; benchmark |
 | Governance | Maturity model enforced in CI, split Engineering / Operational Scores, GitHub templates, link checker, real PowerShell tests under pwsh |
+| ATT&CK v19.2 | Primary mappings follow ATT&CK v19.2: the log-clearing detections are T1685.005 (Defense Impairment) and Defense Evasion tags became Stealth; legacy v18 aliases keep T1070.001 resolvable ([aliases](../intel/mappings/attack_v18_aliases.yml)) |
 | Gaps closed | WinRM remote execution (T1021.006), crontab persistence (T1053.003), Unix shell execution (T1059.004), API authentication probing and object-ID enumeration (T1190): each was a red test without a detection, and each red test's expected event or scenario now fires its detection in CI |
 
 ## v2.0: Reference on lab evidence (goal)
@@ -29,7 +30,6 @@ The aim of v2.0 is that every covered detection reaches the **Reference** maturi
 | SIEM replay of the public datasets | The Splunk Attack Data files indexed with their sourcetypes and the generated SPL run over them, each count compared with the engine's ([checklist](PUBLIC_DATA_VALIDATION.md#siem-replay-checklist)) |
 | Next rules from public data | Rules for the behaviours public data showed and no rule reads yet: cron directory writes, netcat shells, NTLM sprays by workstation, explicit-credential sprays, local logon sprays, service ImagePath registry writes, LSASS dump command lines ([list](PUBLIC_DATA_VALIDATION.md#next-rules-from-public-data)) |
 | Actor map re-checked | `intel/mappings/actors.yml` carries a `last_checked` date (done 2026-10-13) |
-| ATT&CK v19 IDs | The log-clearing detections move from T1070.001 to T1685.005 (Defense Impairment), and the tactic tags follow v19 (Defense Evasion became Stealth) |
 | Correlation evidence | The password spray, API probing and object-ID enumeration lab runs turned into `evidence.md` for each correlation |
 | AD reconnaissance | Decoy-account rule (4662) validated by the `ldap_enumeration` test |
 | Kerberoasting by volume | A red step that requests service tickets for five or more lab SPNs in one window, so `T1558.003_kerberoasting_volume` can be Validated (today no step names it) |
@@ -43,7 +43,7 @@ No rule is written for a domain before lab data for it exists in the repository.
 | Domain | Log source | First detections planned | Lab data to collect first |
 |---|---|---|---|
 | Identity (Entra ID) | Sign-in and audit logs | Password spray on cloud accounts (T1110.003), MFA request flooding (T1621), credentials added to an application (T1098.001) | A free developer tenant with test accounts; sign-in and audit log export |
-| Cloud control plane (AWS, Azure) | CloudTrail, Azure Activity | Logging stopped or changed (T1562.008), access keys created for another user (T1098.001), discovery bursts (T1580) | A lab account; CloudTrail and Activity log export |
+| Cloud control plane (AWS, Azure) | CloudTrail, Azure Activity | Logging stopped or changed (T1685.002), access keys created for another user (T1098.001), discovery bursts (T1580) | A lab account; CloudTrail and Activity log export |
 | Email | Mailbox audit and message trace | Inbox rules forwarding mail outside the organisation (T1114.003) | A test mailbox in the developer tenant |
 | WAF | ModSecurity audit log or a cloud WAF log | One client triggering many blocked rules in a short window (T1190) | ModSecurity in front of the lab web application |
 | Network (NDR) | Zeek conn, dns and http logs | Fixed-interval beaconing (T1071.001), DNS tunnelling by volume (T1071.004) | Zeek on a lab span port, logs exported as JSONL |

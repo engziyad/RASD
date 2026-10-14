@@ -358,7 +358,7 @@ class NearMiss(unittest.TestCase):
         lsass = self.report["detections"]["T1003.001_lsass_memory_access"]["boundaries"]
         self.assertFalse(any("lolbin_exception" in b["condition"] for b in lsass),
                          "a path cannot end in both MsMpEng.exe and rundll32.exe")
-        self.assertEqual(self.report["detections"]["T1070.001_security_log_cleared"]["near_misses"], 0,
+        self.assertEqual(self.report["detections"]["T1685.005_security_log_cleared"]["near_misses"], 0,
                          "a Security event shares nothing needed with the 1102 rule")
         rc4 = self.report["detections"]["T1558.003_kerberoasting_rc4_tgs"]["boundaries"][0]
         self.assertEqual((rc4["witness"]["from"], rc4["witness"]["to"]), ("0x12", "0x17"))

@@ -13,13 +13,13 @@ Operational evidence per detection, read from `detect/detections/<id>/evidence.m
 | [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1070.001_event_log_clearing](../detect/detections/T1070.001_event_log_clearing/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1070.001_security_log_cleared](../detect/detections/T1070.001_security_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1070.001_system_log_cleared](../detect/detections/T1070.001_system_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - | - | - | - | pending |

@@ -383,7 +383,7 @@ class Evidence(unittest.TestCase):
         ok = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)
         self.assertIn("FIRED", ok.stdout)
-        self.steps[1]["detections"].append("T1070.001_security_log_cleared")          # expected, never logged
+        self.steps[1]["detections"].append("T1685.005_security_log_cleared")          # expected, never logged
         self.results.write_text(json.dumps(self.steps), encoding="utf-8")
         miss = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(miss.returncode, 1)
@@ -888,6 +888,56 @@ class SplunkApp(unittest.TestCase):
         self.assertTrue(any("CurrentVersion\\Run" in f.text for f in groups["RegistryEvent"]))
 
 
+class AttackV19(unittest.TestCase):
+    def test_legacy_v18_ids_and_techniques_resolve_to_the_v19_detections(self):
+        self.assertEqual(find_detection("T1070.001_event_log_clearing").id, "T1685.005_event_log_clearing")
+        self.assertEqual(sorted(d.id for d in load_detections("T1070.001")),
+                         ["T1685.005_event_log_clearing", "T1685.005_security_log_cleared", "T1685.005_system_log_cleared"])
+        import run_tests
+        self.assertTrue(run_tests.run("T1070.001"))
+        self.assertEqual(sorted(parity.check("T1070.001")), sorted(d.id for d in load_detections("T1070.001")))
+
+    def test_generated_queries_and_saved_searches_name_the_v18_technique(self):
+        rule = find_detection("T1685.005_security_log_cleared").rule
+        for backend in ("kql",):
+            self.assertIn("ATT&CK v19.2 T1685.005, v18 T1070.001", convert.convert(rule, backend).splitlines()[0])
+        self.assertEqual(convert.legacy_note(find_detection("T1059.001").rule), "")
+        conf = splunk_app.saved_searches(load_detections())
+        self.assertIn("(T1685.005; ATT&CK v18: T1070.001)", conf)
+
+    def test_navigator_layer_is_v19_and_records_the_v18_id(self):
+        layer = json.loads((ROOT / "detect" / "coverage" / "attack_navigator_layer.json").read_text(encoding="utf-8"))
+        self.assertEqual(layer["versions"]["attack"], "19")
+        t = next(x for x in layer["techniques"] if x["techniqueID"] == "T1685.005")
+        self.assertIn({"name": "ATT&CK v18", "value": "T1070.001"}, t["metadata"])
+
+    def test_no_file_names_an_id_v19_revoked_and_red_tests_use_v19_names(self):
+        from common import ATTACK_ALIASES, attack_aliases
+        revoked = attack_aliases()["revoked"]
+        self.assertEqual(revoked.get("T1562.008"), "T1685.002")
+        git = shutil.which("git")
+        out = subprocess.run([git, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True) if git else None
+        if out is None or out.returncode or not out.stdout:
+            self.skipTest("needs git and a git checkout")
+        retired = re.compile(r"\b(" + "|".join(map(re.escape, sorted(revoked, key=len, reverse=True))) + r")\b")
+        skip = {ATTACK_ALIASES.relative_to(ROOT).as_posix(), "tests/test_tools.py"}
+        found = []
+        for name in out.stdout.split("\0"):
+            if not name or name in skip or name.startswith("datasets/"):     # dataset paths are the sources' own names
+                continue
+            try:
+                text = (ROOT / name).read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            found += [f"{name}: {m.group(1)} (now {revoked[m.group(1)]})" for m in retired.finditer(text)]
+        self.assertEqual(found, [])
+        mitre = {t["id"]: t["mitre"] for t in red.load_tests() if t.get("mitre")}
+        self.assertEqual(mitre["event_log_clearing"]["technique_name"], "Disable or Modify Tools: Clear Windows Event Logs")
+        self.assertEqual(mitre["event_log_clearing"]["tactics"], ["defense-impairment"])
+        self.assertEqual(mitre["rundll32_execution"]["tactics"], ["stealth"])
+        self.assertEqual(mitre["powershell_encoded_command"]["tactics"], ["execution"])   # T1027 stealth is a related technique
+
+
 class PublicDatasets(unittest.TestCase):
     NS = "http://schemas.microsoft.com/win/2004/08/events/event"
 
@@ -1172,7 +1222,7 @@ class PublicDatasets(unittest.TestCase):
                    f"<Data Name='TargetUserName'>user{i}</Data><Data Name='Status'>0x18</Data><Data Name='IpAddress'>10.0.0.9</Data>"
                    "</EventData></Event>" for i in range(5)]
         data = "\n".join(events).encode()
-        spray, cleared = "T1110.003_password_spray_burst", "T1070.001_security_log_cleared"
+        spray, cleared = "T1110.003_password_spray_burst", "T1685.005_security_log_cleared"
         with tempfile.TemporaryDirectory() as tmp:
             ds = dataclasses.replace(self._dataset(Path(tmp), "sec.xml", data, format="windows-xml"), profile="sysmon-native")
             shared, _ = datasets.run_dataset(ds, plan, Path(tmp))
@@ -1271,13 +1321,13 @@ class PublicDatasets(unittest.TestCase):
     def test_fingerprints_change_with_a_rule_but_not_with_its_prose(self):
         cat = datasets.load_catalog()
         before = datasets.fingerprints(cat)
-        rule = ROOT / "detect" / "detections" / "T1070.001_security_log_cleared" / "rule.yml"
+        rule = ROOT / "detect" / "detections" / "T1685.005_security_log_cleared" / "rule.yml"
         text = rule.read_text(encoding="utf-8")
         try:
             rule.write_text(text.replace("falsepositives:", "falsepositives:\n  - prose only", 1), encoding="utf-8")
             self.assertEqual(datasets.stale_inputs(before, datasets.fingerprints(cat)), [])
             rule.write_text(text.replace("EventID: 1102", "EventID: 1100"), encoding="utf-8")
-            self.assertEqual(datasets.stale_inputs(before, datasets.fingerprints(cat)), ["rule:T1070.001_security_log_cleared"])
+            self.assertEqual(datasets.stale_inputs(before, datasets.fingerprints(cat)), ["rule:T1685.005_security_log_cleared"])
         finally:
             rule.write_text(text, encoding="utf-8")
 
@@ -1346,7 +1396,7 @@ class PublicDatasets(unittest.TestCase):
               "win/2004/08/windows/eventlog'><SubjectUserName>{who}</SubjectUserName></LogFileCleared></UserData></Event>")
         first = "\n".join([ev.format(n=1, who="bob"), ev.format(n=1, who="bob"), ev.format(n=2, who="bob")]).encode()
         second = "\n".join([ev.format(n=1, who="bob"), ev.format(n=2, who="eve"), ev.format(n=3, who="bob")]).encode()
-        cleared = "T1070.001_security_log_cleared"
+        cleared = "T1685.005_security_log_cleared"
         with tempfile.TemporaryDirectory() as tmp:
             a = dataclasses.replace(self._dataset(Path(tmp), "a.xml", first, format="windows-xml"), profile="sysmon-native")
             b = dataclasses.replace(self._dataset(Path(tmp), "b.xml", second, format="windows-xml"), id="test/y",
@@ -1593,6 +1643,27 @@ class Chain(unittest.TestCase):
         for t in self.repo.techniques():
             self.assertNotIn("missing", self.repo.checklist(t).values(), t)
 
+    def test_primary_mappings_follow_attack_v19_and_v18_aliases_hold(self):
+        self.assertEqual(chain.attack_alias_errors(self.repo), [])
+        self.assertIn("T1685.005", self.repo.techniques())
+        self.assertNotIn("T1070.001", self.repo.techniques())
+        tactics = {t for d in self.repo.items for t in d.tactics}
+        self.assertNotIn("defense-evasion", tactics)
+        self.assertTrue({"stealth", "defense-impairment"} <= tactics)
+
+    def test_alias_gate_catches_v18_tags_folders_and_tactics(self):
+        from types import SimpleNamespace
+        from common import Detection
+        rule = {"title": "x", "tags": ["attack.defense-evasion", "attack.t1070.001"], "detection": {"condition": "s", "s": {"a": 1}}}
+        det = Detection(ROOT / "detect" / "detections" / "T1070.001_old_copy", rule, {})
+        fake = SimpleNamespace(by_id={self.repo.dets[0].id: self.repo.dets[0], "T1070.001_event_log_clearing": det},
+                               items=[det], red=[{"platform": "windows", "id": "x", "mitre": {"technique": "T1070.001"}}])
+        errs = "\n".join(chain.attack_alias_errors(fake))
+        for text in ("is not a detection", "is still a detection folder", "tag attack.t1070.001 is the ATT&CK v18 ID",
+                     "attack.defense-evasion is the v18 tactic", "named after the ATT&CK v18 technique",
+                     "maps the ATT&CK v18 technique"):
+            self.assertIn(text, errs)
+
     def test_operational_is_not_a_maturity_level(self):
         import yaml
         folder = ROOT / "detect" / "detections" / "T1059.001_powershell_encoded_command"
@@ -1831,12 +1902,12 @@ class Packaging(unittest.TestCase):
 
     def test_commands_run_from_the_folder_they_are_typed_in(self):
         rasd = [sys.executable, str(ROOT / "rasd.py")]
-        rule = ROOT / "detect" / "detections" / "T1070.001_event_log_clearing" / "rule.yml"
+        rule = ROOT / "detect" / "detections" / "T1685.005_event_log_clearing" / "rule.yml"
         out = subprocess.run([*rasd, "convert", "--backend", "kql", "--rule", str(rule)], cwd=ROOT / "queries",
                              capture_output=True, text=True)
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("wevtutil", out.stdout)
-        out = subprocess.run([*rasd, "explain", "T1070.001_event_log_clearing", "--tp", "1"],
+        out = subprocess.run([*rasd, "explain", "T1685.005_event_log_clearing", "--tp", "1"],
                              cwd=ROOT / "detect" / "detections", capture_output=True, text=True)
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
 

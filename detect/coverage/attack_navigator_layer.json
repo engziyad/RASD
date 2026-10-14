@@ -1,7 +1,7 @@
 {
   "name": "RASD - Tested Detection Coverage",
   "versions": {
-    "attack": "18",
+    "attack": "19",
     "navigator": "5.1.0",
     "layer": "4.5"
   },
@@ -113,19 +113,6 @@
       ]
     },
     {
-      "techniqueID": "T1070.001",
-      "score": 80,
-      "comment": "Windows Event Log Clearing via Command Line (T1070.001_event_log_clearing) - depth medium - tests pass\nSecurity Audit Log Cleared (Event 1102) (T1070.001_security_log_cleared) - depth high - tests pass\nWindows Event Log Cleared (System Event 104) (T1070.001_system_log_cleared) - depth high - tests pass",
-      "enabled": true,
-      "showSubtechniques": true,
-      "metadata": [
-        {
-          "name": "rules",
-          "value": "3"
-        }
-      ]
-    },
-    {
       "techniqueID": "T1110.003",
       "score": 64,
       "comment": "Password Spray - One Source Failing Authentication for Many Accounts (T1110.003_password_spray_burst, correlation) - depth medium - tests pass",
@@ -200,6 +187,23 @@
         {
           "name": "rules",
           "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1685.005",
+      "score": 80,
+      "comment": "Windows Event Log Clearing via Command Line (T1685.005_event_log_clearing) - depth medium - tests pass\nSecurity Audit Log Cleared (Event 1102) (T1685.005_security_log_cleared) - depth high - tests pass\nWindows Event Log Cleared (System Event 104) (T1685.005_system_log_cleared) - depth high - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "3"
+        },
+        {
+          "name": "ATT&CK v18",
+          "value": "T1070.001"
         }
       ]
     }

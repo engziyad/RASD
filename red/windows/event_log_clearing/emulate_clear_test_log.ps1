@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    RASD-Red · T1070.001 · wevtutil cl on a dedicated test log (writes System 104).
+    RASD-Red · T1685.005 · wevtutil cl on a dedicated test log (writes System 104).
 .DESCRIPTION
     Creates the classic event log R<hex> (R plus the marker's 8 random characters), writes one
     entry and clears it with wevtutil. Classic log names are unique on their first 8 characters,

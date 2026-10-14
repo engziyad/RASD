@@ -17,7 +17,7 @@ Each playbook starts with a small front matter block (`techniques`, `detections`
 | Playbook | Techniques | Detections | Red tests |
 |---|---|---|---|
 | [ad_reconnaissance](playbooks/ad_reconnaissance.md) | T1087.002, T1069.002, T1018 | none yet | ldap_enumeration |
-| [event_log_clearing](playbooks/event_log_clearing.md) | T1070.001 | `T1070.001_event_log_clearing`, `T1070.001_security_log_cleared`, `T1070.001_system_log_cleared` | event_log_clearing |
+| [event_log_clearing](playbooks/event_log_clearing.md) | T1685.005 | `T1685.005_event_log_clearing`, `T1685.005_security_log_cleared`, `T1685.005_system_log_cleared` | event_log_clearing |
 | [kerberoasting](playbooks/kerberoasting.md) | T1558.003, T1110.002 | `T1558.003_kerberoasting_rc4_tgs`, `T1558.003_kerberoasting_volume` | kerberoasting, ldap_enumeration |
 | [lateral_movement](playbooks/lateral_movement.md) | T1021.002, T1021.006, T1569.002, T1053.005 | `T1569.002_suspicious_service_installation`, `T1053.005_schtasks_suspicious_creation`, `T1021.006_wsmprovhost_suspicious_child` | service_creation, scheduled_task_creation, winrm_access_validation |
 | [linux_persistence](playbooks/linux_persistence.md) | T1053.003, T1059.004, T1083, T1548.001 | `T1053.003_crontab_noninteractive_install`, `T1059.004_linux_suspicious_shell_execution` | cron_persistence, suspicious_shell_execution, privilege_escalation_checks |

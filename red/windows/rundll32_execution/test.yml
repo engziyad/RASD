@@ -4,7 +4,7 @@ platform: windows
 mitre:
   technique: T1218.011
   technique_name: "System Binary Proxy Execution: Rundll32"
-  tactics: [defense-evasion]
+  tactics: [stealth]
 objective: >
   Launch rundll32.exe with the javascript: / mshtml RunHTMLApplication trick that malware
   uses to run script through a signed Windows binary, and prove the process-creation

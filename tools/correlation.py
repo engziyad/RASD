@@ -40,7 +40,7 @@ from typing import Any
 
 import yaml
 
-from common import CORRELATIONS, Detection, load_jsonl
+from common import CORRELATIONS, Detection, load_jsonl, selected
 from convert import KQL, MAPPINGS, SPL, convert, kql_eventdata, logsource_key, referenced_fields
 from replay import TIME_FIELDS, parse_time, route
 from sigma_engine import _get_field, compile_rule
@@ -196,7 +196,7 @@ def load_correlations(filter_: str | None = None) -> list[Correlation]:
     if not CORRELATIONS.exists():
         return out
     for folder in sorted(p for p in CORRELATIONS.iterdir() if p.is_dir()):
-        if filter_ and filter_.lower() not in folder.name.lower():
+        if not selected(folder.name, filter_):
             continue
         rule = yaml.safe_load((folder / "correlation.yml").read_text(encoding="utf-8")) or {}
         base = yaml.safe_load((folder / "base.yml").read_text(encoding="utf-8")) or {}

@@ -4,9 +4,9 @@ Search key: every artifact this test creates carries the run marker (for example
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
-| Sysmon | 1 · ProcessCreate | wevtutil.exe clearing a log | `Image`: `...\System32\wevtutil.exe`<br>`CommandLine`: `cl R<hex> / cl Security /bu:<path>\security-before-clear-<marker>.evtx` | [`T1070.001_event_log_clearing`](../../../detect/detections/T1070.001_event_log_clearing/) |
-| System | 104 · The log file was cleared | Written by Microsoft-Windows-Eventlog for every cleared log except Security. The cleared log's name sits in UserData/LogFileCleared/Channel; Export-LabTelemetry.ps1 names it Channel\_Cleared so it does not overwrite the event's own Channel (System) - in a SIEM look for the UserData field instead | `Provider_Name`: `Microsoft-Windows-Eventlog`<br>`Channel_Cleared`: `R<hex>`<br>`SubjectUserName`: `<user>` | [`T1070.001_system_log_cleared`](../../../detect/detections/T1070.001_system_log_cleared/) |
-| Security | 1102 · The audit log was cleared | Written when the Security log is cleared (opt-in step only) | `SubjectUserName`: `<user>` | [`T1070.001_security_log_cleared`](../../../detect/detections/T1070.001_security_log_cleared/) |
+| Sysmon | 1 · ProcessCreate | wevtutil.exe clearing a log | `Image`: `...\System32\wevtutil.exe`<br>`CommandLine`: `cl R<hex> / cl Security /bu:<path>\security-before-clear-<marker>.evtx` | [`T1685.005_event_log_clearing`](../../../detect/detections/T1685.005_event_log_clearing/) |
+| System | 104 · The log file was cleared | Written by Microsoft-Windows-Eventlog for every cleared log except Security. The cleared log's name sits in UserData/LogFileCleared/Channel; Export-LabTelemetry.ps1 names it Channel\_Cleared so it does not overwrite the event's own Channel (System) - in a SIEM look for the UserData field instead | `Provider_Name`: `Microsoft-Windows-Eventlog`<br>`Channel_Cleared`: `R<hex>`<br>`SubjectUserName`: `<user>` | [`T1685.005_system_log_cleared`](../../../detect/detections/T1685.005_system_log_cleared/) |
+| Security | 1102 · The audit log was cleared | Written when the Security log is cleared (opt-in step only) | `SubjectUserName`: `<user>` | [`T1685.005_security_log_cleared`](../../../detect/detections/T1685.005_security_log_cleared/) |
 
 ## Logging that must be enabled
 

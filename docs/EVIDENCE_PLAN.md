@@ -14,8 +14,8 @@ A domain-joined Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-ra
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1070.001_event_log_clearing](../detect/detections/T1070.001_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
-| [T1070.001_system_log_cleared](../detect/detections/T1070.001_system_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
 | [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | [powershell_encoded_command](../red/windows/powershell_encoded_command/) · `encoded_command` | logged on the lab host, carries the run token | pending |
 | [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | [run_key_persistence](../red/windows/run_key_persistence/) · `run_value` | logged on the lab host, carries the run token | pending |
 | [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rundll32_execution](../red/windows/rundll32_execution/) · `javascript_proxy` | logged on the lab host, carries the run token | pending |
@@ -31,8 +31,8 @@ The same VM, from a snapshot: these steps dump LSASS memory or clear the Securit
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1070.001_event_log_clearing](../detect/detections/T1070.001_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host, carries the run token | pending |
-| [T1070.001_security_log_cleared](../detect/detections/T1070.001_security_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host | pending |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host, carries the run token | pending |
+| [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host | pending |
 | [T1003.001_lsass_memory_access](../detect/detections/T1003.001_lsass_memory_access/) | [lsass_memory_access](../red/windows/lsass_memory_access/) · `comsvcs_minidump` | logged on the lab host | pending |
 | [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [lsass_memory_access](../red/windows/lsass_memory_access/) · `comsvcs_minidump` | logged on the lab host, carries the run token | pending |
 

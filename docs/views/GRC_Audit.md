@@ -15,13 +15,13 @@ Every row below is backed by artifacts in this repository and re-verified by CI 
 | [Scheduled Task Created With Suspicious Action](../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | SIEM-Ready | detection-engineering | 19 / 6 | 7 | **partial** | [KQL](../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) · [SPL](../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) |
 | [PowerShell Execution With Encoded Command](../../detect/detections/T1059.001_powershell_encoded_command/) | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | SIEM-Ready | detection-engineering | 12 / 6 | 8 | **medium** | [KQL](../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../queries/spl/T1059.001_powershell_encoded_command.spl) |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | SIEM-Ready | detection-engineering | 11 / 7 | 6 | **medium** | [KQL](../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) · [SPL](../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) |
-| [Windows Event Log Clearing via Command Line](../../detect/detections/T1070.001_event_log_clearing/) | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | SIEM-Ready | detection-engineering | 11 / 6 | 4 | **medium** | [KQL](../../queries/kql/T1070.001_event_log_clearing.kql) · [SPL](../../queries/spl/T1070.001_event_log_clearing.spl) |
-| [Security Audit Log Cleared (Event 1102)](../../detect/detections/T1070.001_security_log_cleared/) | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | SIEM-Ready | detection-engineering | 5 / 4 | 2 | **high** | [KQL](../../queries/kql/T1070.001_security_log_cleared.kql) · [SPL](../../queries/spl/T1070.001_security_log_cleared.spl) |
-| [Windows Event Log Cleared (System Event 104)](../../detect/detections/T1070.001_system_log_cleared/) | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | SIEM-Ready | detection-engineering | 5 / 5 | 3 | **high** | [KQL](../../queries/kql/T1070.001_system_log_cleared.kql) · [SPL](../../queries/spl/T1070.001_system_log_cleared.spl) |
 | [Rundll32 Proxy Execution From Suspicious Context](../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | SIEM-Ready | detection-engineering | 16 / 7 | 4 | **medium** | [KQL](../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) |
 | [Run Key Persistence Pointing to Suspicious Location](../../detect/detections/T1547.001_registry_run_key_persistence/) | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | SIEM-Ready | detection-engineering | 14 / 4 | 4 | **partial** | [KQL](../../queries/kql/T1547.001_registry_run_key_persistence.kql) · [SPL](../../queries/spl/T1547.001_registry_run_key_persistence.spl) |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | SIEM-Ready | detection-engineering | 5 / 6 | 6 | **medium** | [KQL](../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../../detect/detections/T1569.002_suspicious_service_installation/) | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | SIEM-Ready | detection-engineering | 20 / 7 | 4 | **medium** | [KQL](../../queries/kql/T1569.002_suspicious_service_installation.kql) · [SPL](../../queries/spl/T1569.002_suspicious_service_installation.spl) |
+| [Windows Event Log Clearing via Command Line](../../detect/detections/T1685.005_event_log_clearing/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 11 / 6 | 4 | **medium** | [KQL](../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../queries/spl/T1685.005_event_log_clearing.spl) |
+| [Security Audit Log Cleared (Event 1102)](../../detect/detections/T1685.005_security_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 5 / 4 | 2 | **high** | [KQL](../../queries/kql/T1685.005_security_log_cleared.kql) · [SPL](../../queries/spl/T1685.005_security_log_cleared.spl) |
+| [Windows Event Log Cleared (System Event 104)](../../detect/detections/T1685.005_system_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 5 / 5 | 3 | **high** | [KQL](../../queries/kql/T1685.005_system_log_cleared.kql) · [SPL](../../queries/spl/T1685.005_system_log_cleared.spl) |
 | [Password Spray - One Source Failing Authentication for Many Accounts](../../detect/correlations/T1110.003_password_spray_burst/) | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | SIEM-Ready | detection-engineering | 11 / 8 | 8 | **medium** | [KQL](../../queries/kql/correlations/T1110.003_password_spray_burst.kql) · [SPL](../../queries/spl/correlations/T1110.003_password_spray_burst.spl) |
 | [API Probing - One Client Rejected on Many Distinct Paths](../../detect/correlations/T1190_api_auth_probing/) | [T1190](https://attack.mitre.org/techniques/T1190/) | SIEM-Ready | detection-engineering | 5 / 5 | 5 | **partial** | [KQL](../../queries/kql/correlations/T1190_api_auth_probing.kql) · [SPL](../../queries/spl/correlations/T1190_api_auth_probing.spl) |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](../../detect/correlations/T1190_object_id_enumeration/) | [T1190](https://attack.mitre.org/techniques/T1190/) | SIEM-Ready | detection-engineering | 5 / 6 | 5 | **partial** | [KQL](../../queries/kql/correlations/T1190_object_id_enumeration.kql) · [SPL](../../queries/spl/correlations/T1190_object_id_enumeration.spl) |
@@ -122,42 +122,6 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Interpreters other than shells (python, perl) running code from temporary directories
 - Temporary directories outside /tmp, /var/tmp and /dev/shm, such as a user's ~/.cache
 
-### Windows Event Log Clearing via Command Line
-
-**Depth:** medium. Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
-
-**Depends on:**
-- Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
-
-**Known blind spots:**
-- Clearing through Event Viewer or the Win32 API from a custom binary
-- Selective event deletion or killing EventLog threads
-- Clearing performed remotely (wevtutil /r:host) logs the process on the source, not the target
-
-### Security Audit Log Cleared (Event 1102)
-
-**Depth:** high. Outcome-based: fires whenever the Security log is cleared, by any method
-
-**Depends on:**
-- Security Event ID 1102
-
-**Known blind spots:**
-- Attackers who stop the EventLog service or tamper with forwarding before clearing
-- Only the Security log; other logs are covered by System 104
-- Hosts whose Security log is not forwarded before the clear leave no copy to investigate
-
-### Windows Event Log Cleared (System Event 104)
-
-**Depth:** high. Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell
-
-**Depends on:**
-- System Event ID 104 (Microsoft-Windows-Eventlog)
-
-**Known blind spots:**
-- EventLog service stopped or forwarding tampered with before clearing
-- Security log clearing (covered by 1102)
-- Logs cleared by stopping the service and deleting .evtx files produce no 104 event
-
 ### Rundll32 Proxy Execution From Suspicious Context
 
 **Depth:** medium. Four distinct abuse patterns; blind to malicious DLLs placed in trusted paths
@@ -208,6 +172,42 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Randomised service name with the binary placed in System32
 - Modifying an existing service ImagePath (sc config) produces no 7045
 - WMI, WinRM and DCOM lateral movement
+
+### Windows Event Log Clearing via Command Line
+
+**Depth:** medium. Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
+
+**Depends on:**
+- Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
+
+**Known blind spots:**
+- Clearing through Event Viewer or the Win32 API from a custom binary
+- Selective event deletion or killing EventLog threads
+- Clearing performed remotely (wevtutil /r:host) logs the process on the source, not the target
+
+### Security Audit Log Cleared (Event 1102)
+
+**Depth:** high. Outcome-based: fires whenever the Security log is cleared, by any method
+
+**Depends on:**
+- Security Event ID 1102
+
+**Known blind spots:**
+- Attackers who stop the EventLog service or tamper with forwarding before clearing
+- Only the Security log; other logs are covered by System 104
+- Hosts whose Security log is not forwarded before the clear leave no copy to investigate
+
+### Windows Event Log Cleared (System Event 104)
+
+**Depth:** high. Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell
+
+**Depends on:**
+- System Event ID 104 (Microsoft-Windows-Eventlog)
+
+**Known blind spots:**
+- EventLog service stopped or forwarding tampered with before clearing
+- Security log clearing (covered by 1102)
+- Logs cleared by stopping the service and deleting .evtx files produce no 104 event
 
 ### Password Spray - One Source Failing Authentication for Many Accounts
 

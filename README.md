@@ -35,7 +35,7 @@ RASD is a cybersecurity validation framework that connects offensive security la
 <!-- rasd:readme-metrics:start -->
 | | |
 |---|---|
-| **Detections · techniques** | 18 detections (14 single-event, 4 correlations) across 13 ATT&CK techniques (v18 IDs, [v19 note](intel/README.md)) |
+| **Detections · techniques** | 18 detections (14 single-event, 4 correlations) across 13 ATT&CK v19.2 techniques ([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml)) |
 | **Offensive tests** | 19: 14 mapped to current detections (only these can raise the Operational Score) · 5 gap or posture tests reserved for future coverage |
 | **Tests** | 261 cases · 414 mutations · 1303 fuzzer variants (0 bypasses) on the 14 single-event rules; the 4 correlation base rules add 51 cases, 24 technique mutations and 53 fuzzer variants |
 | **Proof** | 212/212 rule mutants killed or accepted · 13201 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 10865 events, each in both FolderPath forms (0 divergences) |
@@ -75,6 +75,8 @@ Adversary Behavior → Controlled Offensive Validation → Expected Telemetry �
 → Mutation Testing → Triage → Response / DFIR Playbook → Closure / Escalation → CTI Mapping → Purple Scenario
 → Operational Evidence → Metrics
 ```
+
+RASD keeps legacy ATT&CK v18 aliases for compatibility, while primary mappings follow ATT&CK v19.2 ([aliases](intel/mappings/attack_v18_aliases.yml)). ATT&CK v20, released on 13 October 2026, changes no ID or tactic of the techniques RASD maps (checked against its release notes).
 
 ## What RASD proves that a rule repository cannot
 

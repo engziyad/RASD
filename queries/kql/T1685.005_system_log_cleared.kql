@@ -1,0 +1,4 @@
+// Windows Event Log Cleared (System Event 104) | 97e2e414-a0ff-499a-8730-58dda9c04201 | ATT&CK v19.2 T1685.005, v18 T1070.001
+Event
+| where EventLog == "System"
+| where (EventID == 104 and Source =~ @"Microsoft-Windows-Eventlog")

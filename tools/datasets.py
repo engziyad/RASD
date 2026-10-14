@@ -83,7 +83,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import profiles
-from common import BOLD, CORRELATIONS, DETECTIONS, DIM, DOCS, GREEN, RED, RESET, ROOT, VERSION, YELLOW, load_detections, read_text
+from common import (BOLD, CORRELATIONS, DETECTIONS, DIM, DOCS, GREEN, RED, RESET, ROOT, VERSION, YELLOW, attack_aliases,
+                    load_detections, read_text)
 from convert import logsource_key, referenced_fields
 from correlation import Correlation, epoch, evaluate, iso, load_correlations, value_reader
 from replay import HOST_FIELDS, TIME_FIELDS, USER_FIELDS, first, parse_time, route
@@ -236,6 +237,8 @@ def _check_holdout_labels(held: list[Dataset], demoted: list[Dataset] | None = N
     except (ValueError, AttributeError, KeyError, TypeError) as e:
         return [f"{HOLDOUT_LABELS.name}: unreadable ({e})"]
     errors = []
+    # labels written before a detection was renamed keep the ID the reviewer saw; the alias file maps it
+    current = {legacy: rid for rid, legacy in attack_aliases()["detections"].items()}
     for ds in demoted or []:
         if ds.demoted_from not in gone or (files.get(str(ds.demoted_from)) or {}).get("dataset") != ds.id:
             errors.append(f"dataset {ds.id}: demoted_from {ds.demoted_from} must be a label of this file listed as demoted in "
@@ -250,8 +253,9 @@ def _check_holdout_labels(held: list[Dataset], demoted: list[Dataset] | None = N
             errors.append(f"dataset {ds.id}: holdout label {ds.holdout} is not in {HOLDOUT_LABELS.name} for this file")
             continue
         labels = f.get("labels") or []
-        attack = sorted(x["detection"] for x in labels if x.get("label") == "attack")
-        quiet = {x["detection"]: x.get("label") for x in labels if x.get("label") in ("scope", "telemetry", "blind-spot")}
+        attack = sorted(current.get(x["detection"], x["detection"]) for x in labels if x.get("label") == "attack")
+        quiet = {current.get(x["detection"], x["detection"]): x.get("label") for x in labels
+                 if x.get("label") in ("scope", "telemetry", "blind-spot")}
         if sorted(ds.expect) != attack or {k: q.get("kind") for k, q in ds.quiet.items()} != quiet:
             errors.append(f"dataset {ds.id}: expect and quiet must be the labels of {ds.holdout}, unchanged")
     return errors
@@ -1781,8 +1785,8 @@ def render_page(rid: str, item: Any, cat: Catalog, res: dict, s: dict) -> str:
     if rid in cat.gaps and not v["expected"]:
         out += (f"**No public dataset in the catalog exercises this detection yet.** {cat.gaps[rid]}\n\n"
                 f"It stays at its maturity level and waits for the lab run ([evidence plan]({up}docs/EVIDENCE_PLAN.md)).\n")
-        return (out + _quiet_section(rid, v, by_id) + _holdout_section(rid, cat, recorded) + _also_section(rid, cat, recorded)
-                + FOOTER)
+        return _upstream_note(out + _quiet_section(rid, v, by_id) + _holdout_section(rid, cat, recorded)
+                              + _also_section(rid, cat, recorded), "\n## ", cat) + FOOTER
     srcs = ", ".join(cat.sources[x].title for x in v["sources"]) or "none"
     other = v["benign"] + v["harness"]
     if other or v["false_positives"]:
@@ -1860,7 +1864,36 @@ def render_page(rid: str, item: Any, cat: Catalog, res: dict, s: dict) -> str:
         for n in nexts:
             out += f"- **{n['id']}**: {_md(n['rule'])} ({len(n.get('evidence') or [])} file{'s' if len(n.get('evidence') or []) != 1 else ''})\n"
     out += (f"\n## Reproduce\n\n```\nrasd datasets fetch --only {rid}\nrasd datasets run --only {rid} -v\n```\n")
-    return out + FOOTER
+    return _upstream_note(out, "| Validation |", cat) + FOOTER
+
+
+def _upstream_note(page: str, anchor: str, cat: Catalog) -> str:
+    """Names that come from outside the mapping keep their published form: a source's folder named after an ATT&CK
+    v18 technique or tactic, or a detection ID in held-out labels written before the v19 mapping. Where a page shows
+    one, a line before `anchor` says what it is and what it maps to now (intel/mappings/attack_v18_aliases.yml), so
+    it is not read as a second name for a v19 detection."""
+    al = attack_aliases()
+    items = []
+    for new, old in al["techniques"].items():
+        if f"[{old}/" in page:
+            srcs = sorted({ds.source.title for ds in cat.datasets if f"/{old}/" in f"/{ds.id}/"})
+            items.append(f"`{old}/` ({' and '.join(srcs)} folder, now {new})")
+    for tactic, new_tactics in al["tactics"].items():
+        if f"[{tactic}/" in page:
+            ups = sorted({(ds.source.title, Path(ds.path).parts[0]) for ds in cat.datasets if f"/{tactic}/" in f"/{ds.id}/"})
+            items.append(f"`{tactic}/` (from the {', '.join(f'{src} folder `{up}/`' for src, up in ups)}, now "
+                         f"{' or '.join(new_tactics)})")
+    for rid, legacy in al["detections"].items():
+        if re.search(rf"\b{re.escape(legacy)}\b", page):
+            items.append(f"`{legacy}` (the detection ID in labels written before this mapping, now {rid})")
+    if not items:
+        return page
+    named = items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+    note = (f"Names from outside the mapping are kept as published, in ATT&CK v{al['legacy_version']} terms: {named}. "
+            f"RASD maps every file by ATT&CK v{al['attack_version']}.\n\n")
+    at = page.find(anchor)
+    at = at if at >= 0 else len(page)
+    return page[:at] + note + page[at:]
 
 
 def _holdout_section(rid: str, cat: Catalog, recorded: dict) -> str:
@@ -2114,7 +2147,7 @@ def render_doc(cat: Catalog, res: dict) -> str:
                 spl = ds.splunk or {}
                 out += (f"| {_ds_link(ds)} | `{_md(spl.get('sourcetype'))}` · `{_md(spl.get('source'))}` | {q} | "
                         f"{_fired_count(r, rid)} |\n")
-    return out + FOOTER
+    return _upstream_note(out, "## By detection", cat) + FOOTER
 
 
 def _holdout_doc(cat: Catalog, recorded: dict, sc: dict) -> str:

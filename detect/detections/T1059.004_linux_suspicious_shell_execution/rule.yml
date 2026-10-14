@@ -14,7 +14,7 @@ date: 2026-10-13
 tags:
   - attack.execution
   - attack.t1059.004
-  - attack.defense-evasion
+  - attack.stealth
   - attack.t1027
 logsource:
   product: linux

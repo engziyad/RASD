@@ -331,127 +331,6 @@ Base score **60**.
 
 ---
 
-## Windows Event Log Clearing via Command Line
-
-| | |
-|---|---|
-| **Technique** | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) |
-| **Severity** | `high` · confidence `high` · expected noise `low` |
-| **Rule** | [`T1070.001_event_log_clearing`](../../detect/detections/T1070.001_event_log_clearing/) |
-
-### What triggered
-Detects attempts to wipe Windows event logs with wevtutil, PowerShell (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog) or WMIC.
-
-### L1 action
-Identify user, host and which log was targeted; check for a documented maintenance window
-
-### First checks
-1. Identify the user and host
-2. Check the parent process
-3. Check for 1102 or 104 on the same host
-
-### Escalate if
-- Any occurrence outside a documented maintenance window
-- Security or Sysmon log targeted
-
-### Risk
-Base score **60**.
-- +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
-- -20 if approved change window *(ask: A change ticket covers this host and time)*
-
-### Known benign sources
-- Golden-image and VDI build scripts that reset logs before sealing
-
-### Never tune
-- Never filter by user: clearing logs is what an intruder does with a borrowed admin or service account.
-
-### Close or escalate
-[Closure and escalation notes](../../detect/detections/T1070.001_event_log_clearing/closure.md) for this detection.
-
----
-
-## Security Audit Log Cleared (Event 1102)
-
-| | |
-|---|---|
-| **Technique** | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) |
-| **Severity** | `high` · confidence `high` · expected noise `low` |
-| **Rule** | [`T1070.001_security_log_cleared`](../../detect/detections/T1070.001_security_log_cleared/) |
-
-### What triggered
-Detects that the Security event log was actually cleared.
-
-### L1 action
-Identify SubjectUserName and host; check maintenance records
-
-### First checks
-1. Identify SubjectUserName and host
-2. Check maintenance records
-3. Look for the process-level clearing alert at the same time
-
-### Escalate if
-- No documented maintenance
-- Account is not a known build or admin account
-
-### Risk
-Base score **60**.
-- +25 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- -20 if approved change window *(ask: A change ticket covers this host and time)*
-
-### Known benign sources
-- Golden-image sealing and documented maintenance on known build hosts
-
-### Never tune
-- Do not tune this rule. A cleared Security log is reviewed every time; suppress only by build host and change window in the SIEM.
-
-### Close or escalate
-[Closure and escalation notes](../../detect/detections/T1070.001_security_log_cleared/closure.md) for this detection.
-
----
-
-## Windows Event Log Cleared (System Event 104)
-
-| | |
-|---|---|
-| **Technique** | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) |
-| **Severity** | `high` · confidence `high` · expected noise `low` |
-| **Rule** | [`T1070.001_system_log_cleared`](../../detect/detections/T1070.001_system_log_cleared/) |
-
-### What triggered
-Detects System event 104 from the Eventlog provider, written when any event log other than Security (System, Application, PowerShell, Sysmon, custom logs) is cleared.
-
-### L1 action
-Identify which log was cleared and by whom; check maintenance records
-
-### First checks
-1. Identify which log was cleared and by whom
-2. Check maintenance records
-3. Look for the process-level clearing alert at the same time
-
-### Escalate if
-- Sysmon, PowerShell or System log cleared
-- No documented maintenance
-
-### Risk
-Base score **60**.
-- +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- -20 if approved change window *(ask: A change ticket covers this host and time)*
-
-### Known benign sources
-- Golden-image sealing and documented maintenance on known build hosts
-
-### Never tune
-- Do not tune this rule. A cleared log is reviewed every time; suppress only by build host and change window in the SIEM.
-
-### Close or escalate
-[Closure and escalation notes](../../detect/detections/T1070.001_system_log_cleared/closure.md) for this detection.
-
----
-
 ## Rundll32 Proxy Execution From Suspicious Context
 
 | | |
@@ -620,6 +499,127 @@ Base score **60**.
 
 ### Close or escalate
 [Closure and escalation notes](../../detect/detections/T1569.002_suspicious_service_installation/closure.md) for this detection.
+
+---
+
+## Windows Event Log Clearing via Command Line
+
+| | |
+|---|---|
+| **Technique** | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1685.005_event_log_clearing`](../../detect/detections/T1685.005_event_log_clearing/) |
+
+### What triggered
+Detects attempts to wipe Windows event logs with wevtutil, PowerShell (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog) or WMIC.
+
+### L1 action
+Identify user, host and which log was targeted; check for a documented maintenance window
+
+### First checks
+1. Identify the user and host
+2. Check the parent process
+3. Check for 1102 or 104 on the same host
+
+### Escalate if
+- Any occurrence outside a documented maintenance window
+- Security or Sysmon log targeted
+
+### Risk
+Base score **60**.
+- +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
+
+### Known benign sources
+- Golden-image and VDI build scripts that reset logs before sealing
+
+### Never tune
+- Never filter by user: clearing logs is what an intruder does with a borrowed admin or service account.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1685.005_event_log_clearing/closure.md) for this detection.
+
+---
+
+## Security Audit Log Cleared (Event 1102)
+
+| | |
+|---|---|
+| **Technique** | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1685.005_security_log_cleared`](../../detect/detections/T1685.005_security_log_cleared/) |
+
+### What triggered
+Detects that the Security event log was actually cleared.
+
+### L1 action
+Identify SubjectUserName and host; check maintenance records
+
+### First checks
+1. Identify SubjectUserName and host
+2. Check maintenance records
+3. Look for the process-level clearing alert at the same time
+
+### Escalate if
+- No documented maintenance
+- Account is not a known build or admin account
+
+### Risk
+Base score **60**.
+- +25 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
+
+### Known benign sources
+- Golden-image sealing and documented maintenance on known build hosts
+
+### Never tune
+- Do not tune this rule. A cleared Security log is reviewed every time; suppress only by build host and change window in the SIEM.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1685.005_security_log_cleared/closure.md) for this detection.
+
+---
+
+## Windows Event Log Cleared (System Event 104)
+
+| | |
+|---|---|
+| **Technique** | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1685.005_system_log_cleared`](../../detect/detections/T1685.005_system_log_cleared/) |
+
+### What triggered
+Detects System event 104 from the Eventlog provider, written when any event log other than Security (System, Application, PowerShell, Sysmon, custom logs) is cleared.
+
+### L1 action
+Identify which log was cleared and by whom; check maintenance records
+
+### First checks
+1. Identify which log was cleared and by whom
+2. Check maintenance records
+3. Look for the process-level clearing alert at the same time
+
+### Escalate if
+- Sysmon, PowerShell or System log cleared
+- No documented maintenance
+
+### Risk
+Base score **60**.
+- +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- -20 if approved change window *(ask: A change ticket covers this host and time)*
+
+### Known benign sources
+- Golden-image sealing and documented maintenance on known build hosts
+
+### Never tune
+- Do not tune this rule. A cleared log is reviewed every time; suppress only by build host and change window in the SIEM.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1685.005_system_log_cleared/closure.md) for this detection.
 
 ---
 

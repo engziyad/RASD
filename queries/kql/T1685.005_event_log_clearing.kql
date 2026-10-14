@@ -1,0 +1,4 @@
+// Windows Event Log Clearing via Command Line | c62bd792-3b92-4bad-819c-fa3c123151d2 | ATT&CK v19.2 T1685.005, v18 T1070.001
+Sysmon
+| where EventID == 1
+| where (((Image endswith @"\wevtutil.exe" or OriginalFileName =~ @"wevtutil.exe") and (CommandLine contains @" cl " or CommandLine contains @" clear-log ")) or (((Image endswith @"\powershell.exe" or Image endswith @"\pwsh.exe") or (OriginalFileName =~ @"PowerShell.EXE" or OriginalFileName =~ @"pwsh.dll")) and (CommandLine contains @"Clear-EventLog" or CommandLine contains @"Remove-EventLog" or CommandLine contains @"Limit-EventLog" or CommandLine contains @".ClearLog(")) or CommandLine contains @"cleareventlog")

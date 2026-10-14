@@ -12,7 +12,7 @@
 <Sysmon schemaversion="4.50">
   <HashAlgorithms>SHA256,IMPHASH</HashAlgorithms>
   <EventFiltering>
-    <!-- EID 1: every process creation (T1059.001, T1053.005, T1070.001, T1218.011) -->
+    <!-- EID 1: every process creation (T1059.001, T1053.005, T1685.005, T1218.011) -->
     <RuleGroup name="" groupRelation="or">
       <ProcessCreate onmatch="exclude"/>
     </RuleGroup>

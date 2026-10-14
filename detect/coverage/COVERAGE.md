@@ -16,13 +16,13 @@ Depth comes from each detection's `contract.yml`: **partial** means part of the 
 | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | [Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets](../detections/T1053.005_powershell_scheduled_task_creation/)<br>[Scheduled Task Created With Suspicious Action](../detections/T1053.005_schtasks_suspicious_creation/) | **partial** |
 | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | [PowerShell Execution With Encoded Command](../detections/T1059.001_powershell_encoded_command/) | **medium** |
 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | **medium** |
-| [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | [Windows Event Log Clearing via Command Line](../detections/T1070.001_event_log_clearing/)<br>[Security Audit Log Cleared (Event 1102)](../detections/T1070.001_security_log_cleared/)<br>[Windows Event Log Cleared (System Event 104)](../detections/T1070.001_system_log_cleared/) | **high** |
 | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | [Password Spray - One Source Failing Authentication for Many Accounts](../correlations/T1110.003_password_spray_burst/) | **medium** |
 | [T1190](https://attack.mitre.org/techniques/T1190/) | [API Probing - One Client Rejected on Many Distinct Paths](../correlations/T1190_api_auth_probing/)<br>[Object ID Enumeration - One Client Walking Single-Owner Objects](../correlations/T1190_object_id_enumeration/) | **partial** |
 | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | **medium** |
 | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | [Run Key Persistence Pointing to Suspicious Location](../detections/T1547.001_registry_run_key_persistence/) | **partial** |
 | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/)<br>[Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../correlations/T1558.003_kerberoasting_volume/) | **high** |
 | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | **medium** |
+| [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | [Windows Event Log Clearing via Command Line](../detections/T1685.005_event_log_clearing/)<br>[Security Audit Log Cleared (Event 1102)](../detections/T1685.005_security_log_cleared/)<br>[Windows Event Log Cleared (System Event 104)](../detections/T1685.005_system_log_cleared/) | **high** |
 
 ## By detection
 
@@ -37,10 +37,10 @@ Depth comes from each detection's `contract.yml`: **partial** means part of the 
 | execution | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | [T1027](https://attack.mitre.org/techniques/T1027/) | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | high | medium | 11/11 | ✅ tests pass |
 | execution | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | [T1021.002](https://attack.mitre.org/techniques/T1021/002/) | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | high | medium | 20/20 | ✅ tests pass |
 | persistence, privilege-escalation | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | - | [Run Key Persistence Pointing to Suspicious Location](../detections/T1547.001_registry_run_key_persistence/) | medium | partial | 14/14 | ✅ tests pass |
-| defense-evasion | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | - | [Windows Event Log Clearing via Command Line](../detections/T1070.001_event_log_clearing/) | high | medium | 11/11 | ✅ tests pass |
-| defense-evasion | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | - | [Security Audit Log Cleared (Event 1102)](../detections/T1070.001_security_log_cleared/) | high | high | 5/5 | ✅ tests pass |
-| defense-evasion | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | - | [Windows Event Log Cleared (System Event 104)](../detections/T1070.001_system_log_cleared/) | high | high | 5/5 | ✅ tests pass |
-| defense-evasion | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | - | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | high | medium | 16/16 | ✅ tests pass |
+| stealth | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | - | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | high | medium | 16/16 | ✅ tests pass |
+| defense-impairment | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | - | [Windows Event Log Clearing via Command Line](../detections/T1685.005_event_log_clearing/) | high | medium | 11/11 | ✅ tests pass |
+| defense-impairment | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | - | [Security Audit Log Cleared (Event 1102)](../detections/T1685.005_security_log_cleared/) | high | high | 5/5 | ✅ tests pass |
+| defense-impairment | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | - | [Windows Event Log Cleared (System Event 104)](../detections/T1685.005_system_log_cleared/) | high | high | 5/5 | ✅ tests pass |
 | credential-access | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | - | [Suspicious Process Access to LSASS Memory](../detections/T1003.001_lsass_memory_access/) | high | medium | 18/18 | ✅ tests pass |
 | credential-access | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | - | [Password Spray - One Source Failing Authentication for Many Accounts](../correlations/T1110.003_password_spray_burst/) | high | medium | 11/11 | ✅ tests pass |
 | credential-access | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | - | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/) | medium | medium | 5/5 | ✅ tests pass |
@@ -56,9 +56,6 @@ Depth comes from each detection's `contract.yml`: **partial** means part of the 
 - **Scheduled Task Created With Suspicious Action** (partial): schtasks.exe command lines only; PowerShell is covered by a separate rule, COM API is not covered
 - **PowerShell Execution With Encoded Command** (medium): Defeats parameter abbreviation, -- / Unicode-dash prefixes, quoting around the switch or blob, and renaming; blind to non-encoded obfuscation and hosted runspaces
 - **Linux Shell Executing Decoded Base64 or Code From a Temporary Directory** (medium): Decoded Base64 piped into a shell through -c, binaries in three temporary directories, and shell scripts started from them
-- **Windows Event Log Clearing via Command Line** (medium): Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
-- **Security Audit Log Cleared (Event 1102)** (high): Outcome-based: fires whenever the Security log is cleared, by any method
-- **Windows Event Log Cleared (System Event 104)** (high): Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell
 - **Password Spray - One Source Failing Authentication for Many Accounts** (medium): Kerberos and NTLM failures for many accounts from one source (wrong password, unknown or disabled account), counted per 10-minute window with a proven 9-account guarantee; distributed and low-and-slow sprays need longer-window hunting
 - **API Probing - One Client Rejected on Many Distinct Paths** (partial): Rejected requests on many paths from one client; distributed and slow probing need longer-window hunting
 - **Object ID Enumeration - One Client Walking Single-Owner Objects** (partial): Numeric IDs of five single-owner object types in the path; other identifier styles and object types need the base rule edited
@@ -67,5 +64,8 @@ Depth comes from each detection's `contract.yml`: **partial** means part of the 
 - **Kerberoasting - RC4 Service Ticket Requested for User Account** (medium): Single-event RC4 rule plus aggregation and contextual hunts in queries/hunts
 - **Kerberoasting - One Client Requesting Tickets for Many Service Accounts** (high): Volume over every encryption type complements the RC4 single-event rule; together they cover RC4 and AES roasting, with a proven 9-account guarantee
 - **Suspicious Service Installation (PsExec-style / Command Services)** (medium): Fingerprints PsExec, Impacket psexec and smbexec plus generic command services; blind to service modification
+- **Windows Event Log Clearing via Command Line** (medium): Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
+- **Security Audit Log Cleared (Event 1102)** (high): Outcome-based: fires whenever the Security log is cleared, by any method
+- **Windows Event Log Cleared (System Event 104)** (high): Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell
 
 Import [`attack_navigator_layer.json`](attack_navigator_layer.json) into [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) for the heatmap.

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **ATT&CK technique** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32 |
-| **Tactics** | defense-evasion |
+| **Tactics** | stealth |
 | **Platform** | windows · runner: powershell |
 | **Status** | Detect: **covered** |
 | **Requires** | standard user |

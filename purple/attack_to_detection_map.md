@@ -104,24 +104,6 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [linux_persistence](../dfir/playbooks/linux_persistence.md) · **Purple:** [T1059.004_unix_shell](scenarios/T1059.004_unix_shell.md) · **Intel:** Rocke
 
-## [T1070.001](https://attack.mitre.org/techniques/T1070/001/) Indicator Removal: Clear Windows Event Logs
-
-**Red:** [Event log clearing (dedicated test log, optional Security log)](../red/windows/event_log_clearing/)
-
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | `T1070.001_event_log_clearing` |
-| System | 104 · The log file was cleared | `T1070.001_system_log_cleared` |
-| Security | 1102 · The audit log was cleared | `T1070.001_security_log_cleared` |
-
-| Detection | Maturity | KQL | SPL | Triage | Response |
-|---|---|---|---|---|---|
-| [T1070.001_event_log_clearing](../detect/detections/T1070.001_event_log_clearing/) | SIEM-Ready | [kql](../queries/kql/T1070.001_event_log_clearing.kql) | [spl](../queries/spl/T1070.001_event_log_clearing.spl) | [triage](../detect/detections/T1070.001_event_log_clearing/triage.md) | [response](../detect/detections/T1070.001_event_log_clearing/response.md) |
-| [T1070.001_security_log_cleared](../detect/detections/T1070.001_security_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1070.001_security_log_cleared.kql) | [spl](../queries/spl/T1070.001_security_log_cleared.spl) | [triage](../detect/detections/T1070.001_security_log_cleared/triage.md) | [response](../detect/detections/T1070.001_security_log_cleared/response.md) |
-| [T1070.001_system_log_cleared](../detect/detections/T1070.001_system_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1070.001_system_log_cleared.kql) | [spl](../queries/spl/T1070.001_system_log_cleared.spl) | [triage](../detect/detections/T1070.001_system_log_cleared/triage.md) | [response](../detect/detections/T1070.001_system_log_cleared/response.md) |
-
-**DFIR:** [event_log_clearing](../dfir/playbooks/event_log_clearing.md) · **Purple:** [T1070.001_event_log_clearing](scenarios/T1070.001_event_log_clearing.md) · **Intel:** APT28
-
 ## [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Brute Force: Password Spraying
 
 **Red:** [Password spray simulation with a password that cannot be right](../red/active_directory/password_spray_simulation/)
@@ -220,5 +202,23 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 | [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | SIEM-Ready | [kql](../queries/kql/T1569.002_suspicious_service_installation.kql) | [spl](../queries/spl/T1569.002_suspicious_service_installation.spl) | [triage](../detect/detections/T1569.002_suspicious_service_installation/triage.md) | [response](../detect/detections/T1569.002_suspicious_service_installation/response.md) |
 
 **DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **DFIR:** [service_installation](../dfir/playbooks/service_installation.md) · **Purple:** [T1569.002_service_execution](scenarios/T1569.002_service_execution.md) · **Intel:** Wizard Spider
+
+## [T1685.005](https://attack.mitre.org/techniques/T1685/005/) Disable or Modify Tools: Clear Windows Event Logs
+
+**Red:** [Event log clearing (dedicated test log, optional Security log)](../red/windows/event_log_clearing/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| Sysmon | 1 · ProcessCreate | `T1685.005_event_log_clearing` |
+| System | 104 · The log file was cleared | `T1685.005_system_log_cleared` |
+| Security | 1102 · The audit log was cleared | `T1685.005_security_log_cleared` |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | SIEM-Ready | [kql](../queries/kql/T1685.005_event_log_clearing.kql) | [spl](../queries/spl/T1685.005_event_log_clearing.spl) | [triage](../detect/detections/T1685.005_event_log_clearing/triage.md) | [response](../detect/detections/T1685.005_event_log_clearing/response.md) |
+| [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1685.005_security_log_cleared.kql) | [spl](../queries/spl/T1685.005_security_log_cleared.spl) | [triage](../detect/detections/T1685.005_security_log_cleared/triage.md) | [response](../detect/detections/T1685.005_security_log_cleared/response.md) |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1685.005_system_log_cleared.kql) | [spl](../queries/spl/T1685.005_system_log_cleared.spl) | [triage](../detect/detections/T1685.005_system_log_cleared/triage.md) | [response](../detect/detections/T1685.005_system_log_cleared/response.md) |
+
+**DFIR:** [event_log_clearing](../dfir/playbooks/event_log_clearing.md) · **Purple:** [T1685.005_event_log_clearing](scenarios/T1685.005_event_log_clearing.md) · **Intel:** APT28
 
 <sub>Generated by tools/chain.py · RASD · Attack-to-Defense Validation Framework</sub>

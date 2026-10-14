@@ -58,8 +58,8 @@ from urllib.parse import quote
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import (BOLD, DIM, DFIR, DOCS, GREEN, INTEL, PURPLE, RED, RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS,
-                    YELLOW, load_detections)
+from common import (ATTACK_ALIASES, ATTACK_TACTICS, ATTACK_VERSION, BOLD, DFIR, DIM, DOCS, GREEN, INTEL, PURPLE, RED,
+                    RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS, YELLOW, attack_aliases, load_detections)
 from convert import logsource_key
 from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
@@ -374,6 +374,7 @@ def gate_errors(repo: Repo) -> list[str]:
         if sc and not (ROOT / sc).exists():
             errs.append(f"red/{t['platform']}/{t['id']}: purple_scenario not found ({sc})")
     errs += backlog_errors(repo)
+    errs += attack_alias_errors(repo)
     known = set(repo.techniques()) | {(t.get("mitre") or {}).get("technique") for t in repo.red}
     for a in repo.actors:
         if not re.fullmatch(r"G\d{4}", str(a.get("id", ""))) or not str(a.get("source", "")).startswith("https://attack.mitre.org/groups/"):
@@ -409,6 +410,49 @@ def backlog_errors(repo: Repo) -> list[str]:
                         "telemetry, missing, next, validation")
         elif g["red_test_produces"] and not g["log_source_mapped"]:
             errs.append(f"{where}: {tech}: a red test cannot produce telemetry RASD does not map")
+    return errs
+
+
+def attack_alias_errors(repo: Repo) -> list[str]:
+    """Primary mappings follow ATT&CK v19.2 and the v18 aliases stay consistent: every alias names an
+    existing detection, no legacy ID is still a folder name or a rule's own tag, no rule carries the
+    v18-only defense-evasion tactic, and every red test maps a current technique."""
+    where = "intel/mappings/attack_v18_aliases.yml"
+    aliases = attack_aliases()
+    old_techs = set(aliases["techniques"].values())
+    errs = [f"{where}: {d} is not a detection" for d in aliases["detections"] if d not in repo.by_id]
+    errs += [f"{where}: legacy id {legacy} is still a detection folder" for legacy in aliases["detections"].values()
+             if legacy in repo.by_id]
+    errs += [f"{where}: {new} is not named in TECHNIQUE_NAMES" for new in aliases["techniques"] if new not in TECHNIQUE_NAMES]
+    doc = yaml.safe_load(ATTACK_ALIASES.read_text(encoding="utf-8")) if ATTACK_ALIASES.exists() else {}
+    if aliases["techniques"] and aliases["attack_version"] != ATTACK_VERSION:
+        errs.append(f"{where}: attack_version {aliases['attack_version']} is not the ATT&CK version the tools use "
+                    f"({ATTACK_VERSION}, tools/common.py)")
+    for t in doc.get("techniques") or []:
+        new_id, name = str(t.get("new_technique")), t.get("new_name")
+        if new_id in TECHNIQUE_NAMES and name != TECHNIQUE_NAMES[new_id]:
+            errs.append(f"{where}: {new_id} is named \"{name}\" here and \"{TECHNIQUE_NAMES[new_id]}\" in tools/common.py")
+        if t.get("new_tactic") not in ATTACK_TACTICS:
+            errs.append(f"{where}: {new_id}: new_tactic {t.get('new_tactic')} is not an ATT&CK v{ATTACK_VERSION} tactic")
+    for t in doc.get("tactics") or []:
+        if t.get("old_tactic") in ATTACK_TACTICS:
+            errs.append(f"{where}: old_tactic {t.get('old_tactic')} is still a tactic in tools/common.py")
+        errs += [f"{where}: {x} is not an ATT&CK v{ATTACK_VERSION} tactic" for x in t.get("new_tactics") or []
+                 if x not in ATTACK_TACTICS]
+    for d in repo.items:
+        rule = d.rule if not isinstance(d, Correlation) else d.base
+        tags = [str(t) for t in (d.rule.get("tags") or []) + (rule.get("tags") or [])]
+        for tag in tags:
+            tech = tag.split(".", 1)[1].upper() if re.match(r"^attack\.t\d{4}", tag) else None
+            if tech in old_techs:
+                errs.append(f"{d.id}: tag {tag} is the ATT&CK v18 ID; tag the v19.2 technique ({where} keeps the alias)")
+            if tag == "attack.defense-evasion":
+                errs.append(f"{d.id}: attack.defense-evasion is the v18 tactic; ATT&CK v19 tags it attack.stealth or "
+                            "attack.defense-impairment")
+        if d.technique in old_techs:
+            errs.append(f"{d.id}: named after the ATT&CK v18 technique {d.technique}")
+    errs += [f"red/{t['platform']}/{t['id']}: maps the ATT&CK v18 technique {(t.get('mitre') or {}).get('technique')}"
+             for t in repo.red if (t.get("mitre") or {}).get("technique") in old_techs]
     return errs
 
 
@@ -899,8 +943,8 @@ def render_readme_metrics(repo: Repo) -> str:
     cf = [repo.det_facts(c) for c in repo.corrs]
     rows = [
         ("Detections · techniques", f"{len(repo.items)} detections ({len(repo.dets)} single-event, {len(repo.corrs)} correlations) "
-                                    f"across {len(repo.techniques())} ATT&CK techniques (v18 IDs, "
-                                    "[v19 note](intel/README.md))"),
+                                    f"across {len(repo.techniques())} ATT&CK v19.2 techniques "
+                                    "([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml))"),
         ("Offensive tests", f"{len(repo.red)}: {sum(1 for t in repo.red if covers(t))} mapped to current detections "
                             f"(only these can raise the Operational Score) · "
                             f"{sum(1 for t in repo.red if not covers(t))} gap or posture tests reserved for future coverage"),

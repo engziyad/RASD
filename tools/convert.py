@@ -156,6 +156,19 @@ BACKENDS: dict[str, KQL | SPL] = {"kql": KQL(), "spl": SPL()}
 DEFENDER = "mde"                                   # optional backend: not every log source has a table
 
 
+def legacy_note(rule: dict) -> str:
+    """' | ATT&CK v19.2 T1685.005, v18 T1070.001' for a rule whose technique moved in ATT&CK v19, else ''."""
+    from common import attack_aliases, legacy_technique
+    for tag in rule.get("tags") or []:
+        if re.match(r"^attack\.t\d{4}", str(tag)):
+            tech = str(tag).split(".", 1)[1].upper()
+            old = legacy_technique(tech)
+            if old:
+                a = attack_aliases()
+                return f" | ATT&CK v{a['attack_version']} {tech}, v{a['legacy_version']} {old}"
+    return ""
+
+
 def defender_expression(spec: Any) -> str:
     """The KQL expression that rebuilds one rule field from Defender columns (see tools/mappings.yml)."""
     if isinstance(spec, str):
@@ -192,7 +205,7 @@ def convert_defender(rule: dict) -> str:
     if fields:
         base += "\n| extend " + ",\n    ".join(f"{f} = {defender_expression(spec[f])}" for f in fields)
     where = translate_condition(rule["detection"], BACKENDS["kql"], {})
-    return f"// {rule['title']} | {rule['id']} | Microsoft Defender XDR advanced hunting\n{KQL.wrap(base, where)}"
+    return f"// {rule['title']} | {rule['id']} | Microsoft Defender XDR advanced hunting{legacy_note(rule)}\n{KQL.wrap(base, where)}"
 
 
 # --------------------------------------------------------------------------- #
@@ -331,7 +344,7 @@ def convert(rule: dict, backend_name: str) -> str:
     where = translate_condition(rule["detection"], backend, m.get("fields", {}))
     query = backend.wrap(base, where)
     if backend_name == "kql":
-        return f"// {rule['title']} | {rule['id']}\n{query}"
+        return f"// {rule['title']} | {rule['id']}{legacy_note(rule)}\n{query}"
     # SPL: no leading comment - the file must start with the search itself so it
     # pastes cleanly into any Splunk version and saved-search/API context.
     return query

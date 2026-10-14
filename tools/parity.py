@@ -58,7 +58,7 @@ from typing import Any
 from collections.abc import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections, load_jsonl
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections, load_jsonl, selected
 from convert import DEFENDER, MAPPINGS, convert, logsource_key, referenced_fields
 from fuzz import variants
 from mutation_test import generic_mutations, technique_mutations
@@ -589,7 +589,7 @@ def check(filter_: str | None = None) -> dict:
     public_events = public()
     report = {}
     for det in dets:
-        if filter_ and filter_.lower() not in det.id.lower():
+        if not selected(det.id, filter_):
             continue
         r: dict[str, Any] = {"events": 0, "kql": [], "spl": [], "errors": [], "mde": None, "mde_rows": 0}
         try:

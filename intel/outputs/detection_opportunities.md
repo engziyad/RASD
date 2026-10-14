@@ -8,7 +8,7 @@ Prioritised output of the analyses in [`reports/`](../reports/) and the coverage
 | 2 | Scheduled task / Run key into user-writable paths | T1053.005, T1547.001 | Detected | Lab evidence |
 | 3 | comsvcs MiniDump by name or ordinal | T1218.011, T1003.001 | Detected | Lab evidence |
 | 4 | RC4 Kerberoasting from workstations | T1558.003 | Detected + hunt | Lab evidence with an RC4-enabled lab SPN |
-| 5 | Log clearing (process and record) | T1070.001 | Detected | Lab evidence (Security clear is opt-in) |
+| 5 | Log clearing (process and record) | T1685.005 | Detected | Lab evidence (Security clear is opt-in) |
 | 6 | Remote command services | T1569.002 | Detected | Lab evidence |
 | 7 | Password spray burst | T1110.003 | Detected (correlation) | Lab evidence with 9 or more lab accounts |
 | 8 | Domain account and SPN enumeration | T1087.002 | Gap | A process-creation correlation for `net ... /domain` and AD cmdlets; a decoy account and 1644 for in-process LDAP |

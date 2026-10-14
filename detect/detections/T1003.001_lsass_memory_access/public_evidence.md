@@ -19,6 +19,8 @@ Public data replayed through the tested rule, not lab evidence: the maturity lev
 
 **In-sample:** this rule was changed after these files were replayed: the System32 folder filter became a list of named Windows components and a Windows PowerShell process-listing filter, and the 0x1f1fff mask was added: public data showed the folder filter hiding Invoke-Mimikatz, a migrated Meterpreter session, nanodump dropped into System32 and PPLdump. Its result on them confirms the change; it is not an independent test.
 
+Names from outside the mapping are kept as published, in ATT&CK v18 terms: `defense-evasion/` (from the EVTX-ATTACK-SAMPLES folder `Defense Evasion/`, now stealth or defense-impairment). RASD maps every file by ATT&CK v19.2.
+
 | Validation | Status |
 |---|---|
 | Public datasets | fires on 25 of 27 recordings |

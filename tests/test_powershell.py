@@ -124,7 +124,7 @@ class PowerShellScripts(unittest.TestCase):
         self.assertEqual((cleared["Channel"], cleared["Channel_Cleared"]), ("System", "R1a2b3c4d"))
         self.assertEqual(tgs["System_ActivityID"], "{a1b2c3d4-0000-0000-0000-000000000001}")
         # ... and each exported line is what the matching rule needs
-        expected = {"T1059.001_powershell_encoded_command": sysmon, "T1070.001_system_log_cleared": cleared,
+        expected = {"T1059.001_powershell_encoded_command": sysmon, "T1685.005_system_log_cleared": cleared,
                     "T1558.003_kerberoasting_rc4_tgs": tgs, "T1569.002_suspicious_service_installation": service}
         for det_id, ev in expected.items():
             det = find_detection(det_id)

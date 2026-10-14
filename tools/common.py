@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 import json
 import os
 import re
@@ -27,31 +28,31 @@ DOCS = ROOT / "docs"
 # ATT&CK Enterprise, one reference for every tool and page: the version the mappings follow, its
 # tactics in matrix order (the short names Sigma tags use) and the name of every technique RASD maps
 # or emulates, written exactly as ATT&CK writes it ("Parent: Sub-technique")
-ATTACK_VERSION = "18"
+ATTACK_VERSION = "19.2"
 ATTACK_TACTICS = ("reconnaissance", "resource-development", "initial-access", "execution", "persistence",
-                  "privilege-escalation", "defense-evasion", "credential-access", "discovery", "lateral-movement",
-                  "collection", "command-and-control", "exfiltration", "impact")
+                  "privilege-escalation", "stealth", "defense-impairment", "credential-access", "discovery",
+                  "lateral-movement", "collection", "command-and-control", "exfiltration", "impact")
 TECHNIQUES = {       # ID: (name, the tactics ATT&CK lists for it, in matrix order)
     "T1003.001": ("OS Credential Dumping: LSASS Memory", ("credential-access",)),
     "T1021.002": ("Remote Services: SMB/Windows Admin Shares", ("lateral-movement",)),
     "T1021.006": ("Remote Services: Windows Remote Management", ("lateral-movement",)),
-    "T1027": ("Obfuscated Files or Information", ("defense-evasion",)),
+    "T1027": ("Obfuscated Files or Information", ("stealth",)),
     "T1053.003": ("Scheduled Task/Job: Cron", ("execution", "persistence", "privilege-escalation")),
     "T1053.005": ("Scheduled Task/Job: Scheduled Task", ("execution", "persistence", "privilege-escalation")),
     "T1059.001": ("Command and Scripting Interpreter: PowerShell", ("execution",)),
     "T1059.004": ("Command and Scripting Interpreter: Unix Shell", ("execution",)),
-    "T1070.001": ("Indicator Removal: Clear Windows Event Logs", ("defense-evasion",)),
     "T1083": ("File and Directory Discovery", ("discovery",)),
     "T1087.002": ("Account Discovery: Domain Account", ("discovery",)),
     "T1110.003": ("Brute Force: Password Spraying", ("credential-access",)),
     "T1190": ("Exploit Public-Facing Application", ("initial-access",)),
-    "T1218.011": ("System Binary Proxy Execution: Rundll32", ("defense-evasion",)),
+    "T1218.011": ("System Binary Proxy Execution: Rundll32", ("stealth",)),
     "T1505.003": ("Server Software Component: Web Shell", ("persistence",)),
     "T1547.001": ("Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder",
                   ("persistence", "privilege-escalation")),
     "T1558.003": ("Steal or Forge Kerberos Tickets: Kerberoasting", ("credential-access",)),
     "T1569.002": ("System Services: Service Execution", ("execution",)),
     "T1606": ("Forge Web Credentials", ("credential-access",)),
+    "T1685.005": ("Disable or Modify Tools: Clear Windows Event Logs", ("defense-impairment",)),
 }
 TECHNIQUE_NAMES = {tid: name for tid, (name, _t) in TECHNIQUES.items()}
 TECHNIQUE_TACTICS = {tid: tactics for tid, (_n, tactics) in TECHNIQUES.items()}
@@ -135,10 +136,38 @@ class Detection:
         return load_jsonl(self.folder / "tests" / f"{kind}.jsonl")
 
 
+ATTACK_ALIASES = INTEL / "mappings" / "attack_v18_aliases.yml"
+
+
+@functools.lru_cache(maxsize=1)
+def attack_aliases() -> dict:
+    """The legacy ATT&CK v18 identifiers (intel/mappings/attack_v18_aliases.yml): detection id ->
+    legacy id, and new technique -> old technique."""
+    doc = (yaml.safe_load(ATTACK_ALIASES.read_text(encoding="utf-8")) or {}) if ATTACK_ALIASES.exists() else {}
+    return {"detections": {str(d.get("id")): str(d.get("legacy_id")) for d in doc.get("detections") or []},
+            "techniques": {str(t.get("new_technique")): str(t.get("old_technique")) for t in doc.get("techniques") or []},
+            "tactics": {str(t.get("old_tactic")): [str(x) for x in t.get("new_tactics") or []] for t in doc.get("tactics") or []},
+            "revoked": {str(r.get("old")): str(r.get("new")) for r in doc.get("revoked") or []},
+            "attack_version": str(doc.get("attack_version", "")), "legacy_version": str(doc.get("legacy_attack_version", ""))}
+
+
+def legacy_technique(technique: str) -> str | None:
+    """The ATT&CK v18 ID of a technique that moved in v19, if any."""
+    return attack_aliases()["techniques"].get(technique)
+
+
+def selected(name: str, filter_: str | None) -> bool:
+    """--filter: the text is in the detection's id, or in the ATT&CK v18 id it had."""
+    if not filter_:
+        return True
+    needle = filter_.lower()
+    return needle in name.lower() or needle in attack_aliases()["detections"].get(name, "").lower()
+
+
 def load_detections(filter_: str | None = None) -> list[Detection]:
     out = []
     for folder in sorted(p for p in DETECTIONS.iterdir() if p.is_dir()):
-        if filter_ and filter_.lower() not in folder.name.lower():
+        if not selected(folder.name, filter_):
             continue
         rule = yaml.safe_load((folder / "rule.yml").read_text(encoding="utf-8"))
         cpath = folder / "contract.yml"
@@ -148,12 +177,15 @@ def load_detections(filter_: str | None = None) -> list[Detection]:
 
 
 def find_detection(ref: str) -> Detection:
-    """Resolve a detection by folder name, technique ID or rule UUID (prefix match allowed)."""
+    """Resolve a detection by folder name, technique ID or rule UUID (prefix match allowed); a legacy
+    ATT&CK v18 detection id or technique resolves to the detection it became."""
     dets = load_detections()
-    exact = [d for d in dets if ref in (d.id, d.rule.get("id"))]
+    legacy = attack_aliases()["detections"]
+    exact = [d for d in dets if ref in (d.id, d.rule.get("id"), legacy.get(d.id))]
     if exact:
         return exact[0]
-    partial = [d for d in dets if d.id.lower().startswith(ref.lower()) or str(d.rule.get("id", "")).startswith(ref)]
+    partial = [d for d in dets if d.id.lower().startswith(ref.lower()) or str(d.rule.get("id", "")).startswith(ref)
+               or legacy.get(d.id, "").lower().startswith(ref.lower())]
     if len(partial) == 1:
         return partial[0]
     if not partial:

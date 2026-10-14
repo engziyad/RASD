@@ -5,7 +5,7 @@ RASD answers one question for every attack technique it covers: would we detect 
 <!-- rasd:executive:start -->
 | | |
 |---|---|
-| **Detections** | 18 (14 single-event rules, 4 correlations) across 13 ATT&CK techniques and 7 tactics |
+| **Detections** | 18 (14 single-event rules, 4 correlations) across 13 ATT&CK techniques and 8 tactics |
 | **Platforms** | Windows, Active Directory, Linux, web applications |
 | **Proven in the repository** | 18 of 18 SIEM-Ready: tests, rule mutation proof, KQL and SPL parity, evasion fuzzing · Engineering Score 100/100 |
 | **Replayed on public data** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 246 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 0 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](PUBLIC_DATA_VALIDATION.md)) |

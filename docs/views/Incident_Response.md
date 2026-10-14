@@ -157,69 +157,6 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 
 ---
 
-## Windows Event Log Clearing via Command Line
-
-**Technique:** [T1070.001](https://attack.mitre.org/techniques/T1070/001/) · **Rule:** [`T1070.001_event_log_clearing`](../../detect/detections/T1070.001_event_log_clearing/)
-
-| Role | Action |
-|---|---|
-| SOC L2 | Recover the forwarded copy of the cleared log from the SIEM and review the hour before the clear; scope the account on other hosts |
-| Incident response | Treat the host as compromised; preserve remaining logs and memory; reset the account if activity is unexplained |
-
-### Evidence to collect
-- Process creation event
-- Forwarded copies of logs from before the clear
-- User activity across other hosts
-
-### Containment
-1. Treat the host as compromised
-2. Recover logs from the SIEM for the period before the clear
-3. Scope the user account across the estate
-
----
-
-## Security Audit Log Cleared (Event 1102)
-
-**Technique:** [T1070.001](https://attack.mitre.org/techniques/T1070/001/) · **Rule:** [`T1070.001_security_log_cleared`](../../detect/detections/T1070.001_security_log_cleared/)
-
-| Role | Action |
-|---|---|
-| SOC L2 | Rebuild the timeline from forwarded Security events before the clear; correlate with the process-level clearing alert |
-| Incident response | Treat the host as compromised; investigate the subject account across the estate |
-
-### Evidence to collect
-- 1102 event
-- SIEM copy of Security events before the clear
-- Logon sessions of the subject user
-
-### Containment
-1. Treat the host as compromised
-2. Recover forwarded logs
-3. Investigate the subject account
-
----
-
-## Windows Event Log Cleared (System Event 104)
-
-**Technique:** [T1070.001](https://attack.mitre.org/techniques/T1070/001/) · **Rule:** [`T1070.001_system_log_cleared`](../../detect/detections/T1070.001_system_log_cleared/)
-
-| Role | Action |
-|---|---|
-| SOC L2 | Recover the forwarded copy of that log; correlate with the process-level clearing alert on the same host |
-| Incident response | Treat the host as compromised when no maintenance explains it; investigate the account |
-
-### Evidence to collect
-- 104 event
-- SIEM copy of the cleared log
-- User activity on the host
-
-### Containment
-1. Treat the host as compromised
-2. Recover forwarded logs
-3. Investigate the account
-
----
-
 ## Rundll32 Proxy Execution From Suspicious Context
 
 **Technique:** [T1218.011](https://attack.mitre.org/techniques/T1218/011/) · **Rule:** [`T1218.011_rundll32_suspicious_execution`](../../detect/detections/T1218.011_rundll32_suspicious_execution/)
@@ -302,6 +239,69 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 1. Collect the service binary
 2. Delete the service
 3. Treat the source host as compromised and investigate it
+
+---
+
+## Windows Event Log Clearing via Command Line
+
+**Technique:** [T1685.005](https://attack.mitre.org/techniques/T1685/005/) · **Rule:** [`T1685.005_event_log_clearing`](../../detect/detections/T1685.005_event_log_clearing/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Recover the forwarded copy of the cleared log from the SIEM and review the hour before the clear; scope the account on other hosts |
+| Incident response | Treat the host as compromised; preserve remaining logs and memory; reset the account if activity is unexplained |
+
+### Evidence to collect
+- Process creation event
+- Forwarded copies of logs from before the clear
+- User activity across other hosts
+
+### Containment
+1. Treat the host as compromised
+2. Recover logs from the SIEM for the period before the clear
+3. Scope the user account across the estate
+
+---
+
+## Security Audit Log Cleared (Event 1102)
+
+**Technique:** [T1685.005](https://attack.mitre.org/techniques/T1685/005/) · **Rule:** [`T1685.005_security_log_cleared`](../../detect/detections/T1685.005_security_log_cleared/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Rebuild the timeline from forwarded Security events before the clear; correlate with the process-level clearing alert |
+| Incident response | Treat the host as compromised; investigate the subject account across the estate |
+
+### Evidence to collect
+- 1102 event
+- SIEM copy of Security events before the clear
+- Logon sessions of the subject user
+
+### Containment
+1. Treat the host as compromised
+2. Recover forwarded logs
+3. Investigate the subject account
+
+---
+
+## Windows Event Log Cleared (System Event 104)
+
+**Technique:** [T1685.005](https://attack.mitre.org/techniques/T1685/005/) · **Rule:** [`T1685.005_system_log_cleared`](../../detect/detections/T1685.005_system_log_cleared/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Recover the forwarded copy of that log; correlate with the process-level clearing alert on the same host |
+| Incident response | Treat the host as compromised when no maintenance explains it; investigate the account |
+
+### Evidence to collect
+- 104 event
+- SIEM copy of the cleared log
+- User activity on the host
+
+### Containment
+1. Treat the host as compromised
+2. Recover forwarded logs
+3. Investigate the account
 
 ---
 

@@ -43,10 +43,10 @@ Acceptance criteria: [docs/DETECTION_ACCEPTANCE_CRITERIA.md](../docs/DETECTION_A
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](detections/T1059.004_linux_suspicious_shell_execution/) | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | Linux |
 | [Suspicious Service Installation (PsExec-style / Command Services)](detections/T1569.002_suspicious_service_installation/) | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | Windows |
 | [Run Key Persistence Pointing to Suspicious Location](detections/T1547.001_registry_run_key_persistence/) | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | Windows |
-| [Windows Event Log Clearing via Command Line](detections/T1070.001_event_log_clearing/) | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | Windows |
-| [Security Audit Log Cleared (Event 1102)](detections/T1070.001_security_log_cleared/) | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | Windows |
-| [Windows Event Log Cleared (System Event 104)](detections/T1070.001_system_log_cleared/) | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | Windows |
 | [Rundll32 Proxy Execution From Suspicious Context](detections/T1218.011_rundll32_suspicious_execution/) | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | Windows |
+| [Windows Event Log Clearing via Command Line](detections/T1685.005_event_log_clearing/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Windows |
+| [Security Audit Log Cleared (Event 1102)](detections/T1685.005_security_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Windows |
+| [Windows Event Log Cleared (System Event 104)](detections/T1685.005_system_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Windows |
 | [Suspicious Process Access to LSASS Memory](detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | Windows |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](detections/T1558.003_kerberoasting_rc4_tgs/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Windows |
 | [Suspicious Child Process of a WinRM Session Host](detections/T1021.006_wsmprovhost_suspicious_child/) | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | Windows |

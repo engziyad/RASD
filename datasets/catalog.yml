@@ -482,62 +482,6 @@ datasets:
       reason: 'ncat -c bash and nc -e /bin/sh: a reverse shell through netcat, which this rule does not cover (encoded pipes and /tmp
         execution only)'
       next: netcat_exec
-- id: splunk/T1070.001/atomic_red_team/windows-sysmon
-  source: splunk-attack-data
-  path: datasets/attack_techniques/T1070.001/atomic_red_team/windows-sysmon.log
-  sha256: 58a5e3465bdced284a1c0b625063c539be77beca8f9921e29238bbdc4d26de11
-  size: 11267266
-  format: windows-xml
-  profile: sysmon-native
-  technique: T1070.001
-  title: Event logs cleared with wevtutil (Atomic Red Team)
-  splunk:
-    sourcetype: XmlWinEventLog
-    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
-  expect:
-  - T1070.001_event_log_clearing
-  also:
-    T1059.001_powershell_encoded_command:
-      kind: harness
-      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
-        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
-        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
-        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
-        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
-    T1021.006_wsmprovhost_suspicious_child:
-      kind: harness
-      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
-        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
-        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
-        the attack also ran as'
-- id: splunk/T1070.001/windows_event_log_cleared/windows-security
-  source: splunk-attack-data
-  path: datasets/attack_techniques/T1070.001/windows_event_log_cleared/windows-security.log
-  sha256: fd483a9c03b1cf5b10b4cc8b1500abd782da334647e93db61edee7f7040dce87
-  size: 878
-  format: windows-xml
-  profile: sysmon-native
-  technique: T1070.001
-  title: Security log cleared (event 1102)
-  splunk:
-    sourcetype: XmlWinEventLog
-    source: XmlWinEventLog:Security
-  expect:
-  - T1070.001_security_log_cleared
-- id: splunk/T1070.001/windows_event_log_cleared/windows-system
-  source: splunk-attack-data
-  path: datasets/attack_techniques/T1070.001/windows_event_log_cleared/windows-system.log
-  sha256: 5e5298e558860f09a89cf1a503e34d3412f2e4a6dbeb312ec44282f383d96e6f
-  size: 878
-  format: windows-xml
-  profile: sysmon-native
-  technique: T1070.001
-  title: System log cleared (event 104)
-  splunk:
-    sourcetype: XmlWinEventLog
-    source: XmlWinEventLog:System
-  expect:
-  - T1070.001_system_log_cleared
 - id: splunk/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security
   source: splunk-attack-data
   path: datasets/attack_techniques/T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security.log
@@ -871,6 +815,62 @@ datasets:
   overlap:
     splunk/T1569.002/malicious_powershell_executed_as_a_service/windows-xml: 'both alerting records (the bare cmd.exe and the C:\Temp
       service) are records of the other file: two exports of one host over overlapping time'
+- id: splunk/T1070.001/atomic_red_team/windows-sysmon
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/atomic_red_team/windows-sysmon.log
+  sha256: 58a5e3465bdced284a1c0b625063c539be77beca8f9921e29238bbdc4d26de11
+  size: 11267266
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: Event logs cleared with wevtutil (Atomic Red Team)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+  expect:
+  - T1685.005_event_log_clearing
+  also:
+    T1059.001_powershell_encoded_command:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible runs every task over WinRM as encoded PowerShell - the WinRM launcher (cmd /C PowerShell
+        ... -EncodedCommand), its module bootstrap, host setup tasks, and Invoke-AtomicTest three times: the prerequisites, the recorded
+        attack and the cleanup. The alert on the second is how the recorded attack was started; the others are the harness. An estate
+        managed with Ansible sees the same alerts (benign positives). Tuning by the automation account would hide the attack too, because
+        the harness ran it as the same administrator: tune by the bootstrap''s exact command line and keep alerting on what it runs'
+    T1021.006_wsmprovhost_suspicious_child:
+      kind: harness
+      reason: 'the lab''s test harness: Ansible''s WinRM connection starts every task as cmd /C PowerShell ... -EncodedCommand under
+        winrshost.exe, the task that launched the recorded attack included. An estate managed with Ansible over WinRM sees the same
+        alerts (benign positives); scope a tuning to the automation host and the launcher''s exact command line, never to the account
+        the attack also ran as'
+- id: splunk/T1070.001/windows_event_log_cleared/windows-security
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/windows_event_log_cleared/windows-security.log
+  sha256: fd483a9c03b1cf5b10b4cc8b1500abd782da334647e93db61edee7f7040dce87
+  size: 878
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: Security log cleared (event 1102)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:Security
+  expect:
+  - T1685.005_security_log_cleared
+- id: splunk/T1070.001/windows_event_log_cleared/windows-system
+  source: splunk-attack-data
+  path: datasets/attack_techniques/T1070.001/windows_event_log_cleared/windows-system.log
+  sha256: 5e5298e558860f09a89cf1a503e34d3412f2e4a6dbeb312ec44282f383d96e6f
+  size: 878
+  format: windows-xml
+  profile: sysmon-native
+  technique: T1685.005
+  title: System log cleared (event 104)
+  splunk:
+    sourcetype: XmlWinEventLog
+    source: XmlWinEventLog:System
+  expect:
+  - T1685.005_system_log_cleared
 - id: otrf/empire_mimikatz_logonpasswords
   source: otrf-security-datasets
   path: datasets/atomic/windows/credential_access/host/empire_mimikatz_logonpasswords.zip
@@ -900,7 +900,7 @@ datasets:
   - T1218.011_rundll32_suspicious_execution
   - T1569.002_suspicious_service_installation
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/metasploit_logonpasswords_lsass_memory_dump
@@ -919,7 +919,7 @@ datasets:
   - T1218.011_rundll32_suspicious_execution
   - T1569.002_suspicious_service_installation
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/metasploit_nanodump_lsass_memory_dump
@@ -936,7 +936,7 @@ datasets:
   expect:
   - T1003.001_lsass_memory_access
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/metasploit_out-minidump_lsass_memory_dump
@@ -953,7 +953,7 @@ datasets:
   expect:
   - T1003.001_lsass_memory_access
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/metasploit_outflank-dumpert_lsass_memory_dump
@@ -970,7 +970,7 @@ datasets:
   expect:
   - T1003.001_lsass_memory_access
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/metasploit_procdump_lsass_memory_dump
@@ -987,7 +987,7 @@ datasets:
   expect:
   - T1003.001_lsass_memory_access
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/metasploit_sharpdump_lsass_memory_dump
@@ -1004,7 +1004,7 @@ datasets:
   expect:
   - T1003.001_lsass_memory_access
   also:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: benign
       reason: the lab clears the PowerShell and Kernel-IO operational logs when a recording starts, minutes before the attack
 - id: otrf/psh_lsass_memory_dump_comsvcs
@@ -1022,7 +1022,7 @@ datasets:
   - T1003.001_lsass_memory_access
   - T1218.011_rundll32_suspicious_execution
   also:
-    T1070.001_security_log_cleared:
+    T1685.005_security_log_cleared:
       kind: benign
       reason: 'the dataset author cleared the Security log when the recording started: it is the first event of the file, 26 seconds
         before the attack'
@@ -1405,28 +1405,6 @@ datasets:
       kind: scope
       reason: the one record is the payload's process creation; its parent PowerShell ran without arguments, so there is no encoded
         command for this rule to read
-- id: evtx/defense-evasion/DE_104_system_log_cleared
-  source: evtx-attack-samples
-  path: Defense Evasion/DE_104_system_log_cleared.evtx
-  sha256: 5579cdca073ee4864ea82d656aa2d25400b5c1e85b8e688db5d85f6dc558c2af
-  size: 69632
-  format: evtx
-  profile: sysmon-native
-  technique: T1070.001
-  title: System log cleared (event 104)
-  expect:
-  - T1070.001_system_log_cleared
-- id: evtx/defense-evasion/DE_1102_security_log_cleared
-  source: evtx-attack-samples
-  path: Defense Evasion/DE_1102_security_log_cleared.evtx
-  sha256: a0615707b547a2ac254688fd725c3c590f62440fc9b7947c2843dd40498a39e8
-  size: 1118208
-  format: evtx
-  profile: sysmon-native
-  technique: T1070.001
-  title: Security log cleared (event 1102)
-  expect:
-  - T1070.001_security_log_cleared
 - id: evtx/credential-access/kerberos_pwd_spray_4771
   source: evtx-attack-samples
   path: Credential Access/kerberos_pwd_spray_4771.evtx
@@ -1439,7 +1417,7 @@ datasets:
   expect:
   - T1110.003_password_spray_burst
   also:
-    T1070.001_security_log_cleared:
+    T1685.005_security_log_cleared:
       kind: benign
       reason: 'the author cleared the Security log nine seconds before recording the spray: the first event of the file'
 - id: evtx/credential-access/sysmon_10_1_memdump_comsvcs_minidump
@@ -1627,6 +1605,28 @@ datasets:
   title: Named-pipe impersonation service (getsystem)
   expect:
   - T1569.002_suspicious_service_installation
+- id: evtx/defense-evasion/DE_104_system_log_cleared
+  source: evtx-attack-samples
+  path: Defense Evasion/DE_104_system_log_cleared.evtx
+  sha256: 5579cdca073ee4864ea82d656aa2d25400b5c1e85b8e688db5d85f6dc558c2af
+  size: 69632
+  format: evtx
+  profile: sysmon-native
+  technique: T1685.005
+  title: System log cleared (event 104)
+  expect:
+  - T1685.005_system_log_cleared
+- id: evtx/defense-evasion/DE_1102_security_log_cleared
+  source: evtx-attack-samples
+  path: Defense Evasion/DE_1102_security_log_cleared.evtx
+  sha256: a0615707b547a2ac254688fd725c3c590f62440fc9b7947c2843dd40498a39e8
+  size: 1118208
+  format: evtx
+  profile: sysmon-native
+  technique: T1685.005
+  title: Security log cleared (event 1102)
+  expect:
+  - T1685.005_security_log_cleared
 - id: evtx/automatedtestingtools/PanacheSysmon_vs_AtomicRedTeam01
   source: evtx-attack-samples
   path: AutomatedTestingTools/PanacheSysmon_vs_AtomicRedTeam01.evtx
@@ -2426,21 +2426,21 @@ datasets:
   size: 10030
   format: windows-xml
   profile: sysmon-native
-  technique: T1070.001
+  technique: T1685.005
   title: EventLog service shut down on five hosts (Security 1100)
   splunk:
     sourcetype: XmlWinEventLog
     source: XmlWinEventLog:Microsoft-Windows-Eventlog
   holdout: H31
   quiet:
-    T1070.001_security_log_cleared:
+    T1685.005_security_log_cleared:
       kind: blind-spot
       reason: The recorded behaviour is the EventLog service stopping, not a clear; the README lists "Stopping the EventLog service
         or tampering with forwarding before clearing" as a gap to cover with log-volume heartbeat monitoring.
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: blind-spot
       reason: 'Same documented gap: stopping the EventLog service writes no 104; the README sends it to heartbeat (log-volume gap) monitoring.'
-    T1070.001_event_log_clearing:
+    T1685.005_event_log_clearing:
       kind: blind-spot
       reason: Stopping the logging service is log tampering, not one of the covered clearing commands (wevtutil cl, Clear-/Remove-/Limit-EventLog,
         ClearLog, WMI ClearEventLog); the README puts log tampering under "detect via gaps in log volume instead".
@@ -2451,7 +2451,7 @@ datasets:
   size: 1106
   format: windows-xml
   profile: sysmon-native
-  technique: T1070.001
+  technique: T1685.005
   title: A machine account requesting a service ticket for itself (4769)
   splunk:
     sourcetype: XmlWinEventLog
@@ -3226,20 +3226,20 @@ datasets:
   size: 6411630
   format: windows-classic
   profile: windows-security-4688
-  technique: T1070.001
+  technique: T1685.005
   title: Security log cleared during an Atomic run (1102)
   splunk:
     sourcetype: WinEventLog
     source: WinEventLog:Security
   holdout: H71
   expect:
-  - T1070.001_security_log_cleared
+  - T1685.005_security_log_cleared
   quiet:
-    T1070.001_event_log_clearing:
+    T1685.005_event_log_clearing:
       kind: telemetry
       reason: The clearing command (wevtutil / Clear-EventLog) was not recorded as process creation, so the command-line rule has nothing
         to read; only the 1102 outcome is present.
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: telemetry
       reason: The rule reads System 104; the log-clearing run cannot show it in a Security log.
 - id: splunk/T1070.001/atomic_red_team/windows-system.log
@@ -3249,19 +3249,19 @@ datasets:
   size: 391793
   format: windows-classic
   profile: sysmon-native
-  technique: T1070.001
+  technique: T1685.005
   title: 'System log of an Atomic run: four logs cleared (104)'
   splunk:
     sourcetype: WinEventLog
     source: WinEventLog:System
   holdout: H72
   expect:
-  - T1070.001_system_log_cleared
+  - T1685.005_system_log_cleared
   quiet:
-    T1070.001_event_log_clearing:
+    T1685.005_event_log_clearing:
       kind: telemetry
       reason: The clearing command line cannot appear in a System log.
-    T1070.001_security_log_cleared:
+    T1685.005_security_log_cleared:
       kind: telemetry
       reason: The rule reads Security 1102; it cannot appear in a System log.
 - id: splunk/T1070.001/ssa_wevtutil/clear_evt.log
@@ -3271,19 +3271,19 @@ datasets:
   size: 5799
   format: windows-classic
   profile: windows-security-4688
-  technique: T1070.001
+  technique: T1685.005
   title: wevtutil cl of three logs, as edited copies of one record (Security 4688)
   splunk:
     sourcetype: WinEventLog
     source: WinEventLog:Security
   holdout: H73
   expect:
-  - T1070.001_event_log_clearing
+  - T1685.005_event_log_clearing
   quiet:
-    T1070.001_security_log_cleared:
+    T1685.005_security_log_cleared:
       kind: telemetry
       reason: The Security log was cleared, but this outcome rule reads Security 1102, which the file does not contain.
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: telemetry
       reason: Application and System were cleared, which writes System 104 (Microsoft-Windows-Eventlog); the file has no System 104.
 - id: splunk/T1070.001/ssa_wevtutil/disable_evt.log
@@ -3293,14 +3293,14 @@ datasets:
   size: 3892
   format: windows-classic
   profile: windows-security-4688
-  technique: T1070.001
+  technique: T1685.005
   title: wevtutil sl /e:false disabling logs (Security 4688)
   splunk:
     sourcetype: WinEventLog
     source: WinEventLog:Security
   holdout: H74
   quiet:
-    T1070.001_event_log_clearing:
+    T1685.005_event_log_clearing:
       kind: scope
       reason: Event-log tampering by disabling channels (wevtutil sl /e:false); the documented wevtutil selection covers only cl / clear-log
         (and the PowerShell/WMI clear, remove and Limit-EventLog methods), so set-log is outside scope. Nothing is cleared, so no 1102/104
@@ -3312,16 +3312,16 @@ datasets:
   size: 1255335
   format: windows-classic
   profile: windows-security-4688
-  technique: T1070.001
+  technique: T1685.005
   title: A malware-style batch stopping services and clearing the Application log (Security 4688)
   splunk:
     sourcetype: WinEventLog
     source: WinEventLog:Security
   holdout: H75
   expect:
-  - T1070.001_event_log_clearing
+  - T1685.005_event_log_clearing
   quiet:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: telemetry
       reason: Clearing the Application log writes System 104, which this Security-only file does not contain.
   overlap:
@@ -3335,16 +3335,16 @@ datasets:
   size: 29947
   format: windows-xml
   profile: windows-security-4688
-  technique: T1070.001
+  technique: T1685.005
   title: ShrinkLocker script clearing logs with wevtutil (Sysmon and Security 4688)
   splunk:
     sourcetype: XmlWinEventLog
     source: XmlWinEventLog:Security
   holdout: H76
   expect:
-  - T1070.001_event_log_clearing
+  - T1685.005_event_log_clearing
   quiet:
-    T1070.001_system_log_cleared:
+    T1685.005_system_log_cleared:
       kind: telemetry
       reason: Two non-Security logs were cleared (System 104 expected), but the file has no System log.
 - id: splunk/T1110.003/generic_password_spray/password_spray_attack.log
@@ -3987,11 +3987,11 @@ datasets:
   title: 'Security log of the same capture: the capture tool clearing every log'
   holdout: H106
   also:
-    T1070.001_event_log_clearing:
+    T1685.005_event_log_clearing:
       kind: harness
       reason: the capture tool (SnapAttack's capattack) clears every event log with wevtutil cl before it starts recording - its own
         set-up, run by its PowerShell process, seconds before the capture; not the recorded ProcDump test, which is not in the file
-    T1070.001_security_log_cleared:
+    T1685.005_security_log_cleared:
       kind: harness
       reason: 'the 1102 the capture tool''s wevtutil cl Security wrote while setting up the recording: its own set-up, not the recorded
         test'

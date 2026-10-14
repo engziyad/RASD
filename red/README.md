@@ -59,7 +59,7 @@ Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory, 
 | [Object-level authorization (IDOR / BOLA)](web/idor_testing/) | web | [T1190](https://attack.mitre.org/techniques/T1190/) | covered | python |
 | [JWT validation (unsigned and tampered tokens)](web/jwt_testing/) | web | [T1606](https://attack.mitre.org/techniques/T1606/) | gap | python |
 | [HTTP security headers and cookie flags](web/security_headers_testing/) | web | - | posture | python |
-| [Event log clearing (dedicated test log, optional Security log)](windows/event_log_clearing/) | windows | [T1070.001](https://attack.mitre.org/techniques/T1070/001/) | covered | powershell |
+| [Event log clearing (dedicated test log, optional Security log)](windows/event_log_clearing/) | windows | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | covered | powershell |
 | [LSASS memory dump with comsvcs.dll MiniDump](windows/lsass_memory_access/) | windows | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | covered | powershell |
 | [PowerShell -EncodedCommand with a benign payload](windows/powershell_encoded_command/) | windows | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | covered | powershell |
 | [HKCU Run value pointing into a user-writable folder](windows/run_key_persistence/) | windows | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | covered | powershell |

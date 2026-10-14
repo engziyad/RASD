@@ -12,7 +12,7 @@ references:
 author: Ziyad (github.com/engziyad)
 date: 2026-10-09
 tags:
-  - attack.defense-evasion
+  - attack.stealth
   - attack.t1218.011
 logsource:
   product: windows

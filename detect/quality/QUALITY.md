@@ -18,13 +18,13 @@
 | [Scheduled Task Created With Suspicious Action](../detections/T1053.005_schtasks_suspicious_creation/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [PowerShell Execution With Encoded Command](../detections/T1059.001_powershell_encoded_command/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
-| [Windows Event Log Clearing via Command Line](../detections/T1070.001_event_log_clearing/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
-| [Security Audit Log Cleared (Event 1102)](../detections/T1070.001_security_log_cleared/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
-| [Windows Event Log Cleared (System Event 104)](../detections/T1070.001_system_log_cleared/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Run Key Persistence Pointing to Suspicious Location](../detections/T1547.001_registry_run_key_persistence/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Windows Event Log Clearing via Command Line](../detections/T1685.005_event_log_clearing/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Security Audit Log Cleared (Event 1102)](../detections/T1685.005_security_log_cleared/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Windows Event Log Cleared (System Event 104)](../detections/T1685.005_system_log_cleared/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 
 ### Correlation detections
 
@@ -48,9 +48,6 @@ Scored on the same areas from what `rasd correlate` proves: scenarios and parame
 | [Scheduled Task Created With Suspicious Action](../detections/T1053.005_schtasks_suspicious_creation/) | pending | - | - | - | - | - |
 | [PowerShell Execution With Encoded Command](../detections/T1059.001_powershell_encoded_command/) | pending | - | - | - | - | - |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | pending | - | - | - | - | - |
-| [Windows Event Log Clearing via Command Line](../detections/T1070.001_event_log_clearing/) | pending | - | - | - | - | - |
-| [Security Audit Log Cleared (Event 1102)](../detections/T1070.001_security_log_cleared/) | pending | - | - | - | - | - |
-| [Windows Event Log Cleared (System Event 104)](../detections/T1070.001_system_log_cleared/) | pending | - | - | - | - | - |
 | [Password Spray - One Source Failing Authentication for Many Accounts](../correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - |
 | [API Probing - One Client Rejected on Many Distinct Paths](../correlations/T1190_api_auth_probing/) | pending | - | - | - | - | - |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](../correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - |
@@ -59,6 +56,9 @@ Scored on the same areas from what `rasd correlate` proves: scenarios and parame
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/) | pending | - | - | - | - | - |
 | [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../correlations/T1558.003_kerberoasting_volume/) | pending | - | - | - | - | - |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | pending | - | - | - | - | - |
+| [Windows Event Log Clearing via Command Line](../detections/T1685.005_event_log_clearing/) | pending | - | - | - | - | - |
+| [Security Audit Log Cleared (Event 1102)](../detections/T1685.005_security_log_cleared/) | pending | - | - | - | - | - |
+| [Windows Event Log Cleared (System Event 104)](../detections/T1685.005_system_log_cleared/) | pending | - | - | - | - | - |
 
 The Operational Score stays **pending** until a real lab run is turned into evidence with `rasd evidence` (see [OPERATIONAL_VALIDATION.md](../../docs/OPERATIONAL_VALIDATION.md)). That is intentional: RASD never claims validation that has not happened, and a detection cannot reach the Validated or Reference maturity level without it.
 

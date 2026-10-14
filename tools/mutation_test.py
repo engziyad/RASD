@@ -28,7 +28,7 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import DETECTIONS, load_jsonl
+from common import DETECTIONS, load_jsonl, selected
 from sigma_engine import SigmaError, matches
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,7 +68,7 @@ def technique_mutations(folder: Path, tps: list[dict]):
 def run(filter_: str | None = None) -> list[dict]:
     results = []
     for folder in sorted(p for p in DETECTIONS.iterdir() if p.is_dir()):
-        if filter_ and filter_.lower() not in folder.name.lower():
+        if not selected(folder.name, filter_):
             continue
         rule = yaml.safe_load((folder / "rule.yml").read_text(encoding="utf-8"))
         tps = load_tp(folder)

@@ -25,13 +25,13 @@ Each alert runs every 5 minutes over the last 10 and fires when its search retur
 | `RASD - T1053.005_schtasks_suspicious_creation` | Scheduled Task Created With Suspicious Action | 4 |
 | `RASD - T1059.001_powershell_encoded_command` | PowerShell Execution With Encoded Command | 4 |
 | `RASD - T1059.004_linux_suspicious_shell_execution` | Linux Shell Executing Decoded Base64 or Code From a Temporary Directory | 5 |
-| `RASD - T1070.001_event_log_clearing` | Windows Event Log Clearing via Command Line | 5 |
-| `RASD - T1070.001_security_log_cleared` | Security Audit Log Cleared (Event 1102) | 5 |
-| `RASD - T1070.001_system_log_cleared` | Windows Event Log Cleared (System Event 104) | 5 |
 | `RASD - T1218.011_rundll32_suspicious_execution` | Rundll32 Proxy Execution From Suspicious Context | 5 |
 | `RASD - T1547.001_registry_run_key_persistence` | Run Key Persistence Pointing to Suspicious Location | 4 |
 | `RASD - T1558.003_kerberoasting_rc4_tgs` | Kerberoasting - RC4 Service Ticket Requested for User Account | 4 |
 | `RASD - T1569.002_suspicious_service_installation` | Suspicious Service Installation (PsExec-style / Command Services) | 5 |
+| `RASD - T1685.005_event_log_clearing` | Windows Event Log Clearing via Command Line | 5 |
+| `RASD - T1685.005_security_log_cleared` | Security Audit Log Cleared (Event 1102) | 5 |
+| `RASD - T1685.005_system_log_cleared` | Windows Event Log Cleared (System Event 104) | 5 |
 
 ## Correlation alerts
 
