@@ -3,7 +3,7 @@ rasd_public_evidence: 2
 detection: T1218.011_rundll32_suspicious_execution
 recordings: 19
 fired_on: 17
-alerts: 29
+alerts: 32
 false_positives: 0
 in_sample: true
 holdout_expected: 2
@@ -13,7 +13,7 @@ holdout_fired_on: 2
 
 # Public dataset evidence · Rundll32 Proxy Execution From Suspicious Context
 
-**Public dataset validation: fires on 17 of the 19 public recordings of its behaviour (quiet on the other 2: 1 outside the rule's scope, 1 a documented blind spot)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 29 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset validation: fires on 17 of the 19 public recordings of its behaviour (quiet on the other 2: 1 outside the rule's scope, 1 a documented blind spot)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 32 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -40,7 +40,7 @@ Public data replayed through the tested rule, not lab evidence: the maturity lev
 | [psh_lsass_memory_dump_comsvcs](https://github.com/OTRF/Security-Datasets/blob/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/psh_lsass_memory_dump_comsvcs.zip) | OTRF Security-Datasets (MIT) | 2020-10-18 07:49:39 | 114 | 2 | 2 | 2020-10-18 07:50:05 | WORKSTATION5 |
 | [credential-access/sysmon_10_1_memdump_comsvcs_minidump](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Credential%20Access/sysmon_10_1_memdump_comsvcs_minidump.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-08-30 12:54:07 | 3 | 1 | 1 | 2019-08-30 12:54:08 | - |
 | [execution/exec_persist_rundll32_mshta_scheduledtask_sysmon_1_3_11](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Execution/exec_persist_rundll32_mshta_scheduledtask_sysmon_1_3_11.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-05-21 15:32:57 | 4 | 1 | 1 | 2019-05-21 15:32:57 | - |
-| [execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-05-12 13:30:32 | 9 | 2 | 2 | 2019-05-12 13:30:46 | - |
+| [execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Execution/exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-05-12 13:30:32 | 9 | 5 | 5 | 2019-05-12 13:30:46 | - |
 | [execution/exec_sysmon_1_11_lolbin_rundll32_shdocvw_openurl](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Execution/exec_sysmon_1_11_lolbin_rundll32_shdocvw_openurl.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-05-12 13:55:56 | 2 | 1 | 1 | 2019-05-12 13:56:12 | - |
 | [execution/exec_sysmon_1_11_lolbin_rundll32_zipfldr_RouteTheCall](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Execution/exec_sysmon_1_11_lolbin_rundll32_zipfldr_RouteTheCall.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-05-12 13:58:39 | 2 | 1 | 1 | 2019-05-12 13:58:54 | - |
 | [execution/exec_sysmon_1_lolbin_rundll32_advpack_RegisterOCX](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Execution/exec_sysmon_1_lolbin_rundll32_advpack_RegisterOCX.evtx) | EVTX-ATTACK-SAMPLES (GPL-3.0) | 2019-05-12 14:18:03 | 2 | 1 | 1 | 2019-05-12 14:18:09 | - |

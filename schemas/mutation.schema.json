@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/engziyad/RASD-v1.0/schemas/mutation.schema.json",
+  "$id": "https://github.com/engziyad/RASD/schemas/mutation.schema.json",
   "title": "RASD Mutation Tests",
   "description": "Technique-specific evasion variants (each copies a true-positive event by 1-based line number and overrides fields with `set`), plus any rule mutants accepted as equivalent by tools/prove.py.",
   "type": "object",

@@ -20,21 +20,20 @@ logsource:
   product: windows
   category: process_access
 detection:
-  selection:
+  selection_target:
     TargetImage|endswith: '\lsass.exe'
-    GrantedAccess:   # hex as Sysmon writes it, decimal as some pipelines store it
-      - '0x1010'     # QUERY_LIMITED_INFORMATION | VM_READ
-      - '0x1410'     # + QUERY_INFORMATION
-      - '0x1438'
-      - '0x143a'
-      - '0x1fffff'   # PROCESS_ALL_ACCESS
-      - '0x1f1fff'   # all-access variant some tools request (public data: a Meterpreter session)
-      - '4112'
-      - '5136'
-      - '5176'
-      - '5178'
-      - '2097151'
-      - '2039807'
+  selection_access_vm_read:   # any hex mask with the VM_READ bit (0x10) set: the second-lowest hex digit is odd
+    GrantedAccess|re: '(?i)^0x[0-9a-f]*[13579bdf][0-9a-f]$'
+  selection_access_decimal:   # pipelines that store the mask in decimal: a regex cannot test a bit there, so the known masks
+    GrantedAccess:
+      - '16'        # 0x10, VM_READ alone
+      - '4112'      # 0x1010
+      - '5136'      # 0x1410
+      - '5176'      # 0x1438
+      - '5178'      # 0x143a
+      - '2097151'   # 0x1fffff
+      - '2039807'   # 0x1f1fff
+      - '2047999'   # 0x1f3fff
   filter_os_components:      # Windows components seen opening LSASS in normal operation, each by its full path
     SourceImage:
       - 'C:\Windows\System32\csrss.exe'
@@ -52,7 +51,7 @@ detection:
   filter_defender:
     SourceImage|startswith: 'C:\ProgramData\Microsoft\Windows Defender\Platform\'
     SourceImage|endswith: '\MsMpEng.exe'
-  condition: selection and not 1 of filter_*
+  condition: selection_target and 1 of selection_access_* and not 1 of filter_*
 falsepositives:
   - EDR / AV / backup agents not covered by filters (tune by signed path)
   - Administrators creating LSASS dumps for Microsoft support cases

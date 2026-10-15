@@ -32,13 +32,13 @@ detection_logic:
   expected_noise: medium
   blind_spots:
   - Handle duplication from another process never opens LSASS directly
-  - Access masks outside the listed values
+  - Decimal access masks outside the listed values (hex masks are bit-tested for VM_READ)
   - Code injected into a named Windows component (csrss, wininit, WmiPrvSE) - its CallTrace shows a frame with no module (UNKNOWN)
   - Credential Guard / RunAsPPL environments where the real control is prevention
   - ProcessAccess telemetry disabled or filtered for volume
 coverage_depth:
   level: medium
-  reason: Access-mask based and resistant to tool renaming; blind to handle duplication and unlisted masks
+  reason: Access-mask based and resistant to tool renaming; blind to handle duplication and to unlisted masks stored in decimal
 risk_model:
   base_score: 60
   increase_if:

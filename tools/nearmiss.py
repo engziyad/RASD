@@ -317,6 +317,9 @@ def analyse_correlation(corr, events: list[dict], dets) -> dict:
         metric = len({read(ev, p.counted) for ev in evs}) if p.counted else len(evs)
         rows.append({"window_start": EPOCH + timedelta(seconds=start), "group": "|".join(group) or "*",
                      "metric": metric, "events": evs})
+    if not rows:      # nothing of its log source in the corpus: a headroom of the full threshold would be measured on nothing
+        return {"describe": p.describe(), "windows": 0,
+                "note": "not measured - the replay corpus has no events of its log source (n/a, not a headroom)"}
     quiet = [r for r in rows if not OPS[p.op](r["metric"], p.threshold)]
     best = max(quiet, key=lambda r: r["metric"], default=None)
     alerted = {(r["group"], r["window_start"]) for r in rows if OPS[p.op](r["metric"], p.threshold)}
@@ -401,6 +404,9 @@ def main() -> int:
             print(f"  {YELLOW}?{RESET} {det}  {DIM}{r['error']}{RESET}")
             continue
         share = f"{100 * r['near_misses'] / r['events']:.0f}%" if r["events"] else "-"
+        if not r["events"]:
+            print(f"  {det:<48} {DIM}n/a - the replay corpus has no {r['logsource']} events, so nothing is measured{RESET}")
+            continue
         print(f"  {det:<48} {r['near_misses']:>4} of {r['events']:<4} {DIM}{r['logsource']} events ({share}) one condition away{RESET}")
         for b in r["boundaries"][:4]:
             pin = f"{GREEN}pinned by {b['pinned_by']}{RESET}" if b["pinned_by"] else f"{RED}no true negative{RESET}"

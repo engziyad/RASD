@@ -18,6 +18,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 $users = @(Get-Content -LiteralPath $UserList | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[A-Za-z0-9._\-]{1,64}$' })
 if ($users.Count -eq 0) { throw "no valid account names in $UserList" }

@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=../../../schemas/contract.schema.json
-detection_id: T1190_api_auth_probing
+detection_id: T1595.003_api_auth_probing
 name: API Probing - One Client Rejected on Many Distinct Paths
 maturity: siem-ready
 owner: detection-engineering
-primary_technique: attack.t1190
+primary_technique: attack.t1595.003
 related_techniques:
-- attack.t1595.002
+- attack.t1190
 data_contract:
   required_logsource:
     category: webserver

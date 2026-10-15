@@ -36,7 +36,7 @@ detection:
     # the blob are stripped by Windows argument parsing, so any number of them is allowed.
     CommandLine|re: '(?i)\s"*[-/–—―][-–—―]?"*e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?"*\s+"*[A-Za-z0-9+/]{16,}={0,2}'
   filter_sccm:
-    ParentImage|endswith: '\CCM\CcmExec.exe'
+    ParentImage: 'C:\Windows\CCM\CcmExec.exe'   # the full path: a copy named CcmExec.exe in any other CCM folder still alerts
   condition: selection_img and selection_enc and not filter_sccm
 falsepositives:
   - Management agents (SCCM/Intune, RMM) that legitimately use encoded commands

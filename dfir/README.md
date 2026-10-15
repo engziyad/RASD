@@ -29,7 +29,7 @@ Each playbook starts with a small front matter block (`techniques`, `detections`
 | [scheduled_task_persistence](playbooks/scheduled_task_persistence.md) | T1053.005 | `T1053.005_schtasks_suspicious_creation`, `T1053.005_powershell_scheduled_task_creation` | scheduled_task_creation |
 | [service_installation](playbooks/service_installation.md) | T1569.002, T1543.003, T1021.002 | `T1569.002_suspicious_service_installation` | service_creation |
 | [suspicious_powershell](playbooks/suspicious_powershell.md) | T1059.001, T1027 | `T1059.001_powershell_encoded_command`, `T1053.005_powershell_scheduled_task_creation` | powershell_encoded_command |
-| [web_application_attack](playbooks/web_application_attack.md) | T1190, T1505.003, T1606 | `T1190_api_auth_probing`, `T1190_object_id_enumeration` | api_auth_testing, idor_testing, jwt_testing, file_upload_testing, security_headers_testing |
+| [web_application_attack](playbooks/web_application_attack.md) | T1190, T1505.003, T1606 | `T1595.003_api_auth_probing`, `T1190_object_id_enumeration` | api_auth_testing, idor_testing, jwt_testing, file_upload_testing, security_headers_testing |
 <!-- rasd:dfir-catalog:end -->
 
 ## From replayed logs to a case

@@ -23,7 +23,7 @@ from correlation import (CorrelationError, Correlation, alert_signature, evaluat
 
 SPRAY = "T1110.003_password_spray_burst"
 ROAST = "T1558.003_kerberoasting_volume"
-API = "T1190_api_auth_probing"
+API = "T1595.003_api_auth_probing"
 IDOR = "T1190_object_id_enumeration"
 
 

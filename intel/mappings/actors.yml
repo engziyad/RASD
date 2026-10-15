@@ -99,6 +99,20 @@ actors:
         note: Web shells on exploited Microsoft Exchange servers
       - id: T1606
         note: In the SolarWinds compromise (C0024), SAML tokens forged with stolen signing certificates and an OWA cookie generated from a stolen key (T1606.002, T1606.001)
+  - group: APT41
+    id: G0096
+    source: https://attack.mitre.org/groups/G0096/
+    context: China-linked group that combines espionage with financially motivated intrusions
+    techniques:
+      - id: T1595.003
+        note: Tools and frameworks to brute-force directories on web servers
+  - group: Volatile Cedar
+    id: G0123
+    source: https://attack.mitre.org/groups/G0123/
+    context: Lebanon-linked group that targets web servers of organisations in the Middle East and beyond
+    techniques:
+      - id: T1595.003
+        note: DirBuster and GoBuster to brute-force web directories and DNS subdomains
   - group: Rocke
     id: G0106
     source: https://attack.mitre.org/groups/G0106/

@@ -724,9 +724,13 @@ def near_summary(repo: Repo) -> str:
     rows = [r for r in repo.near["detections"].values() if "boundaries" in r]
     bounds = sum(len(r["boundaries"]) for r in rows)
     head = ", ".join(f"{cid} {r['headroom']}" for cid, r in repo.near["correlations"].items() if "headroom" in r)
+    unmeasured = sorted([d for d, r in repo.near["detections"].items() if "boundaries" in r and not r.get("events")]
+                        + [c for c, r in repo.near["correlations"].items() if r.get("windows") == 0])
     return (f"{sum(r['near_misses'] for r in rows)} events one field edit away from an alert, on {bounds} boundaries "
             f"({bounds - len(unpinned(repo.near))} pinned by a true negative)"
-            + (f" · correlation headroom {head}" if head else ""))
+            + (f" · correlation headroom {head}" if head else "")
+            + (f" · not measured, no events of their log source in the replay corpus: {', '.join(unmeasured)}"
+               if unmeasured else ""))
 
 
 def render_data_sources(repo: Repo) -> str:
@@ -883,8 +887,10 @@ def render_corr_facts(repo: Repo, c) -> str:
         f"| **Engineering Score** | {f['engineering']}/100 · operational {ops} |",
         f"| **Tests** | base rule: {f['tp']} true positive · {f['tn']} true negative · {f['mutations']} technique mutations · "
         f"{f['scenarios']} scenarios ({f['scenarios_fire']} fire, {f['scenarios'] - f['scenarios_fire']} silent) |",
-        f"| **Proof** | base rule: {f['base_proof']:.0f}% of {f['base_mutants']} mutants killed · fuzzer resistance "
-        f"{f['fuzz']:.0f}% over {f['fuzz_variants']} variants · correlation: {killed}/{f['param_mutants']} parameter mutants killed |",
+        f"| **Proof** | base rule: {f['base_proof']:.0f}% of {f['base_mutants']} mutants killed · "
+        + (f"fuzzer resistance {f['fuzz']:.0f}% over {f['fuzz_variants']} variants" if f['fuzz_variants']
+           else "fuzzer n/a (no evasion strategy applies to its fields)")
+        + f" · correlation: {killed}/{f['param_mutants']} parameter mutants killed |",
         f"| **Parity** | base filter identical on {f['parity_events']} events · aggregation "
         f"{'identical' if f['parity_ok'] else 'NOT proven'} in SPL and KQL on {f['aggregation_runs']} runs "
         f"({f['aggregation_sequences']} sequences × {f['aggregation_sets']} parameter sets) |",

@@ -27,13 +27,15 @@ detection:
     ImagePath|contains:
       - '%COMSPEC%'
       - 'powershell'
+      - 'mshta'
+      - 'rundll32'
       - '\ADMIN$\'
       - '\127.0.0.1\'        # any UNC path to the loopback (\\127.0.0.1\C$ ...)
   susp_shell:              # the command interpreter as the service binary, with or without arguments:
     # cmd.exe, cmd /c ..., "C:\Windows\System32\cmd.exe" /Q /c ... (public data: services whose binary is a bare cmd.exe)
     ImagePath|re: '(?i)(^|[\\/"\s])cmd(\.exe)?("|\s|$)'
-  susp_writable_path:      # any Temp folder (C:\Temp, Windows\Temp, a user's Temp), AppData, Public, Downloads; '\' or '/' separators
-    ImagePath|re: '(?i)[\\/](AppData|Users[\\/]Public|Temp|Downloads)[\\/]'
+  susp_writable_path:      # any Temp folder (C:\Temp, Windows\Temp, a user's Temp), AppData, ProgramData, Public, Downloads; '\' or '/' separators
+    ImagePath|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Temp|Downloads)[\\/]'
   susp_script:             # CreateProcess runs .bat / .cmd through cmd.exe implicitly
     ImagePath|re: '(?i)\.(bat|cmd)\b'
   susp_name:               # default service names of remote-execution tools
@@ -46,7 +48,10 @@ detection:
   susp_random_exe:
     # Impacket psexec drops %SystemRoot%\<8 random chars>.exe
     ImagePath|re: '(?i)^(%SystemRoot%|[A-Za-z]:\\Windows)\\[A-Za-z]{8}\.exe$'
-  condition: selection_event and 1 of susp_*
+  filter_defender_driver:  # Defender's own kernel drivers, installed from its protected Definition Updates / Platform folders
+    # (public data: MpKslDrv.sys under ProgramData\Microsoft\Windows Defender\Definition Updates\{GUID}\)
+    ImagePath|re: '(?i)^[a-z]:\\ProgramData\\Microsoft\\Windows Defender\\(Definition Updates|Platform)\\[^\\]+\\[^\\]+\.sys$'
+  condition: selection_event and 1 of susp_* and not filter_defender_driver
 falsepositives:
   - Sysinternals PsExec used by administrators (correlate with change tickets)
 level: high

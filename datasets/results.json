@@ -3,7 +3,7 @@
  "rasd": "1.0.0",
  "fingerprints": {
   "reader": "5",
-  "rule:T1003.001_lsass_memory_access": "dec625b6425f5707f6bf6969813b6b5d9122b4ee9d6424a35a8875a38c7601fd",
+  "rule:T1003.001_lsass_memory_access": "489d64240448f4455f3a6d64fd067fd83b7d7057ea39f90e933857790b421bf3",
   "tuning:T1003.001_lsass_memory_access": "d0506d506905b4de6bb4e5721334fcf56658caaf8fccd10720a21d0d73b42f76",
   "rule:T1021.006_wsmprovhost_suspicious_child": "cb68984b2b425e9f1e4c8e6e2981e87c64344142f980f15ca1bea4590a2dc069",
   "tuning:T1021.006_wsmprovhost_suspicious_child": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -11,21 +11,21 @@
   "tuning:T1053.003_crontab_noninteractive_install": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1053.005_powershell_scheduled_task_creation": "686089b85558480ce2448584d49f6e4df68b61f27a6f644b3dafef58f5cc59a8",
   "tuning:T1053.005_powershell_scheduled_task_creation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1053.005_schtasks_suspicious_creation": "e4c2361919320fff678d21d44239a83b66c2c8f6e7b089334288d6e7f8af4436",
+  "rule:T1053.005_schtasks_suspicious_creation": "3f0421e08577805ef57e8b1f899d04904baedaa569c1298a96c9434f3aa5281e",
   "tuning:T1053.005_schtasks_suspicious_creation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1059.001_powershell_encoded_command": "3227be650ccaba63936c2f7c995f856a795997711eee9ae782ea1d11407d2c00",
+  "rule:T1059.001_powershell_encoded_command": "332d10d432959792feb59d3ebfb79046c1e9384f726c271ce96a2258b4bfc2eb",
   "tuning:T1059.001_powershell_encoded_command": "f5bc0f80ef818d79b1207885eb62c00392f109beab46cbbc100d14108befcc80",
   "rule:T1059.004_linux_suspicious_shell_execution": "ea1df3685262a4c7d3445cf42f594b5e34e47da404e179b2854070f0785e8fff",
   "tuning:T1059.004_linux_suspicious_shell_execution": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1218.011_rundll32_suspicious_execution": "6be32da2964b950793fd2fbc0f6d50f0e9c3f1d68f63b775457105d5ff3a6fb5",
+  "rule:T1218.011_rundll32_suspicious_execution": "c20551d6a535434a0056965331abe2e48e9aa89e6096c6beb6eb2eb385a53e4e",
   "tuning:T1218.011_rundll32_suspicious_execution": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1547.001_registry_run_key_persistence": "08b42012f4c3c136c4ceb75733abe3dde38e8281929cd6cf9b454cf0472d094c",
+  "rule:T1547.001_registry_run_key_persistence": "161177fec45957b1f12d556313771096eac6cc77dade6ec421c0c8b9193d4dda",
   "tuning:T1547.001_registry_run_key_persistence": "8a1fb5e854f1dbe257b0209c073054a34eb2cfc7bc8e289065651a50c2281502",
-  "rule:T1558.003_kerberoasting_rc4_tgs": "3b012489f8a23ea05b7f7b91f49a911c22acadd33f23b73b3831574fc5aa2890",
+  "rule:T1558.003_kerberoasting_rc4_tgs": "e84198e2ed8241e2d7559b9e07636369810b6f4bf81bcdecec449c8da16cbe53",
   "tuning:T1558.003_kerberoasting_rc4_tgs": "15eb68c6b42f9b7ac945d8d0312ffebf762aef2572ebe3ce55090c9628a3bc43",
-  "rule:T1569.002_suspicious_service_installation": "9ec795fc1f63fc6bc8054cc81e1dbf5251f9ee70e2c570c48cbdf642a69950ac",
-  "tuning:T1569.002_suspicious_service_installation": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "rule:T1685.005_event_log_clearing": "17feced8a4f7ff95902ce29b3b76b00fa120e2c8f6c35ede4a68345da4cf0db8",
+  "rule:T1569.002_suspicious_service_installation": "31b4249074c8815a384fc327e44a8d1adfb52a1e30a554e13373a72daf22f771",
+  "tuning:T1569.002_suspicious_service_installation": "cffee4cf478ca2c105eae8763a94bbce54181f2cb0dccae512dc1da1c00a359a",
+  "rule:T1685.005_event_log_clearing": "9cc790d890cc8c8b6f8a3d898cb0e5280b846df0ec65e3ca85f59d9f9ba24e2b",
   "tuning:T1685.005_event_log_clearing": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1685.005_security_log_cleared": "f5ea128cbf61d4fe146c1a9cf4b39cb3d4965255d2b7f7f836c54eea126c7d5b",
   "tuning:T1685.005_security_log_cleared": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -33,16 +33,16 @@
   "tuning:T1685.005_system_log_cleared": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1110.003_password_spray_burst": "c811307ab82d330e74a9e4473405e30a4556a0cf6fe4b6983ea8112bf69bcc44",
   "tuning:T1110.003_password_spray_burst": "690c5d66be2864489e3fccb07eb405cd7b29a01f725729e37b80493dc5727d61",
-  "rule:T1190_api_auth_probing": "7dd76f5d0cdd93b4adb0f4405bb07c4341ba9a34889a141cee8c664985536bc1",
-  "tuning:T1190_api_auth_probing": "71fab040580b24608814ca7dc7b2dc444c29f3b751f3d99a481c615b34fca3f7",
   "rule:T1190_object_id_enumeration": "e8916a657dbbe1ed6fef76c859e023110d103373ee5ed04ee7c33e122ce94b39",
   "tuning:T1190_object_id_enumeration": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1558.003_kerberoasting_volume": "ecdfe17891e0ab897f4f79ca8dcc87d61d6442a0caec64d609273bf53220c3b9",
   "tuning:T1558.003_kerberoasting_volume": "15eb68c6b42f9b7ac945d8d0312ffebf762aef2572ebe3ce55090c9628a3bc43",
+  "rule:T1595.003_api_auth_probing": "7dd76f5d0cdd93b4adb0f4405bb07c4341ba9a34889a141cee8c664985536bc1",
+  "tuning:T1595.003_api_auth_probing": "71fab040580b24608814ca7dc7b2dc444c29f3b751f3d99a481c615b34fca3f7",
   "profile:nxlog-windows": "0590c8ef3f290641480ee3bbf9da67de45b9650831af00f81c3f4d2ef054b0ff",
   "profile:sysmon-native": "19fa36b4bb1357cb6eb5832d3a13fc5396da8c5590995d3fdead7da58880a280",
   "profile:windows-security-4688": "91c9975551aee1cb8d7b4730dfbcd6aebd9369faacd97fb0377dcca2470feb67",
-  "holdout_labels": "c57f8050d1773133f62ee5c63572d90b341720459730c16e3134c5ed6ee92c1c",
+  "holdout_labels": "c5bf092c37302ddd22b0ce3fa3f3a6758875c626b3fd4f63059339f2a7134bd2",
   "source:evtx-attack-samples": "0bec901bf560672da730d0607fbdf54439dbf03c1d6d04a9724f085a6ae1996f",
   "source:otrf-security-datasets": "c800c330ecb60e7fead0e7d93cbf7b346bceefde5819ab6a5d0c749b1fc81709",
   "source:splunk-attack-data": "4d5445c17e28e40d8b63902db8c82ccbf179a13a533d0db4e75042452b8c7a99",
@@ -77,8 +77,8 @@
   "dataset:splunk/T1110.003/purplesharp_remote_spray_xml/windows-security": "61e8f0e66df1d5b9f82b909aa77fa6ca480e61ca8e6dbac15370c89905663ed3",
   "dataset:splunk/T1110.003/purplesharp_valid_users_kerberos_xml/windows-security": "245cb76c7cc6b4497964842b6966a2c7bed5c374c8f61d5255945f619ca3d336",
   "dataset:splunk/T1110.003/purplesharp_valid_users_ntlm_xml/windows-security": "946589f84491e5f813d39e08fc0ecfb204b002225184f693742d6d8f57d58def",
-  "dataset:splunk/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux": "0976b4dc194e752737bd97a9e9f9401c12b4f911d0be97dbfe45760379fae381",
-  "dataset:splunk/T1190/linux_suspicious_child_of_postgresql/snapattack_linux": "58c4413095127a8fbe2edfd3fca9c474354cd137270c77b8ebff02d8963f224e",
+  "dataset:splunk/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux": "d9951601bcded9113ff35338dccbbdad015d5c2785a97504dae5cd24d06e81f4",
+  "dataset:splunk/T1190/linux_suspicious_child_of_postgresql/snapattack_linux": "1ad81a70d2e0fb0fb073011d9ceb315f424237f284d742d49779ff5b7b947dff",
   "dataset:splunk/T1218.011/atomic_red_team/ordinal_windows-sysmon": "aa270ab1cf4b9a3ec9149fd6536daa532e65581877732838e50a4203eb72fdcf",
   "dataset:splunk/T1218.011/atomic_red_team/windows-sysmon": "2099e37f6a7bdcfb9bbc0a30ff4e1f881a407deac3d2f0b1387f41c6ea83a50e",
   "dataset:splunk/T1218.011/rundll32_dll_in_temp/sysmon": "e4d4282ae8472bc65a052cdc10053be4d895fe8a811cc86e92d5c60d3619e77b",
@@ -99,7 +99,7 @@
   "dataset:otrf/metasploit_procdump_lsass_memory_dump": "4a2df9833616268fc982c99f08d523cc88f4802d8e4bd18f89a1b0c133868ebe",
   "dataset:otrf/metasploit_sharpdump_lsass_memory_dump": "9dad89139236cc74798f9ad51e39a1403d0cac46f6aab6361614361644aad51e",
   "dataset:otrf/psh_lsass_memory_dump_comsvcs": "1432618879040654e5ef949d8494e919e642ea2e74c971ccbfd7722183939c22",
-  "dataset:otrf/covenant_psremoting_command": "afdf118f7e720a211601d83f961dd8a0bba79f236c6c2aa34dda5ca6ab4f7bc8",
+  "dataset:otrf/covenant_psremoting_command": "e5842f13f2450f98245cf9dee213a8cf489f7cf5f0626b774421dc28454ef0ba",
   "dataset:otrf/empire_psremoting_stager": "232897c1a22543329330e58723a7857a8bfeb02d8298690b999209b7578537c0",
   "dataset:otrf/empire_schtasks_creation_execution_elevated_user": "c7625eb9415d24ef774ded93c6461809683ce4d7bee2250f12bba433dcd01630",
   "dataset:otrf/empire_schtasks_creation_standard_user": "767b229d14e7e468f534cc264c5066c1e94c4a011eec0e074cc0b7b26e58e161",
@@ -247,21 +247,21 @@
   "dataset:splunk/T1558.003/rubeus/windows-security.log": "e2ca60c0f2e4f74da39d8a91edf0d7db5509344042b6fac065248e7f01ac40e5",
   "dataset:splunk/T1569.002/atomic_red_team/windows-security.log": "1d16135e5679077b972a3ed0e1e34e1d8dab64374bef245a372fe8f00a352dda",
   "dataset:splunk/T1569.002/atomic_red_team/windows-system.log": "6cd388d77837e771edeaca261467563a1535d247333c43e8b120768080af353c",
-  "dataset:splunk/T1190/crushftp/windows-sysmon.log": "22613b31c5dcf92b0e9b693fc52be717c15f005a5981e85c8b7f40c6859e4e50",
+  "dataset:splunk/T1190/crushftp/windows-sysmon.log": "c961149edacc5a4bae6797f527708ce6fe2df0df24bb3e606e6fb51d4b65ab03",
   "dataset:splunk/T1190/java/java_spawn_shell_nix.log": "cd3535104062511f907c0f0b8c2f88bb9d0fc901e8c3419faca3ea763c805f2f",
-  "dataset:splunk/T1190/outbound_java/linux-sysmon.log": "3365d48ddad412709037e3dbfad91c175158f945a065f2863c03b287d0814829",
-  "dataset:splunk/T1190/outbound_java/windows-security.log": "cbe25d5416ac923e6805eaad1166521b8dc2a78284ef2de2abbcffb0612c7aff",
-  "dataset:splunk/T1190/outbound_java/windows-sysmon.log": "5408cda8e788a9be5b9c0c725fe729f7845633973138802906cadf254e047b12",
-  "dataset:splunk/T1190/papercut/papercutng-app-spawn_windows-sysmon.log": "bc97a6eb9c77c7986e95bae42c2a42bbecf6157950b25a7f0ace4546fbd4152c",
+  "dataset:splunk/T1190/outbound_java/linux-sysmon.log": "9a5c6930125339e1f013e0f7683c2232decc5adc44cfa42462577dddb6e87de1",
+  "dataset:splunk/T1190/outbound_java/windows-security.log": "1184ad87535423ee48fb131f3b58f7ae2d489310e3bf84f9744e12eeedd5c503",
+  "dataset:splunk/T1190/outbound_java/windows-sysmon.log": "30436a9badea2f0a634b42ea20ff57efb1e49129c208d83e246b4a589aa8f329",
+  "dataset:splunk/T1190/papercut/papercutng-app-spawn_windows-sysmon.log": "21895b9f72197185d676c6f406692ddf0b648ea0d5aa2c1295f539272ec2e74c",
   "dataset:splunk/T1190/proxyshell/msexchangehmworker_windows-sysmon.log": "f5970de3b0739065be3d340abf8dad5cdac14356a99844bbb6cbab7dc988a174",
   "dataset:splunk/T1190/pswa/4648_4624_pswa_pool.log": "528990b49317ecf1f3f31ce625ce9ba0cb266fad1b65e31b7a8c88d6db7ee7b8",
   "dataset:splunk/T1190/pswa/4648_pswa_pool.log": "0d72c7e316068701367fa04797ac69e772c0d791a4d492488742943264e5b706",
   "dataset:splunk/T1190/sap/windows-sysmon.log": "aefff69abd5f94cb8f925c76b3a88b1b34d019dd5d8cf4ea08e952338882f76e",
-  "dataset:splunk/T1190/screenconnect/4663_connectwise_aspx_app_extensions.log": "d7a41de907dfff0cd646d7eec8edc3348e51c77347f1a855d85ca2ed488d9a7d",
-  "dataset:splunk/T1190/screenconnect/sysmon_app_extensions.log": "832d639884372b80e576362b608d3945fe87d2b3b80dd4b9c4fcec5fe9706c5f",
-  "dataset:splunk/T1190/snapattack/snapattack.log": "e58b3371b75233a26bbed93d192f76922efaa92c58b53494936a76f5fff6ac88",
-  "dataset:splunk/T1190/snapattack/snapattack_linux.log": "7887199e386ff5c05ed45a36b8c1760d3fdd6f79a8efc75ab2e540cd8ead315c",
-  "dataset:splunk/T1190/spring4shell/java_write_jsp-linux-sysmon.log": "0a8e943fed18d1bca0668cd37031dcd19ac37b68e0068cda29a706615bab139b",
+  "dataset:splunk/T1190/screenconnect/4663_connectwise_aspx_app_extensions.log": "0a6f27f16c8c9fabe3488ccef1cb63ba10f848a78aaa82cf0a8a00f1e1339c4e",
+  "dataset:splunk/T1190/screenconnect/sysmon_app_extensions.log": "ad9e91d5d809e666d96f91c9b6bcd0ddc47b842ac10ef32f2b9c1b30a7449e98",
+  "dataset:splunk/T1190/snapattack/snapattack.log": "774ed9d126286ca73f917e34c9d6b1bad4b099dd9a0bb4c72315c13ea9715912",
+  "dataset:splunk/T1190/snapattack/snapattack_linux.log": "e50050e564b365d1c4735c8c505d2057bfea773b9810598517364afde800c26e",
+  "dataset:splunk/T1190/spring4shell/java_write_jsp-linux-sysmon.log": "338415b274b46a70cd5862ec381b64ba8f0c81e2b5239c252594851d31060587",
   "dataset:splunk/T1053.005/atomic_red_team/attack_data.json": "b8e0bf1a5d3e32a68129bec9e7ad7d870e0b8dc4cf282b88b5a4324e4380c79d",
   "dataset:splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Microsoft-Windows-Sysmon-Operational.evtx": "d11eadba299e50038c6947b04ce37fd51b51e6728ade8da058b9581bd5440e80",
   "dataset:splunk/T1003.001/atomic_red_team/procdump_t1003.001_capattack/Security.evtx": "9a1175cd4a21a4de51a241aaf3872a6c3eb40fb92fec9e411e096068f56e247c"
@@ -448,8 +448,8 @@
    "end": "2022-01-12T16:30:01.802Z",
    "alerts": {
     "T1003.001_lsass_memory_access": {
-     "count": 4,
-     "unique": 4,
+     "count": 5,
+     "unique": 5,
      "first": "2022-01-12T16:29:39.434Z",
      "last": "2022-01-12T16:29:59.905Z",
      "hosts": [
@@ -459,7 +459,8 @@
       7,
       8,
       14,
-      28
+      28,
+      29
      ]
     }
    },
@@ -482,7 +483,7 @@
    },
    "extract": {
     "file": "datasets/extracts/splunk/T1003.001/atomic_red_team/windows-sysmon_creddump.jsonl",
-    "events": 4
+    "events": 5
    },
    "assessment": {
     "missed": [],
@@ -1261,14 +1262,15 @@
    "end": "2020-11-20T09:57:05.560Z",
    "alerts": {
     "T1003.001_lsass_memory_access": {
-     "count": 1,
-     "unique": 1,
-     "first": "2020-11-20T09:52:13.876Z",
+     "count": 2,
+     "unique": 2,
+     "first": "2020-11-20T09:50:57.811Z",
      "last": "2020-11-20T09:52:13.876Z",
      "hosts": [
       "win-dc-555.attackrange.local"
      ],
      "records": [
+      16367,
       16818
      ]
     },
@@ -1352,7 +1354,7 @@
    },
    "extract": {
     "file": "datasets/extracts/splunk/T1059.001/hidden_powershell/windows-sysmon.jsonl",
-    "events": 54
+    "events": 55
    },
    "assessment": {
     "missed": [],
@@ -3151,14 +3153,15 @@
    "end": "2023-08-27T03:14:29.435Z",
    "alerts": {
     "T1003.001_lsass_memory_access": {
-     "count": 1,
-     "unique": 1,
-     "first": "2023-08-27T03:06:45.013Z",
+     "count": 2,
+     "unique": 2,
+     "first": "2023-08-27T03:06:44.978Z",
      "last": "2023-08-27T03:06:45.013Z",
      "hosts": [
       "IT01.pandalab.com"
      ],
      "records": [
+      19168,
       19172
      ]
     },
@@ -3182,7 +3185,7 @@
    "tuning": {},
    "extract": {
     "file": "datasets/extracts/otrf/metasploit_out-minidump_lsass_memory_dump.jsonl",
-    "events": 5
+    "events": 6
    },
    "assessment": {
     "missed": [],
@@ -3349,14 +3352,15 @@
    "end": "2023-09-05T10:03:30.368Z",
    "alerts": {
     "T1003.001_lsass_memory_access": {
-     "count": 1,
-     "unique": 1,
-     "first": "2023-09-05T09:56:42.503Z",
+     "count": 2,
+     "unique": 2,
+     "first": "2023-09-05T09:56:42.332Z",
      "last": "2023-09-05T09:56:42.503Z",
      "hosts": [
       "MKT01.pandalab.com"
      ],
      "records": [
+      48335,
       48339
      ]
     },
@@ -3377,7 +3381,7 @@
    "tuning": {},
    "extract": {
     "file": "datasets/extracts/otrf/metasploit_sharpdump_lsass_memory_dump.jsonl",
-    "events": 2
+    "events": 3
    },
    "assessment": {
     "missed": [],
@@ -3478,7 +3482,20 @@
    },
    "start": "2020-08-06T15:56:04.580Z",
    "end": "2020-08-06T15:57:38.987Z",
-   "alerts": {},
+   "alerts": {
+    "T1003.001_lsass_memory_access": {
+     "count": 1,
+     "unique": 1,
+     "first": "2020-08-06T15:56:25.915Z",
+     "last": "2020-08-06T15:56:25.915Z",
+     "hosts": [
+      "WORKSTATION6.theshire.local"
+     ],
+     "records": [
+      1523
+     ]
+    }
+   },
    "correlations": {},
    "tuning": {
     "T1003.001_lsass_memory_access": {
@@ -3524,7 +3541,7 @@
    },
    "extract": {
     "file": "datasets/extracts/otrf/covenant_psremoting_command.jsonl",
-    "events": 0
+    "events": 1
    },
    "assessment": {
     "missed": [],
@@ -3692,6 +3709,20 @@
         ],
         [
          "WEC$",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "T1569.002_suspicious_service_installation": {
+     "defender_kernel_driver": {
+      "kind": "filter",
+      "events": 1,
+      "values": {
+       "ImagePath": [
+        [
+         "C:\\ProgramData\\Microsoft\\Windows Defender\\Definition Updates\\{89A68A4E-7A2D-4BF6-AB0B-E3458778981C}\\MpKslDrv.sys",
          1
         ]
        ]
@@ -5078,13 +5109,16 @@
    "end": "2019-05-12T13:38:01.383Z",
    "alerts": {
     "T1218.011_rundll32_suspicious_execution": {
-     "count": 2,
-     "unique": 2,
+     "count": 5,
+     "unique": 5,
      "first": "2019-05-12T13:30:46.400Z",
      "last": "2019-05-12T13:38:00.523Z",
      "hosts": [],
      "records": [
       3,
+      5,
+      6,
+      7,
       9
      ]
     }

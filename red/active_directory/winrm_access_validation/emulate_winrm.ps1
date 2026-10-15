@@ -14,6 +14,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 # cmd.exe makes the session host start a child process: the telemetry the WinRM rule reads
 Invoke-Command -ComputerName $Target -ScriptBlock { param($m) cmd.exe /c "echo $env:COMPUTERNAME $m" } -ArgumentList $Marker

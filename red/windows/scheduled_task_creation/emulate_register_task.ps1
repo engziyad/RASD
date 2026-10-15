@@ -14,6 +14,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 # The child command line is the telemetry: keep $env:TEMP literal so it appears in Sysmon 1.
 $command = "Register-ScheduledTask -TaskName $($Marker)_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) " +

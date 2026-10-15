@@ -22,9 +22,11 @@ detection:
       - '\Software\Microsoft\Windows\CurrentVersion\Run\'
       - '\Software\Microsoft\Windows\CurrentVersion\RunOnce\'
       - '\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run\'
+      - '\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\RunOnce\'
   selection_data:
     Details|contains:
       - 'powershell'
+      - 'pwsh'
       - 'mshta'
       - 'wscript'
       - 'cscript'
@@ -34,10 +36,14 @@ detection:
       - 'cmd.exe /c'
   selection_data_path:     # any AppData/ProgramData/Public/Temp path, or Windows\Tasks (writable by users); '\' or '/' separators
     Details|re: '(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/](Temp|Tasks)|Downloads)[\\/]'
-  filter_onedrive:
-    Details|contains: '\AppData\Local\Microsoft\OneDrive\OneDrive.exe'
-  filter_teams:
-    Details|contains: '\AppData\Local\Microsoft\Teams\'
+  selection_data_env:      # REG_EXPAND_SZ data keeps the variable unexpanded: %TEMP%\x.exe never contains \AppData\
+    Details|re: '(?i)%(TEMP|TMP|APPDATA|LOCALAPPDATA|PUBLIC|PROGRAMDATA)%'
+  selection_data_profile_root:   # a binary or script dropped straight into a user profile (C:\Users\bob\x.exe)
+    Details|re: '(?i)[\\/]Users[\\/][^\\/"]+[\\/][^\\/"]+\.(exe|dll|scr|bat|cmd|ps1|vbs|js|hta)\b'
+  filter_onedrive:         # the whole value must be OneDrive's own autostart: nothing appended, no other binary
+    Details|re: '(?i)^"?[a-z]:\\Users\\[^\\"]+\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive\.exe"?( /background)?$'
+  filter_teams:            # only Squirrel's Update.exe starting Teams.exe; any other binary under ...\Teams\ still alerts
+    Details|re: '(?i)^"?[a-z]:\\Users\\[^\\"]+\\AppData\\Local\\Microsoft\\Teams\\Update\.exe"? --processStart "?Teams\.exe"?( --process-start-args "--system-initiated")?$'
   condition: selection_key and 1 of selection_data* and not 1 of filter_*
 falsepositives:
   - Per-user installed apps (Slack, Zoom, Discord) living in AppData - add filters

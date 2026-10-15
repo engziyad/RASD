@@ -14,7 +14,7 @@ Install: copy each folder into `$SPLUNK_HOME/etc/apps/` (on a Windows forwarder:
 
 ## Alerts
 
-Each alert runs every 5 minutes over the last 10 and fires when its search returns an event. Its base search is the generated query in [`queries/spl`](../spl/), proven equivalent to the tested rule by `rasd parity`; the saved search appends a summary row only for reliable alert export.
+Each alert runs every 5 minutes over one 5-minute slice that closed 5 minutes earlier (`-10m@m` to `-5m@m`): consecutive runs tile time, so an event is alerted exactly once, and up to 5 minutes of indexing delay never drop one (events indexed later than that are missed by the alert, not by `rasd replay`). It fires once per host in the slice (digest mode off), so two hosts are two alerts. Its base search is the generated query in [`queries/spl`](../spl/), proven equivalent to the tested rule by `rasd parity`; the saved search appends a per-host summary row only for reliable alert export.
 
 | Saved search | Detection | Severity |
 |---|---|---:|
@@ -40,11 +40,11 @@ A correlation alert counts per window. It runs once per window length over the l
 | Saved search | Correlation | Condition | Schedule | Severity |
 |---|---|---|---|---:|
 | `RASD - T1110.003_password_spray_burst` | Password Spray - One Source Failing Authentication for Many Accounts | >= 5 distinct TargetUserName per IpAddress in 10m windows | `*/10 * * * *` | 5 |
-| `RASD - T1190_api_auth_probing` | API Probing - One Client Rejected on Many Distinct Paths | >= 5 distinct cs-uri-stem per c-ip in 5m windows | `*/5 * * * *` | 4 |
 | `RASD - T1190_object_id_enumeration` | Object ID Enumeration - One Client Walking Single-Owner Objects | >= 3 distinct cs-uri-stem per c-ip in 1m windows | `*/1 * * * *` | 5 |
 | `RASD - T1558.003_kerberoasting_volume` | Kerberoasting - One Client Requesting Tickets for Many Service Accounts | >= 5 distinct ServiceName per IpAddress in 10m windows | `*/10 * * * *` | 5 |
+| `RASD - T1595.003_api_auth_probing` | API Probing - One Client Rejected on Many Distinct Paths | >= 5 distinct cs-uri-stem per c-ip in 5m windows | `*/5 * * * *` | 4 |
 
-Every alert also writes one event to the `rasd_alerts` index (Log Event alert action). A detection's alert search is the proven rule query plus a lab-only summary (`stats count`, first/last event time, first host and all hosts), so the export gets a deterministic host even when Splunk result tokens differ between deployments. A correlation's search is its proven query plus the window filter and three `eval` fields (detection id, alerting group, event count): its rows already carry the window, the counts and the first and last event.
+Every alert also writes one event to the `rasd_alerts` index (Log Event alert action). A detection's alert search is the proven rule query plus a lab-only summary per host (`stats count`, first and last event time `by` detection and host), so the export gets a deterministic host even when Splunk result tokens differ between deployments. A correlation's search is its proven query plus the window filter and three `eval` fields (detection id, alerting group, event count): its rows already carry the window, the counts and the first and last event.
 
 ## Alert export for `rasd evidence`
 
@@ -58,4 +58,4 @@ Run one of these reports over the lab window, export the result as CSV and pass 
 
 On the first lab run, check that the host really reaches `rasd_alerts`: `index=rasd_alerts | table _time rasd_alert alert_host alert_hosts first_event last_event`. An empty `alert_host` means the alert's results had no usable host field; the export still works, matched by name and time like the fallbacks. For a correlation, `alert_host` is its first group-by value - the client address for every correlation in this repository.
 
-Each alert runs every 5 minutes, so the SIEM latency `rasd evidence` reports includes up to 5 minutes of schedule wait on top of the indexing delay; the evidence file shows both parts. A correlation alert waits for its window to close, so its latency includes up to two window lengths plus 3 minutes.
+Each alert reads a slice that closed 5 minutes earlier and runs every 5 minutes, so the SIEM latency `rasd evidence` reports includes 5 to 10 minutes of schedule wait on top of the indexing delay; the evidence file shows both parts. A correlation alert waits for its window to close, so its latency includes up to two window lengths plus 3 minutes.

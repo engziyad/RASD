@@ -13,6 +13,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 & sc.exe create $Marker binPath= "cmd.exe /c echo $Marker" start= demand
 if ($LASTEXITCODE -ne 0) { throw "sc.exe exited with $LASTEXITCODE" }

@@ -16,7 +16,7 @@ Ideas that are not detections yet, each tied to the offensive test that already 
 |---|---|---|
 | Suspicious children of `wsmprovhost.exe` | [T1021.006_wsmprovhost_suspicious_child](../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | Shells, encoded PowerShell and proxy binaries under both WinRM hosts |
 | Password spray as a correlation rule | [T1110.003_password_spray_burst](../../detect/correlations/T1110.003_password_spray_burst/) | Built once the engine gained Sigma correlations |
-| One client receiving 401/403 on many API paths | [T1190_api_auth_probing](../../detect/correlations/T1190_api_auth_probing/) | Web access log mapped for Sentinel and Splunk |
+| One client receiving 401/403 on many API paths | [T1595.003_api_auth_probing](../../detect/correlations/T1595.003_api_auth_probing/) | Web access log mapped for Sentinel and Splunk |
 | Sequential object IDs read by one session | [T1190_object_id_enumeration](../../detect/correlations/T1190_object_id_enumeration/) | Grouped by client address: access logs carry no session or owner field |
 | Crontab written by an interactive user | [T1053.003_crontab_noninteractive_install](../../detect/detections/T1053.003_crontab_noninteractive_install/) | Keys on non-interactive installs (`crontab -`, `crontab <file>`), which scripts and intruders use |
 | `base64 -d` piped into a shell; execution from /tmp | [T1059.004_linux_suspicious_shell_execution](../../detect/detections/T1059.004_linux_suspicious_shell_execution/) | Sysmon for Linux instead of auditd: the same field names as on Windows |

@@ -7,9 +7,9 @@
 | **Severity** | `medium` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 5 true positive · 6 true negative · 6 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 23 variants |
-| **Parity** | KQL and SPL identical to the rule on 544 events |
+| **Tests** | 11 true positive · 9 true negative · 6 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 53 variants |
+| **Parity** | KQL and SPL identical to the rule on 685 events |
 | **Public data** | fires on 3 of 3 public recordings of its behaviour · held-out: 0 of 1 · 13 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
@@ -20,14 +20,14 @@
 Security **4769 (A Kerberos service ticket was requested)** on **domain controllers**. Requires *Audit Kerberos Service Ticket Operations* (Success).
 
 ## How the detection works
-Any authenticated user can request a service ticket for any SPN; the ticket is encrypted with the service account's password hash and can be cracked offline. Attack tools request **RC4 (0x17)** tickets because RC4 is far faster to crack than AES. In a domain where accounts support AES, a successful RC4 TGS for a **user-based** service account is anomalous. Machine accounts (`$`) and `krbtgt` are excluded because their passwords are long and random.
+Any authenticated user can request a service ticket for any SPN; the ticket is encrypted with the service account's password hash and can be cracked offline. Attack tools request **RC4 (0x17)** tickets because RC4 is far faster to crack than AES; the rule also matches the other crackable types, RC4-HMAC-EXP (0x18) and DES (0x1, 0x3), in hex or decimal. In a domain where accounts support AES, a successful RC4 TGS for a **user-based** service account is anomalous. Machine accounts (`$`) and `krbtgt` are excluded because their passwords are long and random.
 
 For production, pair this single-event rule with an **aggregation hunt**: one client requesting many distinct SPNs within minutes.
 
 ## Evasion & coverage gaps
 - Attackers requesting **AES** tickets (Rubeus `/aes`) to blend in. The rule cannot see them; the [volume hunt](../../../queries/hunts/kerberoasting_volume_hunt.kql) counts service tickets of every encryption type per client, so volume-based AES roasting still surfaces there.
 - Targeted roasting of a single account - low volume; rely on **honeypot SPN accounts** (any ticket request = alert).
-- Roasting run **on a domain controller**: tickets requested from `::1`, the domain controller itself, are filtered out with its own service traffic. Public data shows Rubeus run on a domain controller requesting 30 RC4 tickets that way ([held-out evidence](public_evidence.md)). Watch for interactive logons and tool execution on domain controllers instead.
+- Roasting run **on a domain controller**: tickets requested from the loopback (`::1`, `127.0.0.1`, `::ffff:127.0.0.1` - the same forms the volume correlation filters), the domain controller itself, are filtered out with its own service traffic. Public data shows Rubeus run on a domain controller requesting 30 RC4 tickets that way ([held-out evidence](public_evidence.md)). Watch for interactive logons and tool execution on domain controllers instead.
 - The real fix: gMSA or 25+ character passwords for service accounts, and disabling RC4.
 
 ### Aggregation hunt

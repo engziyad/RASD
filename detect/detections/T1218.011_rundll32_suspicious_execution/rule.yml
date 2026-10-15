@@ -36,6 +36,12 @@ detection:
   susp_proxy_export:       # Windows DLL exports that start another program (LOLBAS), by name, comma or space before the export
     # (public data: zipfldr RouteTheCall, advpack RegisterOCX and pcwutl LaunchApplication starting a binary)
     CommandLine|re: '(?i)\b(zipfldr(\.dll)?"?[\s,]+"?RouteTheCall|advpack(\.dll)?"?[\s,]+"?RegisterOCX|pcwutl(\.dll)?"?[\s,]+"?LaunchApplication)\b'
+  susp_shell_launch:       # shell32 ShellExec_RunDLL and url.dll FileProtocolHandler / OpenURL hand any path or URL to the shell
+    CommandLine|re: '(?i)\b(shell32(\.dll)?"?[\s,]+"?ShellExec_RunDLL[AW]?|url(\.dll)?"?[\s,]+"?(FileProtocolHandler|OpenURL))\b'
+  susp_unc:                # DLL loaded straight from a share (\\host\share\x.dll): never copied to disk first
+    CommandLine|re: '(?i)rundll32(\.exe)?"?[\s,]+"?\\\\[^\\\s"]+\\'
+  susp_profile_root:       # a DLL dropped straight into a user profile (C:\Users\bob\x.dll)
+    CommandLine|re: '(?i)[\\/]Users[\\/][^\\/"]+[\\/][^\\/",]+\.(dll|cpl|ocx)\b'
   condition: selection_img and 1 of susp_*
 falsepositives:
   - Legacy installers that stage DLLs in %TEMP% (validate signer and parent)

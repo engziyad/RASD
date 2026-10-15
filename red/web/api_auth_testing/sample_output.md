@@ -5,7 +5,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 ## Console
 
 ```text
-[T1190] Call protected endpoints with no token, a malformed token and a foreign-signed JWT
+[T1595.003] Call protected endpoints with no token, a malformed token and a foreign-signed JWT
   PASS     GET /rest/basket/1 with no token: HTTP 401
   PASS     GET /rest/basket/1 with malformed token: HTTP 401
   PASS     GET /rest/basket/1 with foreign-signed JWT: HTTP 401
@@ -14,9 +14,9 @@ Expected output, not a capture from a real host. The run marker is random on eve
 18 check(s), 0 finding(s)
 ```
 
-## Expected sequence → T1190_api_auth_probing
+## Expected sequence → T1595.003_api_auth_probing
 
-Scenario *lab emulation - six protected paths, three token variants each* in [`tests/scenarios.yml`](../../../detect/correlations/T1190_api_auth_probing/tests/scenarios.yml): 18 events from one source. CI proves on every change that the correlation fires on it, and that the generated SPL and KQL return the same alert. First event of the sequence:
+Scenario *lab emulation - six protected paths, three token variants each* in [`tests/scenarios.yml`](../../../detect/correlations/T1595.003_api_auth_probing/tests/scenarios.yml): 18 events from one source. CI proves on every change that the correlation fires on it, and that the generated SPL and KQL return the same alert. First event of the sequence:
 
 ```json
 {

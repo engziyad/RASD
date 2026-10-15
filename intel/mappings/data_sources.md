@@ -83,8 +83,6 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 
 | Source | Event | Rule uses it |
 |---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | yes |
-| Application log | authentication failure | no |
 | Web server / reverse proxy access log | HTTP request · sequential object IDs | yes |
 
 ## [T1218.011](https://attack.mitre.org/techniques/T1218/011/)
@@ -121,6 +119,13 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 | Security | 4697 · A service was installed in the system | no |
 | Sysmon | 1 · ProcessCreate | no |
 | Sysmon | 13 · RegistryEvent (value set) | no |
+
+## [T1595.003](https://attack.mitre.org/techniques/T1595/003/)
+
+| Source | Event | Rule uses it |
+|---|---|---|
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | yes |
+| Application log | authentication failure | no |
 
 ## [T1606](https://attack.mitre.org/techniques/T1606/)
 

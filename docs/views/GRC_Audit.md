@@ -8,24 +8,24 @@ Every row below is backed by artifacts in this repository and re-verified by CI 
 
 | Detection | Technique | Maturity | Owner | TP / TN tests | Mutations | Coverage depth | SIEM queries |
 |---|---|---|---|---|---|---|---|
-| [Suspicious Process Access to LSASS Memory](../../detect/detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | SIEM-Ready | detection-engineering | 18 / 10 | 5 | **medium** | [KQL](../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../queries/spl/T1003.001_lsass_memory_access.spl) |
+| [Suspicious Process Access to LSASS Memory](../../detect/detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | SIEM-Ready | detection-engineering | 27 / 13 | 5 | **medium** | [KQL](../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../queries/spl/T1003.001_lsass_memory_access.spl) |
 | [Suspicious Child Process of a WinRM Session Host](../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | SIEM-Ready | detection-engineering | 18 / 7 | 7 | **medium** | [KQL](../../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) · [SPL](../../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) |
 | [Crontab Installed From Standard Input or a File](../../detect/detections/T1053.003_crontab_noninteractive_install/) | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | SIEM-Ready | detection-engineering | 5 / 7 | 5 | **partial** | [KQL](../../queries/kql/T1053.003_crontab_noninteractive_install.kql) · [SPL](../../queries/spl/T1053.003_crontab_noninteractive_install.spl) |
 | [Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets](../../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | SIEM-Ready | detection-engineering | 14 / 6 | 3 | **partial** | [KQL](../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) · [SPL](../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) |
-| [Scheduled Task Created With Suspicious Action](../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | SIEM-Ready | detection-engineering | 19 / 6 | 7 | **partial** | [KQL](../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) · [SPL](../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) |
-| [PowerShell Execution With Encoded Command](../../detect/detections/T1059.001_powershell_encoded_command/) | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | SIEM-Ready | detection-engineering | 12 / 6 | 8 | **medium** | [KQL](../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../queries/spl/T1059.001_powershell_encoded_command.spl) |
+| [Scheduled Task Created With Suspicious Action](../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | SIEM-Ready | detection-engineering | 24 / 6 | 7 | **partial** | [KQL](../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) · [SPL](../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) |
+| [PowerShell Execution With Encoded Command](../../detect/detections/T1059.001_powershell_encoded_command/) | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | SIEM-Ready | detection-engineering | 13 / 6 | 8 | **medium** | [KQL](../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../queries/spl/T1059.001_powershell_encoded_command.spl) |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | SIEM-Ready | detection-engineering | 11 / 7 | 6 | **medium** | [KQL](../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) · [SPL](../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) |
-| [Rundll32 Proxy Execution From Suspicious Context](../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | SIEM-Ready | detection-engineering | 16 / 7 | 4 | **medium** | [KQL](../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) |
-| [Run Key Persistence Pointing to Suspicious Location](../../detect/detections/T1547.001_registry_run_key_persistence/) | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | SIEM-Ready | detection-engineering | 14 / 4 | 4 | **partial** | [KQL](../../queries/kql/T1547.001_registry_run_key_persistence.kql) · [SPL](../../queries/spl/T1547.001_registry_run_key_persistence.spl) |
-| [Kerberoasting - RC4 Service Ticket Requested for User Account](../../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | SIEM-Ready | detection-engineering | 5 / 6 | 6 | **medium** | [KQL](../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |
-| [Suspicious Service Installation (PsExec-style / Command Services)](../../detect/detections/T1569.002_suspicious_service_installation/) | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | SIEM-Ready | detection-engineering | 20 / 7 | 4 | **medium** | [KQL](../../queries/kql/T1569.002_suspicious_service_installation.kql) · [SPL](../../queries/spl/T1569.002_suspicious_service_installation.spl) |
-| [Windows Event Log Clearing via Command Line](../../detect/detections/T1685.005_event_log_clearing/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 11 / 6 | 4 | **medium** | [KQL](../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../queries/spl/T1685.005_event_log_clearing.spl) |
+| [Rundll32 Proxy Execution From Suspicious Context](../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | SIEM-Ready | detection-engineering | 21 / 8 | 4 | **medium** | [KQL](../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) |
+| [Run Key Persistence Pointing to Suspicious Location](../../detect/detections/T1547.001_registry_run_key_persistence/) | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | SIEM-Ready | detection-engineering | 20 / 6 | 4 | **partial** | [KQL](../../queries/kql/T1547.001_registry_run_key_persistence.kql) · [SPL](../../queries/spl/T1547.001_registry_run_key_persistence.spl) |
+| [Kerberoasting - RC4 Service Ticket Requested for User Account](../../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | SIEM-Ready | detection-engineering | 11 / 9 | 6 | **medium** | [KQL](../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |
+| [Suspicious Service Installation (PsExec-style / Command Services)](../../detect/detections/T1569.002_suspicious_service_installation/) | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | SIEM-Ready | detection-engineering | 24 / 8 | 4 | **medium** | [KQL](../../queries/kql/T1569.002_suspicious_service_installation.kql) · [SPL](../../queries/spl/T1569.002_suspicious_service_installation.spl) |
+| [Windows Event Log Clearing via Command Line](../../detect/detections/T1685.005_event_log_clearing/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 15 / 8 | 4 | **medium** | [KQL](../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../queries/spl/T1685.005_event_log_clearing.spl) |
 | [Security Audit Log Cleared (Event 1102)](../../detect/detections/T1685.005_security_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 5 / 4 | 2 | **high** | [KQL](../../queries/kql/T1685.005_security_log_cleared.kql) · [SPL](../../queries/spl/T1685.005_security_log_cleared.spl) |
 | [Windows Event Log Cleared (System Event 104)](../../detect/detections/T1685.005_system_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 5 / 5 | 3 | **high** | [KQL](../../queries/kql/T1685.005_system_log_cleared.kql) · [SPL](../../queries/spl/T1685.005_system_log_cleared.spl) |
 | [Password Spray - One Source Failing Authentication for Many Accounts](../../detect/correlations/T1110.003_password_spray_burst/) | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | SIEM-Ready | detection-engineering | 11 / 8 | 8 | **medium** | [KQL](../../queries/kql/correlations/T1110.003_password_spray_burst.kql) · [SPL](../../queries/spl/correlations/T1110.003_password_spray_burst.spl) |
-| [API Probing - One Client Rejected on Many Distinct Paths](../../detect/correlations/T1190_api_auth_probing/) | [T1190](https://attack.mitre.org/techniques/T1190/) | SIEM-Ready | detection-engineering | 5 / 5 | 5 | **partial** | [KQL](../../queries/kql/correlations/T1190_api_auth_probing.kql) · [SPL](../../queries/spl/correlations/T1190_api_auth_probing.spl) |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](../../detect/correlations/T1190_object_id_enumeration/) | [T1190](https://attack.mitre.org/techniques/T1190/) | SIEM-Ready | detection-engineering | 5 / 6 | 5 | **partial** | [KQL](../../queries/kql/correlations/T1190_object_id_enumeration.kql) · [SPL](../../queries/spl/correlations/T1190_object_id_enumeration.spl) |
 | [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../../detect/correlations/T1558.003_kerberoasting_volume/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | SIEM-Ready | detection-engineering | 4 / 7 | 6 | **high** | [KQL](../../queries/kql/correlations/T1558.003_kerberoasting_volume.kql) · [SPL](../../queries/spl/correlations/T1558.003_kerberoasting_volume.spl) |
+| [API Probing - One Client Rejected on Many Distinct Paths](../../detect/correlations/T1595.003_api_auth_probing/) | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) | SIEM-Ready | detection-engineering | 5 / 5 | 5 | **partial** | [KQL](../../queries/kql/correlations/T1595.003_api_auth_probing.kql) · [SPL](../../queries/spl/correlations/T1595.003_api_auth_probing.spl) |
 
 ## Stated limitations
 
@@ -33,14 +33,14 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 ### Suspicious Process Access to LSASS Memory
 
-**Depth:** medium. Access-mask based and resistant to tool renaming; blind to handle duplication and unlisted masks
+**Depth:** medium. Access-mask based and resistant to tool renaming; blind to handle duplication and to unlisted masks stored in decimal
 
 **Depends on:**
 - Sysmon Event ID 10 (ProcessAccess) with an include rule for TargetImage lsass.exe
 
 **Known blind spots:**
 - Handle duplication from another process never opens LSASS directly
-- Access masks outside the listed values
+- Decimal access masks outside the listed values (hex masks are bit-tested for VM_READ)
 - Code injected into a named Windows component (csrss, wininit, WmiPrvSE) - its CallTrace shows a frame with no module (UNKNOWN)
 - Credential Guard / RunAsPPL environments where the real control is prevention
 - ProcessAccess telemetry disabled or filtered for volume
@@ -226,19 +226,6 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - A spray run on the host itself (logon attempts with no remote address, public data PurpleSharp local and NTLM variants) is seen only as 4776 by workstation name on the domain controller, which this correlation does not count
 - A burst of 5 to 8 accounts can be split by a window boundary; 9 or more within 10 minutes always alert
 
-### API Probing - One Client Rejected on Many Distinct Paths
-
-**Depth:** partial. Rejected requests on many paths from one client; distributed and slow probing need longer-window hunting
-
-**Depends on:**
-- Web server or reverse-proxy access log with client address, method, path and status - the generated KQL reads W3CIISLog and the SPL reads sourcetype access_combined; other tables need their columns in tools/mappings.yml
-
-**Known blind spots:**
-- Probes spread over many client addresses (cloud egress pools, botnets), each below 5 paths
-- Slow probes that stay under 5 rejected paths per client in every 5-minute window
-- A reverse proxy that logs its own address instead of the client's (use X-Forwarded-For)
-- A burst of 5 to 8 paths can be split by a window boundary; 9 or more within 5 minutes always alert
-
 ### Object ID Enumeration - One Client Walking Single-Owner Objects
 
 **Depth:** partial. Numeric IDs of five single-owner object types in the path; other identifier styles and object types need the base rule edited
@@ -264,6 +251,19 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Roasting spread over several source addresses, each below the threshold
 - AS-REP roasting (accounts without pre-authentication) produces 4768, not 4769, and is not counted here
 - A burst of 5 to 8 service accounts can be split by a window boundary; 9 or more within 10 minutes always alert
+
+### API Probing - One Client Rejected on Many Distinct Paths
+
+**Depth:** partial. Rejected requests on many paths from one client; distributed and slow probing need longer-window hunting
+
+**Depends on:**
+- Web server or reverse-proxy access log with client address, method, path and status - the generated KQL reads W3CIISLog and the SPL reads sourcetype access_combined; other tables need their columns in tools/mappings.yml
+
+**Known blind spots:**
+- Probes spread over many client addresses (cloud egress pools, botnets), each below 5 paths
+- Slow probes that stay under 5 rejected paths per client in every 5-minute window
+- A reverse proxy that logs its own address instead of the client's (use X-Forwarded-For)
+- A burst of 5 to 8 paths can be split by a window boundary; 9 or more within 5 minutes always alert
 
 ---
 

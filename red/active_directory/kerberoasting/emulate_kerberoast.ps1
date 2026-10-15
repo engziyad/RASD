@@ -15,6 +15,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 # The rule detects RC4 (0x17) tickets. The KDC picks the strongest type the service account
 # supports, so the lab account must be RC4-only (msDS-SupportedEncryptionTypes = 0x4): unset,

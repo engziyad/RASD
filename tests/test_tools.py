@@ -1311,7 +1311,7 @@ class PublicDatasets(unittest.TestCase):
         plan = datasets.build_plan()
         ds = next(d for d in cat.datasets if d.extract is not None and d.extract.exists() and d.expect)
         rows = datasets.read_extract(ds.extract)
-        rows[0] = {**rows[0], "_rasd": {**rows[0]["_rasd"], "fires": ["T1190_api_auth_probing"]}}
+        rows[0] = {**rows[0], "_rasd": {**rows[0]["_rasd"], "fires": ["T1595.003_api_auth_probing"]}}
         self.assertTrue(datasets.replay_extract(ds, rows, plan)["drift"])
         result = {"alerts": {"T1059.004_linux_suspicious_shell_execution": {"count": 2}}, "correlations": {}}
         a = datasets.assess(ds, result)
@@ -2099,6 +2099,34 @@ class SafetyAndConversion(unittest.TestCase):
         self.assertEqual(emulate_security_headers.cookie_attributes(cookies[0]), ("a", {"path"}))   # 'secure' in a value is no flag
         self.assertEqual(emulate_security_headers.cookie_attributes(cookies[1])[1], {"secure", "httponly", "samesite"})
 
+    def test_web_client_never_follows_a_redirect_or_reaches_an_unchecked_host(self):
+        import http.server
+        import threading
+        sys.path.insert(0, str(ROOT / "red" / "web"))
+        import rasd_web
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", "http://8.8.8.8/stolen")     # a lab app redirecting to the internet
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        client = rasd_web.Client(f"http://127.0.0.1:{server.server_port}", "rasd_1a2b3c4d")
+        status, headers, _body = client.request("GET", "/")
+        self.assertEqual(status, 302)                                    # reported, not followed
+        self.assertEqual(headers.get("Location"), "http://8.8.8.8/stolen")
+        with self.assertRaises(rasd_web.Refused):                        # a name lab_target never checked
+            rasd_web.pinned_addresses("unchecked.example")
+        with self.assertRaises(rasd_web.Refused):                        # a client cannot be built for a public target
+            rasd_web.Client("http://8.8.8.8", "rasd_1a2b3c4d")
+
     def test_hunt_copies_of_a_rule_regex_stay_in_sync(self):
         import re as _re
         rule_rx = find_detection("T1059.001").rule["detection"]["selection_enc"]["CommandLine|re"]
@@ -2189,7 +2217,7 @@ class WebTelemetry(unittest.TestCase):
         lines.append(self.line(30, "/api/Products", 200, agent="Mozilla/5.0"))
         evs = list(self.ex.read_events(lines, self.ex.parse_since("2026-10-13T10:00:00Z"), "rasd_1a2b3c4d"))
         self.assertEqual(len(evs), 18)                                   # the marker keeps only the run's requests
-        corr = next(c for c in load_correlations() if c.id == "T1190_api_auth_probing")
+        corr = next(c for c in load_correlations() if c.id == "T1595.003_api_auth_probing")
         alerts = evaluate(corr, evs)
         self.assertEqual(len(alerts), 1)
         self.assertEqual((alerts[0]["value_count"], alerts[0]["group"]), (6, {"c-ip": "127.0.0.1"}))

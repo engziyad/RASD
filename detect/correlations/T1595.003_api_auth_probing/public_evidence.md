@@ -1,6 +1,6 @@
 ---
 rasd_public_evidence: 2
-detection: T1190_api_auth_probing
+detection: T1595.003_api_auth_probing
 recordings: 2
 fired_on: 0
 alerts: 0

@@ -14,6 +14,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("Write-Output '$Marker'"))
 & powershell.exe -NoProfile -enc $encoded

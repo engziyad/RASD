@@ -5,8 +5,8 @@
     The whole evidence run on the Windows lab VM in one command:
       1. Test-LabReadiness.ps1 - stops on a FAIL unless -Force
       2. Invoke-RasdEmulation.ps1 -Technique All with the options you pass
-      3. waits -SiemWaitMinutes so Splunk's scheduled alerts (every 5 minutes over the
-         last 10) see the events
+      3. waits -SiemWaitMinutes so Splunk's scheduled alerts (every 5 minutes, each over the
+         5-minute slice that closed 5 minutes earlier) see the events: up to 15 minutes
       4. Export-LabTelemetry.ps1 for the run window
       5. zips the workstation side: results, collected artifacts, telemetry export, readiness report
     and prints what is left: the DC export (when Kerberoasting ran), the Splunk alert
@@ -48,6 +48,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot 'RasdLabGuard.ps1')
+Assert-RasdLab -DryRun:$DryRun
 
 $red = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $red 'Invoke-RasdEmulation.ps1'

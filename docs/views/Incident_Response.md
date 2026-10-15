@@ -326,27 +326,6 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 
 ---
 
-## API Probing - One Client Rejected on Many Distinct Paths
-
-**Technique:** [T1190](https://attack.mitre.org/techniques/T1190/) · **Rule:** [`T1190_api_auth_probing`](../../detect/correlations/T1190_api_auth_probing/)
-
-| Role | Action |
-|---|---|
-| SOC L2 | Review every request from the client for the window - successes, error pages, sensitive paths - and look for the same pattern from other clients |
-| Incident response | Block the client at the WAF or proxy, review and fix any endpoint that answered 200 without valid credentials, and rotate tokens the client may have obtained |
-
-### Evidence to collect
-- Access-log lines for the client and window
-- Any successful responses to the same client after the burst
-- WAF or proxy records for the client
-
-### Containment
-1. Block or rate-limit the client address at the WAF or proxy
-2. Disable any endpoint found serving data without authentication until it is fixed
-3. Revoke sessions or tokens issued to the client
-
----
-
 ## Object ID Enumeration - One Client Walking Single-Owner Objects
 
 **Technique:** [T1190](https://attack.mitre.org/techniques/T1190/) · **Rule:** [`T1190_object_id_enumeration`](../../detect/correlations/T1190_object_id_enumeration/)
@@ -386,6 +365,27 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 1. Rotate passwords of the requested service accounts
 2. Move service accounts to gMSA or 25+ character passwords and disable RC4 where possible
 3. Isolate the source host if the activity is not explained
+
+---
+
+## API Probing - One Client Rejected on Many Distinct Paths
+
+**Technique:** [T1595.003](https://attack.mitre.org/techniques/T1595/003/) · **Rule:** [`T1595.003_api_auth_probing`](../../detect/correlations/T1595.003_api_auth_probing/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Review every request from the client for the window - successes, error pages, sensitive paths - and look for the same pattern from other clients |
+| Incident response | Block the client at the WAF or proxy, review and fix any endpoint that answered 200 without valid credentials, and rotate tokens the client may have obtained |
+
+### Evidence to collect
+- Access-log lines for the client and window
+- Any successful responses to the same client after the burst
+- WAF or proxy records for the client
+
+### Containment
+1. Block or rate-limit the client address at the WAF or proxy
+2. Disable any endpoint found serving data without authentication until it is fixed
+3. Revoke sessions or tokens issued to the client
 
 ---
 

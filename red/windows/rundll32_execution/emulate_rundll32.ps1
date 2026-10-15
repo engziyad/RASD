@@ -14,6 +14,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 $arguments = 'javascript:"\..\mshtml,RunHTMLApplication ";var m=''{0}'';close();' -f $Marker
 $p = Start-Process -FilePath rundll32.exe -ArgumentList $arguments -PassThru

@@ -81,7 +81,7 @@ A lab copy of a web application (for example OWASP Juice Shop) on localhost, wit
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) (correlation) | [api_auth_testing](../red/web/api_auth_testing/) · `unauthenticated_calls` | enough base events from the lab host's address in one window | pending |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) (correlation) | [api_auth_testing](../red/web/api_auth_testing/) · `unauthenticated_calls` | enough base events from the lab host's address in one window | pending |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | [idor_testing](../red/web/idor_testing/) · `walk_object_ids` | enough base events from the lab host's address in one window | pending |
 
 ## Not reachable by an offensive step yet

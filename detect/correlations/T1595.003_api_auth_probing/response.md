@@ -4,7 +4,7 @@
 
 ## API Probing - One Client Rejected on Many Distinct Paths
 
-**Technique:** [T1190](https://attack.mitre.org/techniques/T1190/) · **Rule:** [`T1190_api_auth_probing`](../T1190_api_auth_probing/)
+**Technique:** [T1595.003](https://attack.mitre.org/techniques/T1595/003/) · **Rule:** [`T1595.003_api_auth_probing`](../T1595.003_api_auth_probing/)
 
 | Role | Action |
 |---|---|

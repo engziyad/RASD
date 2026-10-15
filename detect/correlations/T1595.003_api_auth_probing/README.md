@@ -3,19 +3,19 @@
 <!-- rasd:facts:start -->
 | | |
 |---|---|
-| **ATT&CK** | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application (initial-access) |
+| **ATT&CK** | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) Active Scanning: Wordlist Scanning (reconnaissance) |
 | **Severity** | `medium` |
 | **Type** | Sigma correlation · >= 5 distinct cs-uri-stem per c-ip in 5m windows · base rule [`web_request_rejected`](base.yml) |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | base rule: 5 true positive · 5 true negative · 5 technique mutations · 11 scenarios (3 fire, 8 silent) |
-| **Proof** | base rule: 100% of 4 mutants killed · fuzzer resistance 100% over 0 variants · correlation: 5/5 parameter mutants killed |
+| **Proof** | base rule: 100% of 4 mutants killed · fuzzer n/a (no evasion strategy applies to its fields) · correlation: 5/5 parameter mutants killed |
 | **Parity** | base filter identical on 76 events · aggregation identical in SPL and KQL on 966 runs (161 sequences × 6 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
 | **Public data** | no public dataset records it yet · [why](public_evidence.md) |
-| **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1190_api_auth_probing.kql) · [SPL](../../../queries/spl/correlations/T1190_api_auth_probing.spl) · [scenarios](tests/scenarios.yml) |
+| **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1595.003_api_auth_probing.kql) · [SPL](../../../queries/spl/correlations/T1595.003_api_auth_probing.spl) · [scenarios](tests/scenarios.yml) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
-| **Chain** | red: [api_auth_testing](../../../red/web/api_auth_testing/) · DFIR: [web_application_attack](../../../dfir/playbooks/web_application_attack.md) · purple: [T1190_api_auth_probing](../../../purple/scenarios/T1190_api_auth_probing.md) · purple: [T1190_object_id_enumeration](../../../purple/scenarios/T1190_object_id_enumeration.md) |
+| **Chain** | red: [api_auth_testing](../../../red/web/api_auth_testing/) · DFIR: [web_application_attack](../../../dfir/playbooks/web_application_attack.md) · purple: [T1595.003_api_auth_probing](../../../purple/scenarios/T1595.003_api_auth_probing.md) |
 <!-- rasd:facts:end -->
 
 ## Telemetry required
@@ -49,5 +49,5 @@ rasd evidence --results <results>/emulation-results.json --logs web-export.jsonl
 
 ## Test locally
 ```bash
-rasd correlate --filter T1190_api -v
+rasd correlate --filter T1595.003_api -v
 ```

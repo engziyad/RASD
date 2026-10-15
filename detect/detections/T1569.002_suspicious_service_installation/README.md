@@ -7,9 +7,9 @@
 | **Severity** | `high` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 20 true positive · 7 true negative · 4 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 72 variants |
-| **Parity** | KQL and SPL identical to the rule on 391 events |
+| **Tests** | 24 true positive · 8 true negative · 4 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 87 variants |
+| **Parity** | KQL and SPL identical to the rule on 459 events |
 | **Public data** | fires on 7 of 9 public recordings of its behaviour · held-out: 2 of 2 · 10 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1569.002_suspicious_service_installation.kql) · [SPL](../../../queries/spl/T1569.002_suspicious_service_installation.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
@@ -24,8 +24,8 @@ Most SMB lateral movement (PsExec, Impacket `psexec.py` / `smbexec.py`, CrackMap
 
 | Selection | Fingerprint |
 |---|---|
-| `susp_path` | A command interpreter (`%COMSPEC%`, `cmd /c`, `cmd.exe /Q /c`, PowerShell) or a share path (`\ADMIN$\`, `\127.0.0.1\`, which every UNC path to the loopback contains) in the ImagePath |
-| `susp_writable_path` | AppData, Users\Public, Windows\Temp or Downloads, with `\` or `/` separators |
+| `susp_path` | A command interpreter or proxy (`%COMSPEC%`, `cmd /c`, `cmd.exe /Q /c`, PowerShell, mshta, rundll32) or a share path (`\ADMIN$\`, `\127.0.0.1\`, which every UNC path to the loopback contains) in the ImagePath |
+| `susp_writable_path` | AppData, ProgramData, Users\Public, any Temp folder or Downloads, with `\` or `/` separators. Defender's own kernel drivers under `ProgramData\Microsoft\Windows Defender` are filtered (`filter_defender_driver`: a `.sys` file in its Definition Updates or Platform folder) |
 | `susp_script` | A `.bat` / `.cmd` service binary - CreateProcess runs it through cmd.exe implicitly |
 | `susp_name` | Default service names of PsExec (`PSEXESVC`), PAExec, RemCom, CSExec and Impacket smbexec (`BTOBTO`) |
 | `susp_random_exe` | Impacket psexec's `%SystemRoot%\<8 random letters>.exe` |

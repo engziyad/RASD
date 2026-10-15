@@ -4,4 +4,4 @@ SecurityEvent
 | extend Status = coalesce(tostring(column_ifexists("Status", "")), extract(@'Name="Status">([^<]*)<', 1, EventData))
 | extend ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData))
 | extend IpAddress = coalesce(tostring(column_ifexists("IpAddress", "")), extract(@'Name="IpAddress">([^<]*)<', 1, EventData))
-| where ((EventID == 4769 and (TicketEncryptionType =~ @"0x17" or TicketEncryptionType =~ @"23") and (Status =~ @"0x0" or Status =~ @"0")) and not((ServiceName endswith @"$" or ServiceName =~ @"krbtgt" or IpAddress =~ @"::1")))
+| where ((EventID == 4769 and (TicketEncryptionType =~ @"0x17" or TicketEncryptionType =~ @"23" or TicketEncryptionType =~ @"0x18" or TicketEncryptionType =~ @"24" or TicketEncryptionType =~ @"0x1" or TicketEncryptionType =~ @"1" or TicketEncryptionType =~ @"0x3" or TicketEncryptionType =~ @"3") and (Status =~ @"0x0" or Status =~ @"0")) and not((ServiceName endswith @"$" or ServiceName =~ @"krbtgt" or (IpAddress =~ @"::1" or IpAddress =~ @"127.0.0.1" or IpAddress =~ @"::ffff:127.0.0.1"))))

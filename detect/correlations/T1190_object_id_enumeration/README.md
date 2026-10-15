@@ -9,14 +9,17 @@
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | base rule: 5 true positive · 6 true negative · 5 technique mutations · 10 scenarios (4 fire, 6 silent) |
-| **Proof** | base rule: 100% of 2 mutants killed · fuzzer resistance 100% over 0 variants · correlation: 5/5 parameter mutants killed |
+| **Proof** | base rule: 100% of 2 mutants killed · fuzzer n/a (no evasion strategy applies to its fields) · correlation: 5/5 parameter mutants killed |
 | **Parity** | base filter identical on 80 events · aggregation identical in SPL and KQL on 960 runs (160 sequences × 6 parameter sets) |
 | **Guarantee** | a burst of 5+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 4 can be split by a boundary |
 | **Public data** | no public dataset records it yet · [why](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1190_object_id_enumeration.kql) · [SPL](../../../queries/spl/correlations/T1190_object_id_enumeration.spl) · [scenarios](tests/scenarios.yml) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
-| **Chain** | red: [idor_testing](../../../red/web/idor_testing/) · DFIR: [web_application_attack](../../../dfir/playbooks/web_application_attack.md) · purple: [T1190_api_auth_probing](../../../purple/scenarios/T1190_api_auth_probing.md) · purple: [T1190_object_id_enumeration](../../../purple/scenarios/T1190_object_id_enumeration.md) |
+| **Chain** | red: [idor_testing](../../../red/web/idor_testing/) · DFIR: [web_application_attack](../../../dfir/playbooks/web_application_attack.md) · purple: [T1190_object_id_enumeration](../../../purple/scenarios/T1190_object_id_enumeration.md) |
 <!-- rasd:facts:end -->
+
+## Why T1190
+Walking other users' objects through an ID the application fails to authorize is exploitation of the public-facing application itself: broken object-level authorization (OWASP API1, IDOR) is the vulnerability, and the walk is the request that uses it - the data comes back through the flaw, not through stolen credentials or a scan. That is [T1190 Exploit Public-Facing Application](https://attack.mitre.org/techniques/T1190/). The related API-probing correlation is mapped differently on purpose: rejected requests across many paths find endpoints rather than exploit one, so [`T1595.003_api_auth_probing`](../T1595.003_api_auth_probing/) is [T1595.003 Wordlist Scanning](https://attack.mitre.org/techniques/T1595/003/) (reconnaissance), with T1190 as a related technique.
 
 ## Telemetry required
 A **web server or reverse-proxy access log** with the client address (`c-ip`), method (`cs-method`) and path (`cs-uri-stem`). The generated KQL reads `W3CIISLog` and the SPL reads `sourcetype=access_combined`; another table only needs its column names in [`tools/mappings.yml`](../../../tools/mappings.yml). [`red/web/export_access_log.py`](../../../red/web/export_access_log.py) turns a combined-format access log into the JSONL that `rasd` reads.

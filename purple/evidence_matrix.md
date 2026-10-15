@@ -21,9 +21,9 @@ Operational evidence per detection, read from `detect/detections/<id>/evidence.m
 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) | pending | - | - | - | - | - | - | - | - | pending |
 
 0/18 detections have lab evidence.
 

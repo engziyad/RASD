@@ -10,7 +10,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | base rule: 4 true positive · 7 true negative · 6 technique mutations · 10 scenarios (5 fire, 5 silent) |
 | **Proof** | base rule: 100% of 12 mutants killed · fuzzer resistance 100% over 18 variants · correlation: 7/7 parameter mutants killed |
-| **Parity** | base filter identical on 249 events · aggregation identical in SPL and KQL on 1280 runs (160 sequences × 8 parameter sets) |
+| **Parity** | base filter identical on 258 events · aggregation identical in SPL and KQL on 1280 runs (160 sequences × 8 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
 | **Public data** | fires on 1 of 1 public recordings of its behaviour · 1 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1558.003_kerberoasting_volume.kql) · [SPL](../../../queries/spl/correlations/T1558.003_kerberoasting_volume.spl) · [scenarios](tests/scenarios.yml) |

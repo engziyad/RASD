@@ -33,9 +33,9 @@ Scored on the same areas from what `rasd correlate` proves: scenarios and parame
 | Correlation | Score | Tests /25 | Contract /20 | FP /15 | Evasion /15 | Portability /10 | Response /10 | Docs /5 | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | [Password Spray - One Source Failing Authentication for Many Accounts](../correlations/T1110.003_password_spray_burst/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
-| [API Probing - One Client Rejected on Many Distinct Paths](../correlations/T1190_api_auth_probing/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](../correlations/T1190_object_id_enumeration/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../correlations/T1558.003_kerberoasting_volume/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [API Probing - One Client Rejected on Many Distinct Paths](../correlations/T1595.003_api_auth_probing/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 
 ## Operational Score
 
@@ -49,13 +49,13 @@ Scored on the same areas from what `rasd correlate` proves: scenarios and parame
 | [PowerShell Execution With Encoded Command](../detections/T1059.001_powershell_encoded_command/) | pending | - | - | - | - | - |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | pending | - | - | - | - | - |
 | [Password Spray - One Source Failing Authentication for Many Accounts](../correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - |
-| [API Probing - One Client Rejected on Many Distinct Paths](../correlations/T1190_api_auth_probing/) | pending | - | - | - | - | - |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](../correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - |
 | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | pending | - | - | - | - | - |
 | [Run Key Persistence Pointing to Suspicious Location](../detections/T1547.001_registry_run_key_persistence/) | pending | - | - | - | - | - |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/) | pending | - | - | - | - | - |
 | [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../correlations/T1558.003_kerberoasting_volume/) | pending | - | - | - | - | - |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | pending | - | - | - | - | - |
+| [API Probing - One Client Rejected on Many Distinct Paths](../correlations/T1595.003_api_auth_probing/) | pending | - | - | - | - | - |
 | [Windows Event Log Clearing via Command Line](../detections/T1685.005_event_log_clearing/) | pending | - | - | - | - | - |
 | [Security Audit Log Cleared (Event 1102)](../detections/T1685.005_security_log_cleared/) | pending | - | - | - | - | - |
 | [Windows Event Log Cleared (System Event 104)](../detections/T1685.005_system_log_cleared/) | pending | - | - | - | - | - |

@@ -7,10 +7,10 @@
 | **Severity** | `high` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 16 true positive · 7 true negative · 4 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 135 variants |
-| **Parity** | KQL and SPL identical to the rule on 1757 events · Defender advanced hunting identical on the same events |
-| **Public data** | fires on 17 of 19 public recordings of its behaviour · held-out: 2 of 2 · 29 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
+| **Tests** | 21 true positive · 8 true negative · 4 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 178 variants |
+| **Parity** | KQL and SPL identical to the rule on 1859 events · Defender advanced hunting identical on the same events |
+| **Public data** | fires on 17 of 19 public recordings of its behaviour · held-out: 2 of 2 · 32 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) · [Defender](../../../queries/mde/T1218.011_rundll32_suspicious_execution.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [lsass_memory_access](../../../red/windows/lsass_memory_access/) · red: [rundll32_execution](../../../red/windows/rundll32_execution/) · DFIR: [lsass_access](../../../dfir/playbooks/lsass_access.md) · DFIR: [rundll32_proxy_execution](../../../dfir/playbooks/rundll32_proxy_execution.md) · purple: [T1218.011_rundll32](../../../purple/scenarios/T1218.011_rundll32.md) |
@@ -28,6 +28,10 @@ Sysmon **EID 1** - the generated KQL and SPL read Sysmon. Security **4688** (wit
 | `susp_path` | AppData, ProgramData, Users\Public, Windows\Temp or Downloads anywhere in the command line - the DLL, or a file or path handed to its export (`\` or `/` separators) |
 | `susp_minidump` | comsvcs.dll MiniDump LSASS dumping, by export name or by ordinal (`#24`, `#+0000024`) |
 | `susp_noargs` | rundll32 with **no arguments**, a classic sacrificial process for injection (Cobalt Strike's default `spawnto`) |
+| `susp_proxy_export` | Windows DLL exports that start another program: zipfldr `RouteTheCall`, advpack `RegisterOCX`, pcwutl `LaunchApplication` |
+| `susp_shell_launch` | shell32 `ShellExec_RunDLL` and url.dll `FileProtocolHandler` / `OpenURL`, which hand any path or URL to the shell |
+| `susp_unc` | a DLL loaded straight from a share (`rundll32 \\host\share\x.dll,Entry`), never copied to disk |
+| `susp_profile_root` | a DLL, CPL or OCX dropped straight into a user profile (`C:\Users\bob\x.dll`) |
 
 ## Evasion & coverage gaps
 - DLLs copied into `System32` first (requires admin) - cover with file-creation monitoring.

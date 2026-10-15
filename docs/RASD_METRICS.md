@@ -7,17 +7,17 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Metric | Value |
 |---|---:|
 | Detections | 18 (14 single-event rules, 4 correlations) |
-| ATT&CK techniques detected | 13 |
+| ATT&CK techniques detected | 14 |
 | Offensive tests (red) | 19 (14 mapped to current detections, 5 gap or posture tests reserved for future coverage) |
-| Test cases | 261 (173 true positive, 88 true negative) + 51 for correlation base rules |
-| Mutation cases | 414 + 24 technique mutations for correlation base rules |
-| Evasion fuzzer variants | 1303 (0 bypasses) + 53 for correlation base rules |
-| Rule mutants (proof) | 212 (210 killed, 2 accepted as equivalent, 0 surviving) |
-| Query parity verdicts | 13201 per backend (0 divergences) · Defender advanced hunting: 7 rules on 10865 events, each in both FolderPath forms (0 divergences) |
+| Test cases | 313 (213 true positive, 100 true negative) + 51 for correlation base rules |
+| Mutation cases | 494 + 24 technique mutations for correlation base rules |
+| Evasion fuzzer variants | 1546 (0 bypasses) + 53 for correlation base rules |
+| Rule mutants (proof) | 230 (228 killed, 2 accepted as equivalent, 0 surviving) |
+| Query parity verdicts | 13990 per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
 | Correlation scenarios | 43 event sequences (18 must fire, 4 pinned known limits) |
 | Correlation mutants | 24 parameter mutants (24 killed) · 45 base-rule mutants |
 | Aggregation parity | 4502 SPL and KQL sequence runs identical to the engine |
-| Near misses (replay corpus) | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1190_api_auth_probing 5, T1190_object_id_enumeration 3, T1558.003_kerberoasting_volume 1 |
+| Near misses (replay corpus) | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
 | SIEM backends | SPL / KQL |
 | Hunting queries | 5 (KQL + SPL) |
 | Detection contracts | 18 |
@@ -26,11 +26,11 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Response guides | 18 |
 | DFIR playbooks | 14 |
 | Purple scenarios | 14 |
-| Public dataset validation | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 246 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 0 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](PUBLIC_DATA_VALIDATION.md)) |
+| Public dataset validation | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](PUBLIC_DATA_VALIDATION.md)) |
 | Validated detections (lab evidence) | 0 |
 | Average Engineering Score | 100/100 |
 | Operational Score | Pending |
-| Chain completeness | 234/260 items |
+| Chain completeness | 252/280 items |
 | Maturity levels | 18 SIEM-Ready |
 
 A detection cannot be marked as Reference-level until it has lab evidence.

@@ -724,7 +724,9 @@ def main() -> int:
             limits = [s for s in r["scenarios"] if s["known_limit"]]
             killed = len(cm["mutants"]) - len(cm["survivors"]) - sum(1 for m in cm["mutants"] if m["accepted"])
             print(f"    base rule    {b['tp']} TP · {b['tn']} TN · {b['mutants']} mutants, {b['proof']:.0f}% killed · "
-                  f"fuzzer {b['fuzz']:.0f}% of {b['fuzz_tried']} variants · KQL/SPL identical on {bp['events']} events")
+                  + (f"fuzzer {b['fuzz']:.0f}% of {b['fuzz_tried']} variants" if b['fuzz_tried']
+                     else "fuzzer n/a (no evasion strategy applies to its fields)")
+                  + f" · KQL/SPL identical on {bp['events']} events")
             print(f"    scenarios    {len(r['scenarios'])} ({fired} fire · {len(r['scenarios']) - fired} silent"
                   + (f" · {len(limits)} pinned known limit{'s' if len(limits) > 1 else ''}" if limits else "") + ")")
             print(f"    mutants      {killed}/{len(cm['mutants'])} parameter mutants killed ({cm['score']:.0f}%)")

@@ -2,7 +2,7 @@
 
 | Step | Detection | Rule | KQL | SPL | Evidence bound by |
 |---|---|---|---|---|---|
-| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`T1190_api_auth_probing`](../../../detect/correlations/T1190_api_auth_probing/) | [correlation.yml](../../../detect/correlations/T1190_api_auth_probing/correlation.yml) · [base.yml](../../../detect/correlations/T1190_api_auth_probing/base.yml) | [KQL](../../../queries/kql/correlations/T1190_api_auth_probing.kql) | [SPL](../../../queries/spl/correlations/T1190_api_auth_probing.spl) | host, time window |
+| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`T1595.003_api_auth_probing`](../../../detect/correlations/T1595.003_api_auth_probing/) | [correlation.yml](../../../detect/correlations/T1595.003_api_auth_probing/correlation.yml) · [base.yml](../../../detect/correlations/T1595.003_api_auth_probing/base.yml) | [KQL](../../../queries/kql/correlations/T1595.003_api_auth_probing.kql) | [SPL](../../../queries/spl/correlations/T1595.003_api_auth_probing.spl) | host, time window |
 
 Validate the chain after a lab run:
 

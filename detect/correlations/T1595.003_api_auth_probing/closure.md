@@ -2,7 +2,7 @@
 
 # Closure and Escalation Notes
 
-**API Probing - One Client Rejected on Many Distinct Paths** · `T1190_api_auth_probing` · [T1190](https://attack.mitre.org/techniques/T1190/)
+**API Probing - One Client Rejected on Many Distinct Paths** · `T1595.003_api_auth_probing` · [T1595.003](https://attack.mitre.org/techniques/T1595/003/)
 
 Fill in only what you checked. A confirmed attack is never closed from the queue: send the escalation note instead.
 
@@ -11,7 +11,7 @@ Fill in only what you checked. A confirmed attack is never closed from the queue
 The rule fired on real activity that is expected and authorized.
 
 ```text
-Alert:        T1190_api_auth_probing for <c-ip> at <window start, UTC>
+Alert:        T1595.003_api_auth_probing for <c-ip> at <window start, UTC>
 Observed:     <n> distinct cs-uri-stem from c-ip <value> in the 5m window: <values>
 Checked:      1. Resolve the client address - internal host, VPN pool, cloud provider or a known scanner -> <result>
               2. List the paths and status codes for the window, and the user agent -> <result>
@@ -34,17 +34,17 @@ Never tune:
 The rule matched something that is not the behaviour it describes.
 
 ```text
-Alert:        T1190_api_auth_probing for <c-ip> at <window start, UTC>
+Alert:        T1595.003_api_auth_probing for <c-ip> at <window start, UTC>
 Observed:     <n> distinct cs-uri-stem from c-ip <value> in the 5m window: <values>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1190_api_auth_probing
+Follow-up:    event sent to detection engineering as a true negative for T1595.003_api_auth_probing
 ```
 
 ## Escalation to incident response
 
 ```text
-Alert:        T1190_api_auth_probing for <c-ip> at <window start, UTC>
+Alert:        T1595.003_api_auth_probing for <c-ip> at <window start, UTC>
 Escalated:    <the condition met, from the list below>
 Observed:     <n> distinct cs-uri-stem from c-ip <value> in the 5m window: <values>
 Who / where:  <account> on <host>; source <host or address, if any>

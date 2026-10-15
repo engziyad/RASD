@@ -15,6 +15,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 $backup = Join-Path $env:TEMP "security-before-clear-$Marker.evtx"
 if (Test-Path -LiteralPath $backup) { throw "backup target already exists: $backup" }

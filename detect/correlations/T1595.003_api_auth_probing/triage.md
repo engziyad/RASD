@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Technique** | [T1190](https://attack.mitre.org/techniques/T1190/) |
+| **Technique** | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) |
 | **Severity** | `medium` · confidence `medium` · expected noise `medium` |
-| **Rule** | [`T1190_api_auth_probing`](../T1190_api_auth_probing/) · Sigma correlation |
+| **Rule** | [`T1595.003_api_auth_probing`](../T1595.003_api_auth_probing/) · Sigma correlation |
 
 ### What triggered
 One client address receiving 401 or 403 on 5 or more distinct paths in one 5-minute window: the shape of someone probing an application's protected endpoints without valid credentials - with no token, a malformed one, or a token the server never issued.
@@ -41,7 +41,7 @@ Base score **45**.
 - Never raise the threshold without re-reading the guarantee: 2T-1 distinct paths is the smallest burst that always alerts (9 for T=5).
 
 ### Close or escalate
-[Closure and escalation notes](../T1190_api_auth_probing/closure.md) for this detection.
+[Closure and escalation notes](../T1595.003_api_auth_probing/closure.md) for this detection.
 
 ---
 

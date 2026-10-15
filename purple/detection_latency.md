@@ -21,9 +21,9 @@ Measured from the start of the emulation step. *Telemetry* is the time until the
 | T1685.005_security_log_cleared | pending | pending | - | - |
 | T1685.005_system_log_cleared | pending | pending | - | - |
 | T1110.003_password_spray_burst | pending | pending | - | - |
-| T1190_api_auth_probing | pending | pending | - | - |
 | T1190_object_id_enumeration | pending | pending | - | - |
 | T1558.003_kerberoasting_volume | pending | pending | - | - |
+| T1595.003_api_auth_probing | pending | pending | - | - |
 
 Targets: ≤ 60 s earns 15 points, ≤ 5 min 10, ≤ 15 min 5 (see [QUALITY_MODEL.md](../docs/QUALITY_MODEL.md)). For a correlation, telemetry latency runs to the event that made it reach its threshold, and its Splunk alert runs once per window, after the window closes.
 

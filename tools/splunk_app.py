@@ -69,7 +69,8 @@ EXPORTS = {   # report name -> search; each yields _time, ss_name (carries the d
 }
 SEVERITY = {"informational": 2, "low": 3, "medium": 4, "high": 5, "critical": 6}   # Splunk alert.severity
 SCHEDULE = "*/5 * * * *"
-WINDOW = "-10m@m"                     # two runs see every event: indexing delay never drops one
+WINDOW = "-10m@m"                     # each run reads one 5-minute slice that closed 5 minutes ago:
+WINDOW_END = "-5m@m"                  # consecutive runs tile time (no event is alerted twice) and 5 minutes of indexing delay never drop one
 # every index a generated query reads (from spl.logsources in tools/mappings.yml), then the alert index
 INDEXES = tuple(dict.fromkeys(re.findall(r"\bindex=([A-Za-z0-9_]+)", " ".join(
     str(v) for v in (MAPPINGS["spl"].get("logsources") or {}).values())))) + (ALERT_INDEX,)
@@ -153,15 +154,16 @@ def alert_search(det) -> str:
 
     The base query stays byte-for-byte generated from the tested rule; the appended
     fields make Splunk's Log Event action deterministic. Without this, `$result.host$`
-    can be blank on some deployments or digest-mode alerts because the result token
-    depends on the first raw event. The summary keeps one alert row per scheduled run
-    and carries both the first observed host and the full host set for evidence review.
+    can be blank on some deployments because the result token depends on the first raw
+    event. The summary keeps one row per host and scheduled run, and the alert fires once
+    per row (digest mode off), so two hosts hit in the same slice are two alerts, each with
+    its own host. An event with no host field is kept, with an empty alert_host.
     """
     base = one_line(convert(det.rule, 'spl'))
     return (base + f' | eval rasd_detection="{det.id}" '
-            '| eval alert_host=coalesce(host, Computer, ComputerName, dvc, dest, TargetComputerName, WorkstationName, ClientAddress) '
-            '| stats count as result_count earliest(_time) as first_event latest(_time) as last_event values(alert_host) as alert_hosts by rasd_detection '
-            '| eval alert_host=mvindex(alert_hosts, 0)')
+            '| eval alert_host=coalesce(host, Computer, ComputerName, dvc, dest, TargetComputerName, WorkstationName, ClientAddress, "") '
+            '| stats count as result_count earliest(_time) as first_event latest(_time) as last_event by rasd_detection, alert_host '
+            '| eval alert_host=if(alert_host=="", null(), alert_host), alert_hosts=alert_host')
 
 
 def correlation_schedule(seconds: int) -> tuple[str, str, str]:
@@ -210,12 +212,12 @@ def saved_searches(dets, corrs=()) -> str:
                 "enableSched = 1",
                 f"cron_schedule = {SCHEDULE}",
                 f"dispatch.earliest_time = {WINDOW}",
-                "dispatch.latest_time = now",
+                f"dispatch.latest_time = {WINDOW_END}",
                 "counttype = number of events",
                 "relation = greater than",
                 "quantity = 0",
                 "alert.track = 1",
-                "alert.digest_mode = 1",
+                "alert.digest_mode = 0",
                 f"alert.severity = {severity(det)}",
                 "alert.expires = 7d",
                 "action.logevent = 1",
@@ -301,7 +303,7 @@ Install: copy each folder into `$SPLUNK_HOME/etc/apps/` (on a Windows forwarder:
 
 ## Alerts
 
-Each alert runs every 5 minutes over the last 10 and fires when its search returns an event. Its base search is the generated query in [`queries/spl`](../spl/), proven equivalent to the tested rule by `rasd parity`; the saved search appends a summary row only for reliable alert export.
+Each alert runs every 5 minutes over one 5-minute slice that closed 5 minutes earlier (`-10m@m` to `-5m@m`): consecutive runs tile time, so an event is alerted exactly once, and up to 5 minutes of indexing delay never drop one (events indexed later than that are missed by the alert, not by `rasd replay`). It fires once per host in the slice (digest mode off), so two hosts are two alerts. Its base search is the generated query in [`queries/spl`](../spl/), proven equivalent to the tested rule by `rasd parity`; the saved search appends a per-host summary row only for reliable alert export.
 
 | Saved search | Detection | Severity |
 |---|---|---:|
@@ -315,7 +317,7 @@ A correlation alert counts per window. It runs once per window length over the l
 |---|---|---|---|---:|
 {crow}
 
-Every alert also writes one event to the `{ALERT_INDEX}` index (Log Event alert action). A detection's alert search is the proven rule query plus a lab-only summary (`stats count`, first/last event time, first host and all hosts), so the export gets a deterministic host even when Splunk result tokens differ between deployments. A correlation's search is its proven query plus the window filter and three `eval` fields (detection id, alerting group, event count): its rows already carry the window, the counts and the first and last event.
+Every alert also writes one event to the `{ALERT_INDEX}` index (Log Event alert action). A detection's alert search is the proven rule query plus a lab-only summary per host (`stats count`, first and last event time `by` detection and host), so the export gets a deterministic host even when Splunk result tokens differ between deployments. A correlation's search is its proven query plus the window filter and three `eval` fields (detection id, alerting group, event count): its rows already carry the window, the counts and the first and last event.
 
 ## Alert export for `rasd evidence`
 
@@ -329,7 +331,7 @@ Run one of these reports over the lab window, export the result as CSV and pass 
 
 On the first lab run, check that the host really reaches `{ALERT_INDEX}`: `index={ALERT_INDEX} | table _time rasd_alert alert_host alert_hosts first_event last_event`. An empty `alert_host` means the alert's results had no usable host field; the export still works, matched by name and time like the fallbacks. For a correlation, `alert_host` is its first group-by value - the client address for every correlation in this repository.
 
-Each alert runs every 5 minutes, so the SIEM latency `rasd evidence` reports includes up to 5 minutes of schedule wait on top of the indexing delay; the evidence file shows both parts. A correlation alert waits for its window to close, so its latency includes up to two window lengths plus {CORRELATION_LAG} minutes.
+Each alert reads a slice that closed 5 minutes earlier and runs every 5 minutes, so the SIEM latency `rasd evidence` reports includes 5 to 10 minutes of schedule wait on top of the indexing delay; the evidence file shows both parts. A correlation alert waits for its window to close, so its latency includes up to two window lengths plus {CORRELATION_LAG} minutes.
 """
 
 

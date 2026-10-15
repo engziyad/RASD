@@ -7,9 +7,9 @@
 | **Severity** | `high` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 11 true positive · 6 true negative · 4 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 103 variants |
-| **Parity** | KQL and SPL identical to the rule on 1667 events · Defender advanced hunting identical on the same events |
+| **Tests** | 15 true positive · 8 true negative · 4 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 127 variants |
+| **Parity** | KQL and SPL identical to the rule on 1741 events · Defender advanced hunting identical on the same events |
 | **Public data** | fires on 1 of 1 public recordings of its behaviour · held-out: 2 of 2 · 2 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../../queries/spl/T1685.005_event_log_clearing.spl) · [Defender](../../../queries/mde/T1685.005_event_log_clearing.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

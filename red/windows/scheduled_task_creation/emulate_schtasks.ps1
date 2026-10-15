@@ -13,6 +13,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+. (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
+Assert-RasdLab
 
 & schtasks.exe /create /tn $Marker /sc once /st 23:59 /f /tr "cmd /c echo $Marker > %TEMP%\$Marker.txt"
 if ($LASTEXITCODE -ne 0) { throw "schtasks.exe exited with $LASTEXITCODE" }

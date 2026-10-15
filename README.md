@@ -8,7 +8,7 @@
 
 *Attack simulated. Signals captured. Logic tested. Response ready.*
 
-[![Detection CI](https://github.com/engziyad/RASD-v1.0/actions/workflows/detection-ci.yml/badge.svg)](https://github.com/engziyad/RASD-v1.0/actions/workflows/detection-ci.yml)
+[![Detection CI](https://github.com/engziyad/RASD/actions/workflows/detection-ci.yml/badge.svg)](https://github.com/engziyad/RASD/actions/workflows/detection-ci.yml)
 ![Backends](https://img.shields.io/badge/backends-KQL%20%7C%20SPL-87af87)
 ![ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-d7af87)
 ![License](https://img.shields.io/badge/license-MIT-bcbcbc)
@@ -35,16 +35,16 @@ RASD is a cybersecurity validation framework that connects offensive security la
 <!-- rasd:readme-metrics:start -->
 | | |
 |---|---|
-| **Detections · techniques** | 18 detections (14 single-event, 4 correlations) across 13 ATT&CK v19.2 techniques ([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml)) |
+| **Detections · techniques** | 18 detections (14 single-event, 4 correlations) across 14 ATT&CK v19.2 techniques ([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml)) |
 | **Offensive tests** | 19: 14 mapped to current detections (only these can raise the Operational Score) · 5 gap or posture tests reserved for future coverage |
-| **Tests** | 261 cases · 414 mutations · 1303 fuzzer variants (0 bypasses) on the 14 single-event rules; the 4 correlation base rules add 51 cases, 24 technique mutations and 53 fuzzer variants |
-| **Proof** | 212/212 rule mutants killed or accepted · 13201 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 10865 events, each in both FolderPath forms (0 divergences) |
+| **Tests** | 313 cases · 494 mutations · 1546 fuzzer variants (0 bypasses) on the 14 single-event rules; the 4 correlation base rules add 51 cases, 24 technique mutations and 53 fuzzer variants |
+| **Proof** | 230/230 rule mutants killed or accepted · 13990 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
 | **Correlations** | 43 scenarios · 24/24 parameter mutants killed · 4502 aggregation parity runs (0 divergences) · burst guarantee verified |
-| **Near misses** | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1190_api_auth_probing 5, T1190_object_id_enumeration 3, T1558.003_kerberoasting_volume 1 |
-| **Public datasets** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 246 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 0 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](docs/PUBLIC_DATA_VALIDATION.md)) |
+| **Near misses** | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
+| **Public datasets** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](docs/PUBLIC_DATA_VALIDATION.md)) |
 | **Engineering Score** | 100/100 |
 | **Operational Score** | pending a real lab run |
-| **Chain completeness** | 234/260 items ([validation matrix](purple/validation_matrix.md)) |
+| **Chain completeness** | 252/280 items ([validation matrix](purple/validation_matrix.md)) |
 
 <sub>Counted by `tools/chain.py` on every build.</sub>
 <!-- rasd:readme-metrics:end -->
@@ -99,7 +99,7 @@ RASD keeps legacy ATT&CK v18 aliases for compatibility, while primary mappings f
 Requires Python 3.10+ and PyYAML.
 
 ```bash
-git clone https://github.com/engziyad/RASD-v1.0.git && cd RASD-v1.0
+git clone https://github.com/engziyad/RASD.git && cd RASD
 python3 -m venv .venv && . .venv/bin/activate     # Windows: py -m venv .venv, then .venv\Scripts\activate
 pip install -e .                  # installs the rasd command for this clone
 rasd ci                           # everything CI runs, in order
@@ -227,7 +227,7 @@ RASD
 
 ## Scope and safety
 
-Offensive tests run only with an explicit lab confirmation, on disposable machines you own. Credential access and Security-log clearing are opt-in, every artifact carries a run marker so cleanup can only touch what the test created, web tests refuse public targets, and the password-spray simulation cannot succeed by design and skips any account one more failure could lock. The lab Sysmon configuration is intentionally verbose for validation: do not deploy `red/lab/sysmon-rasd.xml` to production. Samples and replay data are synthetic; `datasets/extracts` holds reduced events from public attack datasets under their own licenses ([notice](datasets/NOTICE.md)); no production logs belong in this repository.
+Offensive tests run only with an explicit lab confirmation, on disposable machines you own, and a [lab guard](red/lab/README.md#lab-guard) checks the machine itself: a test refuses to run on any host its owner has not marked as a lab, so a script started by mistake on a work machine stops before it does anything. Credential access and Security-log clearing are opt-in, every artifact carries a run marker so cleanup can only touch what the test created, web tests refuse public targets, connect only to the address they checked and never follow a redirect, and the password-spray simulation cannot succeed by design and skips any account one more failure could lock. The lab Sysmon configuration is intentionally verbose for validation: do not deploy `red/lab/sysmon-rasd.xml` to production. Samples and replay data are synthetic; `datasets/extracts` holds reduced events from public attack datasets under their own licenses ([notice](datasets/NOTICE.md)); no production logs belong in this repository.
 
 ## License
 

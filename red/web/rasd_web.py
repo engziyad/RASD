@@ -2,7 +2,10 @@
 rasd_web.py - shared plumbing for the RASD-Red web tests (Python 3.9+, standard library only).
 
 Safety first: a target is accepted only when every address its host resolves to is a
-loopback or private (RFC 1918 / ULA) address. The tests are meant for a lab copy of an
+loopback or private (RFC 1918 / ULA) address. Every connection then goes to the address that
+was checked (the name is never resolved again, so a DNS answer that changes mid-run cannot
+move the test to another host), redirects are never followed (a 3xx is reported as its
+status), and proxy settings from the environment are ignored. The tests are meant for a lab copy of an
 application, such as OWASP Juice Shop on localhost - never for a site on the internet.
 For a lab in the cloud, reach it through an SSH tunnel to localhost.
 
@@ -13,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import email.message
+import http.client
 import ipaddress
 import json
 import os
@@ -60,6 +64,9 @@ def lab_address(ip) -> bool:
     return any(ip in net for net in LAB_NETWORKS if net.version == ip.version)
 
 
+_PINNED: dict[str, list[str]] = {}   # host name (lower case) -> the checked addresses, the only ones ever connected to
+
+
 def lab_target(url: str) -> str:
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
@@ -68,17 +75,72 @@ def lab_target(url: str) -> str:
         infos = socket.getaddrinfo(parts.hostname, parts.port or (443 if parts.scheme == "https" else 80))
     except socket.gaierror as e:
         raise Refused(f"cannot resolve {parts.hostname}: {e}") from e
+    addresses = []
     for info in infos:
         ip = ipaddress.ip_address(str(info[4][0]).split("%")[0])
         if not lab_address(ip):
             raise Refused(f"{parts.hostname} resolves to {ip}, which is not a loopback or private address - "
                           "RASD web tests only run against lab targets")
+        addresses.append(str(ip))
+    if not addresses:
+        raise Refused(f"{parts.hostname} resolves to no address")
+    _PINNED[parts.hostname.lower()] = list(dict.fromkeys(addresses))
     return url.rstrip("/")
+
+
+def pinned_addresses(host: str) -> list[str]:
+    """The addresses lab_target checked for this host. A host that was never checked - a redirect
+    target, a proxy, a name changed after the check - is refused instead of resolved."""
+    ips = _PINNED.get(host.strip("[]").lower())
+    if not ips:
+        raise Refused(f"{host} was not checked by lab_target - refusing to connect")
+    return ips
+
+
+def _connect_pinned(host: str, port: int, timeout, source_address) -> socket.socket:
+    """Connect to the first checked address that answers (as urllib would try each resolved one)."""
+    last: OSError | None = None
+    for ip in pinned_addresses(host):
+        try:
+            return socket.create_connection((ip, port), timeout, source_address)
+        except OSError as e:
+            last = e
+    raise last or OSError(f"no address for {host}")
+
+
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    def connect(self):
+        self.sock = _connect_pinned(self.host, self.port, self.timeout, self.source_address)
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    def connect(self):
+        sock = _connect_pinned(self.host, self.port, self.timeout, self.source_address)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)   # TLS still verifies the name
+
+
+class _PinnedHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(_PinnedHTTPConnection, req)
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedHTTPSConnection, req)
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None          # urllib then raises HTTPError: the test records the 3xx and never follows it
+
+
+OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect,
+                                     _PinnedHTTPHandler, _PinnedHTTPSHandler)
 
 
 class Client:
     def __init__(self, base: str, marker: str):
-        self.base, self.marker = base, marker
+        self.base, self.marker = lab_target(base), marker     # checked (and pinned) here too, whoever built the client
         self.log: list[dict] = []
 
     def request(self, method: str, path: str, *, token: str | None = None, json_body=None,
@@ -92,10 +154,10 @@ class Client:
             body = json.dumps(json_body).encode()
             h["Content-Type"] = "application/json"
         h.update(headers or {})
-        # self.base passed lab_target(): http(s) only, resolving to loopback or private addresses
+        # self.base passed lab_target(): http(s) only, pinned to a loopback or private address
         req = urllib.request.Request(self.base + path, data=body, method=method, headers=h)  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310
+            with OPENER.open(req, timeout=15) as r:
                 status, rh, data = r.status, r.headers, r.read()
         except urllib.error.HTTPError as e:
             status, rh, data = e.code, e.headers or email.message.Message(), e.read() or b""

@@ -4,6 +4,10 @@ expected_noise: low
 noise_sources:
 - Sysinternals PsExec used by administrators
 tunings:
+- id: defender_kernel_driver
+  status: applied
+  selection: filter_defender_driver
+  reason: Defender installs its own kernel drivers (MpKslDrv.sys) from ProgramData\Microsoft\Windows Defender, a folder only Defender and SYSTEM can write.
 - id: psexec_service_name
   status: rejected
   scope: global

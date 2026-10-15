@@ -19,7 +19,7 @@ Checked:      1. Review ServiceName, ImagePath, AccountName and Computer -> <res
               4. Check for change records or known admin PsExec usage -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | psexec_service_name (rejected)
+Tuning:       none | defender_kernel_driver (applied) | psexec_service_name (rejected)
 ```
 
 Known benign sources for this detection:

@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../../schemas/tuning.schema.json
-detection_id: T1190_api_auth_probing
+detection_id: T1595.003_api_auth_probing
 expected_noise: medium
 noise_sources:
 - Single-page applications whose session expired, calling several protected endpoints at once

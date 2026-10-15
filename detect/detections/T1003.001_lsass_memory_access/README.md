@@ -7,10 +7,10 @@
 | **Severity** | `high` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 18 true positive · 10 true negative · 5 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 71 variants |
-| **Parity** | KQL and SPL identical to the rule on 549 events |
-| **Public data** | fires on 25 of 27 public recordings of its behaviour · held-out: 2 of 2 · 99 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
+| **Tests** | 27 true positive · 13 true negative · 5 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 101 variants |
+| **Parity** | KQL and SPL identical to the rule on 680 events |
+| **Public data** | fires on 25 of 27 public recordings of its behaviour · held-out: 2 of 2 · 103 alerts · 1 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../../queries/spl/T1003.001_lsass_memory_access.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [lsass_memory_access](../../../red/windows/lsass_memory_access/) · DFIR: [lsass_access](../../../dfir/playbooks/lsass_access.md) · purple: [T1003.001_lsass_access](../../../purple/scenarios/T1003.001_lsass_access.md) |
@@ -26,7 +26,7 @@ This rule does **not** use image signatures: Sysmon Event ID 10 has no signature
 Before enabling the rule, profile who already touches LSASS in your environment: [`queries/hunts/lsass_access_precheck.spl`](../../../queries/hunts/lsass_access_precheck.spl) / [`.kql`](../../../queries/hunts/lsass_access_precheck.kql).
 
 ## How the detection works
-LSASS holds credential material (NTLM hashes, Kerberos tickets, sometimes cleartext). To dump it, a tool must open a handle with `PROCESS_VM_READ` (0x0010) plus query rights. The rule keys on the **access mask** rather than tool names, so renamed or custom tooling is still caught.
+LSASS holds credential material (NTLM hashes, Kerberos tickets, sometimes cleartext). To dump it, a tool must open a handle with `PROCESS_VM_READ` (0x0010) plus query rights. The rule keys on the **access mask** rather than tool names, so renamed or custom tooling is still caught: any hex mask with the VM_READ bit set matches (the second-lowest hex digit is odd), so a larger mask such as `0x1f3fff` cannot slip past a fixed list. A regex cannot test a bit in a decimal number, so masks a pipeline stores in decimal are matched from a list of the known ones.
 
 The interesting part is the filter design: no folder is excluded, only named components. An earlier version excluded `System32` except `rundll32.exe` and `taskmgr.exe`; replaying public attack data ([public evidence](public_evidence.md)) showed what that folder filter hid - Invoke-Mimikatz inside `powershell.exe`, a Meterpreter session migrated into `svchost.exe`, nanodump dropped into `System32`, and PPLdump starting a fresh `services.exe` that writes the dump through `dbgcore.dll`. The rule now excludes only `csrss.exe`, `wininit.exe` and the WMI provider host by full path, Windows PowerShell listing processes through .NET (`0x1410` with a `System.ni.dll` frame in `CallTrace`, which `Get-Process` produces and Invoke-Mimikatz does not), and the Defender scanner in its platform folder.
 
@@ -34,7 +34,7 @@ The interesting part is the filter design: no folder is excluded, only named com
 - **Handle duplication / PPL bypass:** tools that duplicate an existing LSASS handle from another process (e.g. via `NtDuplicateObject`) never generate EID 10 against LSASS directly.
 - **Direct syscalls with a minimal mask** (`0x1000`) followed by a later re-open.
 - **Credential Guard / RunAsPPL** is the real control: detection here is a backstop, not the primary defense.
-- Access masks outside the listed values may be missed.
+- A mask a pipeline stores in **decimal** is matched only when it is on the list of known masks; hex masks are bit-tested.
 - If ProcessAccess telemetry is disabled or filtered, this detection does not work.
 - Complementary signal: file creation of `*.dmp` in unusual paths (Sysmon EID 11).
 

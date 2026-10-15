@@ -4,7 +4,7 @@ Search key: every artifact this test creates carries the run marker (for example
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | A burst of rejected requests across many API paths from one client | `c-ip`: `<client address, 127.0.0.1 for an application on the same host>`<br>`cs-user-agent`: `RASD-Red/<marker>`<br>`sc-status`: `401`<br>`cs-uri-stem`: `/api/Cards, /api/Users, /rest/basket/1 ...` | [`T1190_api_auth_probing`](../../../detect/correlations/T1190_api_auth_probing/) |
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | A burst of rejected requests across many API paths from one client | `c-ip`: `<client address, 127.0.0.1 for an application on the same host>`<br>`cs-user-agent`: `RASD-Red/<marker>`<br>`sc-status`: `401`<br>`cs-uri-stem`: `/api/Cards, /api/Users, /rest/basket/1 ...` | [`T1595.003_api_auth_probing`](../../../detect/correlations/T1595.003_api_auth_probing/) |
 | Application log | authentication failure | Token validation errors (missing header, invalid signature), when the application logs them | `message`: `UnauthorizedError: No authorization token was found / invalid signature` | investigation |
 
 ## Logging that must be enabled

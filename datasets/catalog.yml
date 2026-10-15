@@ -627,7 +627,7 @@ datasets:
     sourcetype: sysmon:linux
     source: Syslog:Linux-Sysmon/Operational
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: 'Sysmon for Linux process creation only: the broker is exploited over its own protocol, and the file holds no web or API
         access log'
@@ -652,7 +652,7 @@ datasets:
     sourcetype: sysmon:linux
     source: Syslog:Linux-Sysmon/Operational
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: 'Sysmon for Linux process creation only: no web or API access log'
     T1190_object_id_enumeration:
@@ -1042,6 +1042,14 @@ datasets:
       kind: scope
       reason: 'Covenant runs its command inside the remoting host (wsmprovhost.exe) without starting a child process: nothing for a
         child-process rule to see. PowerShell script block logging (4104) on the target would show it'
+  also:
+    T1003.001_lsass_memory_access:
+      kind: false-positive
+      reason: 'the remoting host (wsmprovhost.exe) opened LSASS with an all-access mask (0x1f3fff) through the .NET Process class
+        (System.ni.dll in the call trace) while Covenant''s command ran - no dump followed in the recorded events. The rule has alerted
+        on it since the access test became a VM_READ bit test (0x1f3fff carries VM_READ and was on no fixed list). It is kept, not
+        filtered: Out-Minidump opens LSASS the same way, and only the full mask separates it from the 0x1410 process listing the
+        filter allows'
 - id: otrf/empire_psremoting_stager
   source: otrf-security-datasets
   path: datasets/atomic/windows/lateral_movement/host/empire_psremoting_stager.zip
@@ -3584,7 +3592,7 @@ datasets:
     source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
   holdout: H89
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: scope
       reason: Exploitation of the CrushFTP server (T1190) is visible only as host-side outcome (the FTP server process spawning cmd.exe
         /c whoami); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct paths in a 5-minute window,
@@ -3633,7 +3641,7 @@ datasets:
       reason: The reverse shell the exploited Java process spawns is Unix-shell execution (T1059.004), but it is outside the documented
         scope. No Base64 is decoded into a shell (susp_b64_pipe). The binary is /bin/bash, not under /tmp, /var/tmp or /dev/shm (susp_tmp_binary).
         The shell's first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path).
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
         none, so it cannot see the exploitation. The exploitation is a single JNDI-injection request, so even with an access log it
@@ -3657,7 +3665,7 @@ datasets:
     source: WinEventLog:Security
   holdout: H92
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
         none, so it cannot see the exploitation. This Security log records none of the exploitation either. The exploit is a single
@@ -3680,7 +3688,7 @@ datasets:
     source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
   holdout: H93
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
         none, so it cannot see the exploitation. The exploit is a single JNDI-injection request, so even with an access log it would
@@ -3705,7 +3713,7 @@ datasets:
   expect:
   - T1059.001_powershell_encoded_command
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: scope
       reason: Exploitation of the PaperCut NG server (T1190) is visible only as host-side outcome (pc-app.exe spawning calc.exe, cmd.exe
         and an encoded PowerShell command); the detection's scope is a web access log in which one client gets 401/403 on >=5 distinct
@@ -3796,7 +3804,7 @@ datasets:
     source: XmlWinEventLog:Security
   holdout: H99
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: scope
       reason: Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe writing
         .aspx files into App_Extensions, recorded as 4663); the detection's scope is a web access log in which one client gets 401/403
@@ -3820,7 +3828,7 @@ datasets:
     source: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
   holdout: H100
   quiet:
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: scope
       reason: Exploitation of the ScreenConnect server (T1190) is visible only as host-side outcome (ScreenConnect.Service.exe creating
         .aspx files in App_Extensions, recorded as Sysmon 11); the detection's scope is a web access log in which one client gets 401/403
@@ -3849,7 +3857,7 @@ datasets:
       reason: The attack runs PowerShell (download and Start-Process) with a plain, unobfuscated command line; the detection's scope
         is only a dash-like -e/-ec/-en* switch followed by a 16+ char Base64 blob, and the powershell.exe process record itself is absent
         (only its cmd.exe parent).
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: scope
       reason: Exploitation of ActiveMQ, MOVEit, Idera, OFBiz, ScreenConnect, TeamCity, Splunk and Confluence servers (T1190) is visible
         only as host-side outcome (server processes spawning shells or payloads and writing web shells); the detection's scope is a
@@ -3885,7 +3893,7 @@ datasets:
         other writable directories as a coverage gap), and its own process start is not recorded;
 
         - each shell''s first argument is -c or nothing, not a temp-directory script.'
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
         none, so it cannot see the exploitation. ActiveMQ and RocketMQ are exploited over their broker protocols, which an HTTP access
@@ -3924,7 +3932,7 @@ datasets:
         - the shell''s first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path).
 
         The next step, starting /tmp/mBZXM, would match susp_tmp_binary, but its process creation is not in this Java-filtered export.'
-    T1190_api_auth_probing:
+    T1595.003_api_auth_probing:
       kind: telemetry
       reason: The detection reads a web server or reverse-proxy access log (c-ip, cs-method, cs-uri-stem, sc-status); the file holds
         none, so it cannot see the exploitation. Spring4Shell and the Spring Cloud Function SpEL injection are single crafted requests,
@@ -3996,7 +4004,7 @@ datasets:
       reason: 'the 1102 the capture tool''s wevtutil cl Security wrote while setting up the recording: its own set-up, not the recorded
         test'
 gaps:
-  T1190_api_auth_probing: 'No public dataset holds web or API access logs of credential probing against an API: the public web datasets
+  T1595.003_api_auth_probing: 'No public dataset holds web or API access logs of credential probing against an API: the public web datasets
     checked (Splunk Attack Data nginx and Apache files) are single exploit requests, not a probing sequence, and the T1190 files in
     the catalog hold the exploited servers'' process and file telemetry, not access logs. The lab run (red/web) is the evidence path.'
   T1190_object_id_enumeration: No public dataset holds access logs of object-ID enumeration against an API; the T1190 files in the catalog

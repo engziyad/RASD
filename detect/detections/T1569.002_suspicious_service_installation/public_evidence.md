@@ -71,6 +71,14 @@ Files added after the rule changes, labelled from their raw events and this dete
 | H87 | [T1569.002/atomic_red_team/windows-security.log](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1569.002/atomic_red_team/windows-security.log) | telemetry: not expected | quiet |
 | H88 | [T1569.002/atomic_red_team/windows-system.log](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1569.002/atomic_red_team/windows-system.log) | attack: must fire | fired, 1 alert on the recorded attack |
 
+## Tuning measured on public data
+
+What each applied filter kept quiet on every dataset in the catalog, and what each exception took back - the labs' background activity and the recorded attacks, not samples (values are quoted only from sources whose license allows redistribution):
+
+| Tuning | Kind | Events | Most frequent values of the fields it reads |
+|---|---|---:|---|
+| defender_kernel_driver | filter | 1 | ImagePath: `C:\ProgramData\Microsoft\Windows Defender\Definition Updates\{89A68A4E-7A2D-4BF6-AB0B-E34…` ×1 |
+
 ## First match
 
 The first event that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1569.002/malicious_powershell_executed_as_a_service/windows-xml`, SHA-256 of the original record `7fe7b20b375b6523…`):

@@ -55,7 +55,7 @@ Acceptance criteria: [docs/DETECTION_ACCEPTANCE_CRITERIA.md](../docs/DETECTION_A
 
 | Detection | ATT&CK | Platform | Condition |
 |---|---|---|---|
-| [API Probing - One Client Rejected on Many Distinct Paths](correlations/T1190_api_auth_probing/) | [T1190](https://attack.mitre.org/techniques/T1190/) | Web access log | >= 5 distinct cs-uri-stem per c-ip in 5m windows |
+| [API Probing - One Client Rejected on Many Distinct Paths](correlations/T1595.003_api_auth_probing/) | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) | Web access log | >= 5 distinct cs-uri-stem per c-ip in 5m windows |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](correlations/T1190_object_id_enumeration/) | [T1190](https://attack.mitre.org/techniques/T1190/) | Web access log | >= 3 distinct cs-uri-stem per c-ip in 1m windows |
 | [Password Spray - One Source Failing Authentication for Many Accounts](correlations/T1110.003_password_spray_burst/) | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | Windows | >= 5 distinct TargetUserName per IpAddress in 10m windows |
 | [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](correlations/T1558.003_kerberoasting_volume/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Windows | >= 5 distinct ServiceName per IpAddress in 10m windows |

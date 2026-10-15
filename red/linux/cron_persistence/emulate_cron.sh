@@ -13,6 +13,8 @@ while [[ $# -gt 0 ]]; do
 done
 [[ "$marker" =~ ^rasd_[0-9a-f]{8}$ ]] || { echo "--marker must look like rasd_1a2b3c4d" >&2; exit 2; }
 [[ $confirmed -eq 1 ]] || { echo "Refusing to run without --lab-confirmed." >&2; exit 2; }
+# shellcheck source=../lab_guard.sh
+source "$(dirname "$0")/../lab_guard.sh"; rasd_assert_lab
 command -v crontab >/dev/null || { echo "crontab is not installed - install cron (Debian/Ubuntu) or cronie (RHEL) on the lab host" >&2; exit 2; }
 
 entry="*/30 * * * * /bin/echo $marker >/dev/null 2>&1 # $marker"

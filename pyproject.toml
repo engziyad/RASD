@@ -21,7 +21,7 @@ datasets = ["python-evtx>=0.7"]
 rasd = "rasd:main"
 
 [project.urls]
-Repository = "https://github.com/engziyad/RASD-v1.0"
+Repository = "https://github.com/engziyad/RASD"
 
 [tool.setuptools]
 # RASD is a repository, not a library: the command runs the tools and reads the detections of

@@ -2,10 +2,12 @@ id: api_auth_testing
 name: API authentication enforcement
 platform: web
 mitre:
-  technique: T1190
-  technique_name: "Exploit Public-Facing Application"
-  tactics: [initial-access]
+  technique: T1595.003
+  technique_name: "Active Scanning: Wordlist Scanning"
+  tactics: [reconnaissance]
   other:
+    - framework: MITRE ATT&CK
+      id: "T1190 Exploit Public-Facing Application (the forged-JWT calls test for an authentication bypass)"
     - framework: OWASP API Security Top 10 (2023)
       id: API2 Broken Authentication
 objective: >
@@ -31,7 +33,7 @@ steps:
     script: emulate_api_auth.py
     parameters: [Target]
     detections: []
-    correlations: [T1190_api_auth_probing]
+    correlations: [T1595.003_api_auth_probing]
 scripts:
   cleanup: cleanup.sh
 telemetry:
@@ -43,7 +45,7 @@ telemetry:
       cs-user-agent: 'RASD-Red/<marker>'
       sc-status: '401'
       cs-uri-stem: '/api/Cards, /api/Users, /rest/basket/1 ...'
-    used_by: [T1190_api_auth_probing]
+    used_by: [T1595.003_api_auth_probing]
   - source: Application log
     event: "authentication failure"
     description: Token validation errors (missing header, invalid signature), when the application logs them
@@ -67,7 +69,7 @@ cleanup:
   verify: No state changes on the target; nothing to remove locally except the findings file
 sample_output:
   console: |
-    [T1190] Call protected endpoints with no token, a malformed token and a foreign-signed JWT
+    [T1595.003] Call protected endpoints with no token, a malformed token and a foreign-signed JWT
       PASS     GET /rest/basket/1 with no token: HTTP 401
       PASS     GET /rest/basket/1 with malformed token: HTTP 401
       PASS     GET /rest/basket/1 with foreign-signed JWT: HTTP 401
@@ -75,7 +77,7 @@ sample_output:
       ...
     18 check(s), 0 finding(s)
   scenarios:
-    - correlation: T1190_api_auth_probing
+    - correlation: T1595.003_api_auth_probing
       scenario: lab emulation - six protected paths, three token variants each
 dfir_playbook: dfir/playbooks/web_application_attack.md
-purple_scenario: purple/scenarios/T1190_api_auth_probing.md
+purple_scenario: purple/scenarios/T1595.003_api_auth_probing.md

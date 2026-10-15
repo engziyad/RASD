@@ -18,34 +18,35 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
+| [T1595.003](https://attack.mitre.org/techniques/T1595/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 
 ## 20-point completeness map
 
-| Item | T1003.001 | T1021.006 | T1053.003 | T1053.005 | T1059.001 | T1059.004 | T1110.003 | T1190 | T1218.011 | T1547.001 | T1558.003 | T1569.002 | T1685.005 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Red emulation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Expected telemetry | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Detection rule | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SPL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| KQL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| TP tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| TN tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Mutation tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Triage guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Response guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| DFIR playbook | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| CTI mapping | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Purple scenario | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Cleanup steps | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Evidence file | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
-| Engineering Score | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Operational Score | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
-| Coverage depth | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Known blind spots | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Data source requirements | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Item | T1003.001 | T1021.006 | T1053.003 | T1053.005 | T1059.001 | T1059.004 | T1110.003 | T1190 | T1218.011 | T1547.001 | T1558.003 | T1569.002 | T1595.003 | T1685.005 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Red emulation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Expected telemetry | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Detection rule | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SPL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| KQL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TP tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TN tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Mutation tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Triage guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Response guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| DFIR playbook | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CTI mapping | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Purple scenario | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Cleanup steps | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Evidence file | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| Engineering Score | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Operational Score | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| Coverage depth | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Known blind spots | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Data source requirements | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-234/260 items done · ✅ done · ⏳ pending a real lab run · ❌ missing
+252/280 items done · ✅ done · ⏳ pending a real lab run · ❌ missing
 
 ## Maturity per detection
 
@@ -66,9 +67,9 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | T1685.005 | **SIEM-Ready** | 100/100 | pending |
 | [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | T1685.005 | **SIEM-Ready** | 100/100 | pending |
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) · correlation | T1110.003 | **SIEM-Ready** | 100/100 | pending |
-| [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) · correlation | T1190 | **SIEM-Ready** | 100/100 | pending |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) · correlation | T1190 | **SIEM-Ready** | 100/100 | pending |
 | [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) · correlation | T1558.003 | **SIEM-Ready** | 100/100 | pending |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) · correlation | T1595.003 | **SIEM-Ready** | 100/100 | pending |
 
 ## Correlation detections
 
@@ -77,9 +78,9 @@ Aggregate detections (Sigma correlation rules) proven by `rasd correlate`: event
 | Correlation | Condition | Scenarios | Parameter mutants | Aggregation parity | Guaranteed burst |
 |---|---|---|---|---|---|
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | >= 5 distinct TargetUserName per IpAddress in 10m windows | 12 (6 fire) | 7/7 killed | 1296 runs, identical | 9+ always alert |
-| [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) | >= 5 distinct cs-uri-stem per c-ip in 5m windows | 11 (3 fire) | 5/5 killed | 966 runs, identical | 9+ always alert |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) | >= 3 distinct cs-uri-stem per c-ip in 1m windows | 10 (4 fire) | 5/5 killed | 960 runs, identical | 5+ always alert |
 | [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) | >= 5 distinct ServiceName per IpAddress in 10m windows | 10 (5 fire) | 7/7 killed | 1280 runs, identical | 9+ always alert |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) | >= 5 distinct cs-uri-stem per c-ip in 5m windows | 11 (3 fire) | 5/5 killed | 966 runs, identical | 9+ always alert |
 
 ## Offensive tests without a detection yet
 

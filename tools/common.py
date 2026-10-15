@@ -51,6 +51,7 @@ TECHNIQUES = {       # ID: (name, the tactics ATT&CK lists for it, in matrix ord
                   ("persistence", "privilege-escalation")),
     "T1558.003": ("Steal or Forge Kerberos Tickets: Kerberoasting", ("credential-access",)),
     "T1569.002": ("System Services: Service Execution", ("execution",)),
+    "T1595.003": ("Active Scanning: Wordlist Scanning", ("reconnaissance",)),
     "T1606": ("Forge Web Credentials", ("credential-access",)),
     "T1685.005": ("Disable or Modify Tools: Clear Windows Event Logs", ("defense-impairment",)),
 }

@@ -12,8 +12,8 @@ references:
 author: Ziyad (github.com/engziyad)
 date: 2026-10-13
 tags:
-  - attack.initial-access
-  - attack.t1190
+  - attack.reconnaissance
+  - attack.t1595.003
 logsource:
   category: webserver
 detection:

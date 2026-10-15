@@ -40,7 +40,7 @@ Both runners give every run a random marker (`rasd_xxxxxxxx`) that appears in ev
 rasd evidence --results <results>/emulation-results.json --logs lab-export.jsonl
 ```
 
-Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory, credential access and Security-log clearing are opt-in, every artifact carries the marker so cleanup can only touch what the test created, web tests refuse any target that resolves to a public address, and the password-spray simulation refuses to run when the domain lockout threshold is 1 or 2 and skips any account one more failure could lock.
+Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory and is not trusted on its own - the [lab guard](lab/README.md#lab-guard) refuses to run unless the machine itself is marked as a lab (`RASD_LAB_HOST` and, on a domain-joined host, a lab domain in `RASD_LAB_DOMAINS` on Windows; a root-owned `/etc/rasd-lab-host` naming the host on Linux), credential access and Security-log clearing are opt-in, every artifact carries the marker so cleanup can only touch what the test created, web tests refuse any target that resolves to a public address, connect only to the address they checked and never follow a redirect, and the password-spray simulation refuses to run when the domain lockout threshold is 1 or 2 and skips any account one more failure could lock.
 
 ## Catalogue
 
@@ -54,7 +54,7 @@ Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory, 
 | [User crontab persistence](linux/cron_persistence/) | linux | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | covered | bash |
 | [Read-only privilege-escalation reconnaissance](linux/privilege_escalation_checks/) | linux | [T1083](https://attack.mitre.org/techniques/T1083/) | gap | bash |
 | [Encoded shell command and execution from /tmp](linux/suspicious_shell_execution/) | linux | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | covered | bash |
-| [API authentication enforcement](web/api_auth_testing/) | web | [T1190](https://attack.mitre.org/techniques/T1190/) | covered | python |
+| [API authentication enforcement](web/api_auth_testing/) | web | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) | covered | python |
 | [File upload restrictions](web/file_upload_testing/) | web | [T1505.003](https://attack.mitre.org/techniques/T1505/003/) | gap | python |
 | [Object-level authorization (IDOR / BOLA)](web/idor_testing/) | web | [T1190](https://attack.mitre.org/techniques/T1190/) | covered | python |
 | [JWT validation (unsigned and tampered tokens)](web/jwt_testing/) | web | [T1606](https://attack.mitre.org/techniques/T1606/) | gap | python |

@@ -20,10 +20,8 @@ detection:
   selection_wevtutil_img:   # path, or the PE name when the binary was copied and renamed
     - Image|endswith: '\wevtutil.exe'
     - OriginalFileName: 'wevtutil.exe'
-  selection_wevtutil_cmd:
-    CommandLine|contains:
-      - ' cl '
-      - ' clear-log '
+  selection_wevtutil_cmd:   # the verb as its own argument: any whitespace (space, tab) before and after, optionally quoted
+    CommandLine|re: '(?i)\s"?(cl|clear-log)"?(\s|$)'
   selection_ps_img:
     - Image|endswith:
         - '\powershell.exe'

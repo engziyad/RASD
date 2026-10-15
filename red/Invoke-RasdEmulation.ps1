@@ -28,7 +28,10 @@
     Test ids (folder names, for example scheduled_task_creation). Combines with -Technique.
 
 .PARAMETER LabConfirmed
-    Mandatory acknowledgement that this host is an isolated lab machine.
+    Mandatory acknowledgement that this host is an isolated lab machine. On its own it is not
+    enough: the lab guard (lab\RasdLabGuard.ps1) also requires the machine variable
+    RASD_LAB_HOST to name this computer and, on a domain-joined host, the domain to be listed
+    in RASD_LAB_DOMAINS. See lab\README.md.
 
 .PARAMETER IncludeCredentialAccess
     Opt-in for lsass_memory_access (dumps LSASS memory; the dump is hashed and deleted).
@@ -97,6 +100,9 @@ if ($List) {
 }
 
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+# -LabConfirmed is an acknowledgement; the guard checks the machine itself (red/lab/README.md, Lab guard)
+. (Join-Path $PSScriptRoot 'lab\RasdLabGuard.ps1')
+Assert-RasdLab -DryRun:$DryRun
 if (-not $Technique -and -not $Test) { throw 'Choose -Technique <ID|All> and/or -Test <id> (see -List).' }
 $selected = @($catalog | Where-Object { ($Technique -contains 'All') -or ($Technique -contains $_.technique) -or ($Test -contains $_.id) })
 if ($selected.Count -eq 0) { throw 'No test matches the selection (see -List).' }

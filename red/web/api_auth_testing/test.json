@@ -2,7 +2,7 @@
   "id": "api_auth_testing",
   "name": "API authentication enforcement",
   "platform": "web",
-  "technique": "T1190",
+  "technique": "T1595.003",
   "runner": "python",
   "steps": [
     {
@@ -16,7 +16,7 @@
         "Target"
       ],
       "correlations": [
-        "T1190_api_auth_probing"
+        "T1595.003_api_auth_probing"
       ],
       "bind": {}
     }

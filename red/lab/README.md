@@ -16,6 +16,22 @@ Synthetic samples prove the rule logic. Only a real run proves the rest: the tec
 
 Splunk Free cannot run scheduled alerts, so it cannot produce the SIEM part of the evidence; use the Enterprise trial.
 
+## Lab guard
+
+`-LabConfirmed` is something you type; it cannot tell a lab VM from a work laptop. Every runner and every emulation script therefore also calls [`RasdLabGuard.ps1`](RasdLabGuard.ps1), which checks the machine itself and refuses to run unless:
+
+1. the **machine** environment variable `RASD_LAB_HOST` equals this computer's name, and
+2. on a domain-joined computer, its domain is listed in the machine variable `RASD_LAB_DOMAINS`, and every listed domain ends in a lab or reserved suffix (`.lab` `.test` `.example` `.invalid` `.localhost` `.local` `.internal` `.lan` `.home.arpa`), so a real company domain can never be allowed by mistake.
+
+Set them once, on each lab VM only, from an elevated PowerShell (never on a work machine):
+
+```powershell
+[Environment]::SetEnvironmentVariable('RASD_LAB_HOST', $env:COMPUTERNAME, 'Machine')
+[Environment]::SetEnvironmentVariable('RASD_LAB_DOMAINS', 'lab.local', 'Machine')   # your lab domain; skip on a workgroup VM
+```
+
+Machine-level variables are read from the registry, so a value set only in one session or inherited from a parent shell does not count. `-DryRun` previews the plan without the guard.
+
 ## Steps
 
 **1 · Splunk.** Install Splunk Enterprise and the three add-ons (Microsoft Windows, Sysmon, Sysmon for Linux). Copy `queries/splunk_app/rasd` to `$SPLUNK_HOME/etc/apps/`, enable receiving on 9997 (Settings › Forwarding and receiving), restart. The app creates every index the queries read (`sysmon`, `wineventlog`, `linux`, `web`) and `rasd_alerts`, where the alerts are written and one scheduled alert per detection, named `RASD - <detection id>` - see [queries/splunk_app](../../queries/splunk_app/README.md).
@@ -84,13 +100,16 @@ Each detection is reported **FIRED** (and gets `evidence.md`) or **MISSED** (and
 
 ## What goes into the repository
 
-Only the `evidence.md` files under `detect/detections/` and `detect/correlations/`. Each records the run, host, marker, matching event, latencies, cleanup status and the SHA-256 of every raw file. The raw files - results, exports, the alert CSV, collected artifacts - stay with you (`red/results/` is ignored by git), so anyone you give them to can re-run `rasd evidence --dry-run` and get the same verdict.
+Only the `evidence.md` files under `detect/detections/` and `detect/correlations/`. Each records the run, host, user, marker, matching event, latencies, cleanup status and the SHA-256 of every raw file. The raw files - results, exports, the alert CSV, collected artifacts - stay with you (`red/results/` is ignored by git), so anyone you give them to can re-run `rasd evidence --dry-run` and get the same verdict.
+
+> **Privacy.** `evidence.md` carries the lab VM's host name and the Windows account that ran the tests (`DOMAIN\user`), and the run records its IP addresses. Give the VMs and accounts neutral lab names (`LAB-WS01`, `LAB\labuser`) before the run, never your laptop's name or your own account, and read every `evidence.md` before you commit it.
 
 ## Files
 
 | File | Purpose |
 |---|---|
 | [`Test-LabReadiness.ps1`](Test-LabReadiness.ps1) | Sysmon, live probe, audit policy, PowerShell logging, forwarder and connection, lab context; `-Fix` |
+| [`RasdLabGuard.ps1`](RasdLabGuard.ps1) | Refuses to run anywhere but a machine marked as a lab (`RASD_LAB_HOST`, `RASD_LAB_DOMAINS`) |
 | [`Invoke-RasdLabRun.ps1`](Invoke-RasdLabRun.ps1) | Readiness → tests → SIEM wait → export → zip, then the remaining commands |
 | [`sysmon-rasd.xml`](sysmon-rasd.xml) | Sysmon configuration covering what the rules, hunts and playbooks read. **Do not deploy sysmon-rasd.xml to production. It is intentionally verbose for validation.** |
 | [`../../queries/splunk_app`](../../queries/splunk_app/) | The Splunk apps, generated from the rules on every build |

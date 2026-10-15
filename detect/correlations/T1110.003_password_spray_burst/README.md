@@ -10,7 +10,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | base rule: 11 true positive · 8 true negative · 8 technique mutations · 12 scenarios (6 fire, 6 silent) |
 | **Proof** | base rule: 100% of 27 mutants killed · fuzzer resistance 100% over 35 variants · correlation: 7/7 parameter mutants killed |
-| **Parity** | base filter identical on 360 events · aggregation identical in SPL and KQL on 1296 runs (162 sequences × 8 parameter sets) |
+| **Parity** | base filter identical on 369 events · aggregation identical in SPL and KQL on 1296 runs (162 sequences × 8 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
 | **Public data** | fires on 8 of 16 public recordings of its behaviour · 8 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1110.003_password_spray_burst.kql) · [SPL](../../../queries/spl/correlations/T1110.003_password_spray_burst.spl) · [scenarios](tests/scenarios.yml) |

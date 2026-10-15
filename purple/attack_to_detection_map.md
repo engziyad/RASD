@@ -122,13 +122,6 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 ## [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application
 
-**Red:** [API authentication enforcement](../red/web/api_auth_testing/)
-
-| Telemetry | Event | Used by |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | `T1190_api_auth_probing` |
-| Application log | authentication failure | investigation |
-
 **Red:** [Object-level authorization (IDOR / BOLA)](../red/web/idor_testing/)
 
 | Telemetry | Event | Used by |
@@ -137,10 +130,9 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1190_api_auth_probing](../detect/correlations/T1190_api_auth_probing/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1190_api_auth_probing.kql) | [spl](../queries/spl/correlations/T1190_api_auth_probing.spl) | [triage](../detect/correlations/T1190_api_auth_probing/triage.md) | [response](../detect/correlations/T1190_api_auth_probing/response.md) |
 | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1190_object_id_enumeration.kql) | [spl](../queries/spl/correlations/T1190_object_id_enumeration.spl) | [triage](../detect/correlations/T1190_object_id_enumeration/triage.md) | [response](../detect/correlations/T1190_object_id_enumeration/response.md) |
 
-**DFIR:** [web_application_attack](../dfir/playbooks/web_application_attack.md) · **Purple:** [T1190_api_auth_probing](scenarios/T1190_api_auth_probing.md) · **Purple:** [T1190_object_id_enumeration](scenarios/T1190_object_id_enumeration.md) · **Intel:** HAFNIUM
+**DFIR:** [web_application_attack](../dfir/playbooks/web_application_attack.md) · **Purple:** [T1190_object_id_enumeration](scenarios/T1190_object_id_enumeration.md) · **Intel:** HAFNIUM
 
 ## [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32
 
@@ -202,6 +194,21 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 | [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | SIEM-Ready | [kql](../queries/kql/T1569.002_suspicious_service_installation.kql) | [spl](../queries/spl/T1569.002_suspicious_service_installation.spl) | [triage](../detect/detections/T1569.002_suspicious_service_installation/triage.md) | [response](../detect/detections/T1569.002_suspicious_service_installation/response.md) |
 
 **DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **DFIR:** [service_installation](../dfir/playbooks/service_installation.md) · **Purple:** [T1569.002_service_execution](scenarios/T1569.002_service_execution.md) · **Intel:** Wizard Spider
+
+## [T1595.003](https://attack.mitre.org/techniques/T1595/003/) Active Scanning: Wordlist Scanning
+
+**Red:** [API authentication enforcement](../red/web/api_auth_testing/)
+
+| Telemetry | Event | Used by |
+|---|---|---|
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | `T1595.003_api_auth_probing` |
+| Application log | authentication failure | investigation |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1595.003_api_auth_probing.kql) | [spl](../queries/spl/correlations/T1595.003_api_auth_probing.spl) | [triage](../detect/correlations/T1595.003_api_auth_probing/triage.md) | [response](../detect/correlations/T1595.003_api_auth_probing/response.md) |
+
+**DFIR:** [web_application_attack](../dfir/playbooks/web_application_attack.md) · **Purple:** [T1595.003_api_auth_probing](scenarios/T1595.003_api_auth_probing.md) · **Intel:** APT41, Volatile Cedar
 
 ## [T1685.005](https://attack.mitre.org/techniques/T1685/005/) Disable or Modify Tools: Clear Windows Event Logs
 

@@ -2,8 +2,9 @@
 
 | | |
 |---|---|
-| **ATT&CK technique** | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application |
-| **Tactics** | initial-access |
+| **ATT&CK technique** | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) Active Scanning: Wordlist Scanning |
+| **Tactics** | reconnaissance |
+| **MITRE ATT&CK** | T1190 Exploit Public-Facing Application (the forged-JWT calls test for an authentication bypass) |
 | **OWASP API Security Top 10 (2023)** | API2 Broken Authentication |
 | **Platform** | web · runner: python |
 | **Status** | Detect: **covered** |
@@ -35,7 +36,7 @@ Check that every protected API endpoint refuses a request with no token, a malfo
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`emulate_api_auth.py`](emulate_api_auth.py) | `Target` | [`T1190_api_auth_probing`](../../../detect/correlations/T1190_api_auth_probing/) (correlation) |
+| Call protected endpoints with no token, a malformed token and a foreign-signed JWT | [`emulate_api_auth.py`](emulate_api_auth.py) | `Target` | [`T1595.003_api_auth_probing`](../../../detect/correlations/T1595.003_api_auth_probing/) (correlation) |
 
 ## Links
 
@@ -46,7 +47,7 @@ Check that every protected API endpoint refuses a request with no token, a malfo
 | DFIR artifacts | [dfir_artifacts.md](dfir_artifacts.md) |
 | Sample output | [sample_output.md](sample_output.md) |
 | DFIR playbook | [web_application_attack.md](../../../dfir/playbooks/web_application_attack.md) |
-| Purple scenario | [T1190_api_auth_probing.md](../../../purple/scenarios/T1190_api_auth_probing.md) |
+| Purple scenario | [T1595.003_api_auth_probing.md](../../../purple/scenarios/T1595.003_api_auth_probing.md) |
 
 ## Cleanup
 

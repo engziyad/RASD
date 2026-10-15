@@ -14,6 +14,8 @@ while [[ $# -gt 0 ]]; do
 done
 [[ "$marker" =~ ^rasd_[0-9a-f]{8}$ ]] || { echo "--marker must look like rasd_1a2b3c4d" >&2; exit 2; }
 [[ $confirmed -eq 1 ]] || { echo "Refusing to run without --lab-confirmed." >&2; exit 2; }
+# shellcheck source=../lab_guard.sh
+source "$(dirname "$0")/../lab_guard.sh"; rasd_assert_lab
 
 encoded=$(printf 'echo %s' "$marker" | base64 | tr -d '\n')
 # through sh -c, as a web shell or an SSH command runs it: one command line holds the whole pipeline

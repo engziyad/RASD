@@ -7,9 +7,9 @@
 | **Severity** | `medium` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 12 true positive · 6 true negative · 8 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 202 variants |
-| **Parity** | KQL and SPL identical to the rule on 1825 events · Defender advanced hunting identical on the same events |
+| **Tests** | 13 true positive · 6 true negative · 8 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 224 variants |
+| **Parity** | KQL and SPL identical to the rule on 1874 events · Defender advanced hunting identical on the same events |
 | **Public data** | fires on 8 of 13 public recordings of its behaviour · held-out: 6 of 6 · 15 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../../queries/spl/T1059.001_powershell_encoded_command.spl) · [Defender](../../../queries/mde/T1059.001_powershell_encoded_command.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
@@ -30,7 +30,7 @@ This rule uses one regex: a dash-like prefix, then `e`, `ec` or `en*`, then whit
 - PowerShell hosted in another process (System.Management.Automation.dll loaded by a custom binary - Sysmon EID 7).
 
 ## False positives & tuning
-Configuration management (SCCM `CcmExec.exe`, Intune, RMM tools). Filter by **parent process path**, as shown with `filter_sccm`.
+Configuration management (SCCM `CcmExec.exe`, Intune, RMM tools). Filter by the **full parent process path**, as shown with `filter_sccm` (`C:\Windows\CCM\CcmExec.exe` exactly: a copy named `CcmExec.exe` in any other folder still alerts).
 
 Every tuning - applied, proposed or rejected - is recorded in [`tuning.yml`](tuning.yml). `rasd tune --filter T1059.001` measures each proposal before it is applied: how many attack variants it would hide against how many corpus alerts it would remove.
 

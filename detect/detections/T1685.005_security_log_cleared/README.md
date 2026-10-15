@@ -9,7 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 5 true positive · 4 true negative · 2 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 4 variants |
-| **Parity** | KQL and SPL identical to the rule on 430 events |
+| **Parity** | KQL and SPL identical to the rule on 439 events |
 | **Public data** | fires on 2 of 2 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1685.005_security_log_cleared.kql) · [SPL](../../../queries/spl/T1685.005_security_log_cleared.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

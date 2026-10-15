@@ -7,9 +7,9 @@
 | **Severity** | `medium` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 19 true positive · 6 true negative · 7 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 181 variants |
-| **Parity** | KQL and SPL identical to the rule on 1772 events · Defender advanced hunting identical on the same events |
+| **Tests** | 24 true positive · 6 true negative · 7 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 231 variants |
+| **Parity** | KQL and SPL identical to the rule on 1865 events · Defender advanced hunting identical on the same events |
 | **Public data** | fires on 10 of 11 public recordings of its behaviour · held-out: 6 of 6 · 16 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) · [SPL](../../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) · [Defender](../../../queries/mde/T1053.005_schtasks_suspicious_creation.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
@@ -24,7 +24,7 @@ The rule fires on `schtasks /create` **or** `/change` (a new task, or the action
 
 | Selection | Meaning |
 |---|---|
-| `susp_action` | `%TEMP%`, `%APPDATA%`, PowerShell, `cmd /c`, mshta, wscript, cscript, regsvr32, or a URL in the action |
+| `susp_action` | `%TEMP%`, `%APPDATA%`, Windows PowerShell, PowerShell 7 (`pwsh`), `cmd /c`, mshta, wscript, cscript, regsvr32, rundll32, certutil, bitsadmin, or a URL in the action |
 | `susp_writable_path` | Any AppData, ProgramData, Users\Public, Windows\Temp or Downloads path - with `\` **or** `/` separators, because Windows accepts both |
 | `susp_system_remote` | Remote creation as SYSTEM (`/s <host>` with `/ru SYSTEM` or `NT AUTHORITY\SYSTEM`, in any order and quoting) - a lateral-movement pattern |
 
