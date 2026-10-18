@@ -6,9 +6,9 @@
 | Dump file metadata | Sysmon 11 TargetFilename | `Get-FileHash <path> (then delete or secure the dump)` | Proves a dump existed; the hash lets you search for exfiltrated copies |
 | Logon sessions on the host | Security 4624 since last boot | `Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624; StartTime=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime}` | Lists every credential that was in LSASS and must be reset |
 
-[`collect_artifacts.ps1`](collect_artifacts.ps1) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.ps1`](collect_artifacts.ps1) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

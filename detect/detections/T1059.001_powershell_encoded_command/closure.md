@@ -23,9 +23,10 @@ Tuning:       none | sccm_client (applied)
 
 Known benign sources for this detection:
 - Management agents (SCCM, Intune, RMM tools) that use encoded commands
+- Ansible's WinRM bootstrap, an -EncodedCommand started by cmd /C on every managed host (public data: the labs' provisioning)
 
 Never tune:
-- Never filter by the Base64 content: the same encoded blob can be re-encoded trivially.
+- Never filter by the Base64 content alone: the same payload can be re-encoded trivially. A reviewed automation bootstrap is excepted only by its source host together with its exact command line.
 - Never filter Office, browser or script-host parents: they are the delivery path this rule exists for.
 
 ## False Positive
@@ -37,7 +38,7 @@ Alert:        T1059.001_powershell_encoded_command for <host> at <time, UTC>
 Observed:     Image=<value>  OriginalFileName=<value>  CommandLine=<value>  ParentImage=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1059.001_powershell_encoded_command
+Follow-up:    <sent to detection engineering as a true negative for T1059.001_powershell_encoded_command: ticket | not yet>
 ```
 
 ## Escalation to incident response

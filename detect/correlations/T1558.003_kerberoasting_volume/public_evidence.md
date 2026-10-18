@@ -13,7 +13,7 @@ holdout_fired_on: 0
 
 # Public dataset evidence · Kerberoasting - One Client Requesting Tickets for Many Service Accounts
 
-**Public dataset validation: fires on 1 of the 1 public recordings of its behaviour** · 1 alerts · sources: OTRF Security-Datasets · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 1 of the 1 public recordings of its behaviour** · 1 alert · sources: OTRF Security-Datasets · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -33,11 +33,11 @@ Public data replayed through the tested rule, not lab evidence: the maturity lev
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **negative**: the file does not hold the behaviour the rule detects.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **negative**: the file does not hold the behaviour the rule detects.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml.log) | negative | read once, the file holds too few distinct service tickets from one client for the threshold: its unusual number comes from one record copied 86 times with the service name edited and the time moved by nanoseconds (115 repeats in all, 85 of them edited). RASD reads each record once |
+| [T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1558.003/unusual_number_of_kerberos_service_tickets_requested/windows-xml.log) | negative | read once, the file holds too few distinct service tickets from one client for the threshold: its unusual number comes from one record copied 86 times with the service name edited and the time moved by nanoseconds (115 repeats in all, 85 of them edited). RASD reads each record once. |
 
 ## Held-out files
 
@@ -64,7 +64,7 @@ What each applied filter kept quiet on every dataset in the catalog, and what ea
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 1125 of `purplesharp_ad_playbook_I`, SHA-256 of the original record `8bdaffa0dea44f10…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 1125 of `purplesharp_ad_playbook_I`, SHA-256 of the original record `8bdaffa0dea44f10…`):
 
 ```json
 {

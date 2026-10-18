@@ -8,11 +8,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [LSASS memory dump with comsvcs.dll MiniDump](../red/windows/lsass_memory_access/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 10 · ProcessAccess | `T1003.001_lsass_memory_access` |
-| Sysmon | 1 · ProcessCreate | `T1218.011_rundll32_suspicious_execution` |
-| Sysmon | 11 · FileCreate | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Sysmon | 10 · ProcessAccess | rundll32.exe opening lsass.exe with read access | `T1003.001_lsass_memory_access` |
+| Sysmon | 1 · ProcessCreate | rundll32.exe with comsvcs.dll MiniDump on the command line | `T1218.011_rundll32_suspicious_execution` |
+| Sysmon | 11 · FileCreate | The dump file written by rundll32 | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -24,13 +24,13 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [WinRM remote command on a lab host](../red/active_directory/winrm_access_validation/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Security (target) | 4624 · An account was successfully logged on | investigation |
-| Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | investigation |
-| Sysmon (target) | 1 · ProcessCreate | investigation |
-| Sysmon (target) | 1 · ProcessCreate | `T1021.006_wsmprovhost_suspicious_child` |
-| Sysmon (source) | 3 · NetworkConnect | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Security (target) | 4624 · An account was successfully logged on | Network logon from the source host | investigation |
+| Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | A remote shell was created for the connecting user | investigation |
+| Sysmon (target) | 1 · ProcessCreate | wsmprovhost.exe started to host the remote session | investigation |
+| Sysmon (target) | 1 · ProcessCreate | cmd.exe started by the session host to run the remote command | `T1021.006_wsmprovhost_suspicious_child` |
+| Sysmon (source) | 3 · NetworkConnect | Connection to the target on TCP 5985 (HTTP) or 5986 (HTTPS) | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -42,11 +42,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [User crontab persistence](../red/linux/cron_persistence/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| auditd | SYSCALL / EXECVE · key=cron | investigation |
-| syslog / journald | crontab[pid]: (<user>) REPLACE (<user>) | investigation |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | `T1053.003_crontab_noninteractive_install` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| auditd | SYSCALL / EXECVE · key=cron | crontab executed and the spool file written | investigation |
+| syslog / journald | crontab[pid]: (&lt;user&gt;) REPLACE (&lt;user&gt;) | The cron package logs every crontab replacement | investigation |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | crontab process and the spool file write | `T1053.003_crontab_noninteractive_install` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -58,12 +58,12 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Scheduled task with a suspicious action (schtasks and PowerShell)](../red/windows/scheduled_task_creation/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | `T1053.005_schtasks_suspicious_creation` |
-| Sysmon | 1 · ProcessCreate | `T1053.005_powershell_scheduled_task_creation` |
-| Security | 4698 · A scheduled task was created | investigation |
-| Microsoft-Windows-TaskScheduler/Operational | 106 · Task registered | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | schtasks.exe creating the task | `T1053.005_schtasks_suspicious_creation` |
+| Sysmon | 1 · ProcessCreate | powershell.exe registering the second task | `T1053.005_powershell_scheduled_task_creation` |
+| Security | 4698 · A scheduled task was created | Task name and full task XML (action, trigger, principal) | investigation |
+| Microsoft-Windows-TaskScheduler/Operational | 106 · Task registered | Registration of both tasks by the current user | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -76,11 +76,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [PowerShell -EncodedCommand with a benign payload](../red/windows/powershell_encoded_command/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | `T1059.001_powershell_encoded_command` |
-| Microsoft-Windows-PowerShell/Operational | 4104 · Script block logged | investigation |
-| Security | 4688 · Process created | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | Child powershell.exe started with an encoded command | `T1059.001_powershell_encoded_command` |
+| Microsoft-Windows-PowerShell/Operational | 4104 · Script block logged | The decoded script block, containing the marker | investigation |
+| Security | 4688 · Process created | Same process creation, when command-line auditing is enabled | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -92,11 +92,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Encoded shell command and execution from /tmp](../red/linux/suspicious_shell_execution/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| auditd | EXECVE · sh -c, base64 -d, sh | investigation |
-| auditd | EXECVE · /tmp/<marker>.sh | investigation |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | `T1059.004_linux_suspicious_shell_execution` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| auditd | EXECVE · sh -c, base64 -d, sh | The decode-and-pipe chain, one EXECVE record per process | investigation |
+| auditd | EXECVE · /tmp/&lt;marker&gt;.sh | Execution of a file under /tmp | investigation |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | Process creation with the full command line; file creation in /tmp | `T1059.004_linux_suspicious_shell_execution` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -108,11 +108,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Password spray simulation with a password that cannot be right](../red/active_directory/password_spray_simulation/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Security (domain controller) | 4771 · Kerberos pre-authentication failed | `T1110.003_password_spray_burst` |
-| Security (domain controller) | 4776 · The computer attempted to validate the credentials | investigation |
-| Security (domain controller) | 4625 · An account failed to log on | `T1110.003_password_spray_burst` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Security (domain controller) | 4771 · Kerberos pre-authentication failed | One per account when Kerberos is used; Failure Code 0x18 = wrong password | `T1110.003_password_spray_burst` |
+| Security (domain controller) | 4776 · The computer attempted to validate the credentials | One per account when NTLM is used; Error Code 0xC000006A = wrong password | investigation |
+| Security (domain controller) | 4625 · An account failed to log on | Failed network logon (type 3) for each LDAP bind, logged by the DC that served the bind | `T1110.003_password_spray_burst` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -124,9 +124,9 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Object-level authorization (IDOR / BOLA)](../red/web/idor_testing/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP request · sequential object IDs | `T1190_object_id_enumeration` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Web server / reverse proxy access log | HTTP request · sequential object IDs | One authenticated session requesting /rest/basket/1, /2, /3 ... within seconds | `T1190_object_id_enumeration` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -138,10 +138,10 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [rundll32 javascript: proxy execution](../red/windows/rundll32_execution/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | `T1218.011_rundll32_suspicious_execution` |
-| Sysmon | 7 · ImageLoad | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | rundll32.exe started with a javascript: argument | `T1218.011_rundll32_suspicious_execution` |
+| Sysmon | 7 · ImageLoad | mshtml.dll and jscript9.dll loaded into rundll32 (if image-load logging is enabled) | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -153,9 +153,9 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [HKCU Run value pointing into a user-writable folder](../red/windows/run_key_persistence/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 13 · RegistryEvent (value set) | `T1547.001_registry_run_key_persistence` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Sysmon | 13 · RegistryEvent (value set) | The Run value written by powershell.exe | `T1547.001_registry_run_key_persistence` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -167,9 +167,9 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Kerberoasting - request an RC4 service ticket for a lab SPN](../red/active_directory/kerberoasting/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Security (domain controller) | 4769 · A Kerberos service ticket was requested | `T1558.003_kerberoasting_rc4_tgs` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Security (domain controller) | 4769 · A Kerberos service ticket was requested | Service ticket issued for the SPN's account, logged on the DC | `T1558.003_kerberoasting_rc4_tgs` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -182,12 +182,12 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Service installed with a cmd.exe /c binary path](../red/windows/service_creation/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| System | 7045 · A service was installed in the system | `T1569.002_suspicious_service_installation` |
-| Security | 4697 · A service was installed in the system | investigation |
-| Sysmon | 1 · ProcessCreate | investigation |
-| Sysmon | 13 · RegistryEvent (value set) | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| System | 7045 · A service was installed in the system | Service Control Manager records the new service | `T1569.002_suspicious_service_installation` |
+| Security | 4697 · A service was installed in the system | Same installation in the Security log, with the installing account | investigation |
+| Sysmon | 1 · ProcessCreate | sc.exe with the create command line | investigation |
+| Sysmon | 13 · RegistryEvent (value set) | ImagePath written under the Services key | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -199,10 +199,10 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [API authentication enforcement](../red/web/api_auth_testing/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | `T1595.003_api_auth_probing` |
-| Application log | authentication failure | investigation |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | A burst of rejected requests across many API paths from one client | `T1595.003_api_auth_probing` |
+| Application log | authentication failure | Token validation errors (missing header, invalid signature), when the application logs them | investigation |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
@@ -214,11 +214,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **Red:** [Event log clearing (dedicated test log, optional Security log)](../red/windows/event_log_clearing/)
 
-| Telemetry | Event | Used by |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | `T1685.005_event_log_clearing` |
-| System | 104 · The log file was cleared | `T1685.005_system_log_cleared` |
-| Security | 1102 · The audit log was cleared | `T1685.005_security_log_cleared` |
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | wevtutil.exe clearing a log | `T1685.005_event_log_clearing` |
+| System | 104 · The log file was cleared | Written by Microsoft-Windows-Eventlog for every cleared log except Security. The cleared log's name sits in UserData/LogFileCleared/Channel; Export-LabTelemetry.ps1 names it Channel_Cleared so it does not overwrite the event's own Channel (System) - in a SIEM look for the UserData field instead | `T1685.005_system_log_cleared` |
+| Security | 1102 · The audit log was cleared | Written when the Security log is cleared (opt-in step only) | `T1685.005_security_log_cleared` |
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|

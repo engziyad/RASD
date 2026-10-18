@@ -30,7 +30,7 @@ RASD is a cybersecurity validation framework that connects offensive security la
 **RASD = Resilient Adversary Signal Detection**, an attack-to-defense validation framework built to transform adversary behavior into tested detections, investigation workflows, CTI mappings, and operational evidence.
 
 > RASD does not stop at detection logic.
-> Each technique is mapped across offensive validation, telemetry, detection, triage, response, intelligence context, and measurable operational evidence.
+> Each technique is mapped across offensive validation, telemetry, detection, triage, response and intelligence context, with a place for measurable operational evidence that stays pending until a lab run is committed.
 
 <!-- rasd:readme-metrics:start -->
 | | |
@@ -41,7 +41,7 @@ RASD is a cybersecurity validation framework that connects offensive security la
 | **Proof** | 230/230 rule mutants killed or accepted · 13990 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
 | **Correlations** | 43 scenarios · 24/24 parameter mutants killed · 4502 aggregation parity runs (0 divergences) · burst guarantee verified |
 | **Near misses** | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
-| **Public datasets** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](docs/PUBLIC_DATA_VALIDATION.md)) |
+| **Public datasets** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](docs/PUBLIC_DATA_VALIDATION.md)) |
 | **Engineering Score** | 100/100 |
 | **Operational Score** | pending a real lab run |
 | **Chain completeness** | 252/280 items ([validation matrix](purple/validation_matrix.md)) |
@@ -83,15 +83,15 @@ RASD keeps legacy ATT&CK v18 aliases for compatibility, while primary mappings f
 | Claim | How RASD proves it |
 |---|---|
 | The rule catches the attack | True-positive tests, hand-written technique mutations, and an **evasion fuzzer** that generates renamed binaries, forward-slash paths, parameter prefixes, hex/decimal encodings and ordinal exports - against a regression baseline |
-| Every part of the rule is needed | **Rule mutation testing** (`rasd prove`): every value, field and branch of every rule is deleted in turn, and a test must fail each time. It found 45% of the original rule logic unproven by any test; today every mutant is killed |
+| Every part of the rule is needed | **Rule mutation testing** (`rasd prove`): every value, field and branch of every rule is deleted in turn, and a test must fail each time. It found 45% of the original rule logic unproven by any test; today every mutant is killed or accepted as equivalent |
 | The SIEM query is the tested rule | **Query parity** (`rasd parity`): the generated KQL and SPL, and the Defender XDR advanced hunting queries where a Defender table exists, are parsed back and run by RASD's own interpreter of each language (null fields, case rules, regular expressions) on thousands of events. It found that Splunk silently dropped events with a missing field under `NOT`; the converter now reads those fields null-safely. Running the queries in a live SIEM is part of the lab evidence still pending |
 | Attacks no single event shows are caught | **Sigma correlation detections** (`rasd correlate`): a password spray, Kerberoasting by volume, API authentication probing and object-ID enumeration, as tested rules rather than hunts. Every threshold, window, group-by and normalisation is held in place by an event-sequence scenario (parameter mutation testing); the generated SPL and KQL aggregations are parsed back and must return the engine's exact alerts for the rule and every mutant; and each carries a **proven burst guarantee**: 2T-1 distinct values in one window length always alert, whatever the window alignment (for the spray, 9 accounts in 10 minutes) |
 | You know where false positives will come from | **Near-miss analysis** (`rasd nearmiss`): every event one field edit away from an alert, each proven by a witness the engine confirms, grouped by the condition holding it back; CI fails when a boundary carrying traffic has no true negative pinning it. For correlations, the headroom between the busiest quiet window and the threshold |
 | It stays quiet on normal activity | True-negative tests, a filter-coverage gate, and **tuning impact analysis** (`rasd tune`) that measures every proposed filter: attack variants hidden versus corpus alerts removed |
 | The analyst knows what to do | Triage and response cards, closure notes (benign or false positive) and an escalation note, generated from each detection's contract (L1 / L2 / IR actions, risk model, evidence, containment), and a DFIR playbook for every technique |
 | The offensive test and the rule agree | Every red test's sample event **is** one of its detection's true positives, and CI proves it matches |
-| It fires on attack telemetry recorded by others | **Public dataset replay** (`rasd datasets`): files from three public sources (Splunk Attack Data, OTRF Security-Datasets, EVTX-ATTACK-SAMPLES), each pinned to a commit and a SHA-256, replayed through every detection and correlation. Every alert is either the recorded attack or explained in the catalog (the labs' test harness, other benign activity, or false positive); every record is counted once, with repeats inside a file and copies between files found and declared; every documented limit is re-checked on each run; and the applied tunings are measured on the labs' background activity. It showed rules blind to real attacks - Invoke-Mimikatz and PPLdump behind the LSASS rule's System32 filter, a bare `cmd.exe` service binary, three rundll32 proxy exports, sprays over guessed account names - and each fix is proven on the public events, so those rules' results there are marked in-sample. Public data is not lab evidence: it does not raise a detection's maturity |
-| It was proven in a real environment | `rasd evidence` joins a lab run, its telemetry export and optional SIEM alerts, and writes evidence only when the rule really fired on an event bound to that run (host or client address, time window, run marker) - with the SHA-256 of every input |
+| It fires on attack telemetry recorded by others | **Public dataset replay** (`rasd datasets`): files from three public sources (Splunk Attack Data, OTRF Security-Datasets, EVTX-ATTACK-SAMPLES), each pinned to a commit and a SHA-256, replayed through every detection and correlation. Every alert is either the recorded attack or explained in the catalog (the labs' test harness, other benign activity, or false positive); every record is counted once, with repeats inside a file and copies between files found and declared; every documented limit is re-checked on each run; and the applied tunings are measured on the labs' background activity. It showed rules blind to real attacks - Invoke-Mimikatz and PPLdump behind the LSASS rule's System32 filter, a bare `cmd.exe` service binary, three rundll32 proxy exports, a Run value pointing into `C:\Windows\Tasks`, sprays over guessed account names - and each fix is proven on the public events, so those rules' results there are marked in-sample. Public data is not lab evidence: it does not raise a detection's maturity |
+| It can be proven in a real environment | `rasd evidence` joins a lab run, its telemetry export and optional SIEM alerts, and writes evidence only when the rule really fired on an event bound to that run (host or client address, time window, run marker) - with the SHA-256 of every input. No run is committed yet: the status line above says how many detections have one |
 | Nothing is overstated | Maturity levels and both scores are computed; a contract cannot claim more than the repository proves. Without lab evidence a detection stops at **SIEM-Ready** (deployable, not validated), and the Operational Score stays **pending** until a real run is committed |
 
 ## Quick start
@@ -102,11 +102,11 @@ Requires Python 3.10+ and PyYAML.
 git clone https://github.com/engziyad/RASD.git && cd RASD
 python3 -m venv .venv && . .venv/bin/activate     # Windows: py -m venv .venv, then .venv\Scripts\activate
 pip install -e .                  # installs the rasd command for this clone
-rasd ci                           # everything CI runs, in order
+rasd ci                           # the full pipeline CI runs, in order (CI adds code and script checks)
 rasd chain                        # the 20-point attack-to-defense map per technique
 rasd correlate -v                 # the correlation proofs, scenario by scenario and mutant by mutant
 rasd nearmiss                     # traffic one field edit away from an alert; correlation headroom
-rasd datasets fetch && rasd datasets run   # about 730 MB of pinned public attack data (in-sample and held out) through every rule
+rasd datasets fetch && rasd datasets run   # about 730 MB of pinned public attack data (in-sample and held out) through every rule; EVTX files need pip install -e .[datasets]
 rasd replay samples/replay/lab-day.jsonl --assets samples/replay/assets.csv --users samples/replay/users.csv --html report.html
 ```
 
@@ -165,7 +165,7 @@ Logs from Elastic, Sentinel ASIM, Defender advanced hunting or Splunk CIM run th
 | | `evidence` | Turn a real lab run into verifiable evidence (FIRED / MISSED), for rules and correlations; `--run` reads the lab run's zip or folder directly, `--strict` also requires the `.sha256` and a complete manifest |
 | | `datasets` | Public attack datasets: `fetch` them pinned and hashed, `run` every rule and correlation over them and compare with the catalog (the recorded attack, explained alerts, documented limits), `--write` keeps the result; `check` replays the committed extracts in CI |
 | | `chain` · `links` | The completeness map, maturity, matrices and metrics; every Markdown link resolves |
-| All | `ci` | Everything the pipeline runs |
+| All | `ci` | The full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check) |
 
 ## Coverage
 

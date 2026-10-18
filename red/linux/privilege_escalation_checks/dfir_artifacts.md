@@ -5,7 +5,7 @@
 | Enumeration burst | auditd EXECVE records within one session | `ausearch -k exec -ts recent \| grep -E 'perm\|getcap\|sudo'` | An interactive session running find -perm -4000 and getcap in seconds is reconnaissance |
 | Check results | $RASD\_OUT\_DIR/suid-\*.txt, capabilities-\*.txt, sudo-l-\*.txt | `Written by the test` | The host's actual escalation surface, for hardening |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

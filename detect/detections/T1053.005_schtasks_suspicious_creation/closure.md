@@ -20,7 +20,7 @@ Checked:      1. Validate the host and user -> <result>
               5. Search the same user and host for 30 minutes either side -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | office_click_to_run (proposed) | sccm_client (proposed) | all_powershell_actions (rejected)
+Tuning:       none | office_click_to_run (proposed) | sccm_client (proposed)
 ```
 
 Known benign sources for this detection:
@@ -39,7 +39,7 @@ Alert:        T1053.005_schtasks_suspicious_creation for <host> at <time, UTC>
 Observed:     Image=<value>  OriginalFileName=<value>  CommandLine=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1053.005_schtasks_suspicious_creation
+Follow-up:    <sent to detection engineering as a true negative for T1053.005_schtasks_suspicious_creation: ticket | not yet>
 ```
 
 ## Escalation to incident response
@@ -62,7 +62,7 @@ Recommended:  Isolate the host if the payload executed; collect the task XML bef
 Escalate when any of these holds:
 1. Remote creation with /S and /RU SYSTEM
 2. An existing task's action changed (/change) to a new binary
-3. Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32
+3. Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32 from an unexpected parent or account, or from a writable path
 4. Payload under AppData, ProgramData, Public or Temp
 
 Risk conditions: remote execution +20 · payload in user writable path +15 · host is critical +15 · suspicious parent +15 · approved admin activity -25 · approved change window -20.

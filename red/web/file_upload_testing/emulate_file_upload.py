@@ -4,7 +4,8 @@ RASD-Red · file upload restrictions (unrestricted upload, the path to web shell
 
 Uploads small, harmless text files that a strict upload handler must refuse: a disallowed
 extension, a double extension, a spoofed content type, and an oversized file. Each file
-contains only a sentence and the run marker. Any upload accepted with 2xx is a FINDING.
+contains only a harmless sentence with the run marker (the oversized file repeats it). Any
+upload accepted with 2xx is a FINDING.
 Lab targets only (see rasd_web.py).
 """
 from __future__ import annotations

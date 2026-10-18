@@ -61,7 +61,8 @@ Script: [`cleanup.ps1`](cleanup.ps1) (exit code 0 only when the host is verified
 ## Run
 
 ```powershell
-.\red\Invoke-RasdEmulation.ps1 -Test event_log_clearing -LabConfirmed -IncludeSecurityLogClear
+.\red\Invoke-RasdEmulation.ps1 -Test event_log_clearing -LabConfirmed    # default: opt-in steps skipped
+.\red\Invoke-RasdEmulation.ps1 -Test event_log_clearing -LabConfirmed -IncludeSecurityLogClear    # adds the opt-in steps, on a VM you restore from a snapshot afterwards
 ```
 
 ---

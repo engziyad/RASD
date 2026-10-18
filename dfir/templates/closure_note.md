@@ -16,10 +16,13 @@ Every detection also has this note already shaped for it, with its own first che
 
 ## Example
 
+The alert below is from the [sample replay corpus](../../samples/replay/lab-day.jsonl). Only the `Observed` line comes from the telemetry; the `Verified` line shows what an analyst still has to check and record before closing.
+
 ```text
 Alert:        T1569.002_suspicious_service_installation on SRV-APP02 at 2026-10-05 14:03 UTC
-Observed:     PSEXESVC installed from 10.20.30.21 (admin jump host) by CORP\it.admin.
-Verified:     Change CHG-0000 covers PsExec patching on SRV-APP02 in this window; admin confirmed.
+Observed:     System 7045: service PSEXESVC, ImagePath %SystemRoot%\PSEXESVC.exe, account LocalSystem.
+Verified:     <change record id> covers PsExec use on SRV-APP02 in this window; <who confirmed, and how>;
+              <source host and account of the network logon that installed it (4624 type 3 on SRV-APP02)>.
 Disposition:  Benign Positive
 Tuning:       none - correlate with change records in the SIEM (see tuning.yml, psexec_service_name rejected)
 ```

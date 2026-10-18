@@ -18,8 +18,8 @@ prerequisites:
   - A lab test account, given to the test as RASD_LAB_EMAIL / RASD_LAB_PASSWORD environment variables
   - Web server or reverse-proxy access logs collected
 safety:
-  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
-  - Read-only GET requests for at most 20 object IDs (default 5)
+  - Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
+  - One login, then read-only GET requests for at most 20 object IDs (default 5)
   - Credentials are read from the environment, never from the command line
 execution:
   - "export RASD_LAB_EMAIL=alice@lab.local RASD_LAB_PASSWORD=..."

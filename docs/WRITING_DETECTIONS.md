@@ -5,7 +5,7 @@
 A detection is merged only when **all** of the following are true:
 
 - [ ] It targets a **behaviour**, not a single tool name, hash or IP.
-- [ ] It has at least one `true_positive` sample taken from real emulation (or faithfully reconstructed from it).
+- [ ] It has at least one `true_positive` sample modelled on its red test's emulation (synthetic until a lab run records the real event).
 - [ ] It has `true_negative` samples representing the **closest benign activity** you can find, not unrelated events.
 - [ ] Every filter is justified by a true-negative test case (CI enforces this).
 - [ ] It has a complete `contract.yml`: required events and fields, telemetry risks, 2+ blind spots, coverage depth with a reason, triage and response.
@@ -58,7 +58,7 @@ The contract is what other teams read, so write it for them:
 - **required_fields**: every field the rule matches on. CI fails if the rule uses one you did not declare.
 - **telemetry_risk**: what breaks the rule if missing or truncated, rated low to critical.
 - **blind_spots**: concrete procedures the rule cannot see. These become the purple-team backlog.
-- **coverage_depth**: `partial` when only some procedures are covered, `high` when the outcome is caught regardless of method. Always give the reason.
+- **coverage_depth**: `minimal` for one narrow procedure, `partial` when only some procedures are covered, `medium` for the common procedures with documented gaps, `high` when the outcome is caught in the telemetry the rule reads whichever procedure produced it. Always give the reason.
 - **triage / response**: short, imperative, ordered. Evidence before containment.
 
 - **risk_model**: a base score and the conditions that raise or lower it, taken from [`detect/risk_conditions.yml`](../detect/risk_conditions.yml). `auto` conditions are resolved by `rasd replay`; `analyst` conditions become questions on the triage card.

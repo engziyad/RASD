@@ -11,7 +11,7 @@
 | **Rule** | [`T1547.001_registry_run_key_persistence`](../T1547.001_registry_run_key_persistence/) |
 
 ### What triggered
-Detects a value written under a Run / RunOnce key (HKLM or HKCU) whose data points to a user-writable directory or a script interpreter.
+Detects a value written under a Run / RunOnce key (HKLM or HKCU) whose data points to a user-writable directory (or an unexpanded variable for one, or a file straight in a user profile), or starts a script interpreter or a proxy binary (rundll32, regsvr32, cmd /c).
 
 ### L1 action
 Check which process wrote the value, the full key and the data; hash the referenced file
@@ -28,8 +28,8 @@ Check which process wrote the value, the full key and the data; hash the referen
 
 ### Risk
 Base score **40**.
-- +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +15 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
+- +20 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 - -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*

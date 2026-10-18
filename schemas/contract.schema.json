@@ -47,6 +47,7 @@
       "pattern": "^attack\\.t\\d{4}(\\.\\d{3})?$"
     },
     "related_techniques": {
+      "description": "Techniques an analyst should consider beside the primary one (investigation context). Not coverage: only the ATT&CK tags in rule.yml count, and only those appear as related in COVERAGE.md.",
       "type": "array",
       "items": {
         "type": "string",

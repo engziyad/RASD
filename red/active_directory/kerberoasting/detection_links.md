@@ -4,10 +4,10 @@
 |---|---|---|---|---|---|
 | Request a service ticket for the lab SPN (no export, no cracking) | [`T1558.003_kerberoasting_rc4_tgs`](../../../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | [rule.yml](../../../detect/detections/T1558.003_kerberoasting_rc4_tgs/rule.yml) | [KQL](../../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) | [SPL](../../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) | host, time window and client address |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
-rasd evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl dc-export.jsonl
 ```
 
 ---

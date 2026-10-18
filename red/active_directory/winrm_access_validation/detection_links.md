@@ -4,10 +4,10 @@
 |---|---|---|---|---|---|
 | Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker) | [`T1021.006_wsmprovhost_suspicious_child`](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [rule.yml](../../../detect/detections/T1021.006_wsmprovhost_suspicious_child/rule.yml) | [KQL](../../../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) | [SPL](../../../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
-rasd evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl target-export.jsonl
 ```
 
 ---

@@ -18,7 +18,7 @@ Checked:      1. Identify SubjectUserName and host -> <result>
               3. Look for the process-level clearing alert at the same time -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | <proposal added to tuning.yml>
+Tuning:       none (this rule is never tuned, see below)
 ```
 
 Known benign sources for this detection:
@@ -36,7 +36,7 @@ Alert:        T1685.005_security_log_cleared for <host> at <time, UTC>
 Observed:     EventID=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1685.005_security_log_cleared
+Follow-up:    <sent to detection engineering as a true negative for T1685.005_security_log_cleared: ticket | not yet>
 ```
 
 ## Escalation to incident response

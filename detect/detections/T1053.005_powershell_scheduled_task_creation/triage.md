@@ -11,7 +11,7 @@
 | **Rule** | [`T1053.005_powershell_scheduled_task_creation`](../T1053.005_powershell_scheduled_task_creation/) |
 
 ### What triggered
-Detects PowerShell command lines that register a scheduled task with the ScheduledTasks module (Register-ScheduledTask together with an action from New-ScheduledTaskAction) instead of schtasks.exe.
+Detects PowerShell command lines that register or rewrite a scheduled task with the ScheduledTasks module (Register-ScheduledTask or Set-ScheduledTask) together with one suspicious indicator: an inline New-ScheduledTaskAction, $env:TEMP / $env:APPDATA or a URL, or a user-writable path.
 
 ### L1 action
 Validate host and user, read the task name and the action in the command line, note the parent process
@@ -28,8 +28,8 @@ Validate host and user, read the task name and the action in the command line, n
 
 ### Risk
 Base score **40**.
-- +20 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +20 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
+- +20 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*

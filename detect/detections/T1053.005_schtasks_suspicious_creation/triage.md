@@ -11,7 +11,7 @@
 | **Rule** | [`T1053.005_schtasks_suspicious_creation`](../T1053.005_schtasks_suspicious_creation/) |
 
 ### What triggered
-Detects schtasks.exe /create where the task action points to a user-writable location, a script interpreter, or a remote resource - common persistence and lateral-execution patterns.
+Detects schtasks.exe /create or /change (a new task, or an existing task's action hijacked) with a script interpreter, a proxy binary, a user-writable location or a URL anywhere on the command line, and any remote creation as SYSTEM (/S with /RU SYSTEM) - common persistence and lateral-execution patterns.
 
 ### L1 action
 Validate host, user, task name and the command path of the action
@@ -26,15 +26,15 @@ Validate host, user, task name and the command path of the action
 ### Escalate if
 - Remote creation with /S and /RU SYSTEM
 - An existing task's action changed (/change) to a new binary
-- Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32
+- Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32 from an unexpected parent or account, or from a writable path
 - Payload under AppData, ProgramData, Public or Temp
 
 ### Risk
 Base score **40**.
 - +20 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
-- +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +15 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +15 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +15 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
 

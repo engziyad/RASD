@@ -38,7 +38,7 @@ Alert:        T1190_object_id_enumeration for <c-ip> at <window start, UTC>
 Observed:     <n> distinct cs-uri-stem from c-ip <value> in the 1m window: <values>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1190_object_id_enumeration
+Follow-up:    <sent to detection engineering as a true negative for T1190_object_id_enumeration: ticket | not yet>
 ```
 
 ## Escalation to incident response

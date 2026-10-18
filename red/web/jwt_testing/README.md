@@ -21,7 +21,7 @@ Replay a lab account's genuine token against a protected endpoint, then the same
 
 ## Safety notes
 
-- Runs only with --lab-confirmed; refuses any target that resolves to a public address
+- Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
 - Three read-only GET requests after one login
 - Forged tokens are built in memory and never written to disk
 

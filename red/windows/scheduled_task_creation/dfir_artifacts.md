@@ -6,9 +6,9 @@
 | Task cache entry | HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\&lt;task name&gt; | `reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree"` | Survives deletion of the XML file and reveals hidden tasks (SD value removed) |
 | Security 4698 event | Security event log on the host | `Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4698}` | Timestamped record of who registered the task, with its XML |
 
-[`collect_artifacts.ps1`](collect_artifacts.ps1) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.ps1`](collect_artifacts.ps1) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

@@ -31,7 +31,7 @@ Review ServiceName, ImagePath, AccountName and host; check for a change record o
 Base score **60**.
 - +15 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
 

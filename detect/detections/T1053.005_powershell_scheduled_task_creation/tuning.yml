@@ -10,8 +10,8 @@ tunings:
   residual_risk: medium
   reason: The SCCM client registers maintenance tasks with PowerShell one-liners.
   filter:
-    ParentImage|endswith: \CCM\CcmExec.exe
-  alternative: Scope to the task names your SCCM baselines create.
+    ParentImage: C:\Windows\CCM\CcmExec.exe
+  alternative: Keep the full-path parent filter and add the task names your SCCM baselines create to it (never the task names alone).
 never_tune:
 - 'Never allow-list by task name: attackers copy vendor task names (GoogleUpdateTaskMachineCore, OneDrive Standalone).'
 review:

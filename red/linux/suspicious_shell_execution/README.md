@@ -20,7 +20,7 @@ Reproduce two shell patterns that intrusions on Linux rely on - a Base64-encoded
 
 ## Safety notes
 
-- Runs only with --lab-confirmed on a disposable lab host you own
+- Runs only with --lab-confirmed on a disposable lab host you own, marked by /etc/rasd-lab-host (red/lab/README.md, Lab guard)
 - Both payloads only echo the marker
 - The /tmp script is named after the marker and removed by cleanup.sh
 

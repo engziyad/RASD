@@ -46,6 +46,11 @@ def old_rule(base: str, rel: str) -> dict | None:
         return None
 
 
+def shown(verdict: bool | None) -> str:
+    """A verdict as the report prints it: None means the rule raised a Sigma error on the event."""
+    return "rule error" if verdict is None else ("match" if verdict else "no match")
+
+
 def safe(rule: dict, ev: dict) -> bool | None:
     try:
         return matches(rule, ev)
@@ -81,7 +86,7 @@ def main() -> int:
 
     changed, failures = 0, 0
     for d in dets:
-        rel = str((d.folder / "rule.yml").relative_to(ROOT))
+        rel = (d.folder / "rule.yml").relative_to(ROOT).as_posix()     # git paths use /, on Windows too
         before = old_rule(args.base, rel)
         if before == d.rule:
             continue
@@ -107,8 +112,9 @@ def main() -> int:
         for kind, label, a, b in flips:
             colour = GREEN if kind == "fixed" else (YELLOW if kind == "change" else RED)
             failures += kind not in ("change", "fixed")
-            print(f"    {colour}{kind:<18}{RESET} {label}  {DIM}{'match' if a else 'no match'} → {'match' if b else 'no match'}{RESET}")
-    removed = [r for r in git("diff", "--name-only", "--diff-filter=D", args.base, "--", str(DETECTIONS.relative_to(ROOT))).split() if r.endswith("rule.yml")]
+            print(f"    {colour}{kind:<18}{RESET} {label}  {DIM}{shown(a)} → {shown(b)}{RESET}")
+    removed = [r for r in git("diff", "--name-only", "--diff-filter=D", args.base, "--", DETECTIONS.relative_to(ROOT).as_posix()).split()
+               if r.endswith("rule.yml")]
     for r in removed:
         print(f"{BOLD}{Path(r).parent.name}{RESET}  {RED}removed{RESET}")
     if not changed and not removed:

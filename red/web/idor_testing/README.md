@@ -21,8 +21,8 @@ Log in as one lab account and request objects that belong to other users by walk
 
 ## Safety notes
 
-- Runs only with --lab-confirmed; refuses any target that resolves to a public address
-- Read-only GET requests for at most 20 object IDs (default 5)
+- Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
+- One login, then read-only GET requests for at most 20 object IDs (default 5)
 - Credentials are read from the environment, never from the command line
 
 ## Execution

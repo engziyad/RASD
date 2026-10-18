@@ -13,7 +13,7 @@ holdout_fired_on: 0
 
 # Public dataset evidence · Crontab Installed From Standard Input or a File
 
-**Public dataset validation: fires on 1 of the 4 public recordings of its behaviour (quiet on the other 3: 3 need a rule RASD does not have yet)** · 1 alerts · sources: Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 1 of the 4 public recordings of its behaviour (quiet on the other 3: 3 need a rule RASD does not have yet)** · 1 alert · sources: Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -33,18 +33,18 @@ Public data replayed through the tested rule, not lab evidence: the maturity lev
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **negative**: the file does not hold the behaviour the rule detects.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **negative**: the file does not hold the behaviour the rule detects.
 
 | Dataset | Kind | Why |
 |---|---|---|
 | [T1053.003/cronjobs_entry/sysmon_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1053.003/cronjobs_entry/sysmon_linux.log) | gap | file writes into the cron directories, not the crontab command this rule watches. Next rule: **cron_directory_write**. |
 | [T1053.003/cronjobs_entry/sysmon_linux_cron_append](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1053.003/cronjobs_entry/sysmon_linux_cron_append.log) | gap | appends to /etc/crontab and cron directories from the shell: file writes, not the crontab command. Next rule: **cron_directory_write**. |
 | [T1053.003/crontab_edit_parameter/sysmon_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1053.003/crontab_edit_parameter/sysmon_linux.log) | gap | the persistence is a file copy into /etc/cron.hourly and /etc/cron.weekly and an append to cron files, not the crontab command this rule watches. Next rule: **cron_directory_write**. |
-| [T1059.004/linux_discovery_tools/sysmon_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.004/linux_discovery_tools/sysmon_linux.log) | negative | crontab -l -u <account> for every account lists cron tables; only installing one is in scope |
+| [T1059.004/linux_discovery_tools/sysmon_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.004/linux_discovery_tools/sysmon_linux.log) | negative | crontab -l -u &lt;account&gt; for every account lists cron tables; only installing one is in scope. |
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 310 of `T1053.003/crontab_list_parameter/sysmon_linux`, SHA-256 of the original record `24e1f3a72e992765…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 310 of `T1053.003/crontab_list_parameter/sysmon_linux`, SHA-256 of the original record `24e1f3a72e992765…`):
 
 ```json
 {

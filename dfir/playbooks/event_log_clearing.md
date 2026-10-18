@@ -17,7 +17,7 @@ An event log was cleared: `wevtutil cl`, `Clear-EventLog`, `.ClearLog()`, WMI `C
 - Activity of the same account on other hosts
 
 ## First 15 Minutes
-1. Identify user, host and which log was cleared (`Channel_Cleared` in 104).
+1. Identify user, host and which log was cleared (in 104 the cleared log's name is in `UserData/LogFileCleared/Channel`; `Export-LabTelemetry.ps1` exports it as `Channel_Cleared`).
 2. Check for a documented maintenance window or image build.
 3. Pull the forwarded copy of the cleared log for the hour before the clear - that hour is what someone wanted gone.
 4. Look for the process-level alert and the clear record together: both present means a hands-on-keyboard clear.

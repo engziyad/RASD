@@ -106,6 +106,7 @@ actors:
     techniques:
       - id: T1595.003
         note: Tools and frameworks to brute-force directories on web servers
+        coverage_note: partial - only paths answered 401 or 403 count; a brute force answered mostly 404 stays silent
   - group: Volatile Cedar
     id: G0123
     source: https://attack.mitre.org/groups/G0123/
@@ -113,6 +114,7 @@ actors:
     techniques:
       - id: T1595.003
         note: DirBuster and GoBuster to brute-force web directories and DNS subdomains
+        coverage_note: partial - only paths answered 401 or 403 count; DNS subdomain brute forcing is not seen
   - group: Rocke
     id: G0106
     source: https://attack.mitre.org/groups/G0106/

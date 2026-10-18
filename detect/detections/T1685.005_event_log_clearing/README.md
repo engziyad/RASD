@@ -9,8 +9,8 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 15 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 127 variants |
-| **Parity** | KQL and SPL identical to the rule on 1741 events · Defender advanced hunting identical on the same events |
-| **Public data** | fires on 1 of 1 public recordings of its behaviour · held-out: 2 of 2 · 2 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
+| **Parity** | KQL and SPL identical to the rule on 1741 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Public data** | fires on 1 of 1 public recordings of its behaviour · held-out: 2 of 2 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../../queries/spl/T1685.005_event_log_clearing.spl) · [Defender](../../../queries/mde/T1685.005_event_log_clearing.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [event_log_clearing](../../../red/windows/event_log_clearing/) · DFIR: [event_log_clearing](../../../dfir/playbooks/event_log_clearing.md) · purple: [T1685.005_event_log_clearing](../../../purple/scenarios/T1685.005_event_log_clearing.md) |
@@ -32,7 +32,9 @@ Detecting at process creation records **who** ran it, and still alerts when the 
 
 ## Evasion & coverage gaps
 - Clearing through the Event Viewer GUI or the Win32 API (`ClearEventLogW`) from a custom binary - only 1102/104 will show.
-- **Selective** event deletion / log tampering (e.g. Mimikatz `event::drop`, Invoke-Phant0m killing EventLog threads) - detect via **gaps in log volume** (heartbeat monitoring) instead.
+- PowerShell calling the .NET `System.Diagnostics.EventLog` `.Clear()` method - the string is too generic to match on a command line; 1102/104 still fire.
+- Clearing a remote host (`wevtutil cl <log> /r:<host>`) records the process on the source host, not on the host whose log was cleared; the target's 1102/104 still fire.
+- Silencing the log without clearing it (Mimikatz `event::drop` patching the service, Invoke-Phant0m killing its threads) and deleting individual records - detect via **gaps in log volume** (heartbeat monitoring) instead.
 
 ## False positives & tuning
 VDI / golden-image sealing scripts. These run in maintenance windows on known build hosts - filter by host group.
@@ -40,11 +42,11 @@ VDI / golden-image sealing scripts. These run in maintenance windows on known bu
 Every tuning - applied, proposed or rejected - is recorded in [`tuning.yml`](tuning.yml). `rasd tune --filter T1685.005` measures each proposal before it is applied: how many attack variants it would hide against how many corpus alerts it would remove.
 
 ## Offensive validation
-[`red/windows/event_log_clearing`](../../../red/windows/event_log_clearing/) produces exactly the telemetry this rule needs, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
+[`red/windows/event_log_clearing`](../../../red/windows/event_log_clearing/) is built to produce the telemetry this rule reads, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
 
 ```powershell
 .\red\Invoke-RasdEmulation.ps1 -Test event_log_clearing -LabConfirmed
-.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1)
+.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1) -OutFile .\lab-export.jsonl
 ```
 
 ```bash

@@ -36,7 +36,7 @@ Alert:        T1558.003_kerberoasting_rc4_tgs for <host> at <time, UTC>
 Observed:     EventID=<value>  TicketEncryptionType=<value>  Status=<value>  ServiceName=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1558.003_kerberoasting_rc4_tgs
+Follow-up:    <sent to detection engineering as a true negative for T1558.003_kerberoasting_rc4_tgs: ticket | not yet>
 ```
 
 ## Escalation to incident response
@@ -59,7 +59,7 @@ Escalate when any of these holds:
 2. Source is a workstation
 3. Targeted accounts are privileged service accounts
 
-Risk conditions: user is privileged +15 · outside business hours +10 · remote execution +5 · known vendor software -25.
+Risk conditions: user is privileged +15 · outside business hours +10 · remote execution +5 · approved admin activity -25.
 
 Containment options, after the evidence above is preserved:
 1. Rotate passwords of targeted service accounts

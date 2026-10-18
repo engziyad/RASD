@@ -5,7 +5,7 @@
 | Failure burst | DC Security 4771 / 4625 | `Run queries/spl/correlations/T1110.003_password_spray_burst.spl (or the .kql) for the time window` | Many accounts, one source, one short window - and which (if any) succeeded afterwards |
 | Successful logons from the source | DC Security 4768 / 4624 after the burst | `Filter on the source IP for the following hour` | A spray that found one valid password shows up as a success right after the failures |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

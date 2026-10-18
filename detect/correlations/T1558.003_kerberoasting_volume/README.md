@@ -12,7 +12,7 @@
 | **Proof** | base rule: 100% of 12 mutants killed · fuzzer resistance 100% over 18 variants · correlation: 7/7 parameter mutants killed |
 | **Parity** | base filter identical on 258 events · aggregation identical in SPL and KQL on 1280 runs (160 sequences × 8 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
-| **Public data** | fires on 1 of 1 public recordings of its behaviour · 1 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
+| **Public data** | fires on 1 of 1 public recordings of its behaviour · 1 alert · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1558.003_kerberoasting_volume.kql) · [SPL](../../../queries/spl/correlations/T1558.003_kerberoasting_volume.spl) · [scenarios](tests/scenarios.yml) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | DFIR: [kerberoasting](../../../dfir/playbooks/kerberoasting.md) · purple: [T1558.003_kerberoasting](../../../purple/scenarios/T1558.003_kerberoasting.md) |
@@ -44,7 +44,7 @@ It complements the single-event rule [Kerberoasting - RC4 Service Ticket Request
 - **Burst guarantee** - a burst of **9 or more service accounts within 10 minutes always alerts**, whatever the window alignment: a boundary leaves at least five on one side. The engine confirms it at 120 alignments × 3 spreads, and that 8 can be split 4 + 4.
 
 ## Evasion & coverage gaps
-- **Targeted roasting** - one to four accounts per 10 minutes stays under the threshold. The RC4 single-event rule and honeypot SPN accounts (any ticket request is an alert) cover it.
+- **Targeted roasting** - one to four accounts per 10 minutes stays under the threshold. The RC4 single-event rule still fires on RC4 tickets, but **AES roasting of one to four accounts is caught by neither rule**. A honeypot SPN account (any ticket request for it is an alert) is the recommended control; RASD has no rule for it yet.
 - **Several sources** - roasting spread over several clients, each below the threshold.
 - **AS-REP roasting** - accounts without Kerberos pre-authentication are attacked through 4768, not 4769.
 - **Window boundary** - 5 to 8 service accounts that straddle a boundary are split (pinned as a known-limit scenario); 9 or more always alert.

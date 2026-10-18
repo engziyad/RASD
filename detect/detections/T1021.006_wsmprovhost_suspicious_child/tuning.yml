@@ -4,6 +4,7 @@ expected_noise: medium
 noise_sources:
 - Administrators running cmd.exe commands or batch files over PowerShell remoting or winrs
 - Configuration management that launches cmd.exe through WinRM
+- "Ansible's WinRM connection, which starts cmd /C PowerShell ... -EncodedCommand under winrshost.exe on every managed host (public data: the labs' provisioning)"
 tunings:
 - id: management_script_share
   status: proposed
@@ -15,7 +16,7 @@ tunings:
     CommandLine|contains: \mgmt-share\scripts\
   alternative: Prefer a filter on the administration hosts that open the session, applied in the SIEM with the 4624 source address.
 never_tune:
-- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host.
+- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host in general. The one exception is a reviewed automation bootstrap (for example Ansible's), excepted in the SIEM by its source host together with its exact command line.
 - Never filter by account alone - a stolen administrator account is exactly what this rule must catch.
 review:
   owner: detection-engineering

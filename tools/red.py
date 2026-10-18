@@ -308,7 +308,8 @@ def render_readme(test: dict, playbook: str | None, scenario: str | None) -> str
         needs = ", ".join(x for x in ["admin" if s.get("needs_admin") else "", f"`-{s['opt_in']}`" if s.get("opt_in") else "",
                                       ", ".join(f"`{p}`" for p in s.get("parameters") or [])] if x) or "-"
         expected = "<br>".join([det_link(d, folder) for d in s.get("detections") or []]
-                               + [det_link(d, folder) + " (correlation)" for d in s.get("correlations") or []]) or "gap"
+                               + [det_link(d, folder) + " (correlation)" for d in s.get("correlations") or []]) or (
+                   "- (posture check)" if test.get("category") == "posture" else "gap")
         lines.append(f"| {cell(s['name'])} | [`{s['script']}`]({s['script']}) | {needs} | {expected} |")
     lines += ["", "## Links", "",
               "| | |", "|---|---|",
@@ -333,21 +334,31 @@ def render_readme(test: dict, playbook: str | None, scenario: str | None) -> str
 def run_command(test: dict) -> str:
     runner = RUNNERS[test["platform"]]
     if runner == "powershell":
-        extra = []
+        params, opt_ins = [], []
         for s in test["steps"]:
             if s.get("opt_in"):
-                extra.append(f"-{s['opt_in']}")
+                opt_ins.append(f"-{s['opt_in']}")
             for p in s.get("parameters") or []:
-                extra.append(f"-{p} <{p.lower()}>")
-        extra = list(dict.fromkeys(extra))
-        return f".\\red\\Invoke-RasdEmulation.ps1 -Test {test['id']} -LabConfirmed {' '.join(extra)}".rstrip()
-    params = " ".join(f"--{p.lower()} <{p.lower()}>" for s in test["steps"] for p in s.get("parameters") or [])
-    return f"python3 red/run_red.py --test {test['id']} --lab-confirmed {params}".rstrip()
+                params.append(f"-{p} <{p.lower()}>")
+        params, opt_ins = list(dict.fromkeys(params)), list(dict.fromkeys(opt_ins))
+        safe = f".\\red\\Invoke-RasdEmulation.ps1 -Test {test['id']} -LabConfirmed {' '.join(params)}".rstrip()
+        if not opt_ins:
+            return safe
+        # the default run leaves the opt-in steps out; the second line adds them (restore the VM snapshot after it)
+        return (safe + "    # default: opt-in steps skipped\n"
+                + f"{safe} {' '.join(opt_ins)}    # adds the opt-in steps, on a VM you restore from a snapshot afterwards")
+    flags = " ".join(f"--{p.lower()} <{p.lower()}>" for s in test["steps"] for p in s.get("parameters") or [])
+    return f"python3 red/run_red.py --test {test['id']} --lab-confirmed {flags}".rstrip()
 
 
 def render_telemetry(test: dict) -> str:
-    lines = [f"# Expected telemetry · {esc(test['name'])}", "",
-             f"Search key: every artifact this test creates carries the run marker (for example `{MARKER_EXAMPLE}`).", "",
+    if any(s.get("bind") for s in test["steps"]):
+        key = (f"Search key: the objects this test creates carry the run marker (for example `{MARKER_EXAMPLE}`, plain or "
+               "encoded as [detection links](detection_links.md) shows); its other events are bound to the run by host and time window.")
+    else:
+        key = ("None of this test's events carries the run marker: they are bound to the run by host and time window "
+               "([detection links](detection_links.md)).")
+    lines = [f"# Expected telemetry · {esc(test['name'])}", "", key, "",
              "| Source | Event | What it shows | Key fields | Used by |", "|---|---|---|---|---|"]
     folder = test["_folder"]
     for t in test["telemetry"]:
@@ -389,8 +400,12 @@ def render_detection_links(test: dict) -> str:
     if test.get("category") == "posture":
         lines += ["", "This is a configuration check. It produces no attack telemetry worth alerting on; "
                   "its output is a findings list for the application owner."]
-    lines += ["", "Validate the chain after a lab run:", "", "```bash",
-              "rasd evidence --results emulation-results.json --logs lab-export.jsonl", "```"]
+    if dets:
+        sources = " ".join(str(t.get("source", "")) for t in test.get("telemetry") or [])
+        logs = ["lab-export.jsonl"] + (["dc-export.jsonl"] if "domain controller" in sources else []) \
+            + (["target-export.jsonl"] if "(target)" in sources else [])
+        lines += ["", "Turn a lab run into evidence (the exports this test's events are logged in):", "", "```bash",
+                  f"rasd evidence --results emulation-results.json --logs {' '.join(logs)}", "```"]
     return "\n".join(lines) + "\n" + FOOTER
 
 
@@ -401,9 +416,14 @@ def render_dfir(test: dict) -> str:
         lines.append(f"| {cell(a['artifact'])} | {cell(a['location'])} | {code_cell(a['collect'])} | {cell(a['purpose'])} |")
     collect = (test.get("scripts") or {}).get("collect")
     if collect:
-        lines += ["", f"[`{collect}`]({collect}) collects these before cleanup runs; the runner records the "
-                  "SHA-256 of every collected file in the results, so the evidence can be verified later."]
-    lines += ["", "Collect before cleaning up: cleanup removes the very artifacts listed here."]
+        lines += ["", f"[`{collect}`]({collect}) collects what it can of these before cleanup runs (see the script for "
+                  "exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence "
+                  "can be verified later."]
+    if (test.get("scripts") or {}).get("cleanup"):
+        lines += ["", "Collect before cleaning up: the cleanup script removes what the test created, which can include "
+                  "artifacts listed here ([cleanup](README.md#cleanup))."]
+    else:
+        lines += ["", "This test creates nothing to clean up; collect the artifacts while they are fresh."]
     return "\n".join(lines) + "\n" + FOOTER
 
 

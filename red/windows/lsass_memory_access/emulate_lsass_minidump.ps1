@@ -4,16 +4,19 @@
 .DESCRIPTION
     Runs rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump <lsass PID> C:\Windows\Temp\<marker>.dmp full
     and waits for it. collect_artifacts.ps1 hashes the dump and cleanup.ps1 deletes it.
-    Requires an elevated session and -IncludeCredentialAccess on the runner. Lab use only.
+    Requires an elevated session and the opt-in -IncludeCredentialAccess, here as well as on the
+    runner, so a direct call cannot dump LSASS by mistake. Lab use only.
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [ValidatePattern('^rasd_[0-9a-f]{8}$')] [string] $Marker,
-    [Parameter(Mandatory)] [switch] $LabConfirmed
+    [Parameter(Mandatory)] [switch] $LabConfirmed,
+    [Parameter(Mandatory)] [switch] $IncludeCredentialAccess
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $LabConfirmed) { throw 'Refusing to run without -LabConfirmed.' }
+if (-not $IncludeCredentialAccess) { throw 'Refusing to run without -IncludeCredentialAccess: this step dumps LSASS memory.' }
 . (Join-Path $PSScriptRoot '..\..\lab\RasdLabGuard.ps1')
 Assert-RasdLab
 

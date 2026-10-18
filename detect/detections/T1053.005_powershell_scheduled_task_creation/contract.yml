@@ -12,8 +12,8 @@ data_contract:
     category: process_creation
   required_events:
   - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
-  - PowerShell Script Block Logging 4104 (catches cmdlets inside scripts)
-  - Security 4698
+  - PowerShell Script Block Logging 4104 (investigation only, not read by the rule; shows cmdlets inside scripts)
+  - Security 4698 (investigation only, not read by the rule; the registered task definition)
   required_fields:
   - Image
   - OriginalFileName

@@ -31,7 +31,7 @@ detection_logic:
   - Logs cleared by stopping the service and deleting .evtx files produce no 104 event
 coverage_depth:
   level: high
-  reason: 'Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell'
+  reason: 'Outcome-based: fires whenever the EventLog service clears a non-Security log (any tool, GUI or API), Sysmon and PowerShell included'
 risk_model:
   base_score: 60
   increase_if:

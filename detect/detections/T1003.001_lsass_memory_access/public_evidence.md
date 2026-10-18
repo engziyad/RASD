@@ -13,7 +13,7 @@ holdout_fired_on: 2
 
 # Public dataset evidence · Suspicious Process Access to LSASS Memory
 
-**Public dataset validation: fires on 25 of the 27 public recordings of its behaviour (quiet on the other 2: 2 need a rule RASD does not have yet)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 103 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · beyond the recorded attacks: 1 alert on the labs' own activity, each explained (0 from the test harness, 1 benign), and 1 labelled false positive.
+**Public dataset replay: fires on 25 of the 27 public recordings of its behaviour (quiet on the other 2: 2 need a rule RASD does not have yet)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 103 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, beyond the recorded attacks: 1 alert on the labs' own activity, each explained (0 from the test harness, 1 benign), and 1 labelled false positive.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -78,13 +78,13 @@ psh_lsass_memory_dump_comsvcs repeats records: 9 repeats are read once; the aler
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **negative**: the file does not hold the behaviour the rule detects.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **negative**: the file does not hold the behaviour the rule detects.
 
 | Dataset | Kind | Why |
 |---|---|---|
 | [T1003.001/atomic_red_team/createdump_windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1003.001/atomic_red_team/createdump_windows-sysmon.log) | gap | the file keeps only the process creation of createdump.exe (-u -f ...lsass.dmp), not the Sysmon 10 handle to LSASS: nothing for a process-access rule to read. Next rule: **lsass_dump_command_lines**. |
 | [credential-access/sysmon_rdrleakdiag_lsass_dump](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Credential%20Access/sysmon_rdrleakdiag_lsass_dump.evtx) | gap | rdrleakdiag.exe, a signed Windows binary, snapshots LSASS through a reflected clone: the file has no Sysmon 10 to an lsass.exe target. Next rule: **lsass_dump_command_lines**. |
-| [credential-access/sysmon_10_1_memdump_comsvcs_minidump](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Credential%20Access/sysmon_10_1_memdump_comsvcs_minidump.evtx) | negative | the dump targets notepad.exe, not LSASS: correctly quiet |
+| [credential-access/sysmon_10_1_memdump_comsvcs_minidump](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Credential%20Access/sysmon_10_1_memdump_comsvcs_minidump.evtx) | negative | the dump targets notepad.exe, not LSASS: correctly quiet. |
 
 ## Held-out files
 
@@ -123,7 +123,7 @@ Alerts on activity that is not the recorded attack, each explained in the catalo
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 5010 of `T1003.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `c49ede4b0abb7b24…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 5010 of `T1003.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `c49ede4b0abb7b24…`):
 
 ```json
 {

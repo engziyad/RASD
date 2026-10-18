@@ -38,7 +38,7 @@ Alert:        T1558.003_kerberoasting_volume for <IpAddress> at <window start, U
 Observed:     <n> distinct ServiceName from IpAddress <value> in the 10m window: <values>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1558.003_kerberoasting_volume
+Follow-up:    <sent to detection engineering as a true negative for T1558.003_kerberoasting_volume: ticket | not yet>
 ```
 
 ## Escalation to incident response

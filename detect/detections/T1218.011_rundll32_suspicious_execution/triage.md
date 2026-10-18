@@ -7,11 +7,11 @@
 | | |
 |---|---|
 | **Technique** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) |
-| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Severity** | `high` · confidence `high` · expected noise `medium` |
 | **Rule** | [`T1218.011_rundll32_suspicious_execution`](../T1218.011_rundll32_suspicious_execution/) |
 
 ### What triggered
-Detects rundll32.exe abused as a signed proxy to execute code: script protocol handlers (javascript:/vbscript:), DLLs loaded from user-writable paths, the comsvcs.dll MiniDump export, or rundll32 with no arguments (a classic process-injection host).
+Detects rundll32.exe abused as a signed proxy to execute code: script protocol handlers (javascript:/vbscript:), DLLs or paths in user-writable folders, the comsvcs.dll MiniDump export, rundll32 with no arguments (a classic process-injection host), Windows exports that start another program (zipfldr, advpack, pcwutl), shell32 / url.dll handlers that pass any path or URL to the shell, a DLL loaded straight from a share, and a DLL dropped straight into a user profile.
 
 ### L1 action
 Retrieve the referenced DLL or script, hash it, check the signer and the parent process
@@ -28,8 +28,8 @@ Retrieve the referenced DLL or script, hash it, check the signer and the parent 
 
 ### Risk
 Base score **60**.
-- +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +20 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 

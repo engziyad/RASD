@@ -9,8 +9,8 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 11 true positive · 7 true negative · 6 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 60 variants |
-| **Parity** | KQL and SPL identical to the rule on 185 events |
-| **Public data** | fires on 1 of 5 public recordings of its behaviour · 2 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
+| **Parity** | KQL and SPL identical to the rule on 185 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Public data** | fires on 1 of 5 public recordings of its behaviour · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) · [SPL](../../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [suspicious_shell_execution](../../../red/linux/suspicious_shell_execution/) · DFIR: [linux_persistence](../../../dfir/playbooks/linux_persistence.md) · purple: [T1059.004_unix_shell](../../../purple/scenarios/T1059.004_unix_shell.md) |
@@ -26,12 +26,14 @@ Two patterns, either one alerts:
 |---|---|
 | `susp_b64_pipe` | A command line that decodes Base64 (`-d`, `--decode`, `-di`) and pipes it into `sh`, `bash`, `dash`, `zsh` or `ksh`, also through `sudo` - the one-liner a web shell, an SSH command or a dropper runs with `sh -c` |
 | `susp_tmp_binary` | A binary started from `/tmp`, `/var/tmp` or `/dev/shm` |
-| `tmp_script_shell` and `tmp_script_path` | A shell whose first argument is a script in one of those directories (how the kernel records `./script.sh` with a shebang) |
+| `tmp_script_shell` and `tmp_script_path` | A shell whose first argument is a script in one of those directories, as the kernel records a script with a shebang started by its path (`/tmp/script.sh` becomes `/bin/sh /tmp/script.sh`) |
 
 ## Evasion & coverage gaps
 - **Interactive pipelines** - typed in an open shell, `base64 -d` and `sh` are separate processes and no command line holds both. Hunt for `base64 -d` followed within a second by a shell with the same parent.
 - **Other interpreters** - `python3 /tmp/x.py` or `perl /tmp/x.pl` are out of scope for this rule.
 - **Other writable directories** - `~/.cache`, `/run/user/<uid>` and similar.
+- **Relative invocation** - a script started as `./script.sh` from inside `/tmp` is logged as `/bin/sh ./script.sh`, with no `/tmp/` in the command line.
+- **Shell options before the script, or sudo with options** - `sh -x /tmp/a.sh` and `| sudo -u root sh` do not match the regular expressions.
 
 ## False positives & tuning
 Installers and package builds that unpack helpers into `/tmp`. The [tuning guide](tuning.yml) proposes filtering package-manager parents, and never Base64 piped into a shell or anything in `/dev/shm`.

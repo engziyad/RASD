@@ -9,8 +9,8 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 21 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 178 variants |
-| **Parity** | KQL and SPL identical to the rule on 1859 events · Defender advanced hunting identical on the same events |
-| **Public data** | fires on 17 of 19 public recordings of its behaviour · held-out: 2 of 2 · 32 alerts · 0 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
+| **Parity** | KQL and SPL identical to the rule on 1859 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Public data** | fires on 17 of 19 public recordings of its behaviour · held-out: 2 of 2 · 32 alerts · 0 labelled false positives · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) · [Defender](../../../queries/mde/T1218.011_rundll32_suspicious_execution.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [lsass_memory_access](../../../red/windows/lsass_memory_access/) · red: [rundll32_execution](../../../red/windows/rundll32_execution/) · DFIR: [lsass_access](../../../dfir/playbooks/lsass_access.md) · DFIR: [rundll32_proxy_execution](../../../dfir/playbooks/rundll32_proxy_execution.md) · purple: [T1218.011_rundll32](../../../purple/scenarios/T1218.011_rundll32.md) |
@@ -20,11 +20,11 @@
 Sysmon **EID 1** - the generated KQL and SPL read Sysmon. Security **4688** (with command-line auditing) works after remapping `NewProcessName` / `ParentProcessName` in `tools/mappings.yml`; it has no `OriginalFileName`, so the renamed-binary branch goes blind.
 
 ## How the detection works
-`rundll32.exe` is signed by Microsoft and therefore often trusted by application control. The rule combines the image (path **or** `OriginalFileName`, so renaming does not help) with **any one of four abuse patterns** (`1 of susp_*`):
+`rundll32.exe` is signed by Microsoft and therefore often trusted by application control. The rule combines the image (path **or** `OriginalFileName`, so renaming does not help) with **any one of eight abuse patterns** (`1 of susp_*`):
 
 | Selection | Abuse |
 |---|---|
-| `susp_script` | `javascript:` / `RunHTMLApplication` proxying script execution through mshtml |
+| `susp_script` | `javascript:` / `vbscript:` / `RunHTMLApplication` proxying script execution through mshtml |
 | `susp_path` | AppData, ProgramData, Users\Public, Windows\Temp or Downloads anywhere in the command line - the DLL, or a file or path handed to its export (`\` or `/` separators) |
 | `susp_minidump` | comsvcs.dll MiniDump LSASS dumping, by export name or by ordinal (`#24`, `#+0000024`) |
 | `susp_noargs` | rundll32 with **no arguments**, a classic sacrificial process for injection (Cobalt Strike's default `spawnto`) |
@@ -35,7 +35,9 @@ Sysmon **EID 1** - the generated KQL and SPL read Sysmon. Security **4688** (wit
 
 ## Evasion & coverage gaps
 - DLLs copied into `System32` first (requires admin) - cover with file-creation monitoring.
-- Export called by ordinal from a legitimately-located but malicious DLL. (The comsvcs MiniDump ordinal `#24` and the mshtml ordinal `#135` are covered - the fuzzer and the tests prove it.)
+- Export called by ordinal from a legitimately-located but malicious DLL. (The comsvcs MiniDump ordinal `#24` is covered; the mshtml ordinal `#135` is covered when the command line carries `javascript:` or `vbscript:`, and an ordinal call that hands mshtml a remote `.hta` without them is a gap.)
+- A writable folder reached through its 8.3 short name (`C:\PROGRA~3\...`): the path branch reads long names only.
+- rundll32 with no arguments matches only when the command line is captured exactly (no trailing space or quotes).
 - Network beaconing from rundll32 (Sysmon EID 3) is a powerful complement for the no-args case.
 
 ## False positives & tuning
@@ -44,11 +46,11 @@ Old installers that unpack DLLs into `%TEMP%`. Validate the parent process and t
 Every tuning - applied, proposed or rejected - is recorded in [`tuning.yml`](tuning.yml). `rasd tune --filter T1218.011` measures each proposal before it is applied: how many attack variants it would hide against how many corpus alerts it would remove.
 
 ## Offensive validation
-[`red/windows/rundll32_execution`](../../../red/windows/rundll32_execution/) produces exactly the telemetry this rule needs, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
+[`red/windows/rundll32_execution`](../../../red/windows/rundll32_execution/) is built to produce the telemetry this rule reads, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
 
 ```powershell
 .\red\Invoke-RasdEmulation.ps1 -Test rundll32_execution -LabConfirmed
-.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1)
+.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1) -OutFile .\lab-export.jsonl
 ```
 
 ```bash

@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | Add a crontab line that echoes the marker every 30 minutes | [`T1053.003_crontab_noninteractive_install`](../../../detect/detections/T1053.003_crontab_noninteractive_install/) | [rule.yml](../../../detect/detections/T1053.003_crontab_noninteractive_install/rule.yml) | [KQL](../../../queries/kql/T1053.003_crontab_noninteractive_install.kql) | [SPL](../../../queries/spl/T1053.003_crontab_noninteractive_install.spl) | host, time window |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

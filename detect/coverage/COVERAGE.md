@@ -4,7 +4,9 @@
 
 **18 detections** (4 of them Sigma correlations) covering **14 ATT&CK techniques as primary** (+2 related techniques the rules also tag), **238 true-positive** test cases.
 
-Depth comes from each detection's `contract.yml`: **partial** means part of the technique's procedures are covered, **high** means the outcome is detected regardless of method.
+Depth comes from each detection's `contract.yml`: **minimal** means one narrow procedure, **partial** part of the technique's procedures, **medium** its common procedures with documented gaps, and **high** the outcome in the telemetry the rule reads, whichever procedure produced it (the documented blind spots still apply).
+
+**Related** lists the other techniques a rule's own ATT&CK tags claim (scored at half in the Navigator layer). The `related_techniques` in a `contract.yml` are investigation context for the analyst, not coverage, so a detection can list some there and still show "-" here.
 
 ## By technique
 
@@ -59,14 +61,14 @@ Depth comes from each detection's `contract.yml`: **partial** means part of the 
 - **Linux Shell Executing Decoded Base64 or Code From a Temporary Directory** (medium): Decoded Base64 piped into a shell through -c, binaries in three temporary directories, and shell scripts started from them
 - **Password Spray - One Source Failing Authentication for Many Accounts** (medium): Kerberos and NTLM failures for many accounts from one source (wrong password, unknown or disabled account), counted per 10-minute window with a proven 9-account guarantee; distributed and low-and-slow sprays need longer-window hunting
 - **Object ID Enumeration - One Client Walking Single-Owner Objects** (partial): Numeric IDs of five single-owner object types in the path; other identifier styles and object types need the base rule edited
-- **Rundll32 Proxy Execution From Suspicious Context** (medium): Four distinct abuse patterns; blind to malicious DLLs placed in trusted paths
+- **Rundll32 Proxy Execution From Suspicious Context** (medium): Eight distinct abuse patterns; blind to malicious DLLs placed in trusted paths
 - **Run Key Persistence Pointing to Suspicious Location** (partial): Run and RunOnce keys only; other autostart extensibility points need their own rules
 - **Kerberoasting - RC4 Service Ticket Requested for User Account** (medium): Single-event RC4 rule plus aggregation and contextual hunts in queries/hunts
-- **Kerberoasting - One Client Requesting Tickets for Many Service Accounts** (high): Volume over every encryption type complements the RC4 single-event rule; together they cover RC4 and AES roasting, with a proven 9-account guarantee
+- **Kerberoasting - One Client Requesting Tickets for Many Service Accounts** (high): Volume over every encryption type complements the RC4 single-event rule - RC4 roasting of any size, AES roasting of 5 or more accounts in 10 minutes - with a proven 9-account guarantee
 - **Suspicious Service Installation (PsExec-style / Command Services)** (medium): Fingerprints PsExec, Impacket psexec and smbexec plus generic command services; blind to service modification
 - **API Probing - One Client Rejected on Many Distinct Paths** (partial): Rejected requests on many paths from one client; distributed and slow probing need longer-window hunting
-- **Windows Event Log Clearing via Command Line** (medium): Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
-- **Security Audit Log Cleared (Event 1102)** (high): Outcome-based: fires whenever the Security log is cleared, by any method
-- **Windows Event Log Cleared (System Event 104)** (high): Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell
+- **Windows Event Log Clearing via Command Line** (medium): Command-line methods; the 1102 and 104 rules cover clears done through the EventLog service
+- **Security Audit Log Cleared (Event 1102)** (high): Outcome-based: fires whenever the EventLog service clears the Security log (any tool, GUI or API)
+- **Windows Event Log Cleared (System Event 104)** (high): Outcome-based: fires whenever the EventLog service clears a non-Security log (any tool, GUI or API), Sysmon and PowerShell included
 
 Import [`attack_navigator_layer.json`](attack_navigator_layer.json) into [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) for the heatmap.

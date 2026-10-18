@@ -2,7 +2,7 @@
 
 **RASD: Resilient Adversary Signal Detection.** An attack-to-defense validation framework that turns adversary behaviour into tested detections, investigation workflows, CTI mappings and operational evidence.
 
-> RASD does not stop at detection logic. Each technique is mapped across offensive validation, telemetry, detection, triage, response, intelligence context, and measurable operational evidence.
+> RASD does not stop at detection logic. Each technique is mapped across offensive validation, telemetry, detection, triage, response and intelligence context, with a place for measurable operational evidence that stays pending until a lab run is committed.
 
 ## The problem it answers
 

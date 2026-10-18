@@ -181,6 +181,21 @@ class PowerShellScripts(unittest.TestCase):
         refused = run_pwsh("-File", str(ROOT / "red" / "Invoke-RasdEmulation.ps1"), "-Technique", "All")
         self.assertNotEqual(refused.returncode, 0)
 
+    def test_high_impact_steps_refuse_without_their_opt_in(self):
+        """The LSASS dump and the Security log clear check their opt-in themselves, so a direct call with only
+        -LabConfirmed refuses before the lab guard or any action (the runner passes the switch)."""
+        cases = [(ROOT / "red" / "windows" / "lsass_memory_access" / "emulate_lsass_minidump.ps1", "IncludeCredentialAccess"),
+                 (ROOT / "red" / "windows" / "event_log_clearing" / "emulate_clear_security_log.ps1", "IncludeSecurityLogClear")]
+        for script, switch in cases:
+            missing = run_pwsh("-File", str(script), "-Marker", "rasd_1a2b3c4d", "-LabConfirmed")
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertIn(switch, missing.stdout + missing.stderr)
+            off = run_pwsh("-Command", f"& '{script}' -Marker rasd_1a2b3c4d -LabConfirmed -{switch}:$false")
+            self.assertNotEqual(off.returncode, 0)
+            self.assertIn(f"Refusing to run without -{switch}", off.stdout + off.stderr)
+        runner = (ROOT / "red" / "Invoke-RasdEmulation.ps1").read_text(encoding="utf-8")
+        self.assertIn("$splat[$s.opt_in] = $true", runner)
+
     def test_lab_run_dry_run_plans_without_running(self):
         r = run_pwsh("-File", str(ROOT / "red" / "lab" / "Invoke-RasdLabRun.ps1"), "-LabConfirmed", "-DryRun",
                      "-FixReadiness")

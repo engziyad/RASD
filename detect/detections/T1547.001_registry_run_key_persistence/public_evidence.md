@@ -13,7 +13,7 @@ holdout_fired_on: 2
 
 # Public dataset evidence · Run Key Persistence Pointing to Suspicious Location
 
-**Public dataset validation: fires on 7 of the 7 public recordings of its behaviour** · **held-out: fires on 2 of 2 files labelled before their first replay** · 7 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 7 of the 7 public recordings of its behaviour** · **held-out: fires on 2 of 2 files labelled before their first replay** · 7 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -55,7 +55,7 @@ Files added after the rule changes, labelled from their raw events and this dete
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 4451 of `T1547.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `12c8d70f5b7f98db…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 4451 of `T1547.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `12c8d70f5b7f98db…`):
 
 ```json
 {

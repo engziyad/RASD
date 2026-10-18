@@ -84,7 +84,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import profiles
 from common import (BOLD, CORRELATIONS, DETECTIONS, DIM, DOCS, GREEN, RED, RESET, ROOT, VERSION, YELLOW, attack_aliases,
-                    load_detections, read_text)
+                    load_detections, md_text, read_text)
 from convert import logsource_key, referenced_fields
 from correlation import Correlation, epoch, evaluate, iso, load_correlations, value_reader
 from replay import HOST_FIELDS, TIME_FIELDS, USER_FIELDS, first, parse_time, route
@@ -508,9 +508,9 @@ def fingerprints(cat: Catalog) -> dict[str, str]:
             out[f"tuning:{folder.name}"] = _digest(_applied(_yaml(folder / "tuning.yml")))
     for name in sorted({ds.profile for ds in cat.datasets}):
         path = profiles.PROFILES_DIR / f"{name}.yml"
-        out[f"profile:{name}"] = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "missing"
+        out[f"profile:{name}"] = _text_digest(path) if path.exists() else "missing"
     if HOLDOUT_LABELS.exists():
-        out["holdout_labels"] = hashlib.sha256(HOLDOUT_LABELS.read_bytes()).hexdigest()
+        out["holdout_labels"] = _text_digest(HOLDOUT_LABELS)
     for sid, src in sorted((cat.raw.get("sources") or {}).items()):
         out[f"source:{sid}"] = _digest({k: (src or {}).get(k) for k in ("repo", "commit", "url", "lfs", "redistribute")})
     for d in cat.raw.get("datasets") or []:
@@ -522,6 +522,12 @@ def fingerprints(cat: Catalog) -> dict[str, str]:
             "overlap": sorted(d.get("overlap") or {}), "holdout": d.get("holdout"),
             "missed": sorted(d.get("missed") or {}), "found": sorted(d.get("found") or {}), "demoted": d.get("demoted_from")})
     return out
+
+
+def _text_digest(path: Path) -> str:
+    """SHA-256 of a text file with LF line endings, so a Windows checkout that turned them into CRLF hashes the
+    same as the repository."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _applied(doc: dict) -> list:
@@ -1732,18 +1738,33 @@ def status_counts(cat: Catalog | None = None, res: dict | None = None) -> dict[s
             "fired_on": sum(len(v["independent"]) for v in s.values()), "recordings": sum(v["recordings"] for v in s.values())}
 
 
-QUIET_LABELS = {"gap": "need a rule RASD does not have yet", "scope": "outside the rule's scope",
-                "blind-spot": "a documented blind spot", "telemetry": "without the event the rule reads",
-                "negative": "do not hold the behaviour"}
+QUIET_LABELS = {"gap": ("needs a rule RASD does not have yet", "need a rule RASD does not have yet"),   # (one, several)
+                "scope": ("outside the rule's scope", "outside the rule's scope"),
+                "blind-spot": ("a documented blind spot", "documented blind spots"),
+                "telemetry": ("without the event the rule reads", "without the event the rule reads"),
+                "negative": ("does not hold the behaviour", "do not hold the behaviour")}
 
 
 def quiet_phrase(kinds: Counter) -> str:
     """'4 need a rule RASD does not have yet, 1 outside the rule's scope' - the quiet recordings by kind."""
-    return ", ".join(f"{kinds[k]} {QUIET_LABELS[k]}" for k in QUIET_KINDS if kinds.get(k) and k != "negative")
+    return ", ".join(f"{kinds[k]} {QUIET_LABELS[k][kinds[k] != 1]}" for k in QUIET_KINDS if kinds.get(k) and k != "negative")
+
+
+def plural(n: int, noun: str) -> str:
+    """'1 alert', '3 alerts', '0 labelled false positives'."""
+    return f"{n} {noun}{'' if n == 1 else 's'}"
+
+
+def current_ids(text: Any) -> str:
+    """Notes written before the ATT&CK v19 remapping name detections by their v18 ids; show the current ids."""
+    out = str(text)
+    for rid, legacy in attack_aliases()["detections"].items():
+        out = out.replace(legacy, rid)
+    return out
 
 
 def _md(text: Any) -> str:
-    return str(text).replace("|", "\\|").replace("\n", " ")
+    return md_text(str(text).replace("|", "\\|").replace("\n", " "))
 
 
 def _when(t: str | None) -> str:
@@ -1790,13 +1811,13 @@ def render_page(rid: str, item: Any, cat: Catalog, res: dict, s: dict) -> str:
     srcs = ", ".join(cat.sources[x].title for x in v["sources"]) or "none"
     other = v["benign"] + v["harness"]
     if other or v["false_positives"]:
-        elsewhere = (f"beyond the recorded attacks: {other} alert{'s' if other != 1 else ''} on the labs' own activity, "
-                     f"each explained ({v['harness']} from the test harness, {v['benign']} benign), and "
-                     f"{v['false_positives']} labelled false positive")
+        elsewhere = (f"in the in-sample files, beyond the recorded attacks: {other} alert{'s' if other != 1 else ''} on the "
+                     f"labs' own activity, each explained ({v['harness']} from the test harness, {v['benign']} benign), and "
+                     f"{plural(v['false_positives'], 'labelled false positive')}")
     else:
-        elsewhere = "no alert beyond the recorded attacks"
+        elsewhere = "in the in-sample files, no alert beyond the recorded attacks"
     held = holdout_phrase(h)
-    out += (f"**Public dataset validation: {_headline(v)}**{' · **' + held + '**' if held else ''} · {v['alerts']} alerts · "
+    out += (f"**Public dataset replay: {_headline(v)}**{' · **' + held + '**' if held else ''} · {plural(v['alerts'], 'alert')} · "
             f"sources: {srcs} · {elsewhere}.\n\n"
             "Public data replayed through the tested rule, not lab evidence: the maturity level does not change "
             f"([what public data proves and what it does not]({up}datasets/README.md#what-public-data-proves)). Alerts are "
@@ -1855,7 +1876,7 @@ def render_page(rid: str, item: Any, cat: Catalog, res: dict, s: dict) -> str:
     out += _also_section(rid, cat, recorded)
     sample = _first_extract_event(rid, v, by_id, recorded)
     if sample:
-        out += ("\n## First match\n\nThe first event that fired, from the committed extract (reduced to the fields the rules read; "
+        out += ("\n## First match\n\nThe first event in file order that fired, from the committed extract (reduced to the fields the rules read; "
                 f"record {sample[1]} of `{sample[0]}`, SHA-256 of the original record `{sample[2][:16]}…`):\n\n"
                 "```json\n" + json.dumps(sample[3], indent=1, ensure_ascii=False) + "\n```\n")
     nexts = [n for n in cat.next if n.get("detection") == rid]
@@ -1939,8 +1960,27 @@ def _holdout_section(rid: str, cat: Catalog, recorded: dict) -> str:
 def _why(q: dict) -> str:
     text = _md(q["reason"]).rstrip()
     if q.get("next"):
-        text += ("" if text.endswith((".", ":", ")")) else ".") + f" Next rule: **{q['next']}**."
+        text += ("" if text.endswith((".", ":", ".)")) else ".") + f" Next rule: **{q['next']}**."
+    elif text and not text.endswith((".", ":", "?", ".)")):
+        text += "."            # a note may follow (' It fires only on ...'): end the reason first
     return text
+
+
+# Held-out reasons stay exactly as the reviewers wrote them from each README at labelling time. Where a README
+# changed since, the validation page says so beside the reason instead of editing it.
+LABEL_TIME_NOTES = (
+    ("T1569.002_suspicious_service_installation", ("4697",),
+     "Written when the README listed Security 4697 as optional; the rule reads System 7045 only."),
+    ("T1021.006_wsmprovhost_suspicious_child", ("Sysmon EID 1 only", "names only Sysmon EID 1", "the Sysmon EID 1 the rule reads"),
+     "Written when the README named Sysmon EID 1 only; it now also documents Security 4688 after remapping the field names."),
+)
+
+
+def _label_time_note(ds: Dataset, rid: str, q: dict) -> str:
+    if not ds.holdout:
+        return ""
+    reason = str(q.get("reason", ""))
+    return "".join(f" ({note})" for r, texts, note in LABEL_TIME_NOTES if r == rid and any(t in reason for t in texts))
 
 
 def _explained_note(ds: Dataset, rid: str) -> str:
@@ -1954,7 +1994,7 @@ def _quiet_section(rid: str, v: dict, by_id: dict) -> str:
     if not v["quiet"]:
         return ""
     kinds = [k for k in QUIET_KINDS if any(by_id[d].quiet[rid]["kind"] == k for d in v["quiet"])]
-    out = ("\n## Where it stays quiet\n\nRecordings of this technique in the catalog where the rule does not fire on the recorded "
+    out = ("\n## Where it stays quiet\n\nRecordings in the catalog labelled for this detection where it does not fire on the recorded "
            "attack, each with the reason, re-checked on every run. " + "; ".join(f"**{k}**: {QUIET_KINDS[k]}" for k in kinds)
            + ".\n\n| Dataset | Kind | Why |\n|---|---|---|\n")
     for did in v["quiet"]:
@@ -2045,7 +2085,7 @@ def render_doc(cat: Catalog, res: dict) -> str:
     held = (f" · **Held-out: {sc['holdout_met']} of {sc['holdout_expected']}** expectations met (in {sc['holdout_files_expecting']} "
             f"of {sc['holdout_files']} files labelled before their first replay, {sc['holdout_detections']} of {sc['total']} detections)"
             if sc["holdout_expected"] else "")
-    out += (f"**Public dataset validation: {sc['validated']} of {sc['total']} detections** fire on the pinned public attack data "
+    out += (f"**Public dataset replay: {sc['validated']} of {sc['total']} detections** fire on the pinned public attack data "
             f"that records their behaviour{held} · **Validated (lab evidence): 0 of {sc['total']}** (pending the lab run) · "
             "**SIEM replay: pending** · **Production: pending**\n\n")
     out += ("A dataset is not evidence; a dataset every rule ran on, with the result recorded where anyone can check it, is. "
@@ -2053,9 +2093,10 @@ def render_doc(cat: Catalog, res: dict) -> str:
             "`rasd datasets run` replays all of them through every detection and correlation, and CI re-checks the "
             "committed extracts and fails when a rule changes without a new run ([how it works](../datasets/README.md)).\n\n")
     elsewhere = sc["benign"] + sc["harness"]
-    out += (f"{sc['datasets']} files from {len(cat.sources)} sources · {sc['alerts']} alerts on the recorded attacks · {elsewhere} more "
+    out += (f"{sc['datasets']} in-sample files from {len(cat.sources)} sources ({sc['datasets'] + sc['holdout_files']} with the "
+            f"{sc['holdout_files']} held out below) · {sc['alerts']} alerts on the recorded attacks · {elsewhere} more "
             f"on the labs' own activity, each explained ({sc['harness']} from the test harness that set up, launched and "
-            f"cleaned up the attacks, {sc['benign']} benign) · {sc['false_positives']} labelled false positive · 0 alerts left "
+            f"cleaned up the attacks, {sc['benign']} benign) · {plural(sc['false_positives'], 'labelled false positive')} · 0 alerts left "
             "unexplained. These are labels on short lab captures, one per alert: not an estate's false-positive rate.\n\n")
     out += (f"Every count is of distinct records: {sc['duplicates']:,} records that a file repeats are read once, and "
             f"{sc['overlapping']} files that hold records of an earlier file are declared below - an alert on such a record "
@@ -2120,11 +2161,16 @@ def render_doc(cat: Catalog, res: dict) -> str:
             out += f"- **{rid}**: {_md(why)}\n"
     quiet_rows = [(ds, rid, q) for ds in cat.datasets for rid, q in ds.quiet.items()]
     if quiet_rows:
-        out += ("\n## Where detections stay quiet\n\nPublic recordings of a detection's technique where it does not fire on the "
-                "recorded attack, and why. Each is a documented limit, not a hidden one.\n\n"
+        out += ("\n## Where detections stay quiet\n\nPublic recordings labelled for a detection where it does not fire on the "
+                "recorded attack, and why. Each is a documented limit, not a hidden one. A held-out file's reason is the one "
+                "written before its first replay; where the detection fired on that file anyway, the row says so. Kinds: "
+                + "; ".join(f"**{k}**: {QUIET_KINDS[k]}" for k in QUIET_KINDS) + ".\n\n"
                 "| Dataset | Detection | Kind | Why |\n|---|---|---|---|\n")
         for ds, rid, q in quiet_rows:
-            out += f"| {_ds_link(ds)} | {rid} | {q['kind']} | {_why(q)}{_explained_note(ds, rid)} |\n"
+            fired_note = (" **It fired on this file anyway** (listed under found in the held-out results)." if rid in ds.found
+                          else "")
+            out += (f"| {_ds_link(ds)} | {rid} | {q['kind']} | {_why(q)}{_label_time_note(ds, rid, q)}"
+                    f"{_explained_note(ds, rid)}{fired_note} |\n")
     if cat.next:
         by_id = {ds.id: ds for ds in cat.datasets}
         out += ("\n## Next rules from public data\n\nBehaviours of covered techniques that public data shows and no RASD rule reads "
@@ -2135,7 +2181,7 @@ def render_doc(cat: Catalog, res: dict) -> str:
             out += f"| {nx['id']} | {nx['technique']} | {nx['detection']} | {_md(nx['rule'])} | {files} |\n"
     rows = [(ds, (recorded.get(ds.id) or {})) for ds in cat.datasets if ds.splunk and ds.expect]
     if rows:
-        out += ("\n## SIEM replay checklist\n\nThe next validation level, in your own Splunk: index a file with the sourcetype and "
+        out += ("\n## SIEM replay checklist\n\nA check you can run in your own Splunk, beside the lab run: index a file with the sourcetype and "
                 "source its upstream metadata names (Splunk Add-on for Microsoft Windows installed), run the generated query "
                 "over the file's time range and compare the count with the one RASD's engine produced here. A match is "
                 "SIEM replay evidence for that detection; a difference is a field extraction or mapping problem to fix before "
@@ -2160,10 +2206,15 @@ def _holdout_doc(cat: Catalog, recorded: dict, sc: dict) -> str:
               if _attack_count(recorded.get(ds.id) or {}, rid) and not _attack_unique(recorded.get(ds.id) or {}, rid)]
     missed = sum(len(ds.missed) for ds in held)
     out = ("\n## Held-out files\n\nThe files above were chosen and their rules tuned in view of each other. These "
-           f"{len(held)} were not. {_md(doc.get('selection', ''))} They were added after the rule changes and labelled before RASD "
+           f"{len(held)} were not. {_md(doc.get('selection', ''))} (Web access logs are read by RASD's two web correlations; "
+           "the public web files hold single exploit requests, not the probing or enumeration sequences those correlations "
+           "count, so none was held out for them.) They were added after the rule changes and labelled before RASD "
            "first replayed them - from the raw events and each detection's README, by reviewers without access to the rules, "
            "tests or results ([labels and protocol](../datasets/holdout_labels.json)). Their expected and quiet entries are the "
-           "labels, unchanged; what the replay did beyond them is recorded, not relabelled.\n\n")
+           "labels, unchanged; what the replay did beyond them is recorded, not relabelled. One mechanical edit was made to "
+           "the labels file since: on 15 October 2026 the API-probing correlation moved from T1190 to its ATT&CK v19.2 "
+           "technique and became T1595.003_api_auth_probing, and its 10 entries in the file were renamed with it; no label "
+           "changed.\n\n")
     kinds = Counter(q["kind"] for ds in held for q in ds.quiet.values())
     labelled = sum(len(ds.expect) for ds in held)
     labelled_files = sum(1 for ds in held if ds.expect)
@@ -2182,15 +2233,17 @@ def _holdout_doc(cat: Catalog, recorded: dict, sc: dict) -> str:
               f"({len({r for _d, r in found})} detections, {len({d.id for d, _r in found})} files), each on the recorded attack "
               "and explained" if found else "no detection fired beyond the labels")
     out += (f"**{sc['holdout_met']} of {sc['holdout_expected']} expectations met**, {missed} missed · {beyond} · "
-            f"{sc['holdout_other']} alerts on non-attack activity, each explained · {sc['holdout_fp']} "
-            "labelled false positive. A held-out miss that later fires fails the run: fixing a rule or a reader on a held-out "
+            f"{plural(sc['holdout_other'], 'alert')} on non-attack activity, each explained · "
+            f"{plural(sc['holdout_fp'], 'labelled false positive')}. A held-out miss that later fires fails the run: fixing a "
+            "rule or a reader on a held-out "
             "file takes the file out of this set.\n\n")
     for rnd in doc.get("rounds") or []:
         fr = rnd.get("first_replay") or {}
         if fr:
             out += (f"- First replay of {rnd['labels']} ({_md(rnd.get('note', ''))}): {fr.get('met')} of {fr.get('expected')} "
-                    "expectations met" + (" (" + "; ".join(_md(m) for m in fr["copies"]) + ")" if fr.get("copies") else "")
-                    + (": missed " + "; ".join(_md(m) for m in fr.get("missed") or []) if fr.get("missed") else "") + ".\n")
+                    "expectations met" + (" (" + "; ".join(_md(current_ids(m)) for m in fr["copies"]) + ")" if fr.get("copies") else "")
+                    + (": missed " + "; ".join(_md(current_ids(m)) for m in fr.get("missed") or []) if fr.get("missed") else "")
+                    + ".\n")
     for ds, rid in copies:
         out += (f"- {ds.holdout}: {rid} fired, but only on records an earlier file of the catalog holds, so it is not counted "
                 "as a held-out result.\n")

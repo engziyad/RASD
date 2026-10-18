@@ -13,7 +13,7 @@ holdout_fired_on: 6
 
 # Public dataset evidence · PowerShell Execution With Encoded Command
 
-**Public dataset validation: fires on 8 of the 13 public recordings of its behaviour (quiet on the other 5: 5 outside the rule's scope)** · **held-out: fires on 6 of 6 files labelled before their first replay** · 15 alerts · sources: OTRF Security-Datasets, Splunk Attack Data · beyond the recorded attacks: 222 alerts on the labs' own activity, each explained (221 from the test harness, 1 benign), and 0 labelled false positive.
+**Public dataset replay: fires on 8 of the 13 public recordings of its behaviour (quiet on the other 5: 5 outside the rule's scope)** · **held-out: fires on 6 of 6 files labelled before their first replay** · 15 alerts · sources: OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, beyond the recorded attacks: 222 alerts on the labs' own activity, each explained (221 from the test harness, 1 benign), and 0 labelled false positives.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -44,15 +44,15 @@ Names from outside the mapping are kept as published, in ATT&CK v18 terms: `T107
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **scope**: the recorded behaviour is outside what the rule is written to detect.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **scope**: the recorded behaviour is outside what the rule is written to detect.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [T1059.001/encoded_powershell/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/encoded_powershell/windows-security.log) | scope | the 4688 command is a download cradle (-Command ... DownloadString), not an encoded command: outside this rule, which keys on -EncodedCommand. The event is read through the windows-security-4688 profile |
-| [T1059.001/malicious_cmd_line_samples/windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/malicious_cmd_line_samples/windows-sysmon.log) | scope | PowerShell renamed (lVN8MeO.exe) and fed its script through standard input (-) by cmd /c echo: no encoded command, which is what this rule keys on |
-| [other/emotet/exec_emotet_sysmon_1](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Other/emotet/exec_emotet_sysmon_1.evtx) | scope | the one record is the payload's process creation; its parent PowerShell ran without arguments, so there is no encoded command for this rule to read |
-| [T1059.001/snapattack/snapattack](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/snapattack/snapattack.log) | scope | the attack samples run PowerShell with plain commands - a TCP reverse shell, a Base64 decoding function, a binary in C:\Users\Public starting powershell -ExecutionPolicy Bypass -C, a download cradle piped to iex (in a 4104 script block) - and no encoded command, which is what this rule keys on It fires only on non-attack activity the catalog explains (benign, listed under other alerts). |
-| [T1059.001/threat_allow_switch/threat_allow_salat.log](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/threat_allow_switch/threat_allow_salat.log) | scope | powershell -WindowStyle Hidden -Command Set-MpPreference ...: a plain command, not an encoded one, which is what this rule keys on |
+| [T1059.001/encoded_powershell/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/encoded_powershell/windows-security.log) | scope | the 4688 command is a download cradle (-Command ... DownloadString), not an encoded command: outside this rule, which keys on -EncodedCommand. The event is read through the windows-security-4688 profile. |
+| [T1059.001/malicious_cmd_line_samples/windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/malicious_cmd_line_samples/windows-sysmon.log) | scope | PowerShell renamed (lVN8MeO.exe) and fed its script through standard input (-) by cmd /c echo: no encoded command, which is what this rule keys on. |
+| [other/emotet/exec_emotet_sysmon_1](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Other/emotet/exec_emotet_sysmon_1.evtx) | scope | the one record is the payload's process creation; its parent PowerShell ran without arguments, so there is no encoded command for this rule to read. |
+| [T1059.001/snapattack/snapattack](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/snapattack/snapattack.log) | scope | the attack samples run PowerShell with plain commands - a TCP reverse shell, a Base64 decoding function, a binary in C:\Users\Public starting powershell -ExecutionPolicy Bypass -C, a download cradle piped to iex (in a 4104 script block) - and no encoded command, which is what this rule keys on. It fires only on non-attack activity the catalog explains (benign, listed under other alerts). |
+| [T1059.001/threat_allow_switch/threat_allow_salat.log](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.001/threat_allow_switch/threat_allow_salat.log) | scope | powershell -WindowStyle Hidden -Command Set-MpPreference ...: a plain command, not an encoded one, which is what this rule keys on. |
 
 ## Held-out files
 
@@ -116,7 +116,7 @@ Alerts on activity that is not the recorded attack, each explained in the catalo
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1059.001/encoded_powershell/explorer_spawns_windows-sysmon`, SHA-256 of the original record `65a1e921fb068d00…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1059.001/encoded_powershell/explorer_spawns_windows-sysmon`, SHA-256 of the original record `65a1e921fb068d00…`):
 
 ```json
 {

@@ -13,7 +13,7 @@ holdout_fired_on: 6
 
 # Public dataset evidence · Scheduled Task Created With Suspicious Action
 
-**Public dataset validation: fires on 10 of the 11 public recordings of its behaviour (quiet on the other 1: 1 without the event the rule reads)** · **held-out: fires on 6 of 6 files labelled before their first replay** · 16 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 10 of the 11 public recordings of its behaviour (quiet on the other 1: 1 without the event the rule reads)** · **held-out: fires on 6 of 6 files labelled before their first replay** · 16 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -45,11 +45,11 @@ schtask_create repeats records: 12 repeats are read once; the alerts above are o
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **telemetry**: the recording lacks the event the rule reads.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **telemetry**: the recording lacks the event the rule reads.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [lateral-movement/LM_sysmon_remote_task_src_powershell](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Lateral%20Movement/LM_sysmon_remote_task_src_powershell.evtx) | telemetry | the source host's Sysmon events only: PowerShell loading the Task Scheduler library and connecting to the target over RPC. No schtasks process creation, and the target's task registration is not in the file |
+| [lateral-movement/LM_sysmon_remote_task_src_powershell](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Lateral%20Movement/LM_sysmon_remote_task_src_powershell.evtx) | telemetry | the source host's Sysmon events only: PowerShell loading the Task Scheduler library and connecting to the target over RPC. No schtasks process creation, and the target's task registration is not in the file. |
 
 ## Held-out files
 
@@ -89,7 +89,7 @@ Alerts on activity that is not the recorded attack, each explained in the catalo
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 4520 of `T1053.005/atomic_red_team/windows-sysmon`, SHA-256 of the original record `125ba0e395b4d4dc…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 4520 of `T1053.005/atomic_red_team/windows-sysmon`, SHA-256 of the original record `125ba0e395b4d4dc…`):
 
 ```json
 {

@@ -6,7 +6,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1685.005] wevtutil cl on a dedicated test log (writes System 104)
-WARNING: [T1685.005] wevtutil cl Security with a backup first - skipped (opt-in: add -IncludeSecurityLogClear)
+WARNING: [T1685.005] wevtutil cl Security with a backup first (writes Security 1102) - skipped (opt-in: add -IncludeSecurityLogClear)
 [cleanup] verified: test log R1a2b3c4d removed
 ```
 

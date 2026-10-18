@@ -30,7 +30,7 @@ detection:
       - 'mshta'
       - 'rundll32'
       - '\ADMIN$\'
-      - '\127.0.0.1\'        # any UNC path to the loopback (\\127.0.0.1\C$ ...)
+      - '\127.0.0.1\'        # the IPv4 loopback literal (\\127.0.0.1\C$ ...); \\localhost\ and other 127.x forms are a documented gap
   susp_shell:              # the command interpreter as the service binary, with or without arguments:
     # cmd.exe, cmd /c ..., "C:\Windows\System32\cmd.exe" /Q /c ... (public data: services whose binary is a bare cmd.exe)
     ImagePath|re: '(?i)(^|[\\/"\s])cmd(\.exe)?("|\s|$)'

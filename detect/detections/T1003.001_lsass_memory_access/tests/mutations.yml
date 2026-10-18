@@ -12,7 +12,7 @@ mutations:
   set:
     GrantedAccess: '4112'
   should_match: true
-- name: lsass_short_path
+- name: lsass_uppercase_path
   base: 1
   set:
     TargetImage: C:\WINDOWS\system32\LSASS.EXE

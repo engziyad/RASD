@@ -27,7 +27,7 @@ detection_logic:
   type: single-event
   confidence: high
   severity: high
-  expected_noise: low
+  expected_noise: medium
   blind_spots:
   - DLL copied into System32 before execution
   - Malicious DLL in a trusted path called by ordinal
@@ -35,7 +35,7 @@ detection_logic:
   - A writable folder reached through its 8.3 short name (C:\PROGRA~3\...) - the path branch reads long names only (public data, EVTX-ATTACK-SAMPLES rundll32_cmd_schtask)
 coverage_depth:
   level: medium
-  reason: Four distinct abuse patterns; blind to malicious DLLs placed in trusted paths
+  reason: Eight distinct abuse patterns; blind to malicious DLLs placed in trusted paths
 risk_model:
   base_score: 60
   increase_if:

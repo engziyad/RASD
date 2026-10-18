@@ -4,10 +4,9 @@ platform: web
 mitre:
   technique: T1595.003
   technique_name: "Active Scanning: Wordlist Scanning"
+  related: [T1190]       # the forged-JWT calls test for an authentication bypass
   tactics: [reconnaissance]
   other:
-    - framework: MITRE ATT&CK
-      id: "T1190 Exploit Public-Facing Application (the forged-JWT calls test for an authentication bypass)"
     - framework: OWASP API Security Top 10 (2023)
       id: API2 Broken Authentication
 objective: >
@@ -20,7 +19,7 @@ prerequisites:
   - Python 3.9+ on the machine running the test (standard library only)
   - Web server or reverse-proxy access logs collected (combined log format or JSON)
 safety:
-  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
   - Read-only GET requests, paced at 5 per second
   - "Malformed tokens can crash fragile applications: OWASP Juice Shop 17.3.0 terminates on a malformed JWT at /api/Deliverys, so that path is not in the defaults"
 execution:

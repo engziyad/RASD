@@ -28,7 +28,7 @@ Known benign sources for this detection:
 - Vulnerability scanners or monitoring tools that test credentials against many accounts
 - Stale credentials of disabled, expired or locked accounts (4768 0x12) on shared devices and scripts
 - Non-Windows Kerberos clients retrying with a wrong default realm or principal (4768 0x6)
-- {'Account enumeration (for example kerbrute userenum) - unknown names only, no password tried - also alerts': 'worth a look, but it is reconnaissance, not a spray'}
+- Account enumeration (for example kerbrute userenum) - unknown names only, no password tried - also alerts: worth a look, but it is reconnaissance, not a spray
 
 Never tune:
 - Never exclude a source address without a replacement threshold: the host you exclude is the one an attacker will spray from.
@@ -43,7 +43,7 @@ Alert:        T1110.003_password_spray_burst for <IpAddress> at <window start, U
 Observed:     <n> distinct TargetUserName from IpAddress <value> in the 10m window: <values>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1110.003_password_spray_burst
+Follow-up:    <sent to detection engineering as a true negative for T1110.003_password_spray_burst: ticket | not yet>
 ```
 
 ## Escalation to incident response

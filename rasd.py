@@ -4,12 +4,12 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
 
   author      new        scaffold a detection that fails CI until it is complete
   verify      lint       rules, contracts, tuning guides, evidence, deep static checks
-              sigma      the Sigma subset RASD supports, proven in the engine, SPL and KQL; the rest refused
+              sigma      the Sigma subset RASD supports, proven in the engine and RASD's SPL / KQL models; the rest refused
               test       true-positive / true-negative samples
               mutate     hand-written + generic evasion mutations
               fuzz       automatic evasion fuzzing against a regression baseline
               prove      rule mutation testing: is every value, field and branch proven by a test?
-              parity     the generated KQL / SPL return exactly what the tested rule returns
+              parity     the generated KQL / SPL return exactly what the tested rule returns (modelled semantics, not a live SIEM)
               correlate  Sigma correlations: scenarios, parameter mutants, aggregation parity, burst guarantee
               nearmiss   traffic one field edit away from an alert, and how close quiet windows come to a threshold
               tune       security cost vs noise benefit of every tuning
@@ -18,7 +18,9 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
   understand  explain    why a rule matched (or did not) an event, field by field
               score      Engineering Score and Operational Score
   deploy      build      KQL + SPL (rules and correlations), Defender XDR queries, Splunk app, cards, views, coverage, scores,
-                         banner, red docs, chain outputs
+                         Sigma support page, banner, red docs, profiles README, public dataset pages, chain outputs
+              coverage   the ATT&CK Navigator layer and the coverage matrix
+              views      the audience views (SOC L1, incident response, purple team, GRC)
               convert    print queries for one backend
               doctor     check YOUR log export: READY / DEGRADED / BLIND per rule (--profile for ECS, CIM ...)
               profiles   telemetry profiles: which one fits an export (--detect), what each covers
@@ -32,7 +34,7 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
               chain      the 20-point attack-to-defense map, maturity, matrices, metrics
               links      every relative link in every Markdown file resolves
-  all         ci         everything the pipeline runs, in order
+  all         ci         the full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check)
 
 Install the `rasd` command into a virtual environment with `pip install -e .` and run `rasd <command>`;
 without installing, `python rasd.py <command>` from a clone runs the same command.
@@ -58,8 +60,10 @@ Examples
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -95,14 +99,23 @@ def run(argv: list[str], cwd: Path = ROOT) -> int:
 
 
 def steps(seq: list[list[str]], title: str) -> int:
+    if seq is CI and not (os.environ.get("RASD_PWSH") or shutil.which("pwsh")):
+        print("note: pwsh (PowerShell 7) was not found, so the PowerShell script tests are skipped; "
+              "install it or set RASD_PWSH to run them")
+    timings: list[tuple[str, float]] = []
     for argv in seq:
         label = " ".join(argv).replace(".py", "")
         print(f"\n\033[38;5;180m▸ {label}\033[0m" if sys.stdout.isatty() else f"\n> {label}")
+        start = time.monotonic()
         rc = run(argv)
+        took = time.monotonic() - start
+        timings.append((label, took))
+        print(f"  ({took:.1f} s)")
         if rc:
             print(f"\n{title} failed at: {label}")
             return rc
-    print(f"\n{title} passed.")
+    slowest = ", ".join(f"{label} {took:.0f} s" for label, took in sorted(timings, key=lambda x: -x[1])[:3])
+    print(f"\n{title} passed in {sum(took for _, took in timings):.0f} s (slowest: {slowest}).")
     return 0
 
 

@@ -182,8 +182,13 @@ def markdown(rules: list[dict]) -> str:
         "also tag), "
         f"**{sum(r['tp'] for r in rules)} true-positive** test cases.",
         "",
-        "Depth comes from each detection's `contract.yml`: **partial** means part of the technique's "
-        "procedures are covered, **high** means the outcome is detected regardless of method.",
+        "Depth comes from each detection's `contract.yml`: **minimal** means one narrow procedure, **partial** part of "
+        "the technique's procedures, **medium** its common procedures with documented gaps, and **high** the outcome "
+        "in the telemetry the rule reads, whichever procedure produced it (the documented blind spots still apply).",
+        "",
+        "**Related** lists the other techniques a rule's own ATT&CK tags claim (scored at half in the Navigator "
+        "layer). The `related_techniques` in a `contract.yml` are investigation context for the analyst, not "
+        "coverage, so a detection can list some there and still show \"-\" here.",
         "",
         "## By technique",
         "",

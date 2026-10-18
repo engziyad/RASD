@@ -24,9 +24,10 @@ Tuning:       none | management_script_share (proposed)
 Known benign sources for this detection:
 - Administrators running cmd.exe commands or batch files over PowerShell remoting or winrs
 - Configuration management that launches cmd.exe through WinRM
+- Ansible's WinRM connection, which starts cmd /C PowerShell ... -EncodedCommand under winrshost.exe on every managed host (public data: the labs' provisioning)
 
 Never tune:
-- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host.
+- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host in general. The one exception is a reviewed automation bootstrap (for example Ansible's), excepted in the SIEM by its source host together with its exact command line.
 - Never filter by account alone - a stolen administrator account is exactly what this rule must catch.
 
 ## False Positive
@@ -38,7 +39,7 @@ Alert:        T1021.006_wsmprovhost_suspicious_child for <host> at <time, UTC>
 Observed:     ParentImage=<value>  Image=<value>  OriginalFileName=<value>  CommandLine=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1021.006_wsmprovhost_suspicious_child
+Follow-up:    <sent to detection engineering as a true negative for T1021.006_wsmprovhost_suspicious_child: ticket | not yet>
 ```
 
 ## Escalation to incident response
@@ -57,7 +58,7 @@ Recommended:  Disable or reset the account used, isolate the source host if it i
 ```
 
 Escalate when any of these holds:
-1. Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe
+1. Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe, other than a documented automation bootstrap from its known host
 2. The source host or account has never used WinRM against this target
 3. The session ran discovery or credential commands (whoami /all, net group, nltest)
 

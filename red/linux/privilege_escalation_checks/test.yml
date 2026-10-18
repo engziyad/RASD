@@ -15,7 +15,7 @@ prerequisites:
   - Linux lab host with bash, find and (optionally) getcap
   - "auditd with execve logging and/or Sysmon for Linux"
 safety:
-  - Runs only with --lab-confirmed on a disposable lab host you own
+  - Runs only with --lab-confirmed on a disposable lab host you own, marked by /etc/rasd-lab-host (red/lab/README.md, Lab guard)
   - Read-only; sudo is called with -n, so it never prompts for or uses a password
   - Lists are saved to $RASD_OUT_DIR for review and contain no secrets
 execution:

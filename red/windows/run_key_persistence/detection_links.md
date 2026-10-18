@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | HKCU Run value pointing to %LOCALAPPDATA%\\Temp (file does not exist) | [`T1547.001_registry_run_key_persistence`](../../../detect/detections/T1547.001_registry_run_key_persistence/) | [rule.yml](../../../detect/detections/T1547.001_registry_run_key_persistence/rule.yml) | [KQL](../../../queries/kql/T1547.001_registry_run_key_persistence.kql) | [SPL](../../../queries/spl/T1547.001_registry_run_key_persistence.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

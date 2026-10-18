@@ -6,9 +6,9 @@
 | Referenced binary | The path in the value data | `Get-FileHash <path>; Get-AuthenticodeSignature <path>` | Hash and signer decide whether the entry is a known application |
 | Writer process | Sysmon 13 Image / ProcessGuid | `Pivot on ProcessGuid in the SIEM` | reg.exe, PowerShell or an unsigned binary writing Run keys is a strong signal |
 
-[`collect_artifacts.ps1`](collect_artifacts.ps1) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.ps1`](collect_artifacts.ps1) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

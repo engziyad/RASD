@@ -6,9 +6,9 @@
 | Forwarded copy of the cleared log | SIEM / Windows Event Forwarding collector | `Query the SIEM for the host and the hour before the clear` | Recovers the events the clear was meant to destroy |
 | Security log backup | The /bu: path (opt-in step) | `wevtutil qe <backup.evtx> /lf:true /c:5 /f:text` | Shows that wevtutil can archive before clearing - check intruder tooling for /bu paths too |
 
-[`collect_artifacts.ps1`](collect_artifacts.ps1) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.ps1`](collect_artifacts.ps1) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

@@ -19,7 +19,7 @@ Add a crontab entry for the current user - the simplest persistence on Linux - a
 
 ## Safety notes
 
-- Runs only with --lab-confirmed on a disposable lab host you own
+- Runs only with --lab-confirmed on a disposable lab host you own, marked by /etc/rasd-lab-host (red/lab/README.md, Lab guard)
 - One line is added: \*/30 \* \* \* \* /bin/echo &lt;marker&gt; &gt;/dev/null 2&gt;&amp;1 # &lt;marker&gt;
 - The existing crontab is read completely before it is rewritten, so other entries are preserved
 - cleanup.sh removes exactly the lines containing the marker

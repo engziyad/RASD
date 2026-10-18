@@ -13,7 +13,7 @@ holdout_fired_on: 0
 
 # Public dataset evidence · Kerberoasting - RC4 Service Ticket Requested for User Account
 
-**Public dataset validation: fires on 3 of the 3 public recordings of its behaviour** · **held-out: fires on 0 of 1 files labelled before their first replay** · 13 alerts · sources: OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 3 of the 3 public recordings of its behaviour** · **held-out: fires on 0 of 1 files labelled before their first replay** · 13 alerts · sources: OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -60,7 +60,7 @@ What each applied filter kept quiet on every dataset in the catalog, and what ea
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1558.003/kerberoasting_spn_request_with_rc4_encryption/windows-xml`, SHA-256 of the original record `d4f9166d5dff5608…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1558.003/kerberoasting_spn_request_with_rc4_encryption/windows-xml`, SHA-256 of the original record `d4f9166d5dff5608…`):
 
 ```json
 {

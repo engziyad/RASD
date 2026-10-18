@@ -13,7 +13,7 @@ holdout_fired_on: 0
 
 # Public dataset evidence · Suspicious Child Process of a WinRM Session Host
 
-**Public dataset validation: fires on 5 of the 8 public recordings of its behaviour (quiet on the other 3: 3 outside the rule's scope)** · 37 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · beyond the recorded attacks: 317 alerts on the labs' own activity, each explained (317 from the test harness, 0 benign), and 0 labelled false positive.
+**Public dataset replay: fires on 5 of the 8 public recordings of its behaviour (quiet on the other 3: 3 outside the rule's scope)** · 37 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, beyond the recorded attacks: 317 alerts on the labs' own activity, each explained (317 from the test harness, 0 benign), and 0 labelled false positives.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -39,13 +39,13 @@ Names from outside the mapping are kept as published, in ATT&CK v18 terms: `T107
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **scope**: the recorded behaviour is outside what the rule is written to detect.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **scope**: the recorded behaviour is outside what the rule is written to detect.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [T1021.006/lateral_movement_psh/windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1021.006/lateral_movement_psh/windows-sysmon.log) | scope | the only child of the remoting host is ipconfig.exe: a discovery command, not one of the children this rule treats as suspicious (shells, proxy binaries, encoded PowerShell) |
-| [covenant_psremoting_command](https://github.com/OTRF/Security-Datasets/blob/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_psremoting_command.zip) | scope | Covenant runs its command inside the remoting host (wsmprovhost.exe) without starting a child process: nothing for a child-process rule to see. PowerShell script block logging (4104) on the target would show it |
-| [lateral-movement/LM_PowershellRemoting_sysmon_1_wsmprovhost](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Lateral%20Movement/LM_PowershellRemoting_sysmon_1_wsmprovhost.evtx) | scope | the remote command is hostname.exe: a discovery command, not a child this rule treats as suspicious |
+| [T1021.006/lateral_movement_psh/windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1021.006/lateral_movement_psh/windows-sysmon.log) | scope | the only child of the remoting host is ipconfig.exe: a discovery command, not one of the children this rule treats as suspicious (shells, proxy binaries, encoded PowerShell). |
+| [covenant_psremoting_command](https://github.com/OTRF/Security-Datasets/blob/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_psremoting_command.zip) | scope | Covenant runs its command inside the remoting host (wsmprovhost.exe) without starting a child process: nothing for a child-process rule to see. PowerShell script block logging (4104) on the target would show it. |
+| [lateral-movement/LM_PowershellRemoting_sysmon_1_wsmprovhost](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Lateral%20Movement/LM_PowershellRemoting_sysmon_1_wsmprovhost.evtx) | scope | the remote command is hostname.exe: a discovery command, not a child this rule treats as suspicious. |
 
 ## Held-out files
 
@@ -94,7 +94,7 @@ Alerts on activity that is not the recorded attack, each explained in the catalo
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 3532 of `T1021.006/lateral_movement/windows-sysmon`, SHA-256 of the original record `3bfe5111e744c54a…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 3532 of `T1021.006/lateral_movement/windows-sysmon`, SHA-256 of the original record `3bfe5111e744c54a…`):
 
 ```json
 {

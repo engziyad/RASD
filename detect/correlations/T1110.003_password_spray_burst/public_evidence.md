@@ -13,7 +13,7 @@ holdout_fired_on: 0
 
 # Public dataset evidence · Password Spray - One Source Failing Authentication for Many Accounts
 
-**Public dataset validation: fires on 8 of the 16 public recordings of its behaviour (quiet on the other 8: 8 need a rule RASD does not have yet)** · 8 alerts · sources: EVTX-ATTACK-SAMPLES, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 8 of the 16 public recordings of its behaviour (quiet on the other 8: 8 need a rule RASD does not have yet)** · 8 alerts · sources: EVTX-ATTACK-SAMPLES, Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -43,17 +43,17 @@ Public data replayed through the tested rule, not lab evidence: the maturity lev
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet.
 
 | Dataset | Kind | Why |
 |---|---|---|
 | [T1110.003/purplesharp_explicit_credential_spray_xml/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_explicit_credential_spray_xml/windows-security.log) | gap | 4648 explicit-credential logons on the source host and 4776 on the domain controller: no 4625, 4768 or 4771 with a client address. Next rule: **ntlm_spray_by_workstation**. |
 | [T1110.003/purplesharp_invalid_users_ntlm_xml/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_invalid_users_ntlm_xml/windows-security.log) | gap | local logon attempts (4625 without a remote address) and 4776 at the domain controller by workstation name: not counted by this correlation. Next rule: **ntlm_spray_by_workstation**. |
-| [T1110.003/purplesharp_multiple_users_from_process_xml/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_multiple_users_from_process_xml/windows-security.log) | gap | local logon attempts by one process (4625 logon type 2, no remote address) Next rule: **local_logon_spray_by_process**. |
+| [T1110.003/purplesharp_multiple_users_from_process_xml/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_multiple_users_from_process_xml/windows-security.log) | gap | local logon attempts by one process (4625 logon type 2, no remote address). Next rule: **local_logon_spray_by_process**. |
 | [T1110.003/purplesharp_valid_users_ntlm_xml/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_valid_users_ntlm_xml/windows-security.log) | gap | the spray runs on the host itself: its 4625 events carry no remote address (logon type 2) and the domain controller logs 4776 by workstation name, which this correlation does not count. Next rule: **ntlm_spray_by_workstation**. |
 | [T1110.003/purplesharp_explicit_credential_spray/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_explicit_credential_spray/windows-security.log) | gap | 4648 explicit-credential logons on the source host only (this export holds no 4776): no 4625, 4768 or 4771 with a client address. Next rule: **explicit_credential_spray**. |
 | [T1110.003/purplesharp_invalid_users_ntlm/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_invalid_users_ntlm/windows-security.log) | gap | the spray runs on the host itself: its 4625 events carry no remote address and the domain controller logs 4776 by workstation name, which this correlation does not count. Next rule: **ntlm_spray_by_workstation**. |
-| [T1110.003/purplesharp_multiple_users_from_process/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_multiple_users_from_process/windows-security.log) | gap | local logon attempts by one process (4625 logon type 2, no remote address) Next rule: **local_logon_spray_by_process**. |
+| [T1110.003/purplesharp_multiple_users_from_process/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_multiple_users_from_process/windows-security.log) | gap | local logon attempts by one process (4625 logon type 2, no remote address). Next rule: **local_logon_spray_by_process**. |
 | [T1110.003/purplesharp_valid_users_ntlm/windows-security](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1110.003/purplesharp_valid_users_ntlm/windows-security.log) | gap | the spray runs on the host itself: its 4625 events carry no remote address and the domain controller logs 4776 by workstation name, which this correlation does not count. Next rule: **ntlm_spray_by_workstation**. |
 
 ## Held-out files
@@ -75,7 +75,7 @@ What each applied filter kept quiet on every dataset in the catalog, and what ea
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 37 of `T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security`, SHA-256 of the original record `115e44343d3a68ac…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 37 of `T1110.003/purplesharp_disabled_users_kerberos_xml/windows-security`, SHA-256 of the original record `115e44343d3a68ac…`):
 
 ```json
 {

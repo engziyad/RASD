@@ -26,7 +26,7 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Response guides | 18 |
 | DFIR playbooks | 14 |
 | Purple scenarios | 14 |
-| Public dataset validation | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](PUBLIC_DATA_VALIDATION.md)) |
+| Public dataset replay | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](PUBLIC_DATA_VALIDATION.md)) |
 | Validated detections (lab evidence) | 0 |
 | Average Engineering Score | 100/100 |
 | Operational Score | Pending |

@@ -6,9 +6,9 @@
 | Script block | Microsoft-Windows-PowerShell/Operational 4104 | `Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-PowerShell/Operational'; Id=4104}` | Captures the decoded script even when the command line is truncated |
 | Parent process tree | Sysmon 1 ParentImage / ParentProcessGuid | `Pivot on ParentProcessGuid in the SIEM` | Separates admin tooling from Office or browser delivery |
 
-[`collect_artifacts.ps1`](collect_artifacts.ps1) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.ps1`](collect_artifacts.ps1) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

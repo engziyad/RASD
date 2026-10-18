@@ -19,12 +19,12 @@ It stays at its maturity level and waits for the lab run ([evidence plan](../../
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **telemetry**: the recording lacks the event the rule reads.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **telemetry**: the recording lacks the event the rule reads.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux.log) | telemetry | Sysmon for Linux process creation only: no web or API access log |
-| [T1190/linux_suspicious_child_of_postgresql/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_suspicious_child_of_postgresql/snapattack_linux.log) | telemetry | Sysmon for Linux process creation only: no web or API access log |
+| [T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux.log) | telemetry | Sysmon for Linux process creation only: no web or API access log. |
+| [T1190/linux_suspicious_child_of_postgresql/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_suspicious_child_of_postgresql/snapattack_linux.log) | telemetry | Sysmon for Linux process creation only: no web or API access log. |
 
 ## Held-out files
 

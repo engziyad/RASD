@@ -11,7 +11,7 @@
 | **Rule** | [`T1558.003_kerberoasting_rc4_tgs`](../T1558.003_kerberoasting_rc4_tgs/) |
 
 ### What triggered
-Detects successful TGS requests (Security 4769) using RC4-HMAC (0x17) for a service whose account is a *user* (not a computer account, not krbtgt).
+Detects successful TGS requests (Security 4769) using a crackable encryption type - RC4-HMAC (0x17, 0x18) or DES (0x1, 0x3), in hex or decimal - for a service whose account is a *user* (not a computer account, not krbtgt).
 
 ### L1 action
 Identify the requesting account, the source IP and the service accounts requested
@@ -28,10 +28,10 @@ Identify the requesting account, the source IP and the service accounts requeste
 
 ### Risk
 Base score **40**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +5 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
-- -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
+- -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - Legacy applications or appliances that only support RC4

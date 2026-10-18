@@ -1,8 +1,9 @@
 """
 rasd_web.py - shared plumbing for the RASD-Red web tests (Python 3.9+, standard library only).
 
-Safety first: a target is accepted only when every address its host resolves to is a
-loopback or private (RFC 1918 / ULA) address. Every connection then goes to the address that
+Safety first: the machine running a test must be marked as a lab (lab_host_problems, the same
+marking the Linux and Windows tests check), and a target is accepted only when every address its
+host resolves to is a loopback or private (RFC 1918 / ULA) address. Every connection then goes to the address that
 was checked (the name is never resolved again, so a DNS answer that changes mid-run cannot
 move the test to another host), redirects are never followed (a 3xx is reported as its
 status), and proxy settings from the environment are ignored. The tests are meant for a lab copy of an
@@ -50,7 +51,51 @@ def check_args(args) -> str:
         raise Refused("Refusing to run without --lab-confirmed.")
     if not MARKER_RE.match(args.marker):
         raise Refused("--marker must look like rasd_1a2b3c4d")
+    assert_lab_host()
     return lab_target(args.target)
+
+
+LAB_MARK = Path("/etc/rasd-lab-host")
+WINDOWS_MACHINE_ENV = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+
+
+def lab_host_problems() -> list[str]:
+    """Why this machine is not marked as a RASD lab; an empty list means it is one. --lab-confirmed
+    is typed and cannot tell a lab VM from a work laptop, and an intranet application has a private
+    address too, so the machine itself is checked - the same marking as red/linux/lab_guard.sh and
+    red/lab/RasdLabGuard.ps1:
+      Linux, macOS: /etc/rasd-lab-host exists, is owned by root and names this host;
+      Windows: the machine-level variable RASD_LAB_HOST names this computer."""
+    if sys.platform == "win32":
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, WINDOWS_MACHINE_ENV) as key:
+                marked = str(winreg.QueryValueEx(key, "RASD_LAB_HOST")[0]).strip()
+        except OSError:
+            marked = ""
+        computer = os.environ.get("COMPUTERNAME", "")
+        if not marked:
+            return ["the machine variable RASD_LAB_HOST is not set. On the lab VM only, as administrator: "
+                    "[Environment]::SetEnvironmentVariable('RASD_LAB_HOST', $env:COMPUTERNAME, 'Machine')"]
+        if marked.lower() != computer.lower():
+            return [f"RASD_LAB_HOST is '{marked}' but this computer is '{computer}'"]
+        return []
+    host = socket.gethostname().split(".")[0]
+    if not LAB_MARK.is_file():
+        return [f"{LAB_MARK} is missing. On the lab machine only: hostname -s | sudo tee {LAB_MARK} >/dev/null"]
+    if LAB_MARK.stat().st_uid != 0:
+        return [f"{LAB_MARK} must be owned by root"]
+    named = "".join(LAB_MARK.read_text(encoding="utf-8", errors="replace").split())
+    if named != host:
+        return [f"{LAB_MARK} names '{named}' but this host is '{host}'"]
+    return []
+
+
+def assert_lab_host() -> None:
+    problems = lab_host_problems()
+    if problems:
+        raise Refused("Refusing to run: this machine is not marked as a RASD lab.\n  - " + "\n  - ".join(problems)
+                      + "\nSee red/lab/README.md (Lab guard).")
 
 
 LAB_NETWORKS = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",

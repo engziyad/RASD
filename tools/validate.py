@@ -311,6 +311,11 @@ def tuning_errors(folder: Path, rule: dict) -> list[str]:
     for key in ("expected_noise", "noise_sources", "never_tune", "review"):
         if not doc.get(key):
             errs.append(f"tuning.yml: missing '{key}'")
+    for key in ("noise_sources", "never_tune"):
+        # an unquoted "text: more text" item is read by YAML as a mapping and would be printed as one
+        for n, item in enumerate(doc.get(key) or [], 1):
+            if not isinstance(item, str):
+                errs.append(f"tuning.yml: {key} #{n} is not text (quote an item that contains ': ')")
     det = rule.get("detection") or {}
     applied = set()
     for i, t in enumerate(doc.get("tunings") or [], 1):

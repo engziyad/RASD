@@ -7,7 +7,7 @@ tunings:
 - id: machine_accounts
   status: applied
   selection: filter_machine
-  reason: Computer accounts ($) request service tickets constantly and are not Kerberoasting targets.
+  reason: Services running as computer accounts ($) have long random passwords, so their tickets are not worth cracking, and they are requested constantly.
 - id: krbtgt
   status: applied
   selection: filter_krbtgt

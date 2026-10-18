@@ -17,7 +17,7 @@ prerequisites:
   - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
   - A lab test account, given to the test as RASD_LAB_EMAIL / RASD_LAB_PASSWORD environment variables
 safety:
-  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
   - Three read-only GET requests after one login
   - Forged tokens are built in memory and never written to disk
 execution:
@@ -73,7 +73,7 @@ sample_output:
       PASS     GET /rest/basket/6 with a token: payload changed, original signature: HTTP 401
     3 check(s), 0 finding(s)
   illustrative_events:
-    - title: Access log line for the rejected forged token (OWASP Juice Shop 17.3.0, captured from a lab run)
+    - title: Access log line for the rejected forged token (illustrative, in the OWASP Juice Shop 17.3.0 log format)
       event:
         line: '127.0.0.1 - - [12/Oct/2026:02:17:46 +0000] "GET /rest/basket/6 HTTP/1.1" 401 31 "-" "RASD-Red/rasd_1a2b3c4d"'
 dfir_playbook: dfir/playbooks/web_application_attack.md

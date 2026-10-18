@@ -14,20 +14,20 @@ tunings:
   filter:
     ParentImage|endswith: '\root\Integration\Integrator.exe'
     CommandLine|contains: '\ProgramData\Microsoft\ClickToRun\'
-  alternative: Pin the full Click-to-Run path of Integrator.exe on your build, and keep the task name prefix Microsoft\Office\ in the filter.
+  alternative: Pin the full Click-to-Run path of Integrator.exe on your build, and add CommandLine|contains '\Microsoft\Office\' (the task name prefix) to the filter.
 - id: sccm_client
   status: proposed
   scope: environment
   residual_risk: medium
   reason: The SCCM client creates tasks that run PowerShell maintenance scripts.
   filter:
-    ParentImage|endswith: \CCM\CcmExec.exe
+    ParentImage: C:\Windows\CCM\CcmExec.exe
   alternative: Allow-list by task name and script path together, never by task name alone.
 - id: all_powershell_actions
   status: rejected
   scope: global
   residual_risk: high
-  reason: Silencing every task whose action is PowerShell would remove most of the alert volume.
+  reason: Silencing every task whose action is PowerShell would hide the most common malicious task actions along with the noise.
   filter:
     CommandLine|contains: powershell
   alternative: Tune per automation account and script path instead.

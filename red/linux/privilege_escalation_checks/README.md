@@ -20,7 +20,7 @@ Run the checks every Linux enumeration script starts with - sudo rights, SUID bi
 
 ## Safety notes
 
-- Runs only with --lab-confirmed on a disposable lab host you own
+- Runs only with --lab-confirmed on a disposable lab host you own, marked by /etc/rasd-lab-host (red/lab/README.md, Lab guard)
 - Read-only; sudo is called with -n, so it never prompts for or uses a password
 - Lists are saved to $RASD\_OUT\_DIR for review and contain no secrets
 

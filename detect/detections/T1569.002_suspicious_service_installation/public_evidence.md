@@ -13,7 +13,7 @@ holdout_fired_on: 2
 
 # Public dataset evidence · Suspicious Service Installation (PsExec-style / Command Services)
 
-**Public dataset validation: fires on 7 of the 9 public recordings of its behaviour (quiet on the other 2: 1 need a rule RASD does not have yet, 1 outside the rule's scope)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 10 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 7 of the 9 public recordings of its behaviour (quiet on the other 2: 1 needs a rule RASD does not have yet, 1 a documented blind spot)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 10 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -47,11 +47,11 @@ metasploit_logonpasswords_lsass_memory_dump repeats records: 3,018 repeats are r
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **scope**: the recorded behaviour is outside what the rule is written to detect.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **blind-spot**: a blind spot the rule documents.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [covenant_sharpsc_create_dcerpc_smb_svcctl](https://github.com/OTRF/Security-Datasets/blob/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_sharpsc_create_dcerpc_smb_svcctl.zip) | scope | the service binary is an implant copied into System32 under a plain name (GruntHTTP2.exe): no shell, script, writable path or known tool name to key on. A hunt for new binaries in System32 covers it |
+| [covenant_sharpsc_create_dcerpc_smb_svcctl](https://github.com/OTRF/Security-Datasets/blob/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_sharpsc_create_dcerpc_smb_svcctl.zip) | blind-spot | the service binary is an implant copied into System32 under a plain name (GruntHTTP2.exe): no shell, script, writable path or known tool name to key on. A hunt for new binaries in System32 covers it. |
 | [lateral-movement/LM_sysmon_psexec_smb_meterpreter](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/Lateral%20Movement/LM_sysmon_psexec_smb_meterpreter.evtx) | gap | the file holds Sysmon events only, no System log: the service appears as a Sysmon 13 write of its ImagePath, which this 7045 rule does not read. Next rule: **service_imagepath_registry**. |
 
 ## Held-out files
@@ -81,7 +81,7 @@ What each applied filter kept quiet on every dataset in the catalog, and what ea
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1569.002/malicious_powershell_executed_as_a_service/windows-xml`, SHA-256 of the original record `7fe7b20b375b6523…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1569.002/malicious_powershell_executed_as_a_service/windows-xml`, SHA-256 of the original record `7fe7b20b375b6523…`):
 
 ```json
 {

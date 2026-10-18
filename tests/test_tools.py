@@ -1331,6 +1331,15 @@ class PublicDatasets(unittest.TestCase):
         finally:
             rule.write_text(text, encoding="utf-8")
 
+    def test_fingerprints_ignore_windows_line_endings(self):
+        """A Windows checkout with CRLF line endings must fingerprint the profiles and labels as the repository does."""
+        with tempfile.TemporaryDirectory() as tmp:
+            lf, crlf = Path(tmp) / "lf.yml", Path(tmp) / "crlf.yml"
+            lf.write_bytes(b"a: 1\nb: 2\n")
+            crlf.write_bytes(b"a: 1\r\nb: 2\r\n")
+            self.assertEqual(datasets._text_digest(lf), datasets._text_digest(crlf))
+            self.assertEqual(datasets._text_digest(lf), hashlib.sha256(b"a: 1\nb: 2\n").hexdigest())
+
     def test_the_catalog_refuses_unknown_next_rules_kinds_overlaps_and_changed_rules(self):
         base = datasets.CATALOG.read_text(encoding="utf-8")
         later = "splunk/T1059.001/encoded_powershell/windows-sysmon"
@@ -2033,6 +2042,13 @@ class Naming(unittest.TestCase):
                              path.name)
 
 
+class SemanticDiff(unittest.TestCase):
+    def test_diff_uses_git_paths_and_names_rule_errors(self):
+        import diff
+        self.assertEqual([diff.shown(v) for v in (True, False, None)], ["match", "no match", "rule error"])
+        self.assertIn('.relative_to(ROOT).as_posix()', (ROOT / "tools" / "diff.py").read_text(encoding="utf-8"))
+
+
 class SafetyAndConversion(unittest.TestCase):
     def test_web_tests_refuse_public_targets(self):
         sys.path.insert(0, str(ROOT / "red" / "web"))
@@ -2060,6 +2076,48 @@ class SafetyAndConversion(unittest.TestCase):
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
         self.assertIn("--lab-confirmed", r.stderr)
+
+    def test_web_tests_check_the_machine_marking(self):
+        """--lab-confirmed is typed; the web tests also check that this machine is marked as a lab, like the
+        Linux and Windows tests. Checked with a stand-in for /etc/rasd-lab-host, never by running a test."""
+        import socket
+        import types
+        sys.path.insert(0, str(ROOT / "red" / "web"))
+        import rasd_web
+
+        class Mark:
+            def __init__(self, exists, uid=0, text=""):
+                self.exists, self.uid, self.text = exists, uid, text
+
+            def is_file(self):
+                return self.exists
+
+            def stat(self):
+                return types.SimpleNamespace(st_uid=self.uid)
+
+            def read_text(self, **_):
+                return self.text
+
+            def __str__(self):
+                return "/etc/rasd-lab-host"
+
+        host = socket.gethostname().split(".")[0]
+        cases = [(Mark(False), "is missing"), (Mark(True, uid=1000, text=host), "owned by root"),
+                 (Mark(True, text="other-vm\n"), "names 'other-vm'"), (Mark(True, text=f" {host}\n"), None)]
+        with mock.patch.object(sys, "platform", "linux"):
+            for mark, expected in cases:
+                with mock.patch.object(rasd_web, "LAB_MARK", mark):
+                    problems = rasd_web.lab_host_problems()
+                    if expected is None:
+                        self.assertEqual(problems, [])
+                    else:
+                        self.assertEqual(len(problems), 1)
+                        self.assertIn(expected, problems[0])
+            args = types.SimpleNamespace(lab_confirmed=True, marker="rasd_1a2b3c4d", target="http://127.0.0.1:3000")
+            with mock.patch.object(rasd_web, "LAB_MARK", Mark(False)):
+                with self.assertRaises(rasd_web.Refused) as refused:
+                    rasd_web.check_args(args)
+                self.assertIn("not marked as a RASD lab", str(refused.exception))
 
     def test_lab_address_is_loopback_rfc1918_or_ula_only(self):
         import ipaddress
@@ -2139,6 +2197,19 @@ class SafetyAndConversion(unittest.TestCase):
         ev = {"UtcTime": "2026-10-12 17:30:00.000"}                      # 17:30 UTC = 20:30 at UTC+3
         self.assertFalse(replay.RiskContext().resolve("outside_business_hours", ev, "h"))
         self.assertTrue(replay.RiskContext(utc_offset=3).resolve("outside_business_hours", ev, "h"))
+
+    def test_risk_conditions_read_the_fields_each_event_type_has(self):
+        ctx = replay.RiskContext()
+        lsass = {"EventID": 10, "SourceImage": r"C:\Users\a\AppData\Local\Temp\d.exe", "SourceUser": r"LAB\administrator"}
+        self.assertTrue(ctx.resolve("payload_in_user_writable_path", lsass, "h"))     # Sysmon 10 has no CommandLine
+        self.assertTrue(ctx.resolve("user_is_privileged", lsass, "h"))
+        run_key = {"EventID": 13, "TargetObject": r"HKU\S-1\Software\Microsoft\Windows\CurrentVersion\Run\x",
+                   "Image": r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE"}
+        self.assertTrue(ctx.resolve("suspicious_parent", run_key, "h"))               # the writer stands in for the parent
+        linux = {"EventID": 1, "CommandLine": "/bin/sh /tmp/x.sh", "User": "root"}
+        self.assertTrue(ctx.resolve("payload_in_user_writable_path", linux, "h"))
+        self.assertTrue(ctx.resolve("user_is_privileged", linux, "h"))
+        self.assertFalse(ctx.resolve("payload_in_user_writable_path", {"CommandLine": "/usr/bin/tmpreaper /var/log"}, "h"))
 
     def test_spl_negation_is_null_safe_and_positive_side_untouched(self):
         rule = {"logsource": {"category": "process_creation"},

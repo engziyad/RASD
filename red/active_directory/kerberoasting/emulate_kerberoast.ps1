@@ -21,7 +21,8 @@ Assert-RasdLab
 # The rule detects RC4 (0x17) tickets. The KDC picks the strongest type the service account
 # supports, so the lab account must be RC4-only (msDS-SupportedEncryptionTypes = 0x4): unset,
 # or with AES bits, current DCs issue an AES ticket, the rule correctly stays silent and the
-# evidence step reports MISSED. Check before requesting rather than after.
+# evidence step reports MISSED. Check before requesting rather than after, and refuse when the
+# account cannot be checked.
 $escaped = $Spn -replace '\\', '\5c' -replace '\*', '\2a' -replace '\(', '\28' -replace '\)', '\29'
 $account = $null
 try {
@@ -29,8 +30,9 @@ try {
     foreach ($p in 'samaccountname', 'msds-supportedencryptiontypes') { $null = $searcher.PropertiesToLoad.Add($p) }
     $account = $searcher.FindOne()
 } catch {
-    Write-Warning "could not read the SPN's account from AD ($($_.Exception.Message)); make sure it is RC4-only (0x4)"
+    throw "could not read the SPN's account from AD ($($_.Exception.Message)); the test checks that it is RC4-only (0x4) before requesting a ticket"
 }
+if (-not $account) { throw "no account in the domain holds the SPN $Spn" }
 if ($account) {
     $name = [string]$account.Properties['samaccountname'][0]
     $types = $account.Properties['msds-supportedencryptiontypes']

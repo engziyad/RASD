@@ -6,141 +6,141 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 
 ## [T1003.001](https://attack.mitre.org/techniques/T1003/001/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon | 10 · ProcessAccess | yes |
-| Sysmon | 1 · ProcessCreate | yes |
-| Sysmon | 11 · FileCreate | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon | 10 · ProcessAccess | rundll32.exe opening lsass.exe with read access | yes |
+| Sysmon | 1 · ProcessCreate | rundll32.exe with comsvcs.dll MiniDump on the command line | yes |
+| Sysmon | 11 · FileCreate | The dump file written by rundll32 | no |
 
 ## [T1021.006](https://attack.mitre.org/techniques/T1021/006/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Security (target) | 4624 · An account was successfully logged on | no |
-| Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | no |
-| Sysmon (target) | 1 · ProcessCreate | no |
-| Sysmon (target) | 1 · ProcessCreate | yes |
-| Sysmon (source) | 3 · NetworkConnect | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Security (target) | 4624 · An account was successfully logged on | Network logon from the source host | no |
+| Microsoft-Windows-WinRM/Operational (target) | 91 · Creating WSMan shell on server | A remote shell was created for the connecting user | no |
+| Sysmon (target) | 1 · ProcessCreate | wsmprovhost.exe started to host the remote session | no |
+| Sysmon (target) | 1 · ProcessCreate | cmd.exe started by the session host to run the remote command | yes |
+| Sysmon (source) | 3 · NetworkConnect | Connection to the target on TCP 5985 (HTTP) or 5986 (HTTPS) | no |
 
 ## [T1053.003](https://attack.mitre.org/techniques/T1053/003/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| auditd | SYSCALL / EXECVE · key=cron | no |
-| syslog / journald | crontab[pid]: (<user>) REPLACE (<user>) | no |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| auditd | SYSCALL / EXECVE · key=cron | crontab executed and the spool file written | no |
+| syslog / journald | crontab[pid]: (&lt;user&gt;) REPLACE (&lt;user&gt;) | The cron package logs every crontab replacement | no |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | crontab process and the spool file write | yes |
 
 ## [T1053.005](https://attack.mitre.org/techniques/T1053/005/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | yes |
-| Sysmon | 1 · ProcessCreate | yes |
-| Security | 4698 · A scheduled task was created | no |
-| Microsoft-Windows-TaskScheduler/Operational | 106 · Task registered | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | schtasks.exe creating the task | yes |
+| Sysmon | 1 · ProcessCreate | powershell.exe registering the second task | yes |
+| Security | 4698 · A scheduled task was created | Task name and full task XML (action, trigger, principal) | no |
+| Microsoft-Windows-TaskScheduler/Operational | 106 · Task registered | Registration of both tasks by the current user | no |
 
 ## [T1059.001](https://attack.mitre.org/techniques/T1059/001/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | yes |
-| Microsoft-Windows-PowerShell/Operational | 4104 · Script block logged | no |
-| Security | 4688 · Process created | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | Child powershell.exe started with an encoded command | yes |
+| Microsoft-Windows-PowerShell/Operational | 4104 · Script block logged | The decoded script block, containing the marker | no |
+| Security | 4688 · Process created | Same process creation, when command-line auditing is enabled | no |
 
 ## [T1059.004](https://attack.mitre.org/techniques/T1059/004/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| auditd | EXECVE · sh -c, base64 -d, sh | no |
-| auditd | EXECVE · /tmp/<marker>.sh | no |
-| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| auditd | EXECVE · sh -c, base64 -d, sh | The decode-and-pipe chain, one EXECVE record per process | no |
+| auditd | EXECVE · /tmp/&lt;marker&gt;.sh | Execution of a file under /tmp | no |
+| Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | Process creation with the full command line; file creation in /tmp | yes |
 
 ## [T1083](https://attack.mitre.org/techniques/T1083/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| auditd | EXECVE · find / -perm -4000 | no |
-| auditd | EXECVE · sudo -n -l / getcap -r / | no |
-| auth.log / journald | sudo: <user> : command not allowed / list | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| auditd | EXECVE · find / -perm -4000 | The SUID search, the most recognisable enumeration command | no |
+| auditd | EXECVE · sudo -n -l / getcap -r / | Rights and capabilities enumeration | no |
+| auth.log / journald | sudo: &lt;user&gt; : command not allowed / list | sudo logs the -l listing attempt for the user | no |
 
 ## [T1087.002](https://attack.mitre.org/techniques/T1087/002/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon (workstation) | 3 · NetworkConnect | no |
-| Directory Service (domain controller) | 1644 · LDAP search statistics | no |
-| Security (domain controller) | 4662 · An operation was performed on an object | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon (workstation) | 3 · NetworkConnect | powershell.exe connecting to the DC on TCP 389 | no |
+| Directory Service (domain controller) | 1644 · LDAP search statistics | Filter, base, scope and client IP of each search (only with Field Engineering logging) | no |
+| Security (domain controller) | 4662 · An operation was performed on an object | Object reads, only where a SACL audits them (for example a honeypot account) | no |
 
 ## [T1110.003](https://attack.mitre.org/techniques/T1110/003/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Security (domain controller) | 4771 · Kerberos pre-authentication failed | yes |
-| Security (domain controller) | 4776 · The computer attempted to validate the credentials | no |
-| Security (domain controller) | 4625 · An account failed to log on | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Security (domain controller) | 4771 · Kerberos pre-authentication failed | One per account when Kerberos is used; Failure Code 0x18 = wrong password | yes |
+| Security (domain controller) | 4776 · The computer attempted to validate the credentials | One per account when NTLM is used; Error Code 0xC000006A = wrong password | no |
+| Security (domain controller) | 4625 · An account failed to log on | Failed network logon (type 3) for each LDAP bind, logged by the DC that served the bind | yes |
 
 ## [T1190](https://attack.mitre.org/techniques/T1190/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP request · sequential object IDs | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Web server / reverse proxy access log | HTTP request · sequential object IDs | One authenticated session requesting /rest/basket/1, /2, /3 ... within seconds | yes |
 
 ## [T1218.011](https://attack.mitre.org/techniques/T1218/011/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | yes |
-| Sysmon | 7 · ImageLoad | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | rundll32.exe started with a javascript: argument | yes |
+| Sysmon | 7 · ImageLoad | mshtml.dll and jscript9.dll loaded into rundll32 (if image-load logging is enabled) | no |
 
 ## [T1505.003](https://attack.mitre.org/techniques/T1505/003/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP POST · multipart upload | no |
-| WAF | file-type or size block | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Web server / reverse proxy access log | HTTP POST · multipart upload | Uploads to the upload endpoint and the status each one got | no |
+| WAF | file-type or size block | Blocked uploads, when a WAF inspects multipart bodies | no |
 
 ## [T1547.001](https://attack.mitre.org/techniques/T1547/001/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon | 13 · RegistryEvent (value set) | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon | 13 · RegistryEvent (value set) | The Run value written by powershell.exe | yes |
 
 ## [T1558.003](https://attack.mitre.org/techniques/T1558/003/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Security (domain controller) | 4769 · A Kerberos service ticket was requested | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Security (domain controller) | 4769 · A Kerberos service ticket was requested | Service ticket issued for the SPN's account, logged on the DC | yes |
 
 ## [T1569.002](https://attack.mitre.org/techniques/T1569/002/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| System | 7045 · A service was installed in the system | yes |
-| Security | 4697 · A service was installed in the system | no |
-| Sysmon | 1 · ProcessCreate | no |
-| Sysmon | 13 · RegistryEvent (value set) | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| System | 7045 · A service was installed in the system | Service Control Manager records the new service | yes |
+| Security | 4697 · A service was installed in the system | Same installation in the Security log, with the installing account | no |
+| Sysmon | 1 · ProcessCreate | sc.exe with the create command line | no |
+| Sysmon | 13 · RegistryEvent (value set) | ImagePath written under the Services key | no |
 
 ## [T1595.003](https://attack.mitre.org/techniques/T1595/003/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 / 403 | yes |
-| Application log | authentication failure | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Web server / reverse proxy access log | HTTP request · 401 / 403 | A burst of rejected requests across many API paths from one client | yes |
+| Application log | authentication failure | Token validation errors (missing header, invalid signature), when the application logs them | no |
 
 ## [T1606](https://attack.mitre.org/techniques/T1606/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Web server / reverse proxy access log | HTTP request · 401 after 200 for the same path | no |
-| Application log | token validation failure | no |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Web server / reverse proxy access log | HTTP request · 401 after 200 for the same path | The same client and path accepted once, then rejected for forged tokens | no |
+| Application log | token validation failure | Signature or algorithm errors, when the application logs them | no |
 
 ## [T1685.005](https://attack.mitre.org/techniques/T1685/005/)
 
-| Source | Event | Rule uses it |
-|---|---|---|
-| Sysmon | 1 · ProcessCreate | yes |
-| System | 104 · The log file was cleared | yes |
-| Security | 1102 · The audit log was cleared | yes |
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Sysmon | 1 · ProcessCreate | wevtutil.exe clearing a log | yes |
+| System | 104 · The log file was cleared | Written by Microsoft-Windows-Eventlog for every cleared log except Security. The cleared log's name sits in UserData/LogFileCleared/Channel; Export-LabTelemetry.ps1 names it Channel_Cleared so it does not overwrite the event's own Channel (System) - in a SIEM look for the UserData field instead | yes |
+| Security | 1102 · The audit log was cleared | Written when the Security log is cleared (opt-in step only) | yes |
 
 
 <sub>Generated by tools/chain.py · RASD · Attack-to-Defense Validation Framework</sub>

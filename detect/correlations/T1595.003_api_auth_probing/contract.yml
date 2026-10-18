@@ -34,6 +34,8 @@ detection_logic:
   - Slow probes that stay under 5 rejected paths per client in every 5-minute window
   - A reverse proxy that logs its own address instead of the client's (use X-Forwarded-For)
   - A burst of 5 to 8 paths can be split by a window boundary; 9 or more within 5 minutes always alert
+  - Directory or file brute force answered mostly 404 - only 401 and 403 count
+  - DNS subdomain brute forcing - needs DNS query logs, which RASD does not read
 coverage_depth:
   level: partial
   reason: Rejected requests on many paths from one client; distributed and slow probing need longer-window hunting

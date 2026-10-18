@@ -34,7 +34,7 @@ line-length = 130
 extend-exclude = ["red/results"]
 
 [tool.ruff.lint]
-# pycodestyle, pyflakes, bugbear, flake8-bandit (security), pyupgrade, simplify, comprehensions, ruff
+# pycodestyle, pyflakes, bugbear, flake8-bandit (security), pyupgrade, simplify, comprehensions, flake8-pie, ruff
 select = ["E", "F", "W", "B", "S", "UP", "SIM", "C4", "PIE", "RUF"]
 ignore = [
     "E501",    # generated SPL / KQL strings, regexes and Markdown table rows read better unbroken

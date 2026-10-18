@@ -1170,7 +1170,7 @@ datasets:
   title: Covenant SharpSC creating a remote service
   quiet:
     T1569.002_suspicious_service_installation:
-      kind: scope
+      kind: blind-spot
       reason: 'the service binary is an implant copied into System32 under a plain name (GruntHTTP2.exe): no shell, script, writable
         path or known tool name to key on. A hunt for new binaries in System32 covers it'
 - id: otrf/empire_psexec_dcerpc_tcp_svcctl
@@ -1387,7 +1387,7 @@ datasets:
         RPC. No schtasks process creation, and the target''s task registration is not in the file'
     T1053.005_powershell_scheduled_task_creation:
       kind: telemetry
-      reason: 'PowerShell''s image load and RPC connections only: no process creation with the cmdlets, and no script block logging'
+      reason: 'PowerShell''s image load and RPC connections only: no process creation with the cmdlets on its command line, which is what this rule reads'
 - id: evtx/privilege-escalation/sysmon_1_11_exec_as_system_via_schedtask
   source: evtx-attack-samples
   path: Privilege Escalation/sysmon_1_11_exec_as_system_via_schedtask.evtx
@@ -2884,7 +2884,8 @@ datasets:
   - T1053.005_schtasks_suspicious_creation
   overlap:
     splunk/T1053.005/lateral_movement/windows-security: 'the target''s 4698 and 4699 here are the two records of that file (H08), exported
-      there as XML: the same records in another format, not edited ones'
+      there as XML: the same records in another format. They count as edited because the two formats carry different fields; nobody
+      changed them'
 - id: splunk/T1053.005/lateral_movement_lolbas/windows-security.log
   source: splunk-attack-data
   path: datasets/attack_techniques/T1053.005/lateral_movement_lolbas/windows-security.log

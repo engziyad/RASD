@@ -16,7 +16,7 @@ RASD tracks four validation levels, and only the lab run moves the maturity leve
 ## 1 · Prepare the lab
 - A disposable Windows 10/11 or Server VM joined to a lab domain, with Sysmon installed (a configuration that logs process creation, process access to lsass.exe and Run-key writes) and command-line auditing on.
 - Sysmon with [`red/lab/sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml) or any configuration that logs the same events; `red/lab/Test-LabReadiness.ps1` proves it with a live probe.
-- Audit policy on the DC: Kerberos Service Ticket Operations (4769), Kerberos Authentication Service and Credential Validation failures (4771, 4776), Logon failures (4625).
+- Audit policy on the DC: Kerberos Service Ticket Operations (4769), Kerberos Authentication Service and Credential Validation failures (4768, 4771, 4776), Logon failures (4625).
 - For the Linux tests: a disposable Linux VM with Sysmon for Linux logging process creation (event 1) to syslog or journald.
 - For the web tests: a lab copy of a web application (for example OWASP Juice Shop) on localhost or a private address, with its access log in combined format.
 - Optional: the VM's logs forwarded to your SIEM, so the SIEM result can be scored too.
@@ -34,9 +34,9 @@ Web and Linux tests run with `python3 red/run_red.py` and write the same results
 
 ## 3 · Export the telemetry
 ```powershell
-.\red\Export-LabTelemetry.ps1 -Since '<start time printed by the runner>'
+.\red\Export-LabTelemetry.ps1 -Since '<start time printed by the runner>' -OutFile .\lab-export.jsonl
 ```
-On the domain controller, for Kerberoasting and the password spray: `.\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -OutFile .\dc-export.jsonl`.
+On the domain controller, for Kerberoasting and the password spray: `.\red\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '<start time printed by the runner>' -OutFile .\dc-export.jsonl`.
 
 On a Linux lab host with Sysmon for Linux, after `run_red.py`:
 

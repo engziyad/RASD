@@ -31,13 +31,13 @@ detection_logic:
   severity: high
   expected_noise: low
   blind_spots:
-  - Targeted roasting of one to four service accounts per 10 minutes - covered by the RC4 single-event rule and by honeypot SPN accounts
+  - Targeted roasting of one to four service accounts per 10 minutes - the RC4 single-event rule catches RC4 tickets only; AES roasting of so few accounts is caught by neither rule (a honeypot SPN account is the recommended control)
   - Roasting spread over several source addresses, each below the threshold
   - AS-REP roasting (accounts without pre-authentication) produces 4768, not 4769, and is not counted here
   - A burst of 5 to 8 service accounts can be split by a window boundary; 9 or more within 10 minutes always alert
 coverage_depth:
   level: high
-  reason: Volume over every encryption type complements the RC4 single-event rule; together they cover RC4 and AES roasting, with a proven 9-account guarantee
+  reason: Volume over every encryption type complements the RC4 single-event rule - RC4 roasting of any size, AES roasting of 5 or more accounts in 10 minutes - with a proven 9-account guarantee
 risk_model:
   base_score: 65
   increase_if:

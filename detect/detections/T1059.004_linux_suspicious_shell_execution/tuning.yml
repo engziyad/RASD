@@ -14,9 +14,9 @@ tunings:
     ParentImage|endswith:
     - /dpkg
     - /rpm
-  alternative: Narrow it to the package names your hosts install, from the parent command line.
+  alternative: Narrow it to the temp-script branch only (a /bin/sh /var/tmp/rpm-tmp.* first argument) and to the full parent paths (/usr/bin/dpkg, /usr/bin/rpm), so a Base64 pipe or a /dev/shm binary under a package manager still alerts.
 never_tune:
-- Never filter Base64 piped into a shell by user or host - the pattern has no routine administrative use.
+- Never filter Base64 piped into a shell by user or host - the provisioning scripts that do it are few and are excepted by their exact command line, never by account.
 - Never filter binaries in /dev/shm.
 review:
   owner: detection-engineering

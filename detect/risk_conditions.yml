@@ -12,16 +12,16 @@ conditions:
     description: The host's role in the assets file is domain-controller, server or critical.
   user_is_privileged:
     resolve: auto
-    description: The user is marked privileged in the users file, or is a built-in administrator account.
+    description: The user is marked privileged in the users file, or is a built-in administrator account (or root).
   outside_business_hours:
     resolve: auto
     description: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset).
   payload_in_user_writable_path:
     resolve: auto
-    description: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads.
+    description: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm.
   suspicious_parent:
     resolve: auto
-    description: The parent process is an Office application, a browser, mshta, wscript or cscript.
+    description: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript.
   remote_execution:
     resolve: auto
     description: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event).

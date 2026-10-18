@@ -25,7 +25,7 @@ Known benign sources for this detection:
 - EDR, AV and backup agents that open LSASS for inspection
 - Defender running from C:\Program Files\Windows Defender (builds without platform updates) and EDR sensors
 - svchost-hosted services, Task Manager, WerFault and the Malicious Software Removal Tool on some builds
-- {'PowerShell 7 (pwsh.exe) Get-Process': 'its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply'}
+- PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
 - Windows components outside the named list on builds not covered by public data (add them by full path)
@@ -45,7 +45,7 @@ Alert:        T1003.001_lsass_memory_access for <host> at <time, UTC>
 Observed:     TargetImage=<value>  SourceImage=<value>  GrantedAccess=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1003.001_lsass_memory_access
+Follow-up:    <sent to detection engineering as a true negative for T1003.001_lsass_memory_access: ticket | not yet>
 ```
 
 ## Escalation to incident response

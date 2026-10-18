@@ -5,7 +5,7 @@
 | LDAP search log | DC Directory Service log, event 1644 | `Get-WinEvent -FilterHashtable @{LogName='Directory Service'; Id=1644}` | Which filters were run and from which client |
 | Client process | Sysmon 3 on the workstation (DestinationPort 389/636/3268) | `Pivot on the source IP and time` | Ties the LDAP traffic to a process (PowerShell, SharpHound, ADExplorer...) |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

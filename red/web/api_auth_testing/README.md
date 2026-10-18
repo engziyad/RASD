@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **ATT&CK technique** | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) Active Scanning: Wordlist Scanning |
+| **Related** | [T1190](https://attack.mitre.org/techniques/T1190/) |
 | **Tactics** | reconnaissance |
-| **MITRE ATT&CK** | T1190 Exploit Public-Facing Application (the forged-JWT calls test for an authentication bypass) |
 | **OWASP API Security Top 10 (2023)** | API2 Broken Authentication |
 | **Platform** | web · runner: python |
 | **Status** | Detect: **covered** |
@@ -22,7 +22,7 @@ Check that every protected API endpoint refuses a request with no token, a malfo
 
 ## Safety notes
 
-- Runs only with --lab-confirmed; refuses any target that resolves to a public address
+- Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
 - Read-only GET requests, paced at 5 per second
 - Malformed tokens can crash fragile applications: OWASP Juice Shop 17.3.0 terminates on a malformed JWT at /api/Deliverys, so that path is not in the defaults
 

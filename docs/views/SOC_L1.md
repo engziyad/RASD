@@ -32,8 +32,8 @@ Confirm host, source process path, signer and user; check whether the source is 
 ### Risk
 Base score **60**.
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - -30 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 - -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
@@ -41,7 +41,7 @@ Base score **60**.
 - EDR, AV and backup agents that open LSASS for inspection
 - Defender running from C:\Program Files\Windows Defender (builds without platform updates) and EDR sensors
 - svchost-hosted services, Task Manager, WerFault and the Malicious Software Removal Tool on some builds
-- {'PowerShell 7 (pwsh.exe) Get-Process': 'its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply'}
+- PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
 - Windows components outside the named list on builds not covered by public data (add them by full path)
@@ -77,15 +77,15 @@ Record the source host, account and command line, and check them against known a
 3. Check whether this account normally administers this host over WinRM
 
 ### Escalate if
-- Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe
+- Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe, other than a documented automation bootstrap from its known host
 - The source host or account has never used WinRM against this target
 - The session ran discovery or credential commands (whoami /all, net group, nltest)
 
 ### Risk
 Base score **50**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
@@ -93,9 +93,10 @@ Base score **50**.
 ### Known benign sources
 - Administrators running cmd.exe commands or batch files over PowerShell remoting or winrs
 - Configuration management that launches cmd.exe through WinRM
+- Ansible's WinRM connection, which starts cmd /C PowerShell ... -EncodedCommand under winrshost.exe on every managed host (public data: the labs' provisioning)
 
 ### Never tune
-- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host.
+- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host in general. The one exception is a reviewed automation bootstrap (for example Ansible's), excepted in the SIEM by its source host together with its exact command line.
 - Never filter by account alone - a stolen administrator account is exactly what this rule must catch.
 
 ### Close or escalate
@@ -112,13 +113,13 @@ Base score **50**.
 | **Rule** | [`T1053.003_crontab_noninteractive_install`](../../detect/detections/T1053.003_crontab_noninteractive_install/) |
 
 ### What triggered
-Detects crontab replacing a user's cron table from standard input (crontab -) or from a file (crontab <file>), with or without -u <user>.
+Detects crontab replacing a user's cron table from standard input (crontab -) or from a file (crontab &lt;file&gt;), with or without -u &lt;user&gt;.
 
 ### L1 action
 Save the user's cron table, record the parent process and session, and compare with configuration management
 
 ### First checks
-1. Read the new cron table (crontab -l -u <user>) and find the line that was added
+1. Read the new cron table (crontab -l -u &lt;user&gt;) and find the line that was added
 2. Identify the parent process and session that ran crontab (SSH session, web server, cron itself)
 3. Check whether configuration management owns this host and this user's cron table
 
@@ -129,8 +130,8 @@ Save the user's cron table, record the parent process and session, and compare w
 
 ### Risk
 Base score **45**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
@@ -158,7 +159,7 @@ Base score **45**.
 | **Rule** | [`T1053.005_powershell_scheduled_task_creation`](../../detect/detections/T1053.005_powershell_scheduled_task_creation/) |
 
 ### What triggered
-Detects PowerShell command lines that register a scheduled task with the ScheduledTasks module (Register-ScheduledTask together with an action from New-ScheduledTaskAction) instead of schtasks.exe.
+Detects PowerShell command lines that register or rewrite a scheduled task with the ScheduledTasks module (Register-ScheduledTask or Set-ScheduledTask) together with one suspicious indicator: an inline New-ScheduledTaskAction, $env:TEMP / $env:APPDATA or a URL, or a user-writable path.
 
 ### L1 action
 Validate host and user, read the task name and the action in the command line, note the parent process
@@ -175,8 +176,8 @@ Validate host and user, read the task name and the action in the command line, n
 
 ### Risk
 Base score **40**.
-- +20 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +20 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
+- +20 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
@@ -202,7 +203,7 @@ Base score **40**.
 | **Rule** | [`T1053.005_schtasks_suspicious_creation`](../../detect/detections/T1053.005_schtasks_suspicious_creation/) |
 
 ### What triggered
-Detects schtasks.exe /create where the task action points to a user-writable location, a script interpreter, or a remote resource - common persistence and lateral-execution patterns.
+Detects schtasks.exe /create or /change (a new task, or an existing task's action hijacked) with a script interpreter, a proxy binary, a user-writable location or a URL anywhere on the command line, and any remote creation as SYSTEM (/S with /RU SYSTEM) - common persistence and lateral-execution patterns.
 
 ### L1 action
 Validate host, user, task name and the command path of the action
@@ -217,15 +218,15 @@ Validate host, user, task name and the command path of the action
 ### Escalate if
 - Remote creation with /S and /RU SYSTEM
 - An existing task's action changed (/change) to a new binary
-- Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32
+- Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32 from an unexpected parent or account, or from a writable path
 - Payload under AppData, ProgramData, Public or Temp
 
 ### Risk
 Base score **40**.
 - +20 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
-- +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +15 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +15 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +15 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
 
@@ -267,18 +268,19 @@ Decode the Base64 (UTF-16LE), validate host and user, note the parent process
 
 ### Risk
 Base score **40**.
-- +25 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +25 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 - -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - Management agents (SCCM, Intune, RMM tools) that use encoded commands
+- Ansible's WinRM bootstrap, an -EncodedCommand started by cmd /C on every managed host (public data: the labs' provisioning)
 
 ### Never tune
-- Never filter by the Base64 content: the same encoded blob can be re-encoded trivially.
+- Never filter by the Base64 content alone: the same payload can be re-encoded trivially. A reviewed automation bootstrap is excepted only by its source host together with its exact command line.
 - Never filter Office, browser or script-host parents: they are the delivery path this rule exists for.
 
 ### Close or escalate
@@ -295,7 +297,7 @@ Base score **40**.
 | **Rule** | [`T1059.004_linux_suspicious_shell_execution`](../../detect/detections/T1059.004_linux_suspicious_shell_execution/) |
 
 ### What triggered
-Detects two shell patterns intrusions on Linux rely on: a Base64 blob decoded and piped straight into a shell (echo <blob> | base64 -d | sh), and code started from a world-writable temporary directory - a binary under /tmp, /var/tmp or /dev/shm, or a shell running a script from there.
+Detects two shell patterns intrusions on Linux rely on: a Base64 blob decoded and piped straight into a shell (echo &lt;blob&gt; | base64 -d | sh), and code started from a world-writable temporary directory - a binary under /tmp, /var/tmp or /dev/shm, or a shell running a script from there.
 
 ### L1 action
 Save the command line, decode the blob or copy the script before it is deleted, and record the parent chain
@@ -312,7 +314,7 @@ Save the command line, decode the blob or copy the script before it is deleted, 
 
 ### Risk
 Base score **60**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
@@ -323,7 +325,7 @@ Base score **60**.
 - Provisioning scripts that pass small Base64 payloads to a shell
 
 ### Never tune
-- Never filter Base64 piped into a shell by user or host - the pattern has no routine administrative use.
+- Never filter Base64 piped into a shell by user or host - the provisioning scripts that do it are few and are excepted by their exact command line, never by account.
 - Never filter binaries in /dev/shm.
 
 ### Close or escalate
@@ -336,11 +338,11 @@ Base score **60**.
 | | |
 |---|---|
 | **Technique** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) |
-| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Severity** | `high` · confidence `high` · expected noise `medium` |
 | **Rule** | [`T1218.011_rundll32_suspicious_execution`](../../detect/detections/T1218.011_rundll32_suspicious_execution/) |
 
 ### What triggered
-Detects rundll32.exe abused as a signed proxy to execute code: script protocol handlers (javascript:/vbscript:), DLLs loaded from user-writable paths, the comsvcs.dll MiniDump export, or rundll32 with no arguments (a classic process-injection host).
+Detects rundll32.exe abused as a signed proxy to execute code: script protocol handlers (javascript:/vbscript:), DLLs or paths in user-writable folders, the comsvcs.dll MiniDump export, rundll32 with no arguments (a classic process-injection host), Windows exports that start another program (zipfldr, advpack, pcwutl), shell32 / url.dll handlers that pass any path or URL to the shell, a DLL loaded straight from a share, and a DLL dropped straight into a user profile.
 
 ### L1 action
 Retrieve the referenced DLL or script, hash it, check the signer and the parent process
@@ -357,8 +359,8 @@ Retrieve the referenced DLL or script, hash it, check the signer and the parent 
 
 ### Risk
 Base score **60**.
-- +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +20 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 
@@ -382,7 +384,7 @@ Base score **60**.
 | **Rule** | [`T1547.001_registry_run_key_persistence`](../../detect/detections/T1547.001_registry_run_key_persistence/) |
 
 ### What triggered
-Detects a value written under a Run / RunOnce key (HKLM or HKCU) whose data points to a user-writable directory or a script interpreter.
+Detects a value written under a Run / RunOnce key (HKLM or HKCU) whose data points to a user-writable directory (or an unexpanded variable for one, or a file straight in a user profile), or starts a script interpreter or a proxy binary (rundll32, regsvr32, cmd /c).
 
 ### L1 action
 Check which process wrote the value, the full key and the data; hash the referenced file
@@ -399,8 +401,8 @@ Check which process wrote the value, the full key and the data; hash the referen
 
 ### Risk
 Base score **40**.
-- +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- +20 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +15 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
+- +20 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 - -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
@@ -425,7 +427,7 @@ Base score **40**.
 | **Rule** | [`T1558.003_kerberoasting_rc4_tgs`](../../detect/detections/T1558.003_kerberoasting_rc4_tgs/) |
 
 ### What triggered
-Detects successful TGS requests (Security 4769) using RC4-HMAC (0x17) for a service whose account is a *user* (not a computer account, not krbtgt).
+Detects successful TGS requests (Security 4769) using a crackable encryption type - RC4-HMAC (0x17, 0x18) or DES (0x1, 0x3), in hex or decimal - for a service whose account is a *user* (not a computer account, not krbtgt).
 
 ### L1 action
 Identify the requesting account, the source IP and the service accounts requested
@@ -442,10 +444,10 @@ Identify the requesting account, the source IP and the service accounts requeste
 
 ### Risk
 Base score **40**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +5 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
-- -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
+- -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - Legacy applications or appliances that only support RC4
@@ -487,7 +489,7 @@ Review ServiceName, ImagePath, AccountName and host; check for a change record o
 Base score **60**.
 - +15 if remote execution *(auto: The activity was triggered from another host (remote schtasks /S, a service installed over SMB, a network logon event))*
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
 
@@ -511,7 +513,7 @@ Base score **60**.
 | **Rule** | [`T1685.005_event_log_clearing`](../../detect/detections/T1685.005_event_log_clearing/) |
 
 ### What triggered
-Detects attempts to wipe Windows event logs with wevtutil, PowerShell (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog) or WMIC.
+Detects attempts to wipe Windows event logs with wevtutil, PowerShell (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog) or the WMI ClearEventLog method.
 
 ### L1 action
 Identify user, host and which log was targeted; check for a documented maintenance window
@@ -529,7 +531,7 @@ Identify user, host and which log was targeted; check for a documented maintenan
 Base score **60**.
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources
@@ -660,7 +662,7 @@ Base score **60**.
 - Vulnerability scanners or monitoring tools that test credentials against many accounts
 - Stale credentials of disabled, expired or locked accounts (4768 0x12) on shared devices and scripts
 - Non-Windows Kerberos clients retrying with a wrong default realm or principal (4768 0x6)
-- {'Account enumeration (for example kerbrute userenum) - unknown names only, no password tried - also alerts': 'worth a look, but it is reconnaissance, not a spray'}
+- Account enumeration (for example kerbrute userenum) - unknown names only, no password tried - also alerts: worth a look, but it is reconnaissance, not a spray
 
 ### Never tune
 - Never exclude a source address without a replacement threshold: the host you exclude is the one an attacker will spray from.

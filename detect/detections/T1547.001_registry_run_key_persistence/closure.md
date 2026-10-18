@@ -36,7 +36,7 @@ Alert:        T1547.001_registry_run_key_persistence for <host> at <time, UTC>
 Observed:     TargetObject=<value>  Details=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1547.001_registry_run_key_persistence
+Follow-up:    <sent to detection engineering as a true negative for T1547.001_registry_run_key_persistence: ticket | not yet>
 ```
 
 ## Escalation to incident response

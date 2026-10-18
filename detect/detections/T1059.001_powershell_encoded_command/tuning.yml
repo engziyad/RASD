@@ -3,13 +3,14 @@ detection_id: T1059.001_powershell_encoded_command
 expected_noise: medium
 noise_sources:
 - Management agents (SCCM, Intune, RMM tools) that use encoded commands
+- "Ansible's WinRM bootstrap, an -EncodedCommand started by cmd /C on every managed host (public data: the labs' provisioning)"
 tunings:
 - id: sccm_client
   status: applied
   selection: filter_sccm
   reason: The SCCM client runs compliance scripts as -EncodedCommand children of CcmExec.exe.
 never_tune:
-- 'Never filter by the Base64 content: the same encoded blob can be re-encoded trivially.'
+- 'Never filter by the Base64 content alone: the same payload can be re-encoded trivially. A reviewed automation bootstrap is excepted only by its source host together with its exact command line.'
 - 'Never filter Office, browser or script-host parents: they are the delivery path this rule exists for.'
 review:
   owner: detection-engineering

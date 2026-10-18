@@ -10,7 +10,7 @@ Hand-written hunts that complement the detections and correlations. They are **n
 | `password_spray_hunt` | [`T1110.003_password_spray_burst`](../../detect/correlations/T1110.003_password_spray_burst/) | One source failing Kerberos authentication (4771 0x18, 4768 0x6 or 0x12) or NTLM validation (4776 0xc000006a or 0xc0000064) for 5+ distinct accounts within 10 minutes. The alerting, tested version is the correlation (4771, 4768 and 4625 per client address); this hunt adds 4776 grouped by the workstation name the client claims, which public data shows for sprays run on the host itself |
 | `powershell_encoded_with_network_or_child` | [`T1059.001_powershell_encoded_command`](../../detect/detections/T1059.001_powershell_encoded_command/) | Encoded PowerShell escalated from medium to high when it makes network connections or spawns children |
 
-Every hunt ships as `.spl` (Splunk) and `.kql` (Sentinel / Defender).
+Every hunt ships as `.spl` (Splunk) and `.kql` (Sentinel: it reads `SecurityEvent` and the `Sysmon` parser function, so it does not run as-is in Defender XDR advanced hunting; Defender versions of the detection queries are in [`queries/mde`](../mde/)).
 
 ## Optional enrichment
 

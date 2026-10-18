@@ -38,7 +38,7 @@ Alert:        T1595.003_api_auth_probing for <c-ip> at <window start, UTC>
 Observed:     <n> distinct cs-uri-stem from c-ip <value> in the 5m window: <values>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1595.003_api_auth_probing
+Follow-up:    <sent to detection engineering as a true negative for T1595.003_api_auth_probing: ticket | not yet>
 ```
 
 ## Escalation to incident response

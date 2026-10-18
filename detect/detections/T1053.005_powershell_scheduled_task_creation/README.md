@@ -9,8 +9,8 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 14 true positive · 6 true negative · 3 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 158 variants |
-| **Parity** | KQL and SPL identical to the rule on 1772 events · Defender advanced hunting identical on the same events |
-| **Public data** | fires on 2 of 3 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
+| **Parity** | KQL and SPL identical to the rule on 1772 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Public data** | fires on 2 of 3 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) · [SPL](../../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) · [Defender](../../../queries/mde/T1053.005_powershell_scheduled_task_creation.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [scheduled_task_creation](../../../red/windows/scheduled_task_creation/) · DFIR: [lateral_movement](../../../dfir/playbooks/lateral_movement.md) · DFIR: [scheduled_task_persistence](../../../dfir/playbooks/scheduled_task_persistence.md) · DFIR: [suspicious_powershell](../../../dfir/playbooks/suspicious_powershell.md) · purple: [T1053.005_scheduled_task](../../../purple/scenarios/T1053.005_scheduled_task.md) |
@@ -20,7 +20,7 @@
 The rule [Scheduled Task Created With Suspicious Action](../T1053.005_schtasks_suspicious_creation/) only sees `schtasks.exe`. Tasks registered with the PowerShell ScheduledTasks module never spawn it. This rule closes that gap for command-line usage, which deepens T1053.005 coverage instead of overloading one rule.
 
 ## Telemetry required
-Sysmon **EID 1** - the generated KQL and SPL read Sysmon. Security **4688** (with command-line auditing) works after remapping `NewProcessName` / `ParentProcessName` in `tools/mappings.yml`; it has no `OriginalFileName`, so the renamed-binary branch goes blind. For cmdlets executed inside script files, enable **Script Block Logging (4104)**: they never appear on a process command line.
+Sysmon **EID 1** - the generated KQL and SPL read Sysmon. Security **4688** (with command-line auditing) works after remapping `NewProcessName` / `ParentProcessName` in `tools/mappings.yml`; it has no `OriginalFileName`, so the renamed-binary branch goes blind. For cmdlets executed inside script files, enable **Script Block Logging (4104)**: they never appear on a process command line. Security **4698** (task registered) is not read by the rule; it confirms the task during triage.
 
 ## How the detection works
 `Register-ScheduledTask` alone is common in admin scripts, so it must be combined with **one** suspicious indicator (`1 of susp_*`). `Set-ScheduledTask` is covered too: rewriting the action of an existing task is quieter than creating a new one.
@@ -39,16 +39,16 @@ Registering a task from a vendor XML definition in Program Files does not match,
 - Base64-encoded commands: covered by [PowerShell Execution With Encoded Command](../T1059.001_powershell_encoded_command/), not here.
 
 ## False positives & tuning
-Login scripts and configuration management that register tasks inline. Allow-list by parent process and script path, and add each allow-listed case as a true-negative test first.
+Login scripts and configuration management that register tasks inline. Allow-list by parent process and script path, and add each allow-listed case as a true-negative test first. The match on `Register-ScheduledTask` is a substring, so `Unregister-ScheduledTask` in a cleanup command that also names `$env:TEMP` or a writable path matches too (a word-boundary fix is planned with the next public-data run).
 
 Every tuning - applied, proposed or rejected - is recorded in [`tuning.yml`](tuning.yml). `rasd tune --filter T1053.005` measures each proposal before it is applied: how many attack variants it would hide against how many corpus alerts it would remove.
 
 ## Offensive validation
-[`red/windows/scheduled_task_creation`](../../../red/windows/scheduled_task_creation/) produces exactly the telemetry this rule needs, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
+[`red/windows/scheduled_task_creation`](../../../red/windows/scheduled_task_creation/) is built to produce the telemetry this rule reads, and its expected event is one of this rule's true positives (CI proves it matches). Run it on a lab VM, export the logs and turn the run into evidence:
 
 ```powershell
 .\red\Invoke-RasdEmulation.ps1 -Test scheduled_task_creation -LabConfirmed
-.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1)
+.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1) -OutFile .\lab-export.jsonl
 ```
 
 ```bash
