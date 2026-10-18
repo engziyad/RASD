@@ -3,7 +3,8 @@
     RASD-Red · T1021.006 · one harmless remote command over WinRM.
 .DESCRIPTION
     Runs Invoke-Command against -Target with the current credentials. The remote script
-    block echoes the target's hostname and the marker through cmd.exe. Lab use only.
+    block echoes the target's hostname and the marker through cmd.exe. Lab use only: the lab
+    guard checks this machine, not -Target, so name a VM of your lab domain only.
 #>
 [CmdletBinding()]
 param(

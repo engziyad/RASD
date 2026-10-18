@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | powershell.exe -enc with a benign Write-Output payload | [`T1059.001_powershell_encoded_command`](../../../detect/detections/T1059.001_powershell_encoded_command/) | [rule.yml](../../../detect/detections/T1059.001_powershell_encoded_command/rule.yml) | [KQL](../../../queries/kql/T1059.001_powershell_encoded_command.kql) | [SPL](../../../queries/spl/T1059.001_powershell_encoded_command.spl) | token `base64-utf16le:Write-Output '{marker}'` (e.g. `VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHIAYQBzAGQAXwAxAGEAMgBiADMAYwA0AGQAJwA=`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

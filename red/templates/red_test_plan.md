@@ -11,6 +11,7 @@
 
 ## Preconditions
 - [ ] Lab host is isolated and disposable; no production credentials on it
+- [ ] Lab guard marking set on the host (`RASD_LAB_HOST` / `RASD_LAB_DOMAINS` on Windows, `/etc/rasd-lab-host` on Linux and macOS - [red/lab/README.md](../lab/README.md#lab-guard))
 - [ ] Logging required by the test's `expected_telemetry.md` is enabled
 - [ ] Forwarding to the SIEM verified (if the SIEM result is in scope)
 - [ ] Opt-in switches decided (`-IncludeCredentialAccess`, `-IncludeSecurityLogClear`) and approved

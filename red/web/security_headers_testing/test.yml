@@ -16,7 +16,7 @@ objective: >
 prerequisites:
   - A lab copy of the application on localhost or a private address
 safety:
-  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
+  - Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
   - One GET request
 execution:
   - "python3 red/run_red.py --test security_headers_testing --lab-confirmed --target http://127.0.0.1:3000"

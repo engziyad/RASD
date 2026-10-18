@@ -5,7 +5,7 @@
 | Token header of rejected requests | Application or WAF logs (if the Authorization header is logged - usually it should not be) | `Decode the first JWT segment of the rejected request` | "alg": "none" in a token is never legitimate |
 | Findings file | $RASD\_OUT\_DIR/jwt\_testing-findings.json | `Written by the test` | Whether either forged token was accepted |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

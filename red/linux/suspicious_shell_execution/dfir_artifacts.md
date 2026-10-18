@@ -5,7 +5,7 @@
 | Process lineage | auditd EXECVE records (ppid) or Sysmon for Linux 1 | `ausearch -k exec -ts recent` | Which parent (web server, cron, SSH session) launched the shell chain |
 | Dropped script | /tmp, /var/tmp, /dev/shm | `find /tmp /var/tmp /dev/shm -type f -newer /etc/hostname -perm -u+x` | Payloads executed from world-writable directories |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

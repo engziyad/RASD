@@ -13,7 +13,7 @@ holdout_fired_on: 2
 
 # Public dataset evidence · Rundll32 Proxy Execution From Suspicious Context
 
-**Public dataset validation: fires on 17 of the 19 public recordings of its behaviour (quiet on the other 2: 1 outside the rule's scope, 1 a documented blind spot)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 32 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 17 of the 19 public recordings of its behaviour (quiet on the other 2: 1 outside the rule's scope, 1 a documented blind spot)** · **held-out: fires on 2 of 2 files labelled before their first replay** · 32 alerts · sources: EVTX-ATTACK-SAMPLES, OTRF Security-Datasets, Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -58,12 +58,12 @@ psh_lsass_memory_dump_comsvcs repeats records: 9 repeats are read once; the aler
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **scope**: the recorded behaviour is outside what the rule is written to detect; **blind-spot**: a blind spot the rule documents.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **scope**: the recorded behaviour is outside what the rule is written to detect; **blind-spot**: a blind spot the rule documents.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [T1218.011/atomic_red_team/ordinal_windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1218.011/atomic_red_team/ordinal_windows-sysmon.log) | scope | rundll32 calls a DLL in C:\AtomicRedTeam by ordinal: no script handler, writable path, dump export or proxy export - an ordinal call on its own is not in this rule's scope |
-| [automatedtestingtools/malware/rundll32_cmd_schtask](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/AutomatedTestingTools/Malware/rundll32_cmd_schtask.evtx) | blind-spot | the loader reaches its DLL through the 8.3 short name of ProgramData (C:\PROGRA~3\...) and by a bare name in the working folder: the path branch reads long folder names only. 8.3 names are listed as a blind spot |
+| [T1218.011/atomic_red_team/ordinal_windows-sysmon](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1218.011/atomic_red_team/ordinal_windows-sysmon.log) | scope | rundll32 calls a DLL in C:\AtomicRedTeam by ordinal: no script handler, writable path, dump export or proxy export - an ordinal call on its own is not in this rule's scope. |
+| [automatedtestingtools/malware/rundll32_cmd_schtask](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/4ceed2f4706daf601c212a8f91c113dd85349a2c/AutomatedTestingTools/Malware/rundll32_cmd_schtask.evtx) | blind-spot | the loader reaches its DLL through the 8.3 short name of ProgramData (C:\PROGRA~3\...) and by a bare name in the working folder: the path branch reads long folder names only. 8.3 names are listed as a blind spot. |
 
 ## Held-out files
 
@@ -83,7 +83,7 @@ Files added after the rule changes, labelled from their raw events and this dete
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 5632 of `T1003.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `c0dcdfc81ce06e02…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 5632 of `T1003.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `c0dcdfc81ce06e02…`):
 
 ```json
 {

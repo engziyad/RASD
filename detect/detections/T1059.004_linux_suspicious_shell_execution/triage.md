@@ -11,7 +11,7 @@
 | **Rule** | [`T1059.004_linux_suspicious_shell_execution`](../T1059.004_linux_suspicious_shell_execution/) |
 
 ### What triggered
-Detects two shell patterns intrusions on Linux rely on: a Base64 blob decoded and piped straight into a shell (echo <blob> | base64 -d | sh), and code started from a world-writable temporary directory - a binary under /tmp, /var/tmp or /dev/shm, or a shell running a script from there.
+Detects two shell patterns intrusions on Linux rely on: a Base64 blob decoded and piped straight into a shell (echo &lt;blob&gt; | base64 -d | sh), and code started from a world-writable temporary directory - a binary under /tmp, /var/tmp or /dev/shm, or a shell running a script from there.
 
 ### L1 action
 Save the command line, decode the blob or copy the script before it is deleted, and record the parent chain
@@ -28,7 +28,7 @@ Save the command line, decode the blob or copy the script before it is deleted, 
 
 ### Risk
 Base score **60**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
@@ -39,7 +39,7 @@ Base score **60**.
 - Provisioning scripts that pass small Base64 payloads to a shell
 
 ### Never tune
-- Never filter Base64 piped into a shell by user or host - the pattern has no routine administrative use.
+- Never filter Base64 piped into a shell by user or host - the provisioning scripts that do it are few and are excepted by their exact command line, never by account.
 - Never filter binaries in /dev/shm.
 
 ### Close or escalate

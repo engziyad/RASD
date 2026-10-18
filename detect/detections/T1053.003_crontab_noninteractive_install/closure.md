@@ -38,7 +38,7 @@ Alert:        T1053.003_crontab_noninteractive_install for <host> at <time, UTC>
 Observed:     Image=<value>  CommandLine=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1053.003_crontab_noninteractive_install
+Follow-up:    <sent to detection engineering as a true negative for T1053.003_crontab_noninteractive_install: ticket | not yet>
 ```
 
 ## Escalation to incident response

@@ -6,7 +6,7 @@
 | Loaded modules | Sysmon 7 for the rundll32 ProcessGuid | `Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Sysmon/Operational'; Id=7}` | mshtml / jscript loads confirm script execution inside rundll32 |
 | Child processes and network | Sysmon 1 (ParentProcessGuid) and Sysmon 3 | `Pivot on the rundll32 ProcessGuid` | Shows whether the script launched anything or reached out |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

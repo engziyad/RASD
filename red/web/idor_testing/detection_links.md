@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | Read other users' objects with one account's token (IDs 1-5) | [`T1190_object_id_enumeration`](../../../detect/correlations/T1190_object_id_enumeration/) | [correlation.yml](../../../detect/correlations/T1190_object_id_enumeration/correlation.yml) · [base.yml](../../../detect/correlations/T1190_object_id_enumeration/base.yml) | [KQL](../../../queries/kql/correlations/T1190_object_id_enumeration.kql) | [SPL](../../../queries/spl/correlations/T1190_object_id_enumeration.spl) | host, time window |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

@@ -33,7 +33,7 @@ A dash means the profile's schema has no record the rules for that log source ca
 
 | File | Direction | Used by |
 |---|---|---|
-| `profiles/*.yml` (this folder) | export field names → rule field names, when reading logs | `doctor`, `replay`, `evidence`, `benchmark` |
+| `profiles/*.yml` (this folder) | export field names → rule field names, when reading logs | `doctor`, `replay`, `evidence`, `benchmark`, `correlate`, `nearmiss` |
 | [`tools/mappings.yml`](../tools/mappings.yml) | rule field names → SIEM table and column names, when writing queries | `convert`, `parity`, the Splunk app |
 
 ## Adding a profile

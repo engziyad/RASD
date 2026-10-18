@@ -2,10 +2,12 @@ title: Scheduled Task Created With Suspicious Action
 id: 2114b226-991c-4830-9b80-8f5421283af3
 status: test
 description: |
-  Detects schtasks.exe /create where the task action points to a
-  user-writable location, a script interpreter, or a remote resource -
-  common persistence and lateral-execution patterns. Vendor updaters
-  under Program Files are not matched.
+  Detects schtasks.exe /create or /change (a new task, or an existing
+  task's action hijacked) with a script interpreter, a proxy binary, a
+  user-writable location or a URL anywhere on the command line, and any
+  remote creation as SYSTEM (/S with /RU SYSTEM) - common persistence and
+  lateral-execution patterns. Vendor updaters under Program Files are not
+  matched.
 references:
   - https://attack.mitre.org/techniques/T1053/005/
 author: Ziyad (github.com/engziyad)

@@ -21,14 +21,14 @@ Upload four small, harmless text files that a strict upload handler must refuse 
 
 ## Safety notes
 
-- Runs only with --lab-confirmed; refuses any target that resolves to a public address
-- Every file contains one line of text and the run marker - no script, no executable code
+- Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
+- Every file contains only a harmless sentence with the run marker (repeated in the oversized file) - no script, no executable code
 - The test does not try to execute or retrieve what it uploaded
 
 ## Execution
 
 1. python3 red/run\_red.py --test file\_upload\_testing --lab-confirmed --target http://127.0.0.1:3000
-2. Set --max-bytes to the limit the application documents (default 100 kB)
+2. The runner uses the default size limit (100 kB); for another limit, call the step directly after the lab guard marking: python3 red/web/file\_upload\_testing/emulate\_file\_upload.py --marker &lt;run marker&gt; --lab-confirmed --target http://127.0.0.1:3000 --max-bytes &lt;limit&gt;
 
 ### Steps and the detections they must trigger
 

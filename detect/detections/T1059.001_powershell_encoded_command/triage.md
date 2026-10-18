@@ -28,18 +28,19 @@ Decode the Base64 (UTF-16LE), validate host and user, note the parent process
 
 ### Risk
 Base score **40**.
-- +25 if suspicious parent *(auto: The parent process is an Office application, a browser, mshta, wscript or cscript)*
+- +25 if suspicious parent *(auto: The parent process (for a registry write, the process that wrote it) is an Office application, a browser, mshta, wscript or cscript)*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 - -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
 ### Known benign sources
 - Management agents (SCCM, Intune, RMM tools) that use encoded commands
+- Ansible's WinRM bootstrap, an -EncodedCommand started by cmd /C on every managed host (public data: the labs' provisioning)
 
 ### Never tune
-- Never filter by the Base64 content: the same encoded blob can be re-encoded trivially.
+- Never filter by the Base64 content alone: the same payload can be re-encoded trivially. A reviewed automation bootstrap is excepted only by its source host together with its exact command line.
 - Never filter Office, browser or script-host parents: they are the delivery path this rule exists for.
 
 ### Close or escalate

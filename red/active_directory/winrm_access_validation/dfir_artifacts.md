@@ -6,7 +6,7 @@
 | WinRM shell record | Target Microsoft-Windows-WinRM/Operational 91 | `Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-WinRM/Operational'; Id=91}` | Confirms a remote shell, not just an authentication |
 | Remote process tree | Target Sysmon 1 with ParentImage wsmprovhost.exe | `Pivot on the wsmprovhost.exe ProcessGuid` | Every command run through the session appears as a child of wsmprovhost.exe |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

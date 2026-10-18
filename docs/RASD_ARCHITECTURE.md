@@ -21,7 +21,7 @@ RASD
 ├── docs/       Architecture, metrics, maturity, governance
 ├── tools/      The engine and every tool behind the rasd command
 ├── schemas/    JSON schemas for contracts, mutations and tuning guides
-├── queries/    Generated KQL / SPL, hand-written hunts
+├── queries/    Generated KQL / SPL / Defender queries, the Splunk app, hand-written hunts
 ├── samples/    Replay corpus and doctor samples
 ├── tests/      Unit and framework tests
 └── .github/    CI, issue templates, pull request template
@@ -81,16 +81,24 @@ flowchart TB
 | `score.py` | Engineering Score and Operational Score |
 | `coverage.py`, `generate_views.py` | ATT&CK Navigator layer and coverage matrix; triage, response, closure and escalation notes, role views |
 | `links.py` | Every relative Markdown link resolves |
+| `datasets.py` | Public dataset replay: fetch the pinned files, replay them through every detection and correlation, keep reduced extracts, check them offline and render the public evidence pages |
+| `splunk_app.py` | Builds the `rasd` Splunk app (indexes, one scheduled alert per detection and per correlation, the alert export reports) and the forwarder apps |
+| `profiles.py` | Telemetry profiles (ECS, CIM, ASIM, Defender field names to rule field names): `--check` and the profiles README |
 
 ## CI pipeline
 
-`.github/workflows/detection-ci.yml` runs `rasd ci` and then the drift check:
+`.github/workflows/detection-ci.yml` runs, in order:
 
-1. lint (rules, contracts, tuning guides, evidence)
-2. unit tests (engine, converter, every tool)
-3. detection tests, mutation tests
-4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
-5. tune `--check`, red `--check`, PowerShell parse check of every red script
-6. build: queries (rules and correlations), views, coverage, scores, banner, chain (matrices, metrics, intel maps, facts blocks)
-7. chain `--check` and link check
-8. **drift check**: any generated file that differs from what the sources produce fails the build
+1. code checks of the tools: ruff (lint and security rules) and mypy
+2. `rasd ci`, the steps listed in `CI` in [`rasd.py`](../rasd.py):
+   1. lint (rules, contracts, tuning guides, evidence) and the Sigma support check
+   2. unit tests (engine, converter, every tool; the PowerShell tests run when `pwsh` is installed)
+   3. detection tests, mutation tests
+   4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
+   5. tune `--check`, red `--check`, Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
+   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the Splunk app, the profiles README, the public data pages, chain (matrices, metrics, intel maps, facts blocks)
+   7. chain `--check` and link check
+3. detection tests as JUnit, the PowerShell and shell parse checks of every red script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
+4. **drift check**: any generated file that differs from what the sources produce fails the build
+
+A second job runs lint, unit tests, detection tests, mutations, rule proofs and parity on Python 3.10 (the oldest supported version) and 3.13.

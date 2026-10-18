@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | Base64 command piped into sh, then a script executed from /tmp | [`T1059.004_linux_suspicious_shell_execution`](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [rule.yml](../../../detect/detections/T1059.004_linux_suspicious_shell_execution/rule.yml) | [KQL](../../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) | [SPL](../../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

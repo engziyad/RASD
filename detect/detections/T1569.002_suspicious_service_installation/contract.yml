@@ -12,7 +12,7 @@ data_contract:
     service: system
   required_events:
   - System Event ID 7045 (Service Control Manager)
-  - Security 4697 (optional)
+  - Security 4697 (investigation only, not read by the rule)
   required_fields:
   - EventID
   - Provider_Name

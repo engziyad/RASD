@@ -19,7 +19,7 @@ Checked:      1. Review ServiceName, ImagePath, AccountName and Computer -> <res
               4. Check for change records or known admin PsExec usage -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | defender_kernel_driver (applied) | psexec_service_name (rejected)
+Tuning:       none | defender_kernel_driver (applied)
 ```
 
 Known benign sources for this detection:
@@ -37,7 +37,7 @@ Alert:        T1569.002_suspicious_service_installation for <host> at <time, UTC
 Observed:     EventID=<value>  Provider_Name=<value>  ServiceName=<value>  ImagePath=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1569.002_suspicious_service_installation
+Follow-up:    <sent to detection engineering as a true negative for T1569.002_suspicious_service_installation: ticket | not yet>
 ```
 
 ## Escalation to incident response

@@ -1,6 +1,6 @@
 ---
 playbook: web_application_attack
-techniques: [T1190, T1505.003, T1606]
+techniques: [T1190, T1595.003, T1505.003, T1606]
 detections: [T1595.003_api_auth_probing, T1190_object_id_enumeration]
 red_tests: [api_auth_testing, idor_testing, jwt_testing, file_upload_testing, security_headers_testing]
 ---

@@ -30,7 +30,7 @@ detect/correlations/<Technique>_<name>/
 # correlation.yml
 correlation:
   type: value_count            # or event_count
-  rules: [auth_failure_wrong_password]
+  rules: [auth_failure]
   group-by: [IpAddress]
   timespan: 10m                # minutes dividing an hour, or hours dividing a day
   condition: {gte: 5, field: TargetUserName}
@@ -95,8 +95,8 @@ The arithmetic is the proof; `rasd correlate` also checks both with the engine -
 
 ## In the SIEM
 
-- **Splunk**: the [RASD app](../queries/splunk_app/README.md) runs each correlation once per window length (`*/10 * * * *`) over the last two windows plus 3 minutes of indexing delay (`-23m@m` to `-3m@m`), and keeps only the most recent window that is complete inside that range (`| addinfo | where window_start>=info_min_time AND window_start+600<=info_max_time AND window_start+600>info_max_time-600`). Consecutive runs tile time, so each window is reported whole by exactly one run - with the search head in UTC or any fixed-offset time zone, even one whose local cron times are not window boundaries (+5:30, +5:45) - and `realtime_schedule = 0` catches up a skipped run. Where the search head observes daylight saving, a window can be dropped or repeated at the two transitions each year; run it in UTC to avoid that. Events indexed more than 3 minutes late are missed by the alert. It alerts once per window and group, and writes the group (the client address) as `alert_host` to `rasd_alerts`, so `rasd evidence` can bind the alert to the lab host.
-- **Sentinel**: schedule the KQL every 10 minutes with a 20-minute lookback, so every window is seen whole at least once, and group alerts on `window_start` and the group-by fields, so a window seen by two runs raises one incident. For an at-least condition a window cut by the lookback can only count less, never invent an alert. Widen the lookback when ingestion is slower than the margin it leaves.
+- **Splunk**: the [RASD app](../queries/splunk_app/README.md) runs each correlation once per window length over the last two windows plus 3 minutes of indexing delay - for the 10-minute correlations `*/10 * * * *` over `-23m@m` to `-3m@m`, for API probing (5 minutes) `*/5` over `-13m@m`, for object-ID enumeration (1 minute) `*/1` over `-5m@m` - and keeps only the most recent window that is complete inside that range (for a 10-minute window: `| addinfo | where window_start>=info_min_time AND window_start+600<=info_max_time AND window_start+600>info_max_time-600`). Consecutive runs tile time, so each window is reported whole by exactly one run - with the search head in UTC or any fixed-offset time zone, even one whose local cron times are not window boundaries (+5:30, +5:45) - and `realtime_schedule = 0` catches up a skipped run. Where the search head observes daylight saving, a window can be dropped or repeated at the two transitions each year; run it in UTC to avoid that. Events indexed more than 3 minutes late are missed by the alert. It alerts once per window and group, and writes the group (the client address) as `alert_host` to `rasd_alerts`, so `rasd evidence` can bind the alert to the lab host.
+- **Sentinel**: schedule each KQL query every window length with a lookback of two windows (every 10 minutes over 20 for the spray and Kerberoasting by volume, 5 over 10 for API probing, 1 over 2 for object-ID enumeration), so every window is seen whole at least once, and group alerts on `window_start` and the group-by fields, so a window seen by two runs raises one incident. For an at-least condition a window cut by the lookback can only count less, never invent an alert. Widen the lookback when ingestion is slower than the margin it leaves.
 
 ## Everywhere else
 

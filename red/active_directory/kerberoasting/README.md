@@ -16,7 +16,7 @@ Request a Kerberos service ticket for a service account's SPN from an ordinary d
 ## Prerequisites
 
 - Domain-joined lab workstation and a lab domain controller
-- A lab service account with an SPN set to RC4 only: Set-ADUser &lt;account&gt; -Replace @{'msDS-SupportedEncryptionTypes'=4}. Unset or with AES bits, current DCs issue an AES ticket (0x12) and the rule correctly stays silent; the step checks the attribute and refuses to run otherwise
+- A lab service account with an SPN set to RC4 only: Set-ADUser &lt;account&gt; -Replace @{'msDS-SupportedEncryptionTypes'=4}. Unset or with AES bits, current DCs issue an AES ticket (0x12) and the rule correctly stays silent; the step reads the attribute and refuses to run when it is not RC4-only, when no account holds the SPN, or when AD cannot be read
 - Restore the account's msDS-SupportedEncryptionTypes after the lab
 - DC audit policy: Account Logon &gt; Audit Kerberos Service Ticket Operations = Success
 

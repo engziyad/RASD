@@ -11,13 +11,13 @@
 | **Rule** | [`T1053.003_crontab_noninteractive_install`](../T1053.003_crontab_noninteractive_install/) |
 
 ### What triggered
-Detects crontab replacing a user's cron table from standard input (crontab -) or from a file (crontab <file>), with or without -u <user>.
+Detects crontab replacing a user's cron table from standard input (crontab -) or from a file (crontab &lt;file&gt;), with or without -u &lt;user&gt;.
 
 ### L1 action
 Save the user's cron table, record the parent process and session, and compare with configuration management
 
 ### First checks
-1. Read the new cron table (crontab -l -u <user>) and find the line that was added
+1. Read the new cron table (crontab -l -u &lt;user&gt;) and find the line that was added
 2. Identify the parent process and session that ran crontab (SSH session, web server, cron itself)
 3. Check whether configuration management owns this host and this user's cron table
 
@@ -28,8 +28,8 @@ Save the user's cron table, record the parent process and session, and compare w
 
 ### Risk
 Base score **45**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*

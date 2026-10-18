@@ -5,7 +5,7 @@
 ## Splunk Attack Data
 
 - Source: https://github.com/splunk/attack_data (files under `datasets/attack_techniques/`)
-- Copyright 2025 Splunk Inc.
+- Copyright 2023 Splunk Inc, as written in the upstream LICENSE (the repository ships no NOTICE file at the pinned commit)
 - License: Apache License 2.0, [LICENSES/splunk-attack-data.txt](LICENSES/splunk-attack-data.txt)
 - Extracts: `extracts/splunk/`
 
@@ -22,4 +22,4 @@ The extracts are modified: each keeps only the events that fired or that a firin
 
 ## Not redistributed
 
-EVTX-ATTACK-SAMPLES (https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) is licensed under the GNU GPL v3. No event and no field value from it is committed here: the catalog lists its files by path and SHA-256, and `results.json` keeps only what RASD produced on them (counts, alert times and record numbers).
+EVTX-ATTACK-SAMPLES (https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) is licensed under the GNU GPL v3. No event or record from it is committed here: the catalog lists its files by path and SHA-256 and describes each one in its own words, and `results.json` keeps only what RASD produced on them (counts, alert times and record numbers).

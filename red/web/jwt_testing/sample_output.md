@@ -12,7 +12,7 @@ Expected output, not a capture from a real host. The run marker is random on eve
 3 check(s), 0 finding(s)
 ```
 
-## Illustrative event · Access log line for the rejected forged token (OWASP Juice Shop 17.3.0, captured from a lab run)
+## Illustrative event · Access log line for the rejected forged token (illustrative, in the OWASP Juice Shop 17.3.0 log format)
 
 Shape of the telemetry this test produces. No rule consumes it yet (see detection_links.md).
 

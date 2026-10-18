@@ -3,7 +3,9 @@ id: cd7aa717-e694-4271-889f-019a448ef63b
 status: test
 description: |
   Detects a value written under a Run / RunOnce key (HKLM or HKCU) whose
-  data points to a user-writable directory or a script interpreter.
+  data points to a user-writable directory (or an unexpanded variable for
+  one, or a file straight in a user profile), or starts a script
+  interpreter or a proxy binary (rundll32, regsvr32, cmd /c).
   This is one of the most common persistence mechanisms for commodity
   malware and post-exploitation frameworks.
 references:
@@ -12,6 +14,7 @@ author: Ziyad (github.com/engziyad)
 date: 2026-10-09
 tags:
   - attack.persistence
+  - attack.privilege-escalation
   - attack.t1547.001
 logsource:
   product: windows

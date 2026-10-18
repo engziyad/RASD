@@ -5,7 +5,7 @@
 | Uploaded files on the server | The application's upload directory | `List files containing the marker in their name` | Confirms what the server kept, and lets you remove it |
 | Findings file | $RASD\_OUT\_DIR/file\_upload\_testing-findings.json | `Written by the test` | Which restricted uploads were accepted |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

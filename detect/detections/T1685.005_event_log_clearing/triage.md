@@ -11,7 +11,7 @@
 | **Rule** | [`T1685.005_event_log_clearing`](../T1685.005_event_log_clearing/) |
 
 ### What triggered
-Detects attempts to wipe Windows event logs with wevtutil, PowerShell (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog) or WMIC.
+Detects attempts to wipe Windows event logs with wevtutil, PowerShell (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog) or the WMI ClearEventLog method.
 
 ### L1 action
 Identify user, host and which log was targeted; check for a documented maintenance window
@@ -29,7 +29,7 @@ Identify user, host and which log was targeted; check for a documented maintenan
 Base score **60**.
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
 
 ### Known benign sources

@@ -26,7 +26,7 @@ Known benign sources for this detection:
 - Provisioning scripts that pass small Base64 payloads to a shell
 
 Never tune:
-- Never filter Base64 piped into a shell by user or host - the pattern has no routine administrative use.
+- Never filter Base64 piped into a shell by user or host - the provisioning scripts that do it are few and are excepted by their exact command line, never by account.
 - Never filter binaries in /dev/shm.
 
 ## False Positive
@@ -38,7 +38,7 @@ Alert:        T1059.004_linux_suspicious_shell_execution for <host> at <time, UT
 Observed:     Image=<value>  CommandLine=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1059.004_linux_suspicious_shell_execution
+Follow-up:    <sent to detection engineering as a true negative for T1059.004_linux_suspicious_shell_execution: ticket | not yet>
 ```
 
 ## Escalation to incident response

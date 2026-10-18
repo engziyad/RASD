@@ -4,7 +4,7 @@ How an alert moves from the queue to closure in RASD. Every step points to the a
 
 ```text
 Alert fires
-   │   triage card: detect/detections/<id>/triage.md
+   │   triage card: detect/detections/<id>/triage.md (correlations: detect/correlations/<id>/triage.md)
    ▼
 L1 validation ── benign and verified? ──► closure note (Benign / False Positive) + tuning proposal
    │   contract.yml response.l1_action

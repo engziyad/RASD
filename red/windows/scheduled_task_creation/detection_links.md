@@ -5,7 +5,7 @@
 | schtasks /create with a cmd /c action in %TEMP% | [`T1053.005_schtasks_suspicious_creation`](../../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [rule.yml](../../../detect/detections/T1053.005_schtasks_suspicious_creation/rule.yml) | [KQL](../../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) | [SPL](../../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 | Register-ScheduledTask with an inline action in $env:TEMP | [`T1053.005_powershell_scheduled_task_creation`](../../../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [rule.yml](../../../detect/detections/T1053.005_powershell_scheduled_task_creation/rule.yml) | [KQL](../../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) | [SPL](../../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

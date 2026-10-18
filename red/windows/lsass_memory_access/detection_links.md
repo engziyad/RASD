@@ -5,7 +5,7 @@
 | rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup) | [`T1003.001_lsass_memory_access`](../../../detect/detections/T1003.001_lsass_memory_access/) | [rule.yml](../../../detect/detections/T1003.001_lsass_memory_access/rule.yml) | [KQL](../../../queries/kql/T1003.001_lsass_memory_access.kql) | [SPL](../../../queries/spl/T1003.001_lsass_memory_access.spl) | host, time window |
 | rundll32 comsvcs.dll MiniDump of lsass.exe (dump deleted by cleanup) | [`T1218.011_rundll32_suspicious_execution`](../../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rule.yml](../../../detect/detections/T1218.011_rundll32_suspicious_execution/rule.yml) | [KQL](../../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) | [SPL](../../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

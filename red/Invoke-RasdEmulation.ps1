@@ -16,7 +16,7 @@
          user, UTC window, marker, cleanup status and artifacts
 
     Then turn the run into evidence:
-        .\Export-LabTelemetry.ps1 -Since <start time printed at the end>
+        .\red\Export-LabTelemetry.ps1 -Since <start time printed at the end> -OutFile .\lab-export.jsonl
         rasd evidence --results <out>\emulation-results.json --logs lab-export.jsonl
 
     *** LAB USE ONLY. Run on an isolated, disposable VM that you own. ***
@@ -176,6 +176,7 @@ foreach ($t in $selected) {
             continue
         }
         $splat = @{ Marker = $Marker; LabConfirmed = $true }
+        if ($s.opt_in) { $splat[$s.opt_in] = $true }      # the script checks the opt-in again itself
         foreach ($p in (Get-Parameters $s)) { $splat[$p] = $Available[$p] }
         Write-Host "[$($t.technique)] $($s.name)" -ForegroundColor Cyan
         $rec.utc_start = (Get-Date).ToUniversalTime().ToString('o')
@@ -230,6 +231,6 @@ $resultsPath = Join-Path $OutDir 'emulation-results.json'
 [System.IO.File]::WriteAllText($resultsPath, (ConvertTo-Json -InputObject @($Results) -Depth 5))
 $executed = @($Results | Where-Object { $_.status -eq 'executed' }).Count
 Write-Host "`n[+] $executed/$($Results.Count) step(s) executed - results: $resultsPath" -ForegroundColor Green
-Write-Host 'Next:'
-Write-Host ("  .\Export-LabTelemetry.ps1 -Since '{0}'" -f $RunStart.ToString('yyyy-MM-dd HH:mm:ss'))
+Write-Host 'Next, from this folder:'
+Write-Host ("  & '{0}' -Since '{1}' -OutFile .\lab-export.jsonl" -f (Join-Path $PSScriptRoot 'Export-LabTelemetry.ps1'), $RunStart.ToString('yyyy-MM-dd HH:mm:ss'))
 Write-Host "  rasd evidence --results `"$resultsPath`" --logs lab-export.jsonl"

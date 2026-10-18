@@ -2,7 +2,7 @@
 
 RASD-Red contains controlled offensive security labs used to validate detection coverage, generate telemetry, and connect adversary behavior to defensive outcomes.
 
-Each offensive test is mapped to MITRE ATT&CK and includes expected telemetry, detection references, DFIR artifacts, cleanup steps, and validation criteria.
+Each offensive test (except one posture check, the HTTP security headers review) is mapped to MITRE ATT&CK, and every test includes expected telemetry, detection references, DFIR artifacts, cleanup steps, and validation criteria.
 
 The goal is not to publish isolated offensive scripts.
 The goal is to prove how offensive behavior becomes measurable defensive value.
@@ -12,7 +12,7 @@ The goal is to prove how offensive behavior becomes measurable defensive value.
 Every offensive test inside RASD contains:
 
 - Objective
-- MITRE mapping: technique, name and tactics written exactly as ATT&CK writes them (`Parent: Sub-technique`), checked against the one ATT&CK reference in [`tools/common.py`](../tools/common.py)
+- MITRE mapping: technique, name and tactics written exactly as ATT&CK writes them (`Parent: Sub-technique`), checked against the one ATT&CK reference in [`tools/common.py`](../tools/common.py); related techniques are listed as links for context and are not part of that check
 - Execution steps
 - Expected telemetry
 - Detection link (or a documented, planned coverage gap)
@@ -21,7 +21,7 @@ Every offensive test inside RASD contains:
 - Safety notes
 - Sample output
 
-They are written once, in the test's `test.yml`. `rasd red` validates the file and renders `README.md`, `expected_telemetry.md`, `detection_links.md`, `dfir_artifacts.md`, `sample_output.md` and `test.json`; CI fails when any of them is missing or stale. The sample event of every covered test **is** one of its detection's true positives, and CI proves it matches the rule.
+They are written once, in the test's `test.yml`. `rasd red` validates the file and renders `README.md`, `expected_telemetry.md`, `detection_links.md`, `dfir_artifacts.md`, `sample_output.md` and `test.json`; CI fails when any of them is missing or stale. The sample event of every covered test **is** one of its detection's true positives (for a test a correlation covers, part of one of the correlation's scenarios), and CI proves it matches.
 
 ## Running tests
 
@@ -31,16 +31,16 @@ They are written once, in the test's `test.yml`. `rasd red` validates the file a
 | Web, Linux | [`run_red.py`](run_red.py) | `python3 red/run_red.py --platform web linux --lab-confirmed --target http://127.0.0.1:3000 --dry-run` |
 | Full evidence run with Splunk | [`lab/`](lab/README.md) | `.\red\lab\Test-LabReadiness.ps1 -Fix` then `.\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed` |
 
-Both runners give every run a random marker (`rasd_xxxxxxxx`) that appears in every artifact, record each step's UTC window and expected detections, collect DFIR artifacts with their SHA-256 before cleanup, record cleanup as verified / manual / failed, and write `emulation-results.json`. Then:
+Both runners give every run a random marker (`rasd_xxxxxxxx`) that names every object a test creates (file, task, service, Run value, test log, User-Agent); events that cannot carry it, such as the domain controller's Kerberos and logon events or LDAP queries, are bound to the run by host and time window instead. The runners record each step's UTC window and expected detections, collect DFIR artifacts with their SHA-256 before cleanup, record cleanup as verified / manual / failed, and write `emulation-results.json`. Then:
 
 ```powershell
-.\red\Export-LabTelemetry.ps1 -Since '<start time printed by the runner>'
+.\red\Export-LabTelemetry.ps1 -Since '<start time printed by the runner>' -OutFile .\lab-export.jsonl
 ```
 ```bash
 rasd evidence --results <results>/emulation-results.json --logs lab-export.jsonl
 ```
 
-Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory and is not trusted on its own - the [lab guard](lab/README.md#lab-guard) refuses to run unless the machine itself is marked as a lab (`RASD_LAB_HOST` and, on a domain-joined host, a lab domain in `RASD_LAB_DOMAINS` on Windows; a root-owned `/etc/rasd-lab-host` naming the host on Linux), credential access and Security-log clearing are opt-in, every artifact carries the marker so cleanup can only touch what the test created, web tests refuse any target that resolves to a public address, connect only to the address they checked and never follow a redirect, and the password-spray simulation refuses to run when the domain lockout threshold is 1 or 2 and skips any account one more failure could lock.
+Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory and is not trusted on its own - the [lab guard](lab/README.md#lab-guard) refuses to run any test, web tests included, unless the machine itself is marked as a lab (on Windows `RASD_LAB_HOST`, plus a lab domain in `RASD_LAB_DOMAINS` for the PowerShell tests on a domain-joined host; a root-owned `/etc/rasd-lab-host` naming the host on Linux and macOS). Credential access and Security-log clearing are opt-in, checked by the runner and again by the step's own script. Every object a test creates carries the marker, so cleanup can only touch what the test created. Web tests refuse any target that resolves to a public address, connect only to the address they checked and never follow a redirect; a private address can still be a real intranet application, which is why the machine guard comes first. The password-spray simulation refuses to run when the domain lockout threshold is 1 or 2 and skips any account one more failure could lock; that check is complete only when the account running it can read fine-grained password policies (otherwise it warns and assumes the domain threshold).
 
 ## Catalogue
 

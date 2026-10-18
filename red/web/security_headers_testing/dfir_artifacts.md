@@ -5,7 +5,7 @@
 | Response headers | The HTTP response | `curl -sI <target>` | Evidence of the configuration at the time of the review |
 | Findings file | $RASD\_OUT\_DIR/security\_headers\_testing-findings.json | `Written by the test` | The missing protections, for the remediation ticket |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

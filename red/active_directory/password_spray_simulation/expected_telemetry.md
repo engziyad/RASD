@@ -1,6 +1,6 @@
 # Expected telemetry · Password spray simulation with a password that cannot be right
 
-Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
+None of this test's events carries the run marker: they are bound to the run by host and time window ([detection links](detection_links.md)).
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|

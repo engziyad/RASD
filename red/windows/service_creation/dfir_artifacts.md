@@ -6,9 +6,9 @@
 | Preceding network logon | Security 4624 (logon type 3) seconds before the 7045 | `Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624} \| Where-Object { $_.Properties[8].Value -eq 3 }` | Identifies the remote source host when the service was installed over SMB |
 | Share access | Security 5140 / 5145 (ADMIN$, IPC$) | `Get-WinEvent -FilterHashtable @{LogName='Security'; Id=5140,5145}` | Shows the binary being copied to ADMIN$ by PsExec-style tooling |
 
-[`collect_artifacts.ps1`](collect_artifacts.ps1) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.ps1`](collect_artifacts.ps1) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

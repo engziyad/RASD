@@ -14,7 +14,7 @@ Install: copy each folder into `$SPLUNK_HOME/etc/apps/` (on a Windows forwarder:
 
 ## Alerts
 
-Each alert runs every 5 minutes over one 5-minute slice that closed 5 minutes earlier (`-10m@m` to `-5m@m`): consecutive runs tile time, so an event is alerted exactly once, and up to 5 minutes of indexing delay never drop one (events indexed later than that are missed by the alert, not by `rasd replay`). It fires once per host in the slice (digest mode off), so two hosts are two alerts. Its base search is the generated query in [`queries/spl`](../spl/), proven equivalent to the tested rule by `rasd parity`; the saved search appends a per-host summary row only for reliable alert export.
+Each alert runs every 5 minutes over one 5-minute slice that closed 5 minutes earlier (`-10m@m` to `-5m@m`): consecutive runs tile time and `realtime_schedule = 0` makes Splunk catch up a run it skipped, so an event is alerted exactly once, and up to 5 minutes of indexing delay never drop one (events indexed later than that are missed by the alert, not by `rasd replay`). It fires once per host in the slice (digest mode off), so two hosts are two alerts. Its base search is the generated query in [`queries/spl`](../spl/), proven equivalent to the tested rule by `rasd parity`; the saved search appends a per-host summary row only for reliable alert export.
 
 | Saved search | Detection | Severity |
 |---|---|---:|

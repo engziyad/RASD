@@ -1,6 +1,6 @@
 # Expected telemetry · Scheduled task with a suspicious action (schtasks and PowerShell)
 
-Search key: every artifact this test creates carries the run marker (for example `rasd_1a2b3c4d`).
+Search key: the objects this test creates carry the run marker (for example `rasd_1a2b3c4d`, plain or encoded as [detection links](detection_links.md) shows); its other events are bound to the run by host and time window.
 
 | Source | Event | What it shows | Key fields | Used by |
 |---|---|---|---|---|

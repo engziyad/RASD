@@ -17,12 +17,12 @@ prerequisites:
   - A lab copy of the application on localhost or a private address (for example OWASP Juice Shop)
   - Web server or reverse-proxy access logs collected; WAF logs if one is in front
 safety:
-  - Runs only with --lab-confirmed; refuses any target that resolves to a public address
-  - Every file contains one line of text and the run marker - no script, no executable code
+  - Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
+  - Every file contains only a harmless sentence with the run marker (repeated in the oversized file) - no script, no executable code
   - The test does not try to execute or retrieve what it uploaded
 execution:
   - "python3 red/run_red.py --test file_upload_testing --lab-confirmed --target http://127.0.0.1:3000"
-  - "Set --max-bytes to the limit the application documents (default 100 kB)"
+  - "The runner uses the default size limit (100 kB); for another limit, call the step directly after the lab guard marking: python3 red/web/file_upload_testing/emulate_file_upload.py --marker <run marker> --lab-confirmed --target http://127.0.0.1:3000 --max-bytes <limit>"
 steps:
   - id: restricted_uploads
     name: Upload .exe, .pdf.exe, spoofed-type and oversized text files
@@ -69,10 +69,10 @@ cleanup:
 sample_output:
   console: |
     [T1505.003] Upload .exe, .pdf.exe, spoofed-type and oversized text files
-      FINDING  upload rasd_1a2b3c4d.exe (disallowed extension, 56 bytes): HTTP 204
-      FINDING  upload rasd_1a2b3c4d.pdf.exe (double extension, 56 bytes): HTTP 204
-      FINDING  upload rasd_1a2b3c4d.html (content type spoofed as PDF, 56 bytes): HTTP 204
-      FINDING  upload rasd_1a2b3c4d.pdf (over the size limit, 100072 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.exe (disallowed extension, 51 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.pdf.exe (double extension, 51 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.html (content type spoofed as PDF, 51 bytes): HTTP 204
+      FINDING  upload rasd_1a2b3c4d.pdf (over the size limit, 100062 bytes): HTTP 204
     4 check(s), 4 finding(s)
   illustrative_events:
     - title: Access log line for an accepted upload (illustrative, Juice Shop log format)

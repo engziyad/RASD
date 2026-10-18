@@ -17,7 +17,7 @@ Read the browser protections the application sets on its start page - HSTS, Cont
 
 ## Safety notes
 
-- Runs only with --lab-confirmed; refuses any target that resolves to a public address
+- Runs only with --lab-confirmed on a machine marked as a lab (red/lab/README.md, Lab guard); refuses any target that resolves to a public address
 - One GET request
 
 ## Execution
@@ -28,7 +28,7 @@ Read the browser protections the application sets on its start page - HSTS, Cont
 
 | Step | Script | Needs | Expected detections |
 |---|---|---|---|
-| Fetch the start page and review security headers and cookie flags | [`emulate_security_headers.py`](emulate_security_headers.py) | `Target` | gap |
+| Fetch the start page and review security headers and cookie flags | [`emulate_security_headers.py`](emulate_security_headers.py) | `Target` | - (posture check) |
 
 ## Links
 

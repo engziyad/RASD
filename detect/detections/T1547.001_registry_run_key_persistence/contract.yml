@@ -28,6 +28,7 @@ detection_logic:
   severity: medium
   expected_noise: medium
   blind_spots:
+  - The Policies\Explorer\Run and RunOnceEx keys
   - Other autostart locations (Winlogon, IFEO, Startup folder, UserInitMprLogonScript)
   - Payload placed in a trusted path (DLL side-loading)
   - Offline hive edits

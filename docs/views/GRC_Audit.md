@@ -75,8 +75,8 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 **Depends on:**
 - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
-- PowerShell Script Block Logging 4104 (catches cmdlets inside scripts)
-- Security 4698
+- PowerShell Script Block Logging 4104 (investigation only, not read by the rule; shows cmdlets inside scripts)
+- Security 4698 (investigation only, not read by the rule; the registered task definition)
 
 **Known blind spots:**
 - Cmdlets executed inside a .ps1 file never appear on the command line (needs 4104)
@@ -124,7 +124,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 ### Rundll32 Proxy Execution From Suspicious Context
 
-**Depth:** medium. Four distinct abuse patterns; blind to malicious DLLs placed in trusted paths
+**Depth:** medium. Eight distinct abuse patterns; blind to malicious DLLs placed in trusted paths
 
 **Depends on:**
 - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
@@ -143,6 +143,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Sysmon Event ID 13 (RegistryEvent value set) with includes for Run and RunOnce keys
 
 **Known blind spots:**
+- The Policies\Explorer\Run and RunOnceEx keys
 - Other autostart locations (Winlogon, IFEO, Startup folder, UserInitMprLogonScript)
 - Payload placed in a trusted path (DLL side-loading)
 - Offline hive edits
@@ -156,7 +157,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 **Known blind spots:**
 - AES ticket requests (Rubeus /aes) - the rule sees only RC4; queries/hunts/kerberoasting_volume_hunt counts every encryption type
-- Low-and-slow roasting of a single account
+- AES roasting of one to four accounts (below the volume correlation's threshold, and not RC4)
 - Roasting run on a domain controller - tickets requested from ::1 are filtered with the DC's own service traffic
 - Domains where RC4 is still common
 
@@ -166,7 +167,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 **Depends on:**
 - System Event ID 7045 (Service Control Manager)
-- Security 4697 (optional)
+- Security 4697 (investigation only, not read by the rule)
 
 **Known blind spots:**
 - Randomised service name with the binary placed in System32
@@ -175,7 +176,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 ### Windows Event Log Clearing via Command Line
 
-**Depth:** medium. Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
+**Depth:** medium. Command-line methods; the 1102 and 104 rules cover clears done through the EventLog service
 
 **Depends on:**
 - Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName
@@ -187,7 +188,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 ### Security Audit Log Cleared (Event 1102)
 
-**Depth:** high. Outcome-based: fires whenever the Security log is cleared, by any method
+**Depth:** high. Outcome-based: fires whenever the EventLog service clears the Security log (any tool, GUI or API)
 
 **Depends on:**
 - Security Event ID 1102
@@ -196,10 +197,11 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Attackers who stop the EventLog service or tamper with forwarding before clearing
 - Only the Security log; other logs are covered by System 104
 - Hosts whose Security log is not forwarded before the clear leave no copy to investigate
+- Logs removed by stopping the service and deleting the .evtx file, or cleared after the service was patched in memory, write no 1102
 
 ### Windows Event Log Cleared (System Event 104)
 
-**Depth:** high. Outcome-based: fires whenever a non-Security log is cleared, including Sysmon and PowerShell
+**Depth:** high. Outcome-based: fires whenever the EventLog service clears a non-Security log (any tool, GUI or API), Sysmon and PowerShell included
 
 **Depends on:**
 - System Event ID 104 (Microsoft-Windows-Eventlog)
@@ -241,13 +243,13 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 
 ### Kerberoasting - One Client Requesting Tickets for Many Service Accounts
 
-**Depth:** high. Volume over every encryption type complements the RC4 single-event rule; together they cover RC4 and AES roasting, with a proven 9-account guarantee
+**Depth:** high. Volume over every encryption type complements the RC4 single-event rule - RC4 roasting of any size, AES roasting of 5 or more accounts in 10 minutes - with a proven 9-account guarantee
 
 **Depends on:**
 - Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations = Success)
 
 **Known blind spots:**
-- Targeted roasting of one to four service accounts per 10 minutes - covered by the RC4 single-event rule and by honeypot SPN accounts
+- Targeted roasting of one to four service accounts per 10 minutes - the RC4 single-event rule catches RC4 tickets only; AES roasting of so few accounts is caught by neither rule (a honeypot SPN account is the recommended control)
 - Roasting spread over several source addresses, each below the threshold
 - AS-REP roasting (accounts without pre-authentication) produces 4768, not 4769, and is not counted here
 - A burst of 5 to 8 service accounts can be split by a window boundary; 9 or more within 10 minutes always alert
@@ -264,6 +266,8 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Slow probes that stay under 5 rejected paths per client in every 5-minute window
 - A reverse proxy that logs its own address instead of the client's (use X-Forwarded-For)
 - A burst of 5 to 8 paths can be split by a window boundary; 9 or more within 5 minutes always alert
+- Directory or file brute force answered mostly 404 - only 401 and 403 count
+- DNS subdomain brute forcing - needs DNS query logs, which RASD does not read
 
 ---
 

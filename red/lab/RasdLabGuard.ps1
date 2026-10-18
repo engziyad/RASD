@@ -13,7 +13,9 @@
       2. If the computer is joined to a domain, that domain must be listed in RASD_LAB_DOMAINS
          (machine-level, comma-separated), and every listed domain must end in a lab or
          reserved suffix (.lab .test .example .invalid .localhost .local .internal .lan
-         .home.arpa), so a real company domain can never be allowed by mistake:
+         .home.arpa). That keeps a public company domain out; it cannot tell a lab corp.local
+         from a real one (.local, .lan and .internal are common on company networks too), so
+         the marking in check 1 is what matters:
              [Environment]::SetEnvironmentVariable('RASD_LAB_DOMAINS', 'lab.local', 'Machine')
       3. A workgroup computer (no domain) passes with check 1 alone; the Active Directory tests
          need a lab domain anyway.
@@ -60,7 +62,7 @@ function Get-RasdLabProblems {
             ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ })
         foreach ($d in $allowed) {
             if (-not ($script:RasdLabSuffixes | Where-Object { $d.EndsWith($_) })) {
-                $problems.Add("RASD_LAB_DOMAINS lists '$d', which does not end in a lab or reserved suffix ($($script:RasdLabSuffixes -join ' ')): a real domain is never a lab")
+                $problems.Add("RASD_LAB_DOMAINS lists '$d', which does not end in a lab or reserved suffix ($($script:RasdLabSuffixes -join ' ')): only lab or reserved suffixes are accepted")
             }
         }
         if ($allowed -notcontains $domain) {

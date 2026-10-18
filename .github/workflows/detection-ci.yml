@@ -37,7 +37,7 @@ jobs:
           ruff check .
           mypy
 
-      - name: Full pipeline (lint, unit, tests, mutations, fuzz, prove, parity, correlate, nearmiss, tune, red, build, chain, links)
+      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, correlate, nearmiss, tune, red, Splunk app, profiles, datasets, build, chain, links)
         run: rasd ci
 
       - name: Detection tests as JUnit
@@ -106,7 +106,7 @@ jobs:
 
   compat:
     # pyproject.toml promises Python 3.10+: the engine, every tool and the detection tests must hold
-    # on the oldest and the newest supported version, not only on the 3.12 the full pipeline uses
+    # on the oldest supported version and on a newer one, not only on the 3.12 the full pipeline uses
     name: Python ${{ matrix.python }} · unit tests, lint, detection tests, proofs
     runs-on: ubuntu-latest
     strategy:

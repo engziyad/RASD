@@ -9,15 +9,15 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 18 true positive · 7 true negative · 7 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 193 variants |
-| **Parity** | KQL and SPL identical to the rule on 1900 events · Defender advanced hunting identical on the same events |
-| **Public data** | fires on 5 of 8 public recordings of its behaviour · 37 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
+| **Parity** | KQL and SPL identical to the rule on 1900 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Public data** | fires on 5 of 8 public recordings of its behaviour · 37 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) · [SPL](../../../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) · [Defender](../../../queries/mde/T1021.006_wsmprovhost_suspicious_child.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [winrm_access_validation](../../../red/active_directory/winrm_access_validation/) · DFIR: [lateral_movement](../../../dfir/playbooks/lateral_movement.md) · purple: [T1021.006_winrm](../../../purple/scenarios/T1021.006_winrm.md) |
 <!-- rasd:facts:end -->
 
 ## Telemetry required
-**Sysmon Event ID 1** (process creation) on the **WinRM target**, or Security **4688** with command lines through the `windows-security-4688` profile. The rule reads the parent (`ParentImage`), the child (`Image`, `OriginalFileName`) and its command line; 4688 has no `OriginalFileName`, so a renamed child is seen by its path only.
+**Sysmon Event ID 1** (process creation) on the **WinRM target**, or Security **4688** with command-line auditing after remapping `NewProcessName` / `ParentProcessName` in `tools/mappings.yml` (RASD's own replay reads 4688 through the `windows-security-4688` profile; the generated KQL and SPL read Sysmon). The rule reads the parent (`ParentImage`), the child (`Image`, `OriginalFileName`) and its command line; 4688 has no `OriginalFileName`, so a renamed child is missed.
 
 ## How the detection works
 Every PowerShell remoting session on a target runs inside `wsmprovhost.exe`, and every `winrs` command inside `winrshost.exe`. Cmdlets run in that process and start nothing. A native shell or a signed proxy binary started **from** it is how remote-execution tools run their commands over WinRM.
@@ -43,7 +43,7 @@ Administrators who run `cmd.exe` commands or batch files over remoting. The [tun
 
 ```powershell
 .\red\Invoke-RasdEmulation.ps1 -Test winrm_access_validation -LabConfirmed -Target LAB-SRV01
-.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1)   # on the target
+.\red\Export-LabTelemetry.ps1 -Since (Get-Date).AddHours(-1) -OutFile .\lab-export.jsonl   # on the target
 ```
 
 ```bash

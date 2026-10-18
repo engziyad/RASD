@@ -66,7 +66,7 @@ triage:
   - Read the full command line of the child and its own children
   - Check whether this account normally administers this host over WinRM
   escalate_if:
-  - Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe
+  - Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe, other than a documented automation bootstrap from its known host
   - The source host or account has never used WinRM against this target
   - The session ran discovery or credential commands (whoami /all, net group, nltest)
 response:

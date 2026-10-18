@@ -13,7 +13,7 @@ holdout_fired_on: 1
 
 # Public dataset evidence · Security Audit Log Cleared (Event 1102)
 
-**Public dataset validation: fires on 2 of the 2 public recordings of its behaviour** · **held-out: fires on 1 of 1 files labelled before their first replay** · 2 alerts · sources: EVTX-ATTACK-SAMPLES, Splunk Attack Data · beyond the recorded attacks: 2 alerts on the labs' own activity, each explained (0 from the test harness, 2 benign), and 0 labelled false positive.
+**Public dataset replay: fires on 2 of the 2 public recordings of its behaviour** · **held-out: fires on 1 of 1 files labelled before their first replay** · 2 alerts · sources: EVTX-ATTACK-SAMPLES, Splunk Attack Data · in the in-sample files, beyond the recorded attacks: 2 alerts on the labs' own activity, each explained (0 from the test harness, 2 benign), and 0 labelled false positives.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -59,7 +59,7 @@ Alerts on activity that is not the recorded attack, each explained in the catalo
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1070.001/windows_event_log_cleared/windows-security`, SHA-256 of the original record `92752eae22c95250…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 1 of `T1070.001/windows_event_log_cleared/windows-security`, SHA-256 of the original record `92752eae22c95250…`):
 
 ```json
 {

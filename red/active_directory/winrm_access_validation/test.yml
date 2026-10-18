@@ -18,6 +18,7 @@ safety:
   - Runs only with -LabConfirmed and an explicit -Target
   - The remote command echoes the target's hostname and the marker through cmd.exe; it changes nothing
   - The session closes when the command returns
+  - "The lab guard checks the machine running the test, not -Target: name a VM of your lab domain only (the command changes nothing, but it logs on to the target with your credentials)"
 execution:
   - "Invoke-RasdEmulation.ps1 -Test winrm_access_validation -LabConfirmed -Target LAB-SRV01"
   - The step runs Invoke-Command -ComputerName <target> -ScriptBlock { cmd.exe /c "echo $env:COMPUTERNAME <marker>" }

@@ -7,7 +7,7 @@
 | wevtutil cl Security with a backup first (writes Security 1102) | [`T1685.005_event_log_clearing`](../../../detect/detections/T1685.005_event_log_clearing/) | [rule.yml](../../../detect/detections/T1685.005_event_log_clearing/rule.yml) | [KQL](../../../queries/kql/T1685.005_event_log_clearing.kql) | [SPL](../../../queries/spl/T1685.005_event_log_clearing.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 | wevtutil cl Security with a backup first (writes Security 1102) | [`T1685.005_security_log_cleared`](../../../detect/detections/T1685.005_security_log_cleared/) | [rule.yml](../../../detect/detections/T1685.005_security_log_cleared/rule.yml) | [KQL](../../../queries/kql/T1685.005_security_log_cleared.kql) | [SPL](../../../queries/spl/T1685.005_security_log_cleared.spl) | host, time window |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl

@@ -9,7 +9,7 @@ What the repository detects, how far each detection is proven, and what is still
 | **Detections** | 18 (14 single-event rules, 4 correlations) across 14 ATT&CK techniques and 9 tactics |
 | **Platforms** | Windows, Active Directory, Linux, web applications |
 | **Proven in the repository** | 18 of 18 SIEM-Ready: tests, rule mutation proof, KQL and SPL parity, evasion fuzzing · Engineering Score 100/100 |
-| **Replayed on public data** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 files from 3 sources · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([validation](../docs/PUBLIC_DATA_VALIDATION.md)) |
+| **Replayed on public data** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](../docs/PUBLIC_DATA_VALIDATION.md)) |
 | **Validated (lab evidence)** | 0 of 18 · Operational Score pending |
 | **Analyst guidance** | 18 of 18 with triage, response, closure and escalation notes · 14 DFIR playbooks |
 | **Measured gaps** | 4 gaps without a detection (ldap_enumeration, privilege_escalation_checks, file_upload_testing, jwt_testing) · 1 posture check without a detection (security_headers_testing) |

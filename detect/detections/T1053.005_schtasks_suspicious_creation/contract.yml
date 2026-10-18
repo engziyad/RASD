@@ -70,7 +70,7 @@ triage:
   escalate_if:
   - Remote creation with /S and /RU SYSTEM
   - An existing task's action changed (/change) to a new binary
-  - Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32
+  - Action runs PowerShell, cmd, mshta, wscript, cscript or regsvr32 from an unexpected parent or account, or from a writable path
   - Payload under AppData, ProgramData, Public or Temp
 response:
   l1_action: Validate host, user, task name and the command path of the action

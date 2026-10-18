@@ -80,6 +80,16 @@ def attack_tag_errors(tags: list) -> list[str]:
     return errs
 
 
+_TAG_LIKE = re.compile(r"<(?!/?(?:br|sub|sup|b|i|a|p|code|kbd|img|details|summary)\b)([A-Za-z][^<>`\n]{0,40}?)>")
+
+
+def md_text(text: object) -> str:
+    """Prose for a Markdown page: a placeholder such as <user> or <file> must show, not vanish as an HTML
+    tag. Text inside `code spans` is left alone (it is shown literally there)."""
+    parts = str(text).split("`")
+    return "`".join(p if i % 2 else _TAG_LIKE.sub(r"&lt;\1&gt;", p) for i, p in enumerate(parts))
+
+
 _TTY = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
 def c(code: str) -> str: return f"\033[{code}m" if _TTY else ""
 GREEN, RED, YELLOW, DIM, BOLD, RESET = c("32"), c("31"), c("33"), c("2"), c("1"), c("0")

@@ -4,7 +4,7 @@ status: test
 description: |
   Detects attempts to wipe Windows event logs with wevtutil, PowerShell
   (Clear-EventLog / Remove-EventLog / Limit-EventLog / EventLogSession.ClearLog)
-  or WMIC. Catching the *attempt* at process level complements the
+  or the WMI ClearEventLog method. Catching the *attempt* at process level complements the
   Security 1102 / System 104 artifacts, which an attacker may suppress.
 references:
   - https://attack.mitre.org/techniques/T1685/005/

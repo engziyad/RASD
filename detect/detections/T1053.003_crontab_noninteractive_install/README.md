@@ -9,8 +9,8 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 5 true positive · 7 true negative · 5 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 29 variants |
-| **Parity** | KQL and SPL identical to the rule on 120 events |
-| **Public data** | fires on 1 of 4 public recordings of its behaviour · 1 alerts · 0 labelled false positive · [evidence](public_evidence.md) |
+| **Parity** | KQL and SPL identical to the rule on 120 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Public data** | fires on 1 of 4 public recordings of its behaviour · 1 alert · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.003_crontab_noninteractive_install.kql) · [SPL](../../../queries/spl/T1053.003_crontab_noninteractive_install.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
 | **Chain** | red: [cron_persistence](../../../red/linux/cron_persistence/) · DFIR: [linux_persistence](../../../dfir/playbooks/linux_persistence.md) · purple: [T1053.003_cron](../../../purple/scenarios/T1053.003_cron.md) |

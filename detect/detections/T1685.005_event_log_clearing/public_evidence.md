@@ -13,7 +13,7 @@ holdout_fired_on: 2
 
 # Public dataset evidence · Windows Event Log Clearing via Command Line
 
-**Public dataset validation: fires on 1 of the 1 public recordings of its behaviour** · **held-out: fires on 2 of 2 files labelled before their first replay** · 2 alerts · sources: Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 1 of the 1 public recordings of its behaviour** · **held-out: fires on 2 of 2 files labelled before their first replay** · 2 alerts · sources: Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -59,7 +59,7 @@ Alerts on activity that is not the recorded attack, each explained in the catalo
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 4273 of `T1070.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `d631b5f6c9817bb4…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 4273 of `T1070.001/atomic_red_team/windows-sysmon`, SHA-256 of the original record `d631b5f6c9817bb4…`):
 
 ```json
 {

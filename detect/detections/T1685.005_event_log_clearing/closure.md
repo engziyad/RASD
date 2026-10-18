@@ -18,7 +18,7 @@ Checked:      1. Identify the user and host -> <result>
               3. Check for 1102 or 104 on the same host -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | backup_service_account (rejected)
+Tuning:       none | <proposal added to tuning.yml>
 ```
 
 Known benign sources for this detection:
@@ -36,7 +36,7 @@ Alert:        T1685.005_event_log_clearing for <host> at <time, UTC>
 Observed:     Image=<value>  OriginalFileName=<value>  CommandLine=<value>
 Why not:      <the field that matched, and what it really was>
 Disposition:  False Positive
-Follow-up:    event sent to detection engineering as a true negative for T1685.005_event_log_clearing
+Follow-up:    <sent to detection engineering as a true negative for T1685.005_event_log_clearing: ticket | not yet>
 ```
 
 ## Escalation to incident response

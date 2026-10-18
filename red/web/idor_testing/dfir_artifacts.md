@@ -5,7 +5,7 @@
 | Object access sequence | Access logs for the session | `grep 'RASD-Red/<marker>' access.log \| grep /rest/basket/` | Which foreign objects were read - the scope of the data exposure |
 | Findings file | $RASD\_OUT\_DIR/idor\_testing-findings.json | `Written by the test` | The object IDs served to an account that does not own them |
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

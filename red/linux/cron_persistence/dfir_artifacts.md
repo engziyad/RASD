@@ -6,9 +6,9 @@
 | System cron locations | /etc/crontab, /etc/cron.d/, /etc/cron.{hourly,daily,weekly,monthly}/ | `ls -la /etc/cron* ; cat /etc/crontab` | Where root-level persistence hides |
 | Cron execution log | /var/log/syslog or /var/log/cron, journalctl -u cron | `journalctl -u cron --since "-1h"` | Whether and when the entry already ran |
 
-[`collect_artifacts.sh`](collect_artifacts.sh) collects these before cleanup runs; the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
+[`collect_artifacts.sh`](collect_artifacts.sh) collects what it can of these before cleanup runs (see the script for exactly which); the runner records the SHA-256 of every collected file in the results, so the evidence can be verified later.
 
-Collect before cleaning up: cleanup removes the very artifacts listed here.
+Collect before cleaning up: the cleanup script removes what the test created, which can include artifacts listed here ([cleanup](README.md#cleanup)).
 
 ---
 

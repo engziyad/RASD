@@ -2,10 +2,11 @@ title: Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets
 id: 53c93662-8406-48eb-9136-fb9c97cd7aaf
 status: test
 description: |
-  Detects PowerShell command lines that register a scheduled task with the
-  ScheduledTasks module (Register-ScheduledTask together with an action from
-  New-ScheduledTaskAction) instead of schtasks.exe. Complements the schtasks
-  rule, which never sees tasks created this way.
+  Detects PowerShell command lines that register or rewrite a scheduled task
+  with the ScheduledTasks module (Register-ScheduledTask or Set-ScheduledTask)
+  together with one suspicious indicator: an inline New-ScheduledTaskAction,
+  $env:TEMP / $env:APPDATA or a URL, or a user-writable path. Complements the
+  schtasks rule, which never sees tasks created this way.
 references:
   - https://attack.mitre.org/techniques/T1053/005/
   - https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/register-scheduledtask

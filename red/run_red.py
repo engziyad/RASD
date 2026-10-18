@@ -12,10 +12,13 @@ runner does the same job for the tests whose runner is python (web) or bash (lin
   5. writes emulation-results.json in the same format as the PowerShell runner, so
      `rasd evidence` and the purple matrices read both the same way
 
-Lab use only. Web tests refuse any target that resolves to a public address.
+Lab use only. Nothing runs unless this machine is marked as a lab (/etc/rasd-lab-host on Linux
+and macOS, the machine variable RASD_LAB_HOST on Windows - see red/lab/README.md, Lab guard), and
+web tests also refuse any target that resolves to a public address.
 
 --dry-run prints which steps would run or be skipped, and why - including a web target the
-lab guard refuses - and runs nothing, like Invoke-RasdEmulation.ps1 -DryRun.
+lab guard refuses and whether this machine is marked - and runs nothing, like
+Invoke-RasdEmulation.ps1 -DryRun.
 
 Usage
   python3 red/run_red.py --list
@@ -95,6 +98,13 @@ def target_refusal(url: str) -> str | None:
     return None
 
 
+def host_problems() -> list[str]:
+    """Why this machine is not marked as a lab: the marking the web tests check (rasd_web.lab_host_problems)."""
+    sys.path.insert(0, str(RED / "web"))
+    import rasd_web
+    return rasd_web.lab_host_problems()
+
+
 def target_is_loopback(url: str | None) -> bool:
     """The lab application runs on this host: its access log records the requests as coming
     from a loopback address, which then belongs to this run's evidence."""
@@ -152,13 +162,20 @@ def main() -> int:
 
     refused = target_refusal(args.target) if args.target else None
     available = {"Target": None if refused else args.target}
+    unmarked = host_problems()
 
     if args.dry_run:
         for t in selected:
             for s in t["steps"]:
                 print(f"{t['id']:<28} {s['id']:<24} {plan_state(s, available, refused)}")
-        print("\n(dry run: nothing was executed)")
+        print("\nlab guard: " + ("this machine is marked as a lab" if not unmarked else
+                                  "a real run would refuse - " + "; ".join(unmarked)))
+        print("(dry run: nothing was executed)")
         return 2 if refused and any(t["platform"] == "web" for t in selected) else 0
+    if unmarked:
+        print("Refusing to run: this machine is not marked as a RASD lab.\n  - " + "\n  - ".join(unmarked)
+              + "\nSee red/lab/README.md (Lab guard).", file=sys.stderr)
+        return 2
     if refused and any(t["platform"] == "web" for t in selected):
         print(f"Refusing: {refused}", file=sys.stderr)
         return 2
@@ -168,7 +185,8 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     results = []
     ips = host_ips()
-    print(f"run marker: {marker}\nresults:    {out_dir}\n")
+    started = utc_now()
+    print(f"run marker: {marker}\nstarted:    {started} (UTC; the exporters' --since)\nresults:    {out_dir}\n")
 
     for t in selected:
         test_dir = out_dir / t["id"]

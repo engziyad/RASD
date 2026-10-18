@@ -74,10 +74,11 @@ LEVEL_WEIGHT = {"informational": 1, "low": 2, "medium": 4, "high": 7, "critical"
 # of them, which would put a Sysmon event and the Security event beside it hours apart
 TIME_FIELDS = ("TimeCreated", "UtcTime", "@timestamp", "_time", "timestamp", "TimeGenerated")
 HOST_FIELDS = ("Computer", "host", "Hostname", "DeviceName")
-USER_FIELDS = ("User", "SubjectUserName", "TargetUserName", "AccountName")
+USER_FIELDS = ("User", "SubjectUserName", "TargetUserName", "AccountName", "SourceUser")
 NETWORK_EVENTS = {4768, 4769, 4771, 4776, 4624, 4625}   # logged by a DC / target about a client: entity = client
 CRITICAL_ROLES = {"domain-controller", "server", "critical"}
-WRITABLE_PATH = re.compile(r"(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]")
+WRITABLE_PATH = re.compile(r"(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]"
+                           r"|(?:^|[\s'\"=(])/(?:tmp|var/tmp|dev/shm)/")      # Linux: the world-writable temp folders
 RISKY_PARENTS = ("\\winword.exe", "\\excel.exe", "\\powerpnt.exe", "\\outlook.exe", "\\mshta.exe",
                  "\\wscript.exe", "\\cscript.exe", "\\chrome.exe", "\\msedge.exe", "\\firefox.exe")
 RISK_CONDITIONS = yaml.safe_load((Path(__file__).resolve().parent.parent / "detect" / "risk_conditions.yml")
@@ -188,14 +189,17 @@ class RiskContext:
             row = self.users.get(user)
             if row is not None:
                 return str(row.get("privileged", "")).strip().lower() in ("1", "true", "yes")
-            return user in ("administrator", "admin")
+            return user in ("administrator", "admin", "root")
         if condition == "outside_business_hours":
             t = parse_time(ev)
             return None if t is None else not (self.hours[0] <= (t + self.utc_offset).hour < self.hours[1])
         if condition == "payload_in_user_writable_path":
-            return any(WRITABLE_PATH.search(str(ev.get(f) or "")) for f in ("CommandLine", "Details", "ImagePath"))
+            # SourceImage: the process that opened another one (Sysmon 10), e.g. a dumper run from a temp folder
+            return any(WRITABLE_PATH.search(str(ev.get(f) or "")) for f in ("CommandLine", "Details", "ImagePath", "SourceImage"))
         if condition == "suspicious_parent":
-            return str(ev.get("ParentImage") or "").lower().endswith(RISKY_PARENTS)
+            # a registry write (Sysmon 13) has no parent: the process that wrote the value stands in for it
+            parent = ev.get("ParentImage") or (ev.get("Image") if "TargetObject" in ev else "")
+            return str(parent or "").lower().endswith(RISKY_PARENTS)
         if condition == "remote_execution":
             cmd = str(ev.get("CommandLine") or "")
             image_path = str(ev.get("ImagePath") or "")

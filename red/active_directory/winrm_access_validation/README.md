@@ -22,6 +22,7 @@ Run one harmless command on another lab host over WinRM (Invoke-Command), the wa
 - Runs only with -LabConfirmed and an explicit -Target
 - The remote command echoes the target's hostname and the marker through cmd.exe; it changes nothing
 - The session closes when the command returns
+- The lab guard checks the machine running the test, not -Target: name a VM of your lab domain only (the command changes nothing, but it logs on to the target with your credentials)
 
 ## Execution
 

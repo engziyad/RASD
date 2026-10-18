@@ -5,7 +5,7 @@ RASD = $(PY) rasd.py
 
 all: ci
 
-ci:              ## Everything the pipeline runs
+ci:              ## The full pipeline (the CI workflow adds ruff, mypy, script parse checks and the drift check)
 	$(RASD) ci
 
 build:           ## Queries, cards, views, coverage, scores, banner, red docs, chain outputs

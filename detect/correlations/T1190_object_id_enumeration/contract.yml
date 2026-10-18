@@ -4,8 +4,7 @@ name: Object ID Enumeration - One Client Walking Single-Owner Objects
 maturity: siem-ready
 owner: detection-engineering
 primary_technique: attack.t1190
-related_techniques:
-- attack.t1530
+related_techniques: []
 data_contract:
   required_logsource:
     category: webserver

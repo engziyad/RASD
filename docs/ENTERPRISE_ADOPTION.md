@@ -7,7 +7,7 @@ How an organisation brings RASD's detections into its own SIEM without importing
 | Need | Why |
 |---|---|
 | The log sources the rules read: Sysmon (Windows and Linux), Windows Security and System logs, web access logs | `rasd doctor` reports READY, DEGRADED or BLIND per rule on an export of your own logs |
-| Splunk or Microsoft Sentinel | Queries are generated for both and proven equal to the tested rules |
+| Splunk or Microsoft Sentinel | Queries are generated for both and proven equal to the tested rules by RASD's SPL / KQL interpreters (a run in your own SIEM is part of the lab evidence) |
 | A lab you own | Offensive tests run only on disposable lab machines, never on production hosts or accounts |
 | An owner per detection | Each contract names an owner, and each `tuning.yml` sets a review cadence |
 
@@ -21,7 +21,7 @@ rasd doctor export.jsonl --profile auto
 
 `--profile auto` reads Elastic ECS, Splunk CIM, Sentinel ASIM or Defender field names, and Security 4688 where Sysmon is not deployed ([profiles](../profiles/README.md)). Deploy the rules that come back READY. A DEGRADED rule names the missing or truncated field; a BLIND rule names the missing source.
 
-When no public profile fits (a product's own schema, an in-house pipeline), add a profile for it in your own copy of the repository, not in the public one. Name it by its role, never by a product or an organisation: `edr-generic`, `email-gateway-generic`, `ndr-generic`, `dlp-generic`, `pam-generic`, `iam-generic`, `waf-generic`, `database-activity-generic`. A profile only fills fields the events lack (see the [profile format](../profiles/README.md)), so `rasd doctor --profile <name>` shows at once which rules it makes READY. Vendor-specific mappings and anything that names an employer's tools belong in a private fork or an internal branch.
+When no public profile fits (a product's own schema, an in-house pipeline), add a profile for it in your own copy of the repository, not in the public one. Name it by its role, never by a product or an organisation: `edr-generic`, `email-gateway-generic`, `ndr-generic`, `dlp-generic`, `pam-generic`, `iam-generic`, `waf-generic`, `database-activity-generic`. A profile only fills fields the events lack (see the [profile format](../profiles/README.md)), so `rasd doctor --profile <name>` shows at once which rules it makes READY. Vendor-specific mappings and anything that names an organisation's internal tools belong in a private fork or an internal branch.
 
 ## 2 · Measure noise on your own logs
 

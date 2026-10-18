@@ -32,7 +32,7 @@ detection_logic:
   - Clearing performed remotely (wevtutil /r:host) logs the process on the source, not the target
 coverage_depth:
   level: medium
-  reason: Command-line methods; the 1102 and 104 rules cover the outcome regardless of method
+  reason: Command-line methods; the 1102 and 104 rules cover clears done through the EventLog service
 risk_model:
   base_score: 60
   increase_if:

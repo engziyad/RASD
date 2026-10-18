@@ -2,7 +2,8 @@ title: Kerberoasting - RC4 Service Ticket Requested for User Account
 id: 2847ae87-e869-4b37-811b-e7f0da4f9b0b
 status: test
 description: |
-  Detects successful TGS requests (Security 4769) using RC4-HMAC (0x17)
+  Detects successful TGS requests (Security 4769) using a crackable encryption
+  type - RC4-HMAC (0x17, 0x18) or DES (0x1, 0x3), in hex or decimal -
   for a service whose account is a *user* (not a computer account, not
   krbtgt). In AES-enforced domains this is a strong Kerberoasting
   indicator: tools like Rubeus/Impacket downgrade to RC4 because RC4

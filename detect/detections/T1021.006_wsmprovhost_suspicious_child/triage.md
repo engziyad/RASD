@@ -22,15 +22,15 @@ Record the source host, account and command line, and check them against known a
 3. Check whether this account normally administers this host over WinRM
 
 ### Escalate if
-- Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe
+- Encoded PowerShell or a proxy binary under wsmprovhost.exe or winrshost.exe, other than a documented automation bootstrap from its known host
 - The source host or account has never used WinRM against this target
 - The session ran discovery or credential commands (whoami /all, net group, nltest)
 
 ### Risk
 Base score **50**.
-- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - +15 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +10 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
+- +10 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
 - +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
 - -25 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 - -20 if approved change window *(ask: A change ticket covers this host and time)*
@@ -38,9 +38,10 @@ Base score **50**.
 ### Known benign sources
 - Administrators running cmd.exe commands or batch files over PowerShell remoting or winrs
 - Configuration management that launches cmd.exe through WinRM
+- Ansible's WinRM connection, which starts cmd /C PowerShell ... -EncodedCommand under winrshost.exe on every managed host (public data: the labs' provisioning)
 
 ### Never tune
-- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host.
+- Never filter encoded PowerShell or the proxy binaries (rundll32, regsvr32, mshta, certutil, bitsadmin) under a WinRM host in general. The one exception is a reviewed automation bootstrap (for example Ansible's), excepted in the SIEM by its source host together with its exact command line.
 - Never filter by account alone - a stolen administrator account is exactly what this rule must catch.
 
 ### Close or escalate

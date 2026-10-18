@@ -48,7 +48,7 @@ The applied tunings are measured on the same events: what each filter kept quiet
 
 Public files repeat records, and some files are copies of others. A record is identified as Windows numbered it - host, channel, record number and time - or by its content where the file carries no record number:
 
-- a record a file holds more than once is read once. The OTRF compound LSASS captures repeat thousands of records, and one Splunk Kerberos file repeats one record 56 times with the service name edited in 55 of the copies; both are listed in the [validation page](../docs/PUBLIC_DATA_VALIDATION.md#files-that-repeat-records);
+- a record a file holds more than once is read once. The OTRF compound LSASS captures repeat thousands of records, and one Splunk Kerberos file repeats one record 86 times with the service name edited in 85 of the copies; both are listed in the [validation page](../docs/PUBLIC_DATA_VALIDATION.md#files-that-repeat-records);
 - a record an earlier file of the catalog already holds - copied, or copied with a field edited - still runs through every rule, but its alert is not new evidence. The files that hold records of an earlier one are declared under `overlap`, among them two PurpleSharp spray files that are the same 137 records with one status code edited, a doctored service record and target-side task events exported twice in two formats.
 
 A file whose alerts are all on records of an earlier file is not counted as another recording of the behaviour, and the alert totals count each record once.

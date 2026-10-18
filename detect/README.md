@@ -1,6 +1,6 @@
 # RASD-Detect: Detection Engineering
 
-The heart of RASD: adversary behaviour turned into detection rules that are tested, proven, deployable and measured.
+The heart of RASD: adversary behaviour turned into detection rules that are tested, mutation-checked (`rasd prove`), deployable and measured.
 
 | Folder | Contents |
 |---|---|
@@ -21,6 +21,7 @@ detect/detections/<Technique>_<name>/
 ├── triage.md         SOC triage card (generated from the contract)
 ├── response.md       incident response card (generated from the contract)
 ├── closure.md        SOC L2 closure notes and the escalation note (generated from the contract and tuning)
+├── public_evidence.md  public dataset replay: which public recordings it fires on, and why it stays quiet on the rest (generated from `datasets/results.json`)
 ├── evidence.md       lab evidence (written by `rasd evidence` from a real run; absent = pending)
 ├── README.md         logic, evasion gaps, tuning, offensive validation; facts block generated
 └── tests/

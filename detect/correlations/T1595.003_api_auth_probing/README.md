@@ -34,6 +34,8 @@ A user whose session expired retries the same few paths. Someone probing protect
 - **Slow probing** - fewer than 5 rejected paths per client in every 5-minute window.
 - **Proxies** - a reverse proxy that logs its own address hides the client; log `X-Forwarded-For` as `c-ip`.
 - **Window boundary** - 5 to 8 paths can be split by a boundary (pinned as a known-limit scenario); 9 or more always alert.
+- **Not-found responses** - only 401 and 403 count, so a directory or file brute force that is mostly answered 404 stays silent (one of the [true negatives](tests/true_negative.jsonl)). This rule sees wordlist scanning only where the guessed paths exist and are protected.
+- **DNS brute forcing** - subdomain wordlists never reach the web server; that needs DNS query logs, which RASD does not read.
 
 ## False positives & tuning
 Single-page applications with an expired session and approved scanners. The [tuning guide](tuning.yml) keeps CORS preflights out and proposes handling the scanner by schedule, not by excluding its address.

@@ -4,7 +4,7 @@ RASD-Red · object-level authorization (OWASP API1:2023 BOLA / IDOR).
 
 Logs in as one lab test account, then reads the basket of every ID in a small range with
 that account's token. Any basket other than the account's own that comes back 200 is a
-FINDING. Read-only GET requests against a lab target (see rasd_web.py). Credentials come
+FINDING. One login, then read-only GET requests against a lab target (see rasd_web.py). Credentials come
 from RASD_LAB_EMAIL / RASD_LAB_PASSWORD so they never appear on a command line.
 """
 from __future__ import annotations

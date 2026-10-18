@@ -30,8 +30,8 @@ Confirm host, source process path, signer and user; check whether the source is 
 ### Risk
 Base score **60**.
 - +20 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
-- +15 if payload in user writable path *(auto: The command line, registry data or service path points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads)*
-- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account)*
+- +15 if payload in user writable path *(auto: The command line, registry data, service path or accessing process points into AppData, ProgramData, Users\Public, Windows\Temp or Downloads, or on Linux into /tmp, /var/tmp or /dev/shm)*
+- +10 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
 - -30 if known vendor software *(ask: The binary is signed by a vendor already approved in this environment)*
 - -20 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
 
@@ -39,7 +39,7 @@ Base score **60**.
 - EDR, AV and backup agents that open LSASS for inspection
 - Defender running from C:\Program Files\Windows Defender (builds without platform updates) and EDR sensors
 - svchost-hosted services, Task Manager, WerFault and the Malicious Software Removal Tool on some builds
-- {'PowerShell 7 (pwsh.exe) Get-Process': 'its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply'}
+- PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
 - Windows components outside the named list on builds not covered by public data (add them by full path)

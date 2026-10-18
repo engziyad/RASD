@@ -4,10 +4,10 @@
 |---|---|---|---|---|---|
 | One failed LDAP bind per lab account with a random password | [`T1110.003_password_spray_burst`](../../../detect/correlations/T1110.003_password_spray_burst/) | [correlation.yml](../../../detect/correlations/T1110.003_password_spray_burst/correlation.yml) · [base.yml](../../../detect/correlations/T1110.003_password_spray_burst/base.yml) | [KQL](../../../queries/kql/correlations/T1110.003_password_spray_burst.kql) | [SPL](../../../queries/spl/correlations/T1110.003_password_spray_burst.spl) | host, time window and client address |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
-rasd evidence --results emulation-results.json --logs lab-export.jsonl
+rasd evidence --results emulation-results.json --logs lab-export.jsonl dc-export.jsonl
 ```
 
 ---

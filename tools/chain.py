@@ -59,7 +59,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (ATTACK_ALIASES, ATTACK_TACTICS, ATTACK_VERSION, BOLD, DFIR, DIM, DOCS, GREEN, INTEL, PURPLE, RED,
-                    RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS, YELLOW, attack_aliases, load_detections)
+                    RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS, YELLOW, attack_aliases, load_detections,
+                    md_text)
 from convert import logsource_key
 from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
@@ -584,10 +585,11 @@ def render_attack_map(repo: Repo) -> str:
         out += f"\n## {technique_link(t)} {TECHNIQUE_NAMES.get(t, '')}\n\n"
         for r in repo.red_for(t):
             out += f"**Red:** [{r['name']}](../red/{r['platform']}/{r['id']}/)\n\n"
-            out += "| Telemetry | Event | Used by |\n|---|---|---|\n"
+            out += "| Telemetry | Event | What it shows | Used by |\n|---|---|---|---|\n"
             for tel in r.get("telemetry") or []:
                 used = ", ".join(f"`{u}`" for u in tel.get("used_by") or []) or "investigation"
-                out += f"| {tel['source']} | {tel['event']} | {used} |\n"
+                out += (f"| {md_text(tel['source'])} | {md_text(tel['event'])} | {md_text(tel.get('description', ''))} | "
+                        f"{used} |\n")
             out += "\n"
         out += "| Detection | Maturity | KQL | SPL | Triage | Response |\n|---|---|---|---|---|---|\n"
         for d in dets:
@@ -697,7 +699,7 @@ def render_metrics(repo: Repo) -> str:
         ("Response guides", sum(1 for d in repo.items if (d.folder / "response.md").exists())),
         ("DFIR playbooks", len(repo.playbooks)),
         ("Purple scenarios", len(repo.scenarios)),
-        ("Public dataset validation", public_summary_line(repo, "")),
+        ("Public dataset replay", public_summary_line(repo, "")),
         ("Validated detections (lab evidence)", len(validated)),
         ("Average Engineering Score", f"{eng:.0f}/100"),
         ("Operational Score", f"{sum(s['operational_total'] for s in validated) / len(validated):.0f}/100" if validated else "Pending"),
@@ -749,7 +751,7 @@ def render_data_sources(repo: Repo) -> str:
     for t in repo.red:
         for tel in t.get("telemetry") or []:
             if not tel.get("used_by"):
-                extra[f"{tel['source']} · {tel['event']}"].add(t["id"])
+                extra[f"{md_text(tel['source'])} · {md_text(tel['event'])}"].add(t["id"])
     out += ("\n## Investigation and hunting data sources\n\nNot used by a rule today, but the DFIR playbooks and the "
             "offensive tests rely on them.\n\n| Data Source | Red tests that produce it | Risk if Missing |\n|---|---|---|\n")
     for src in sorted(extra):
@@ -778,10 +780,11 @@ def render_intel_maps(repo: Repo) -> dict[Path, str]:
         reds = [r for r in repo.red if (r.get("mitre") or {}).get("technique") == t]
         if not reds:
             continue
-        ds += f"## {technique_link(t)}\n\n| Source | Event | Rule uses it |\n|---|---|---|\n"
+        ds += f"## {technique_link(t)}\n\n| Source | Event | What it shows | Rule uses it |\n|---|---|---|---|\n"
         for r in reds:
             for tel in r.get("telemetry") or []:
-                ds += f"| {tel['source']} | {tel['event']} | {'yes' if tel.get('used_by') else 'no'} |\n"
+                ds += (f"| {md_text(tel['source'])} | {md_text(tel['event'])} | {md_text(tel.get('description', ''))} | "
+                       f"{'yes' if tel.get('used_by') else 'no'} |\n")
         ds += "\n"
     checked = repo.actor_doc.get("last_checked")
     am = HEADER + "# Actor Tradecraft Map\n\n"
@@ -797,6 +800,8 @@ def render_intel_maps(repo: Repo) -> dict[Path, str]:
         for t in a.get("techniques") or []:
             items = [d for d in repo.items if d.technique == t["id"]]
             cov = "<br>".join(f"[{d.id}](../../{det_path(d)}/)" for d in items) or "gap"
+            if items and t.get("coverage_note"):
+                cov += f"<br>({md_text(t['coverage_note'])})"
             am += (f"| {a['group']} | [{a['id']}]({a['source']}) | {technique_link(t['id'])} | {t.get('note', '')} | "
                    f"{cov} | {a.get('context', '')} |\n")
     return {INTEL / "mappings" / "mitre_techniques.md": m + FOOTER,
@@ -813,8 +818,9 @@ def public_cell(repo: Repo, d, link: str = "public_evidence.md") -> str:
     sample = " · in-sample (changed after replaying them)" if v.get("changed") else ""
     h = v.get("holdout") or {}
     held = f" · held-out: {len(h['met'])} of {len(h['expected'])}" if h.get("expected") else ""
-    return (f"fires on {len(v['independent'])} of {v['recordings']} public recordings of its behaviour{held} · {v['alerts']} alerts · "
-            f"{fp} labelled false positive{sample} · [evidence]({link})")
+    return (f"fires on {len(v['independent'])} of {v['recordings']} public recordings of its behaviour{held} · "
+            f"{v['alerts']} alert{'' if v['alerts'] == 1 else 's'} · "
+            f"{fp} labelled false positive{'' if fp == 1 else 's'}{sample} · [evidence]({link})")
 
 
 def public_counts(repo: Repo) -> dict:
@@ -855,7 +861,8 @@ def render_facts(repo: Repo, d) -> str:
         f"| **Tests** | {f['tp']} true positive · {f['tn']} true negative · {f['mutations']} technique mutations |",
         f"| **Proof** | {f['proof']:.0f}% of rule mutants killed · fuzzer resistance {f['fuzz']:.0f}% over {f['fuzz_variants']} variants |",
         f"| **Parity** | KQL and SPL {'identical to the rule' if f['parity_ok'] else 'NOT proven'} on {f['parity_events']} events"
-        + (" · Defender advanced hunting identical on the same events" if f.get("defender_events") else "") + " |",
+        + (" · Defender advanced hunting identical on the same events" if f.get("defender_events") else "")
+        + " (RASD's offline KQL / SPL model, not yet a live SIEM) |",
         f"| **Public data** | {public_cell(repo, d)} |",
         f"| **Rule** | [`rule.yml`](rule.yml) · [KQL]({rel(ROOT / 'queries' / 'kql' / (d.id + '.kql'), up)}) · "
         f"[SPL]({rel(ROOT / 'queries' / 'spl' / (d.id + '.spl'), up)})"
@@ -927,9 +934,11 @@ def public_summary_line(repo: Repo, docs: str) -> str:
     held = (f" · held-out: {pc['holdout_met']} of {pc['holdout_expected']} expectations met, in {pc['holdout_files_expecting']} "
             f"of {pc['holdout_files']} files labelled before their first replay" if pc["holdout_expected"] else "")
     return (f"{pc['validated']}/{len(repo.items)} detections fire on the pinned public attack data that records their "
-            f"behaviour · {pc['datasets']} files from {pc['sources']} sources · {pc['alerts']} alerts on the recorded attacks, "
+            f"behaviour · {pc['datasets']} in-sample files from {pc['sources']} sources ({pc['datasets'] + pc['holdout_files']} "
+            f"with the held-out files) · {pc['alerts']} alerts on the recorded attacks, "
             f"{pc['harness'] + pc['benign']} on the labs' own activity (each explained), {pc['false_positives']} labelled false "
-            f"positive on these lab captures{held} ([validation]({docs}PUBLIC_DATA_VALIDATION.md))")
+            f"positive{'' if pc['false_positives'] == 1 else 's'} on these lab captures{held} "
+            f"([public data]({docs}PUBLIC_DATA_VALIDATION.md))")
 
 
 def render_readme_metrics(repo: Repo) -> str:

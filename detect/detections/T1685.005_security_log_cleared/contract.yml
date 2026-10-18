@@ -28,9 +28,10 @@ detection_logic:
   - Attackers who stop the EventLog service or tamper with forwarding before clearing
   - Only the Security log; other logs are covered by System 104
   - Hosts whose Security log is not forwarded before the clear leave no copy to investigate
+  - Logs removed by stopping the service and deleting the .evtx file, or cleared after the service was patched in memory, write no 1102
 coverage_depth:
   level: high
-  reason: 'Outcome-based: fires whenever the Security log is cleared, by any method'
+  reason: 'Outcome-based: fires whenever the EventLog service clears the Security log (any tool, GUI or API)'
 risk_model:
   base_score: 60
   increase_if:
@@ -43,7 +44,7 @@ risk_model:
     subtract: 20
 validation:
   mutation_tests_required: true
-  lab_emulation_available: false
+  lab_emulation_available: true
   siem_backends:
   - splunk
   - kql

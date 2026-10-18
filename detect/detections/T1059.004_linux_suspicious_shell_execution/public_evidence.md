@@ -13,7 +13,7 @@ holdout_fired_on: 0
 
 # Public dataset evidence · Linux Shell Executing Decoded Base64 or Code From a Temporary Directory
 
-**Public dataset validation: fires on 1 of the 5 public recordings of its behaviour (quiet on the other 4: 2 need a rule RASD does not have yet, 2 outside the rule's scope)** · 2 alerts · sources: Splunk Attack Data · no alert beyond the recorded attacks.
+**Public dataset replay: fires on 1 of the 5 public recordings of its behaviour (quiet on the other 4: 2 need a rule RASD does not have yet, 2 outside the rule's scope)** · 2 alerts · sources: Splunk Attack Data · in the in-sample files, no alert beyond the recorded attacks.
 
 Public data replayed through the tested rule, not lab evidence: the maturity level does not change ([what public data proves and what it does not](../../../datasets/README.md#what-public-data-proves)). Alerts are counted once per record: a record a file repeats, or that an earlier file of the catalog already holds, is not new evidence.
 
@@ -34,14 +34,14 @@ Public data replayed through the tested rule, not lab evidence: the maturity lev
 
 ## Where it stays quiet
 
-Recordings of this technique in the catalog where the rule does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **scope**: the recorded behaviour is outside what the rule is written to detect.
+Recordings in the catalog labelled for this detection where it does not fire on the recorded attack, each with the reason, re-checked on every run. **gap**: public data shows the behaviour in telemetry RASD reads, and no rule reads it yet; **scope**: the recorded behaviour is outside what the rule is written to detect.
 
 | Dataset | Kind | Why |
 |---|---|---|
-| [T1059.004/linux_discovery_tools/sysmon_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.004/linux_discovery_tools/sysmon_linux.log) | scope | discovery commands from an interactive shell: no encoded payload piped into a shell and nothing run from /tmp |
-| [T1059.004/snapattack/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.004/snapattack/snapattack_linux.log) | gap | ncat -c bash and nc -e /bin/sh: a reverse shell through netcat, which this rule does not cover (encoded pipes and /tmp execution only) Next rule: **netcat_exec**. |
-| [T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux.log) | gap | sh -c piping echo nc ... -e /bin/bash into sh: a netcat reverse shell, which this rule does not cover (encoded pipes and /tmp execution only) Next rule: **netcat_exec**. |
-| [T1190/linux_suspicious_child_of_postgresql/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_suspicious_child_of_postgresql/snapattack_linux.log) | scope | an interactive bash under the database account in its data directory: no encoded payload piped into a shell and nothing run from a temporary directory |
+| [T1059.004/linux_discovery_tools/sysmon_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.004/linux_discovery_tools/sysmon_linux.log) | scope | discovery commands from an interactive shell: no encoded payload piped into a shell and nothing run from /tmp. |
+| [T1059.004/snapattack/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1059.004/snapattack/snapattack_linux.log) | gap | ncat -c bash and nc -e /bin/sh: a reverse shell through netcat, which this rule does not cover (encoded pipes and /tmp execution only). Next rule: **netcat_exec**. |
+| [T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_cve-2023-33246_rocketmq_exploitation/snapattack_linux.log) | gap | sh -c piping echo nc ... -e /bin/bash into sh: a netcat reverse shell, which this rule does not cover (encoded pipes and /tmp execution only). Next rule: **netcat_exec**. |
+| [T1190/linux_suspicious_child_of_postgresql/snapattack_linux](https://github.com/splunk/attack_data/blob/eac2f8f675ec31a6618003399dcc53641524e673/datasets/attack_techniques/T1190/linux_suspicious_child_of_postgresql/snapattack_linux.log) | scope | an interactive bash under the database account in its data directory: no encoded payload piped into a shell and nothing run from a temporary directory. |
 
 ## Held-out files
 
@@ -57,7 +57,7 @@ Files added after the rule changes, labelled from their raw events and this dete
 
 ## First match
 
-The first event that fired, from the committed extract (reduced to the fields the rules read; record 50219 of `T1053.003/cronjobs_entry/sysmon_linux`, SHA-256 of the original record `2546141830bdb6a7…`):
+The first event in file order that fired, from the committed extract (reduced to the fields the rules read; record 50219 of `T1053.003/cronjobs_entry/sysmon_linux`, SHA-256 of the original record `2546141830bdb6a7…`):
 
 ```json
 {

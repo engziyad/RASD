@@ -4,7 +4,8 @@
 |---|---|
 | **Report** | Title, publisher, date, link |
 | **Reviewed by / on** | |
-| **Reliability of source** | A (confirmed) … F (cannot be judged) |
+| **Reliability of source** | A (completely reliable) … F (reliability cannot be judged) |
+| **Credibility of information** | 1 (confirmed by other sources) … 6 (truth cannot be judged) |
 | **Relevance to us** | Sector, region, technology overlap |
 
 ## Source Summary

@@ -3,9 +3,12 @@ id: 7bc31caf-8287-4c8e-9936-381e4ab88410
 status: test
 description: |
   Detects rundll32.exe abused as a signed proxy to execute code: script
-  protocol handlers (javascript:/vbscript:), DLLs loaded from user-writable
-  paths, the comsvcs.dll MiniDump export, or rundll32 with no arguments
-  (a classic process-injection host).
+  protocol handlers (javascript:/vbscript:), DLLs or paths in user-writable
+  folders, the comsvcs.dll MiniDump export, rundll32 with no arguments
+  (a classic process-injection host), Windows exports that start another
+  program (zipfldr, advpack, pcwutl), shell32 / url.dll handlers that pass
+  any path or URL to the shell, a DLL loaded straight from a share, and a
+  DLL dropped straight into a user profile.
 references:
   - https://attack.mitre.org/techniques/T1218/011/
   - https://lolbas-project.github.io/lolbas/Binaries/Rundll32/

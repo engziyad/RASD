@@ -11,7 +11,7 @@
 
 ## Objective
 
-Create two scheduled tasks the way intruders do - with schtasks.exe and a cmd /c action in %TEMP%, and with Register-ScheduledTask and an inline action in $env:TEMP - and prove each one fires its own detection. Neither task ever runs: the schtasks trigger is 23:59 once, the PowerShell trigger is a year away, and both are deleted by cleanup.
+Create two scheduled tasks the way intruders do - with schtasks.exe and a cmd /c action in %TEMP%, and with Register-ScheduledTask and an inline action in $env:TEMP - and prove each one fires its own detection. Neither task should run before cleanup deletes it: the schtasks trigger is 23:59 once, the PowerShell trigger is a year away, and both are deleted by cleanup.
 
 ## Prerequisites
 

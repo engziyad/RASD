@@ -5,19 +5,22 @@
     The whole evidence run on the Windows lab VM in one command:
       1. Test-LabReadiness.ps1 - stops on a FAIL unless -Force
       2. Invoke-RasdEmulation.ps1 -Technique All with the options you pass
-      3. waits -SiemWaitMinutes so Splunk's scheduled alerts (every 5 minutes, each over the
-         5-minute slice that closed 5 minutes earlier) see the events: up to 15 minutes
+      3. waits -SiemWaitMinutes so Splunk's scheduled alerts see the events: detection alerts run
+         every 5 minutes, each over the 5-minute slice that closed 5 minutes earlier (up to 15
+         minutes); a 10-minute correlation such as the password spray alerts up to two windows
+         plus 3 minutes later, so the default wait is 25 minutes when a correlation step ran
       4. Export-LabTelemetry.ps1 for the run window
       5. zips the workstation side: results, collected artifacts, telemetry export, readiness report
-    and prints what is left: the DC export (when Kerberoasting ran), the Splunk alert
-    export, and the rasd evidence --run command that turns the zip and those exports into
-    evidence.md.
+    and prints what is left: the DC export (when Kerberoasting or the password spray ran), the
+    WinRM target's export (when the WinRM test ran), the Splunk alert export, and the
+    rasd evidence --run command that turns the zip and those exports into evidence.md.
     Safe by default: credential access and the Security-log clear run only with
     -IncludeCredentialAccess / -IncludeSecurityLogClear (a full validation run).
     Lab use only: an elevated Windows PowerShell 5.1 on a disposable VM, never a
     production or work machine. Take a VM snapshot first and revert it afterwards.
 .PARAMETER SiemWaitMinutes
-    Minutes to wait after the tests before exporting (default 15; 0 without a SIEM).
+    Minutes to wait after the tests before exporting (default 15, or 25 when a correlation step
+    ran; 0 without a SIEM).
 .PARAMETER Force
     Run even when the readiness check reports a FAIL (the evidence step will say what is missing).
 .PARAMETER FixReadiness
@@ -69,7 +72,8 @@ if ($DryRun) {
     Write-Host $readinessPlan
     Write-Host '  2. offensive tests:'
     & $runner @emulation -DryRun
-    Write-Host "  3. wait $SiemWaitMinutes minute(s) for Splunk's scheduled alerts"
+    $wait = if ($PSBoundParameters.ContainsKey('SiemWaitMinutes')) { "$SiemWaitMinutes minute(s)" } else { '15 minutes, or 25 when a correlation step ran,' }
+    Write-Host "  3. wait $wait for Splunk's scheduled alerts"
     Write-Host '  4. export the Sysmon, Security and System events of the run window'
     Write-Host '  5. zip results, artifacts, telemetry export and readiness report'
     return
@@ -94,8 +98,13 @@ New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 # 2 · offensive tests (the runner records every step's UTC window, marker, host and cleanup)
 $start = (Get-Date).AddMinutes(-1)
 & $runner @emulation -OutDir $OutDir
+$resultsFile = Join-Path $OutDir 'emulation-results.json'
+# Windows PowerShell 5.1 passes a JSON array down the pipeline as ONE object: the parentheses enumerate it
+$executed = @((Get-Content -LiteralPath $resultsFile -Raw | ConvertFrom-Json) | Where-Object { $_.status -eq 'executed' })
 
-# 3 · give the SIEM time to alert
+# 3 · give the SIEM time to alert: a correlation reports a window only after it closes
+$correlated = @($executed | Where-Object { $_.PSObject.Properties['correlations'] -and @($_.correlations).Count })
+if (-not $PSBoundParameters.ContainsKey('SiemWaitMinutes') -and $correlated.Count) { $SiemWaitMinutes = 25 }
 if ($SiemWaitMinutes -gt 0) {
     Write-Host "waiting $SiemWaitMinutes minute(s) so Splunk's scheduled alerts can run ..." -ForegroundColor DarkGray
     Start-Sleep -Seconds ($SiemWaitMinutes * 60)
@@ -106,7 +115,6 @@ $exportFile = Join-Path $OutDir 'lab-export.jsonl'
 & $exporter -Since $start -OutFile $exportFile
 
 # 5 · manifest and one file to keep or send
-$resultsFile = Join-Path $OutDir 'emulation-results.json'
 $manifest = [pscustomobject][ordered]@{
     tool = 'RASD lab run'
     host = [System.Net.Dns]::GetHostName()
@@ -128,11 +136,10 @@ $zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
 # sha256sum format beside the zip (a zip cannot hold its own hash): sha256sum -c <zip>.sha256
 [System.IO.File]::WriteAllText("$zip.sha256", "$zipHash  $(Split-Path -Leaf $zip)`n")
 
-# Kerberos tickets (4769) and pre-authentication failures (4771) are logged on the DC, not here
-$needsDc = $false
-foreach ($r in (Get-Content -LiteralPath $resultsFile -Raw | ConvertFrom-Json)) {
-    if ($r.test -in @('kerberoasting', 'password_spray_simulation') -and $r.status -eq 'executed') { $needsDc = $true }
-}
+# Kerberos tickets (4769) and pre-authentication failures (4771) are logged on the DC, and what a
+# WinRM session starts on its target, not here
+$needsDc = [bool]@($executed | Where-Object { $_.test -in @('kerberoasting', 'password_spray_simulation') }).Count
+$needsTarget = [bool]@($executed | Where-Object { $_.test -eq 'winrm_access_validation' }).Count
 $since = $start.ToString('yyyy-MM-dd HH:mm:ss')
 Write-Host ''
 Write-Host "[+] lab run packed: $zip" -ForegroundColor Green
@@ -140,11 +147,15 @@ Write-Host "    sha256: $zipHash (also in $(Split-Path -Leaf $zip).sha256)" -For
 Write-Host 'Left to do:'
 $n = 1
 if ($needsDc) {
-    Write-Host "  $n. On the lab DC: .\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '$since' -OutFile .\dc-export.jsonl"
+    Write-Host "  $n. On the lab DC: .\red\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '$since' -OutFile .\dc-export.jsonl"
+    $n++
+}
+if ($needsTarget) {
+    Write-Host "  $n. On the WinRM target VM: .\red\Export-LabTelemetry.ps1 -Since '$since' -OutFile .\target-export.jsonl"
     $n++
 }
 Write-Host "  $n. In Splunk: run the report 'RASD - alert export' from $since to now and export it as siem-alerts.csv"
 $n++
-Write-Host "  $n. rasd evidence --run `"$zip`"$(if ($needsDc) { ' dc-export.jsonl' }) siem-alerts.csv"
+Write-Host "  $n. rasd evidence --run `"$zip`"$(if ($needsDc) { ' dc-export.jsonl' })$(if ($needsTarget) { ' target-export.jsonl' }) siem-alerts.csv"
 Write-Host '     (raw files stay out of the repository; evidence.md records their SHA-256)'
 Write-Host '  Then revert the VM snapshot.'

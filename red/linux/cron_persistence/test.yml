@@ -15,7 +15,7 @@ prerequisites:
   - Linux lab host with cron (Debian/Ubuntu) or cronie (RHEL) installed
   - "auditd with a watch on the cron spool (-w /var/spool/cron -p wa -k cron) and/or Sysmon for Linux"
 safety:
-  - Runs only with --lab-confirmed on a disposable lab host you own
+  - Runs only with --lab-confirmed on a disposable lab host you own, marked by /etc/rasd-lab-host (red/lab/README.md, Lab guard)
   - "One line is added: */30 * * * * /bin/echo <marker> >/dev/null 2>&1 # <marker>"
   - The existing crontab is read completely before it is rewritten, so other entries are preserved
   - cleanup.sh removes exactly the lines containing the marker

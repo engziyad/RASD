@@ -6,10 +6,10 @@ Expected output, not a capture from a real host. The run marker is random on eve
 
 ```text
 [T1505.003] Upload .exe, .pdf.exe, spoofed-type and oversized text files
-  FINDING  upload rasd_1a2b3c4d.exe (disallowed extension, 56 bytes): HTTP 204
-  FINDING  upload rasd_1a2b3c4d.pdf.exe (double extension, 56 bytes): HTTP 204
-  FINDING  upload rasd_1a2b3c4d.html (content type spoofed as PDF, 56 bytes): HTTP 204
-  FINDING  upload rasd_1a2b3c4d.pdf (over the size limit, 100072 bytes): HTTP 204
+  FINDING  upload rasd_1a2b3c4d.exe (disallowed extension, 51 bytes): HTTP 204
+  FINDING  upload rasd_1a2b3c4d.pdf.exe (double extension, 51 bytes): HTTP 204
+  FINDING  upload rasd_1a2b3c4d.html (content type spoofed as PDF, 51 bytes): HTTP 204
+  FINDING  upload rasd_1a2b3c4d.pdf (over the size limit, 100062 bytes): HTTP 204
 4 check(s), 4 finding(s)
 ```
 

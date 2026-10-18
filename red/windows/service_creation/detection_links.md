@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | sc.exe create with a cmd.exe /c binary path (never started) | [`T1569.002_suspicious_service_installation`](../../../detect/detections/T1569.002_suspicious_service_installation/) | [rule.yml](../../../detect/detections/T1569.002_suspicious_service_installation/rule.yml) | [KQL](../../../queries/kql/T1569.002_suspicious_service_installation.kql) | [SPL](../../../queries/spl/T1569.002_suspicious_service_installation.spl) | token `{marker}` (e.g. `rasd_1a2b3c4d`) |
 
-Validate the chain after a lab run:
+Turn a lab run into evidence (the exports this test's events are logged in):
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl
