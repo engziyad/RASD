@@ -62,6 +62,7 @@ flowchart TB
 | `fuzz.py` | Does it survive automatic evasion variants (renamed binaries, forward slashes, parameter prefixes, hex/decimal, ordinals)? |
 | `prove.py` | Would the tests notice if any value, field or branch of the rule were deleted? |
 | `parity.py` | Do the generated KQL and SPL, and the Defender advanced hunting queries, return exactly what the rule returns? |
+| `certify.py` | Does the rule's logic hold for every possible value? Each rule becomes exact finite automata over every Unicode code point (`automata.py`: Python's own parser and engine decide every character class); an event that fires it and its nearest quiet event are built from them and replayed through the engine |
 | `correlate.py` | Is every correlation proven: base rule, event-sequence scenarios, parameter mutants, aggregation parity of the generated SPL and KQL, burst guarantee? (engine and conversion in `correlation.py`) |
 | `nearmiss.py` | Which events are one field edit away from an alert (proven by a witness), which condition holds them back, is it pinned by a true negative, and how close quiet windows come to each correlation threshold? |
 | `diff.py` | Which events change verdict between this rule and the one in a git ref? |
@@ -94,9 +95,9 @@ flowchart TB
    1. lint (rules, contracts, tuning guides, evidence) and the Sigma support check
    2. unit tests (engine, converter, every tool; the PowerShell tests run when `pwsh` is installed)
    3. detection tests, mutation tests
-   4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
+   4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), certify `--check` (every rule compiled exactly, both constructed events confirmed by the engine, page current), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
    5. tune `--check`, red `--check`, Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
-   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the Splunk app, the profiles README, the public data pages, chain (matrices, metrics, intel maps, facts blocks)
+   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the Splunk app, the profiles README, the public data pages, the certify page, chain (matrices, metrics, intel maps, facts blocks)
    7. chain `--check` and link check
 3. detection tests as JUnit, the PowerShell and shell parse checks of every red script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
 4. **drift check**: any generated file that differs from what the sources produce fails the build

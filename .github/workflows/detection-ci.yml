@@ -37,7 +37,7 @@ jobs:
           ruff check .
           mypy
 
-      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, correlate, nearmiss, tune, red, Splunk app, profiles, datasets, build, chain, links)
+      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, Splunk app, profiles, datasets, build, chain, links)
         run: rasd ci
 
       - name: Detection tests as JUnit

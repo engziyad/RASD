@@ -17,6 +17,7 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Correlation scenarios | 43 event sequences (18 must fire, 4 pinned known limits) |
 | Correlation mutants | 24 parameter mutants (24 killed) · 45 base-rule mutants |
 | Aggregation parity | 4502 SPL and KQL sequence runs identical to the engine |
+| Exact automata (certify) | 18/18 Sigma rules compiled to exact automata over every Unicode code point (2603 states) · 36 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](CERTIFY.md)) |
 | Near misses (replay corpus) | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
 | SIEM backends | SPL / KQL |
 | Hunting queries | 5 (KQL + SPL) |

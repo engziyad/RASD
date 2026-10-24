@@ -61,6 +61,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (ATTACK_ALIASES, ATTACK_TACTICS, ATTACK_VERSION, BOLD, DFIR, DIM, DOCS, GREEN, INTEL, PURPLE, RED,
                     RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS, YELLOW, attack_aliases, load_detections,
                     md_text)
+from certify import run as run_certify, summary as certify_summary
 from convert import logsource_key
 from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
@@ -174,6 +175,7 @@ class Repo:
         fuzz, proof, parity = run_fuzz(None), run_prove(None), run_parity(None)
         self.tests, self.muts, self.fuzz, self.proof, self.parity = tests, muts, fuzz, proof, parity
         self.corr_report = run_correlate(None) if self.corrs else {}
+        self.certify = certify_summary(run_certify())
         from common import load_jsonl
         self.near = near_misses(load_jsonl(REPLAY_CORPUS)) if REPLAY_CORPUS.exists() else {"detections": {}, "correlations": {}}
         self.scores = {d.id: score_one(d.folder, tests, muts, fuzz, proof, parity) for d in self.dets}
@@ -690,6 +692,7 @@ def render_metrics(repo: Repo) -> str:
                                    f"{sum(f['base_mutants'] for f in cf)} base-rule mutants"),
            ("Aggregation parity", f"{sum(f['aggregation_runs'] for f in cf)} SPL and KQL sequence runs identical to the engine"
                                   if all(f["parity_ok"] for f in cf) else "NOT proven")] if cf else []),
+        ("Exact automata (certify)", certify_line(repo, "")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -720,6 +723,14 @@ def defender_summary(repo: Repo) -> str:
     bad = sum(len(r["mde"]) for r in rows)
     return (f" · Defender advanced hunting: {len(rows)} rules on {sum(r['events'] for r in rows)} events, each in both "
             f"FolderPath forms ({bad} divergences)")
+
+
+def certify_line(repo: Repo, docs: str) -> str:
+    """What certify proved on this build; `docs` is the path to docs/ from the page."""
+    c = repo.certify
+    return (f"{c['compiled']}/{c['rules']} Sigma rules compiled to exact automata over every Unicode code point "
+            f"({c['states']} states) · {c['witnesses']} constructed events, a firing event and its nearest quiet event "
+            f"per rule, each replayed through the engine ([certify]({docs}CERTIFY.md))")
 
 
 def near_summary(repo: Repo) -> str:
@@ -975,6 +986,7 @@ def render_readme_metrics(repo: Repo) -> str:
                             f"parameter mutants killed · {sum(f['aggregation_runs'] for f in cf)} aggregation parity runs "
                             f"({'0 divergences' if all(f['parity_ok'] for f in cf) else 'NOT proven'}) · burst guarantee "
                             "verified")] if cf else []),
+        ("Exact automata", certify_line(repo, "docs/")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),

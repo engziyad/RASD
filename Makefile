@@ -1,4 +1,4 @@
-.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity correlate nearmiss tune red chain links score replay new clean
+.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red chain links score replay new clean
 
 PY ?= python3
 RASD = $(PY) rasd.py
@@ -35,6 +35,9 @@ prove:           ## Rule mutation testing
 
 parity:          ## Generated KQL / SPL behave like the rules
 	$(RASD) parity
+
+certify:         ## Every rule as exact automata: a firing event and its nearest quiet event, replayed through the engine
+	$(RASD) certify -v
 
 correlate:       ## Correlation proofs: scenarios, parameter mutants, aggregation parity, burst guarantee
 	$(RASD) correlate -v

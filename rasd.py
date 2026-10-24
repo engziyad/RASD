@@ -10,6 +10,7 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               fuzz       automatic evasion fuzzing against a regression baseline
               prove      rule mutation testing: is every value, field and branch proven by a test?
               parity     the generated KQL / SPL return exactly what the tested rule returns (modelled semantics, not a live SIEM)
+              certify    every rule as exact automata over every character: a firing event and its nearest quiet event, built and replayed
               correlate  Sigma correlations: scenarios, parameter mutants, aggregation parity, burst guarantee
               nearmiss   traffic one field edit away from an alert, and how close quiet windows come to a threshold
               tune       security cost vs noise benefit of every tuning
@@ -18,7 +19,7 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
   understand  explain    why a rule matched (or did not) an event, field by field
               score      Engineering Score and Operational Score
   deploy      build      KQL + SPL (rules and correlations), Defender XDR queries, Splunk app, cards, views, coverage, scores,
-                         Sigma support page, banner, red docs, profiles README, public dataset pages, chain outputs
+                         Sigma support page, banner, red docs, profiles README, public dataset pages, certify page, chain outputs
               coverage   the ATT&CK Navigator layer and the coverage matrix
               views      the audience views (SOC L1, incident response, purple team, GRC)
               convert    print queries for one backend
@@ -44,6 +45,7 @@ Examples
   rasd chain
   rasd prove --filter T1218 --suggest
   rasd parity --filter T1558 -v
+  rasd certify -v
   rasd correlate -v
   rasd correlate --logs dc-export.jsonl
   rasd nearmiss my-export.jsonl --profile auto --suggest
@@ -78,14 +80,14 @@ COMMANDS = {
     "replay": ["replay.py"], "evidence": ["evidence.py"], "chain": ["chain.py"], "links": ["links.py"],
     "coverage": ["coverage.py"], "views": ["generate_views.py"], "splunk": ["splunk_app.py"],
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
-    "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"],
+    "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["chain.py"]]
+         ["datasets.py", "render"], ["certify.py", "--write"], ["chain.py"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
-      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
+      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
       ["datasets.py", "check"],
       *BUILD, ["chain.py", "--check"], ["links.py"]]
 
