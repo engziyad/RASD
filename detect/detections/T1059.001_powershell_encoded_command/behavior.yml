@@ -1,0 +1,156 @@
+# Behaviour spec: every way an encoded PowerShell command reaches this rule's events.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; an argv pattern is matched
+# against the arguments the program receives, joined by NUL (\x00), after the C runtime has split the
+# command line. {i:text} is text with each ASCII letter in either case.
+behaviour: >-
+  powershell.exe or pwsh.exe is started with -EncodedCommand (any spelling the console host accepts)
+  followed by Base64 text that Convert.FromBase64String decodes.
+
+sources:
+  - id: pwsh-parser
+    title: PowerShell 7 console host, CommandLineParameterParser.cs (GetSwitchKey, MatchSwitch, -EncodedCommand)
+    url: https://github.com/PowerShell/PowerShell/blob/ac15e9a5fa45aa97964321ce08702c97b2414616/src/Microsoft.PowerShell.ConsoleHost/host/msh/CommandLineParameterParser.cs
+  - id: pwsh-dash
+    title: PowerShell 7, CharTraits.cs (IsDash - the four dash characters)
+    url: https://github.com/PowerShell/PowerShell/blob/ac15e9a5fa45aa97964321ce08702c97b2414616/src/System.Management.Automation/engine/parser/CharTraits.cs
+  - id: pwsh-base64
+    title: PowerShell 7, PsUtils.cs (StringToBase64Converter.Base64ToString calls Convert.FromBase64String)
+    url: https://github.com/PowerShell/PowerShell/blob/ac15e9a5fa45aa97964321ce08702c97b2414616/src/System.Management.Automation/utils/PsUtils.cs
+  - id: frombase64
+    title: .NET Convert.FromBase64String (tab, line feed, carriage return and space are ignored anywhere; up to two trailing '=')
+    url: https://learn.microsoft.com/dotnet/api/system.convert.frombase64string
+  - id: harness
+    title: Red Canary AtomicTestHarnesses, Out-PowerShellCommandLineParameter (powershell.exe switch characters and EncodedCommand abbreviations)
+    url: https://www.powershellgallery.com/packages/AtomicTestHarnesses/1.7.0.0/Content/TestHarnesses/T1059.001_PowerShell/OutPowerShellCommandLineParameter.ps1
+  - id: crt-args
+    title: Microsoft Learn, Parsing C command-line arguments (how wmain's argv is split; a quoted string can sit inside an argument)
+    url: https://learn.microsoft.com/cpp/c-language/parsing-c-command-line-arguments
+  - id: dosfuscation
+    title: D. Bohannon, DOSfuscation (2018) - double quotes inside arguments change nothing at run time and stay in the logged command line
+    url: https://www.exploit-db.com/docs/44347
+
+define:
+  image: '.*\\(?:{i:powershell.exe}|{i:pwsh.exe})'
+  pwsh: '.*\\{i:pwsh.exe}'
+  sccm: '{i:C:\Windows\CCM\CcmExec.exe}'
+  # a switch is one switch character (pwsh also takes the same dash twice), then a prefix of
+  # encodedcommand or the alias ec, compared without case
+  switch_char: '(?:/|-|--|\u2013|\u2013\u2013|\u2014|\u2014\u2014|\u2015|\u2015\u2015)'
+  name: '(?:{i:ec}|{i:e}|{i:en}|{i:enc}|{i:enco}|{i:encod}|{i:encode}|{i:encoded}|{i:encodedc}|{i:encodedco}|{i:encodedcom}|{i:encodedcomm}|{i:encodedcomma}|{i:encodedcomman}|{i:encodedcommand})'
+  switch: '{switch_char}{name}'
+  b64: '[A-Za-z0-9+/]'
+  # valid Base64 of at least 16 characters (a multiple of four, '=' padding only at the end)
+  payload: '(?:{b64}{4}){4,}(?:{b64}{2}==|{b64}{3}=)?'
+  short_payload: '(?:{b64}{4}){0,2}(?:{b64}{4}|{b64}{2}==|{b64}{3}=)'
+  ws: '[\t\n\r ]'
+  payload_ws: '{ws}*(?:{b64}{ws}*{b64}{ws}*{b64}{ws}*{b64}{ws}*){4,}(?:{b64}{ws}*{b64}{ws}*={ws}*={ws}*|{b64}{ws}*{b64}{ws}*{b64}{ws}*={ws}*)?'
+  argv: '{token}(?:\x00{token})*\x00{switch}\x00{payload}(?:\x00{token})*'
+  plain_or_quoted: '(?:[^ \t"]+|"[^"]*")'
+
+variants:
+  - name: Documented spellings, plain arguments
+    why: >-
+      Every switch character and abbreviation the console host accepts [pwsh-parser, pwsh-dash, harness],
+      any letter case, any arguments around it, no quotes on the command line.
+    sources: [pwsh-parser, pwsh-dash, harness]
+    event:
+      Image: '{image}'
+      ParentImage: {not: '{sccm}', missing: true}
+      CommandLine: {argv: '{argv}', match: '[^"]*'}
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -NoP -W Hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA'
+
+  - name: Whole arguments in quotes
+    why: Each argument either plain or wrapped whole in double quotes, as scripts and launchers write them [crt-args].
+    sources: [crt-args]
+    event:
+      Image: '{image}'
+      ParentImage: {not: '{sccm}', missing: true}
+      CommandLine: {argv: '{argv}', match: '{plain_or_quoted}?(?:[ \t]+{plain_or_quoted})*[ \t]*'}
+    examples:
+      - Image: 'C:\Program Files\PowerShell\7\pwsh.exe'
+        CommandLine: '"C:\Program Files\PowerShell\7\pwsh.exe" "-EncodedCommand" "VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA"'
+
+  - name: Quoted parts inside an argument
+    expect: bypass
+    why: >-
+      The C runtime lets a quoted part sit anywhere inside an argument and drops the quotes, so -e"n"c
+      reaches PowerShell as -enc [crt-args]; the quotes stay in the logged command line and change nothing
+      at run time [dosfuscation].
+    reason: >-
+      The rule allows quotes only around the switch name and before the Base64 text, so a quote inside
+      the name or inside the Base64 text breaks the match.
+    fix: Remove the quotes from the command line before matching (a normalized field), or allow a quote between every character of the switch and the Base64 run.
+    sources: [crt-args, dosfuscation, pwsh-parser]
+    event:
+      Image: '{image}'
+      ParentImage: {not: '{sccm}', missing: true}
+      CommandLine: {argv: '{argv}', match: '[\s\S]*"[\s\S]*'}
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -NoP -W Hidden -e"n"c VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA'
+
+  - name: White space inside the Base64 text
+    expect: bypass
+    why: >-
+      PowerShell decodes the text with Convert.FromBase64String [pwsh-base64], which ignores tabs, line
+      feeds, carriage returns and spaces anywhere in it [frombase64]; spaces and tabs need quotes on the
+      command line, line feeds and carriage returns do not [crt-args].
+    reason: The rule needs 16 Base64 characters in one unbroken run.
+    fix: Allow white space between the Base64 characters, or count them across white space.
+    sources: [pwsh-base64, frombase64, crt-args]
+    event:
+      Image: '{image}'
+      ParentImage: {not: '{sccm}', missing: true}
+      CommandLine: {argv: '{token}(?:\x00{token})*\x00{switch}\x00{payload_ws}(?:\x00{token})*'}
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -NoP -W Hidden -enc "VwByAGkA dABlAC0A TwB1AHQA cAB1AHQA IAAnAHAA dQByAHAA bABlACcA"'
+
+  - name: Base64 text shorter than 16 characters
+    expect: bypass
+    why: An encoded command of one to five characters of script, such as calc, is 4 to 12 Base64 characters [frombase64].
+    reason: >-
+      The rule asks for at least 16 Base64 characters (six characters of script), so a script of five
+      characters or fewer passes.
+    fix: Lower the floor to 4 Base64 characters (one character of script) after the -EncodedCommand spellings.
+    sources: [frombase64, pwsh-parser]
+    event:
+      Image: '{image}'
+      ParentImage: {not: '{sccm}', missing: true}
+      CommandLine: {argv: '{token}(?:\x00{token})*\x00{switch}\x00{short_payload}(?:\x00{token})*', match: '[^"]*'}
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -enc YwBhAGwAYwA='
+
+  - name: Blanks around the switch inside its quotes (pwsh)
+    expect: bypass
+    why: >-
+      pwsh trims each argument before reading it as a switch [pwsh-parser], so "-enc " with a blank inside
+      the quotes is still -EncodedCommand; the quotes keep the blank in the argument [crt-args].
+    reason: >-
+      The rule wants the Base64 text right after the blanks that follow the switch, but here a quote
+      closes the argument and a second blank run starts the next one.
+    fix: Allow a closing quote and further blanks between the switch and the Base64 text.
+    sources: [pwsh-parser, crt-args]
+    event:
+      Image: '{pwsh}'
+      ParentImage: {not: '{sccm}', missing: true}
+      CommandLine: {argv: '{token}(?:\x00{token})*\x00[ \t]*{switch}[ \t]*\x00{payload}(?:\x00{token})*'}
+    examples:
+      - Image: 'C:\Program Files\PowerShell\7\pwsh.exe'
+        CommandLine: 'pwsh.exe -NoProfile "-enc " VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHAAdQByAHAAbABlACcA'
+
+  - name: SCCM client as the parent
+    expect: quiet
+    why: The configuration manager client starts encoded PowerShell as part of normal management.
+    reason: >-
+      filter_sccm excludes exactly C:\Windows\CCM\CcmExec.exe as the parent (in any case); a copy of
+      CcmExec.exe in any other folder still alerts.
+    sources: [pwsh-parser]
+    event:
+      Image: '{image}'
+      ParentImage: '{sccm}'
+      CommandLine: {argv: '{argv}', match: '[^"]*'}

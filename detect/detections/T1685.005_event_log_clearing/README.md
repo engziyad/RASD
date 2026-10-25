@@ -9,6 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 15 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 127 variants |
+| **Behaviour proof** | 5 of 9 variants proven for every event · 4 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1685005-windows-event-log-clearing-via-command-line)) |
 | **Parity** | KQL and SPL identical to the rule on 1741 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 1 of 1 public recordings of its behaviour · held-out: 2 of 2 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../../queries/spl/T1685.005_event_log_clearing.spl) · [Defender](../../../queries/mde/T1685.005_event_log_clearing.kql) |
@@ -32,7 +33,7 @@ Detecting at process creation records **who** ran it, and still alerts when the 
 
 ## Evasion & coverage gaps
 - Clearing through the Event Viewer GUI or the Win32 API (`ClearEventLogW`) from a custom binary - only 1102/104 will show.
-- PowerShell calling the .NET `System.Diagnostics.EventLog` `.Clear()` method - the string is too generic to match on a command line; 1102/104 still fire.
+- PowerShell calling the .NET `System.Diagnostics.EventLog` `.Clear()` method - the string is too generic to match on a command line alone; 1102/104 still fire. Proven by `rasd certify` together with quotes the C runtime drops (`wevtutil c"l"`, `Clear-Eve"nt"Log`) and a cmdlet name built at run time, each with a replayed event ([certificate](../../../docs/CERTIFICATES.md#t1685005-windows-event-log-clearing-via-command-line)).
 - Clearing a remote host (`wevtutil cl <log> /r:<host>`) records the process on the source host, not on the host whose log was cleared; the target's 1102/104 still fire.
 - Silencing the log without clearing it (Mimikatz `event::drop` patching the service, Invoke-Phant0m killing its threads) and deleting individual records - detect via **gaps in log volume** (heartbeat monitoring) instead.
 

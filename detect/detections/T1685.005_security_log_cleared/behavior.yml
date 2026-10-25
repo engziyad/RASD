@@ -1,0 +1,21 @@
+# Behaviour spec: the event Windows writes when the Security log is cleared.
+# rasd certify proves the rule fires on every event of each variant (docs/CERTIFY.md).
+behaviour: >-
+  Windows writes event 1102 to the Security log (provider Microsoft-Windows-Eventlog) every time the
+  Security audit log is cleared, whatever tool cleared it.
+
+sources:
+  - id: event-1102
+    title: Microsoft Learn, 1102(S) The audit log was cleared
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-1102
+
+variants:
+  - name: Security log cleared
+    why: Event 1102 from Microsoft-Windows-Eventlog in the Security channel, whoever cleared the log and however [event-1102].
+    sources: [event-1102]
+    event:
+      EventID: '1102'
+      Provider_Name: {match: 'Microsoft-Windows-Eventlog', missing: true}
+    examples:
+      - EventID: 1102
+        Provider_Name: Microsoft-Windows-Eventlog

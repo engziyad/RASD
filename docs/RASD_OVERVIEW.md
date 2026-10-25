@@ -14,6 +14,7 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | Does it stay quiet on normal activity? | True-negative tests, filter-coverage gate, tuning impact analysis |
 | Is every part of the rule actually needed and tested? | Rule mutation testing (`rasd prove`) |
 | Does the rule logic hold for every possible value, not just the samples? | Exact automata (`rasd certify`): each rule compiled over every Unicode character, with an engine-confirmed event that fires it and the nearest one that does not |
+| Does it catch the attack however the attacker writes it? | Behaviour proofs (`rasd certify`): documented attacker variants proven caught for every possible event, or the gap shown with a replayed event ([certificates](CERTIFICATES.md)) |
 | Does the query in Splunk / Sentinel do the same as the tested rule? | Query parity (`rasd parity`); aggregation parity for correlations (`rasd correlate`) |
 | Can it see attacks no single event shows - a password spray, a burst of service tickets, one client probing many protected API paths? | Sigma correlation detections with scenarios, parameter mutants and a proven burst guarantee (`rasd correlate`) |
 | Where will false positives come from? | Near-miss analysis (`rasd nearmiss`): traffic one field edit away from an alert, and threshold headroom |

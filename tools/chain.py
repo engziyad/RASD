@@ -61,7 +61,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (ATTACK_ALIASES, ATTACK_TACTICS, ATTACK_VERSION, BOLD, DFIR, DIM, DOCS, GREEN, INTEL, PURPLE, RED,
                     RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS, YELLOW, attack_aliases, load_detections,
                     md_text)
-from certify import run as run_certify, summary as certify_summary
+from certify import behaviour_counts, certificate_slug, run as run_certify, summary as certify_summary
 from convert import logsource_key
 from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
@@ -175,7 +175,8 @@ class Repo:
         fuzz, proof, parity = run_fuzz(None), run_prove(None), run_parity(None)
         self.tests, self.muts, self.fuzz, self.proof, self.parity = tests, muts, fuzz, proof, parity
         self.corr_report = run_correlate(None) if self.corrs else {}
-        self.certify = certify_summary(run_certify())
+        self.certify_rows = {r["id"]: r for r in run_certify()}
+        self.certify = certify_summary(list(self.certify_rows.values()))
         from common import load_jsonl
         self.near = near_misses(load_jsonl(REPLAY_CORPUS)) if REPLAY_CORPUS.exists() else {"detections": {}, "correlations": {}}
         self.scores = {d.id: score_one(d.folder, tests, muts, fuzz, proof, parity) for d in self.dets}
@@ -693,6 +694,7 @@ def render_metrics(repo: Repo) -> str:
            ("Aggregation parity", f"{sum(f['aggregation_runs'] for f in cf)} SPL and KQL sequence runs identical to the engine"
                                   if all(f["parity_ok"] for f in cf) else "NOT proven")] if cf else []),
         ("Exact automata (certify)", certify_line(repo, "")),
+        *([("Behaviour proofs (certify)", behaviour_line(repo, ""))] if repo.certify["variants"] else []),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -731,6 +733,30 @@ def certify_line(repo: Repo, docs: str) -> str:
     return (f"{c['compiled']}/{c['rules']} Sigma rules compiled to exact automata over every Unicode code point "
             f"({c['states']} states) · {c['witnesses']} constructed events, a firing event and its nearest quiet event "
             f"per rule, each replayed through the engine ([certify]({docs}CERTIFY.md))")
+
+
+def _n(n: int, word: str) -> str:
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
+def behaviour_line(repo: Repo, docs: str) -> str:
+    """What the behaviour specs proved on this build."""
+    c = repo.certify
+    return (f"{_n(c['variants'], 'variant')} of documented attacker behaviour over {_n(c['specs'], 'detection')}: "
+            f"{c['proven']} proven for every event, {_n(c['gaps'], 'known gap')} (each shown by an engine-confirmed "
+            f"event), {_n(c['quiet'], 'exclusion')} proven quiet ([certificates]({docs}CERTIFICATES.md))")
+
+
+def behaviour_cell(repo: Repo, d) -> str | None:
+    """The facts-block cell of one detection's behaviour certificate, or None without a spec."""
+    row = repo.certify_rows.get(d.id) or {}
+    c = behaviour_counts(row)
+    if not c["variants"]:
+        return None
+    gaps = f"{_n(c['gaps'], 'known gap')}, each with an engine-confirmed event" if c["gaps"] else "no known gap"
+    return (f"{c['proven']} of {_n(c['variants'], 'variant')} proven for every event · {gaps}"
+            + (f" · {_n(c['quiet'], 'exclusion')} proven quiet" if c["quiet"] else "")
+            + f" ([certificate](../../../docs/CERTIFICATES.md#{certificate_slug(row)}))")
 
 
 def near_summary(repo: Repo) -> str:
@@ -871,6 +897,7 @@ def render_facts(repo: Repo, d) -> str:
         f"| **Engineering Score** | {f['engineering']}/100 · operational {ops} |",
         f"| **Tests** | {f['tp']} true positive · {f['tn']} true negative · {f['mutations']} technique mutations |",
         f"| **Proof** | {f['proof']:.0f}% of rule mutants killed · fuzzer resistance {f['fuzz']:.0f}% over {f['fuzz_variants']} variants |",
+        *([f"| **Behaviour proof** | {cell} |"] if (cell := behaviour_cell(repo, d)) else []),
         f"| **Parity** | KQL and SPL {'identical to the rule' if f['parity_ok'] else 'NOT proven'} on {f['parity_events']} events"
         + (" · Defender advanced hunting identical on the same events" if f.get("defender_events") else "")
         + " (RASD's offline KQL / SPL model, not yet a live SIEM) |",
@@ -909,6 +936,7 @@ def render_corr_facts(repo: Repo, c) -> str:
         + (f"fuzzer resistance {f['fuzz']:.0f}% over {f['fuzz_variants']} variants" if f['fuzz_variants']
            else "fuzzer n/a (no evasion strategy applies to its fields)")
         + f" · correlation: {killed}/{f['param_mutants']} parameter mutants killed |",
+        *([f"| **Behaviour proof** | base rule: {cell} |"] if (cell := behaviour_cell(repo, c)) else []),
         f"| **Parity** | base filter identical on {f['parity_events']} events · aggregation "
         f"{'identical' if f['parity_ok'] else 'NOT proven'} in SPL and KQL on {f['aggregation_runs']} runs "
         f"({f['aggregation_sequences']} sequences × {f['aggregation_sets']} parameter sets) |",
@@ -987,6 +1015,7 @@ def render_readme_metrics(repo: Repo) -> str:
                             f"({'0 divergences' if all(f['parity_ok'] for f in cf) else 'NOT proven'}) · burst guarantee "
                             "verified")] if cf else []),
         ("Exact automata", certify_line(repo, "docs/")),
+        *([("Behaviour proofs", behaviour_line(repo, "docs/"))] if repo.certify["variants"] else []),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1079,6 +1108,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Proven in the repository", f"{len(proven(repo, 'siem-ready'))} of {n} SIEM-Ready: tests, rule mutation proof, "
                                      f"KQL and SPL parity, evasion fuzzing · Engineering Score {eng:.0f}/100"),
         ("Replayed on public data", public_summary_line(repo, docs)),
+        *([("Behaviour proofs", behaviour_line(repo, docs))] if repo.certify["variants"] else []),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "

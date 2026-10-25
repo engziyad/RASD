@@ -10,7 +10,8 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               fuzz       automatic evasion fuzzing against a regression baseline
               prove      rule mutation testing: is every value, field and branch proven by a test?
               parity     the generated KQL / SPL return exactly what the tested rule returns (modelled semantics, not a live SIEM)
-              certify    every rule as exact automata over every character: a firing event and its nearest quiet event, built and replayed
+              certify    every rule as exact automata over every character: a firing event and its nearest quiet event, built and
+                         replayed; each behaviour spec proven for every event, or its gaps shown
               correlate  Sigma correlations: scenarios, parameter mutants, aggregation parity, burst guarantee
               nearmiss   traffic one field edit away from an alert, and how close quiet windows come to a threshold
               tune       security cost vs noise benefit of every tuning

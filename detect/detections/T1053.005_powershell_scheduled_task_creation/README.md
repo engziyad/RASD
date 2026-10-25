@@ -9,6 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 14 true positive · 6 true negative · 3 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 158 variants |
+| **Behaviour proof** | 2 of 6 variants proven for every event · 4 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets)) |
 | **Parity** | KQL and SPL identical to the rule on 1772 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 2 of 3 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) · [SPL](../../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) · [Defender](../../../queries/mde/T1053.005_powershell_scheduled_task_creation.kql) |
@@ -35,7 +36,8 @@ Registering a task from a vendor XML definition in Program Files does not match,
 
 ## Evasion & coverage gaps
 - Cmdlets inside a `.ps1` file: only 4104 sees them.
-- COM API (`Schedule.Service`) from VBScript, JScript or .NET.
+- COM API (`Schedule.Service`) from VBScript, JScript, .NET or PowerShell itself.
+- Proven by `rasd certify`, each with a replayed event ([certificate](../../../docs/CERTIFICATES.md#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets)): `${env:TEMP}` written in braces, `Register-ScheduledJob`, the `Schedule.Service` object from a PowerShell command line, and quotes inside a cmdlet name, which the C runtime drops (`Register-Sched"uled"Task`).
 - Base64-encoded commands: covered by [PowerShell Execution With Encoded Command](../T1059.001_powershell_encoded_command/), not here.
 
 ## False positives & tuning

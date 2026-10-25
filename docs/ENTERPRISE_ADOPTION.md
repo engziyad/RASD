@@ -55,7 +55,7 @@ Run the detection's offensive step in the lab and give the run's zip and exports
 | SOC L1 | [Triage cards](views/SOC_L1.md): what fired, first checks, when to escalate |
 | SOC L2 | Response cards, closure and escalation notes per detection (`closure.md`), [DFIR playbooks](../dfir/playbooks/) |
 | Incident response | [Evidence and containment](views/Incident_Response.md), [DFIR templates](../dfir/templates/) |
-| Detection engineering | Rules, tests, mutation proof, parity, exact automata (certify), near misses, tuning impact |
+| Detection engineering | Rules, tests, mutation proof, parity, exact automata and behaviour proofs (certify), near misses, tuning impact |
 | GRC and audit | [Control evidence register](views/GRC_Audit.md), stated limitations, hashed evidence files |
 | Purple team | Offensive tests, [blind spots per detection](views/Purple_Team.md), [validation matrix](../purple/validation_matrix.md) |
 

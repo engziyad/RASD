@@ -186,7 +186,7 @@ class Certify(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.report = certify.run()
-        cls.models = {ident: certify.RuleModel(rule, ident) for ident, _kind, rule in certify.rules()}
+        cls.models = {ident: certify.RuleModel(rule, ident) for ident, _kind, rule, _folder in certify.rules()}
 
     def test_every_rule_compiles_and_both_witnesses_replay(self):
         self.assertEqual(certify.problems(self.report), [])
@@ -262,9 +262,114 @@ class Certify(unittest.TestCase):
         always = certify.RuleModel({"detection": {"a": {"Image": "x"}, "condition": "a or not a"}}, "always")
         self.assertIsNone(always.witness(False))
 
-    def test_the_page_is_current(self):
+    def test_the_pages_are_current(self):
         self.assertEqual(certify.DOC.read_text(encoding="utf-8"), certify.render_doc(self.report),
                          "docs/CERTIFY.md is stale - run: rasd certify --write")
+        self.assertEqual(certify.CERTIFICATES.read_text(encoding="utf-8"), certify.render_certificates(self.report),
+                         "docs/CERTIFICATES.md is stale - run: rasd certify --write")
+
+    def test_every_behaviour_spec_is_decided_as_it_expects(self):
+        rows = [r for r in self.report if r.get("behaviour")]
+        self.assertTrue(rows)
+        for r in rows:
+            for v in r["behaviour"]["variants"]:
+                self.assertTrue(v["ok"], f"{r['id']}: {v['variant']}")
+                if v.get("event"):                        # every event shown is a real counterexample
+                    self.assertEqual(matches(self.models[r["id"]].rule, v["event"]), v["expect"] == "quiet")
+
+
+class CommandLines(unittest.TestCase):
+    """The C runtime's argument split: the transducer, the direct parser and Microsoft's examples agree."""
+
+    def test_microsoft_examples(self):
+        self.assertEqual(certify.crt_argv('p "a b c" d e')[1:], ["a b c", "d", "e"])
+        self.assertEqual(certify.crt_argv('p a\\\\\\b d"e f"g h')[1:], ["a\\\\\\b", "de fg", "h"])
+        for outside in ('p "ab\\"c" "\\\\" d', 'p a\\\\\\"b c d', 'p a"b"" c d', "p a\x00b"):
+            self.assertIsNone(certify.crt_argv(outside), outside)    # escapes and "" inside quotes are not modelled
+        self.assertEqual(certify.crt_argv('"C:\\Program Files\\x.exe"-e x'), ["C:\\Program Files\\x.exe-e", "x"])
+        self.assertEqual(certify.crt_argv("  a"), ["", "a"])
+
+    def test_the_transducer_is_the_parser(self):
+        t = certify.crt_transducer()
+        for size in range(7):
+            for chars in itertools.product('a "\\\t\x00', repeat=size):
+                line = "".join(chars)
+                ref = certify.crt_argv(line)
+                self.assertEqual(t.apply(line), None if ref is None else "\x00".join(ref), repr(line))
+
+    def test_argv_automata_read_command_lines_like_the_parser(self):
+        rng = random.Random(9)
+        for pattern in (r"[^\x00]*\x00-e\x00[a]+", r"(?:[^\x00]*\x00)*[^\x00]*ab[^\x00]*(?:\x00[^\x00]*)*", r"x"):
+            d = certify.argv_dfa(pattern)
+            for _ in range(4000):
+                line = "".join(rng.choice('ab -e"\\\t\n') for _ in range(rng.randrange(13)))
+                ref = certify.crt_argv(line)
+                want = ref is not None and re.fullmatch(pattern, "\x00".join(ref)) is not None
+                self.assertEqual(d.run(line), want, (pattern, line))
+
+
+SPEC_RULE = {"detection": {"sel": {"Image|endswith": "\\tool.exe", "CommandLine|contains": "-secret"},
+                           "filter": {"ParentImage": "C:\\on.exe"}, "condition": "sel and not filter"}}
+
+
+class BehaviourSpecs(unittest.TestCase):
+    def check(self, listed: str, sources="sources: [{id: s, title: t, url: 'https://example.org'}]"):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "behavior.yml"
+            path.write_text(f"behaviour: test\n{sources}\nvariants:\n{listed}", encoding="utf-8")
+            spec = certify.load_spec(path)
+            return certify.check_spec(certify.RuleModel(SPEC_RULE, "t"), spec)
+
+    def test_proven_bypass_and_quiet(self):
+        rows = self.check("""
+  - {name: caught, why: w, sources: [s], event: {Image: '.*\\\\tool\\.exe', CommandLine: '.*-secret.*', ParentImage: {not: '{i:C:\\on.exe}', missing: true}}}
+  - {name: gap, expect: bypass, reason: r, why: w, sources: [s], event: {Image: '.*\\\\tool\\.exe', CommandLine: '.*-sec"ret.*'}}
+  - {name: excluded, expect: quiet, reason: r, why: w, sources: [s], event: {ParentImage: 'C:\\\\on\\.exe'}}
+""")
+        self.assertEqual([(r["variant"], r["result"], r["ok"]) for r in rows],
+                         [("caught", "proven", True), ("gap", "bypass", True), ("excluded", "proven", True)])
+
+    def test_an_unlisted_gap_and_a_closed_gap_fail(self):
+        rows = self.check("""
+  - {name: open, why: w, sources: [s], event: {Image: '.*\\\\tool\\.exe', CommandLine: '.*-secret.*'}}
+  - {name: closed, expect: bypass, reason: r, why: w, sources: [s], event: {Image: '.*\\\\tool\\.exe', CommandLine: '.*-secret.*', ParentImage: null}}
+""")
+        self.assertEqual([(r["result"], r["ok"]) for r in rows], [("bypass", False), ("proven", False)])
+        self.assertEqual(rows[0]["event"].get("ParentImage", "").lower(), "c:\\on.exe")   # the filter is the way past
+        self.assertEqual(len(certify.spec_problems("t", rows)), 2)
+
+    def test_the_kelvin_sign_is_found(self):
+        # str.lower() turns the Kelvin sign into k, so a filter on "...k..." also silences "...\u212a...":
+        # a spec that excludes only the ASCII spellings is answered with that event
+        rule = {"detection": {"sel": {"Image|endswith": "\\tool.exe"}, "filter": {"ParentImage": "C:\\ok.exe"},
+                              "condition": "sel and not filter"}}
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "behavior.yml"
+            path.write_text("behaviour: t\nsources: [{id: s, title: t, url: 'https://example.org'}]\nvariants:\n"
+                            "  - {name: v, why: w, sources: [s], event: {Image: '.*\\\\tool\\.exe', "
+                            "ParentImage: {not: '{i:C:\\ok.exe}'}}}\n", encoding="utf-8")
+            row = certify.check_spec(certify.RuleModel(rule, "t"), certify.load_spec(path))[0]
+        self.assertEqual(row["result"], "bypass")
+        self.assertIn("\u212a", row["event"]["ParentImage"])
+
+    def test_mistakes_in_a_spec_are_refused(self):
+        good = "{name: v, why: w, sources: [s], event: {Image: 'x'}}"
+        for listed, message in (
+                (f"  - {good}\n  - {good}", "share a name"),
+                ("  - {name: v, why: w, sources: [nope], event: {Image: 'x'}}", "source"),
+                ("  - {name: v, why: w, sources: [s], expect: bypass, event: {Image: 'x'}}", "reason"),
+                ("  - {name: v, why: w, sources: [s], event: {Image: '(a)\\1'}}", "backreference"),
+                ("  - {name: v, why: w, sources: [s], event: {Image: 'x'}, examples: [{Image: y}]}", "not in the variant"),
+                ("  - {name: v, why: w, sources: [s], event: {Image: {match: 'a', not: 'a'}}}", "describes no event"),
+                ("  - {name: v, why: w, sources: [s], event: {Image: '{undefined}'}}", "not defined")):
+            with self.assertRaisesRegex(certify.CertifyError, message, msg=listed):
+                self.check(listed)
+
+    def test_placeholders(self):
+        self.assertEqual(certify.expand("{i:aB.}", {}, "w"), "[aA][bB]\\.")
+        self.assertEqual(certify.expand(r"\\{x}\{y}", {"x": "X"}, "w"), r"\\(?:X)\{y}")
 
 
 if __name__ == "__main__":

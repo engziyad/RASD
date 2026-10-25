@@ -9,6 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 13 true positive · 6 true negative · 8 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 224 variants |
+| **Behaviour proof** | 2 of 7 variants proven for every event · 4 known gaps, each with an engine-confirmed event · 1 exclusion proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1059001-powershell-execution-with-encoded-command)) |
 | **Parity** | KQL and SPL identical to the rule on 1874 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 8 of 13 public recordings of its behaviour · held-out: 6 of 6 · 15 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../../queries/spl/T1059.001_powershell_encoded_command.spl) · [Defender](../../../queries/mde/T1059.001_powershell_encoded_command.kql) |
@@ -25,6 +26,7 @@ PowerShell resolves prefixes of a parameter name: `-e`, `-enc`, `-encod` and `-E
 This rule uses one regex: a dash-like prefix, then `e`, `ec` or `en*`, then whitespace and a Base64 blob of 16+ chars. Matching on `OriginalFileName` from the PE header catches a renamed `powershell.exe`. The tests prove that `-ExecutionPolicy` / `-ep` do **not** trigger it.
 
 ## Evasion & coverage gaps
+- Proven by `rasd certify`, each with a replayed event ([certificate](../../../docs/CERTIFICATES.md#t1059001-powershell-execution-with-encoded-command)): quotes inside an argument, which the C runtime drops before PowerShell reads it (`-e"n"c`); blanks or line breaks inside the Base64 text, which `Convert.FromBase64String` ignores; Base64 text under 16 characters (a script of five characters or fewer); pwsh's trimmed `"-enc "`. Every unquoted spelling of `-EncodedCommand` is proven caught.
 - Encoded content passed via environment variables or stdin (`powershell -` with piped input).
 - Obfuscation inside a *non-encoded* command (`IEX`, string concatenation, tick marks) - cover with 4104 script-block rules.
 - PowerShell hosted in another process (System.Management.Automation.dll loaded by a custom binary - Sysmon EID 7).

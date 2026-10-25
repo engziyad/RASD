@@ -1,0 +1,162 @@
+# Behaviour spec: the ways an event log is cleared from a command line this rule reads.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; an argv pattern is matched
+# against the arguments the program receives, joined by NUL (\x00), after the C runtime has split the
+# command line. {i:text} is text with each ASCII letter in either case.
+behaviour: >-
+  A process clears or removes a Windows event log: wevtutil cl / clear-log, the PowerShell event log
+  cmdlets and .NET methods, or the ClearEventLog method of WMI's Win32_NTEventlogFile.
+
+sources:
+  - id: wevtutil
+    title: Microsoft Learn, wevtutil ({cl | clear-log} <Logname> [/bu:<Backup>])
+    url: https://learn.microsoft.com/windows-server/administration/windows-commands/wevtutil
+  - id: clear-eventlog
+    title: Microsoft Learn, Clear-EventLog (Windows PowerShell 5.1)
+    url: https://learn.microsoft.com/powershell/module/microsoft.powershell.management/clear-eventlog?view=powershell-5.1
+  - id: get-eventlog
+    title: Microsoft Learn, Get-EventLog (-List returns System.Diagnostics.EventLog objects)
+    url: https://learn.microsoft.com/powershell/module/microsoft.powershell.management/get-eventlog?view=powershell-5.1
+  - id: eventlog-clear
+    title: .NET, EventLog.Clear (removes all entries from the event log)
+    url: https://learn.microsoft.com/dotnet/api/system.diagnostics.eventlog.clear
+  - id: clearlog
+    title: .NET, EventLogSession.ClearLog
+    url: https://learn.microsoft.com/dotnet/api/system.diagnostics.eventing.reader.eventlogsession.clearlog
+  - id: wmi-clear
+    title: Microsoft Learn, ClearEventLog method of the Win32_NTEventlogFile class
+    url: https://learn.microsoft.com/previous-versions/windows/desktop/eventlogprov/cleareventlog-method-in-class-win32-nteventlogfile
+  - id: call-operator
+    title: Microsoft Learn, about_Operators (the call operator runs a command whose name is held in a string)
+    url: https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_operators?view=powershell-5.1
+  - id: crt-args
+    title: Microsoft Learn, Parsing C command-line arguments (how wmain's argv is split; a quoted string can sit inside an argument)
+    url: https://learn.microsoft.com/cpp/c-language/parsing-c-command-line-arguments
+  - id: dosfuscation
+    title: D. Bohannon, DOSfuscation (2018) - double quotes inside arguments change nothing at run time and stay in the logged command line
+    url: https://www.exploit-db.com/docs/44347
+
+define:
+  wevtutil: '.*\\{i:wevtutil.exe}'
+  powershell: '.*\\(?:{i:powershell.exe}|{i:pwsh.exe})'
+  verb: '(?:{i:cl}|{i:clear-log})'
+  # argv[1] is the command word, argv[2] the log, then options such as /bu:<backup>
+  wevtutil_argv: '{token}\x00{verb}\x00[^\x00]+(?:\x00{token})*'
+  plain_or_quoted: '(?:[^ \t"]+|"[^"]*")'
+  any: '[\s\S]*'
+
+variants:
+  - name: wevtutil cl, plain arguments
+    why: The documented command word, short or long, in any letter case, then the log and any options [wevtutil].
+    sources: [wevtutil]
+    event:
+      Image: '{wevtutil}'
+      CommandLine: {argv: '{wevtutil_argv}', match: '[^"]*'}
+    examples:
+      - Image: 'C:\Windows\System32\wevtutil.exe'
+        CommandLine: 'wevtutil cl Application /bu:C:\admin\backups\a10306.evtx'
+
+  - name: wevtutil cl, whole arguments in quotes
+    why: Each argument plain or wrapped whole in double quotes, as scripts write them [crt-args].
+    sources: [wevtutil, crt-args]
+    event:
+      Image: '{wevtutil}'
+      CommandLine: {argv: '{wevtutil_argv}', match: '{plain_or_quoted}?(?:[ \t]+{plain_or_quoted})*[ \t]*'}
+    examples:
+      - Image: 'C:\Windows\System32\wevtutil.exe'
+        CommandLine: 'wevtutil.exe "clear-log" "Security"'
+
+  - name: wevtutil cl, quoted part inside the command word
+    expect: bypass
+    why: >-
+      The C runtime lets a quoted part sit anywhere inside an argument and drops the quotes, so c"l"
+      reaches wevtutil as cl [crt-args]; such quotes change nothing at run time [dosfuscation].
+    reason: The rule allows a quote only before and after the whole command word.
+    fix: Remove the quotes from the command line before matching (a normalized field), or allow a quote between the letters of cl and clear-log.
+    sources: [crt-args, dosfuscation, wevtutil]
+    event:
+      Image: '{wevtutil}'
+      CommandLine: {argv: '{wevtutil_argv}', match: '{any}"{any}'}
+    examples:
+      - Image: 'C:\Windows\System32\wevtutil.exe'
+        CommandLine: 'wevtutil c"l" Security'
+
+  - name: PowerShell event log cmdlets by name
+    why: >-
+      Clear-EventLog clears a log [clear-eventlog]; Remove-EventLog and Limit-EventLog remove a log or
+      shorten what it keeps. PowerShell resolves command names in any letter case.
+    sources: [clear-eventlog]
+    event:
+      Image: '{powershell}'
+      CommandLine: '{any}(?:{i:Clear-EventLog}|{i:Remove-EventLog}|{i:Limit-EventLog}){any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -NoProfile -Command "Clear-EventLog -LogName Security"'
+
+  - name: Quoted part inside the cmdlet name
+    expect: bypass
+    why: >-
+      PowerShell reads the command it runs from its arguments after the C runtime has split them and
+      dropped the quotes [crt-args], so Clear-Eve"nt"Log on the command line runs Clear-EventLog
+      [clear-eventlog]; such quotes change nothing at run time [dosfuscation].
+    reason: The rule looks for the cmdlet names as unbroken text in the raw command line.
+    fix: Remove the quotes from the command line before matching (a normalized field).
+    sources: [crt-args, dosfuscation, clear-eventlog]
+    event:
+      Image: '{powershell}'
+      CommandLine:
+        argv: '(?:{token}\x00)*[^\x00]*(?:{i:Clear-EventLog}|{i:Remove-EventLog}|{i:Limit-EventLog})[^\x00]*(?:\x00{token})*'
+        match: '{any}"{any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c Clear-Eve"nt"Log -LogName Security'
+
+  - name: EventLogSession.ClearLog
+    why: The .NET method that clears a log by name [clearlog], called from a PowerShell command line.
+    sources: [clearlog]
+    event:
+      Image: '{powershell}'
+      CommandLine: '{any}\.{i:ClearLog}\({any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "[System.Diagnostics.Eventing.Reader.EventLogSession]::GlobalSession.ClearLog(''Security'')"'
+
+  - name: WMI ClearEventLog
+    why: The ClearEventLog method of Win32_NTEventlogFile clears a log [wmi-clear], from wmic, PowerShell or any other caller.
+    sources: [wmi-clear]
+    event:
+      CommandLine: '{any}{i:ClearEventLog}{any}'
+    examples:
+      - Image: 'C:\Windows\System32\wbem\WMIC.exe'
+        CommandLine: 'wmic nteventlog where filename="security" call cleareventlog'
+
+  - name: EventLog.Clear on the objects of Get-EventLog -List
+    expect: bypass
+    why: >-
+      Get-EventLog -List returns System.Diagnostics.EventLog objects [get-eventlog], and their Clear method
+      removes every entry of the log [eventlog-clear].
+    reason: The rule knows the cmdlets, ClearLog and ClearEventLog, but not the Clear method of an EventLog object.
+    fix: Add Get-EventLog with -List and .Clear( on the same command line, for powershell.exe.
+    sources: [get-eventlog, eventlog-clear]
+    event:
+      Image: '.*\\{i:powershell.exe}'
+      CommandLine: '{any}{i:Get-EventLog}{any}{i:-List}{any}\.{i:Clear}\(\){any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "Get-EventLog -List | Where-Object Log -eq ''Security'' | ForEach-Object { $_.Clear() }"'
+
+  - name: Cmdlet name built at run time
+    expect: bypass
+    why: >-
+      The call operator runs a command whose name is held in a string [call-operator], so the name can be
+      assembled from pieces and never appears whole on the command line.
+    reason: >-
+      A command-line rule reads only the text that was typed. PowerShell Script Block Logging (event 4104)
+      records the code that actually ran and is where this belongs.
+    sources: [call-operator, clear-eventlog]
+    event:
+      Image: '{powershell}'
+      CommandLine: '{any}&[ \t]*\(?[ \t]*''{i:Clear-Event}''[ \t]*\+[ \t]*''{i:Log}''[ \t]*\)?{any}'
+    examples:
+      - Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell.exe -c "& (''Clear-Event''+''Log'') -LogName Security"'

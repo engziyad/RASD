@@ -1,0 +1,34 @@
+# Behaviour spec: the event Windows writes when the System log is cleared.
+# rasd certify proves the rule fires on every event of each variant (docs/CERTIFY.md).
+behaviour: >-
+  The event log service writes event 104 (provider Microsoft-Windows-Eventlog) to the System log when a
+  log is cleared, whatever tool cleared it.
+
+sources:
+  - id: event-104
+    title: Velociraptor, Windows.EventLogs.Cleared (System log event 104 and Security log event 1102 mark a cleared log)
+    url: https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.cleared
+  - id: sigma-104
+    title: SigmaHQ, Eventlog Cleared (System event 104 from Microsoft-Windows-Eventlog)
+    url: https://detection.fyi/sigmahq/sigma/windows/builtin/system/microsoft_windows_eventlog/win_system_eventlog_cleared/
+
+variants:
+  - name: Log cleared, as the event log service writes it
+    why: Event 104 with the provider name the service writes, Microsoft-Windows-Eventlog [event-104, sigma-104].
+    sources: [event-104, sigma-104]
+    event:
+      EventID: '104'
+      Provider_Name: 'Microsoft-Windows-Eventlog'
+    examples:
+      - EventID: 104
+        Provider_Name: Microsoft-Windows-Eventlog
+
+  - name: Provider name in another letter case
+    why: Pipelines and SIEM extractions do not always keep the provider name's case.
+    sources: [sigma-104]
+    event:
+      EventID: '104'
+      Provider_Name: '{i:Microsoft-Windows-Eventlog}'
+    examples:
+      - EventID: 104
+        Provider_Name: microsoft-windows-eventlog
