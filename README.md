@@ -227,7 +227,7 @@ RASD
 | [CERTIFY](docs/CERTIFY.md) · [CERTIFICATES](docs/CERTIFICATES.md) | Rules as exact automata over every Unicode character: the model, the mathematics, why each answer is a proof; behaviour specs and their certificates |
 | [CORRELATIONS](docs/CORRELATIONS.md) | Correlation detections: format, semantics, scenarios, proofs, burst guarantee, SIEM scheduling |
 | [PUBLIC_DATA_VALIDATION](docs/PUBLIC_DATA_VALIDATION.md) · [datasets](datasets/README.md) | Every detection replayed on pinned public attack data: what fired, what stays quiet and why, what public data asks for next |
-| [OPERATIONAL_VALIDATION](docs/OPERATIONAL_VALIDATION.md) · [EVIDENCE_PLAN](docs/EVIDENCE_PLAN.md) | Lab runs and evidence; which lab machine and step proves each detection |
+| [OPERATIONAL_VALIDATION](docs/OPERATIONAL_VALIDATION.md) · [EVIDENCE_PLAN](docs/EVIDENCE_PLAN.md) · [SIEM_VALIDATION_SCORECARD](docs/SIEM_VALIDATION_SCORECARD.md) | Lab runs and evidence; which lab machine and step proves each detection; the live Splunk and Defender scorecard, per detection |
 | [ENTERPRISE_ADOPTION](docs/ENTERPRISE_ADOPTION.md) · [SIEM_DEPLOYMENT_NOTES](docs/SIEM_DEPLOYMENT_NOTES.md) | Taking the detections into an organisation's SIEM; Sentinel and Splunk specifics |
 | [RASD_METRICS](docs/RASD_METRICS.md) · [DATA_SOURCE_COVERAGE](docs/DATA_SOURCE_COVERAGE.md) | Counted metrics; telemetry dependencies |
 | [Detection backlog](intel/outputs/detection_backlog.md) · [actor tradecraft map](intel/mappings/actor_tradecraft_map.md) | The open gaps ranked by telemetry already mapped and by the groups documented using each technique |
