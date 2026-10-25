@@ -1,0 +1,52 @@
+# Behaviour spec: one service ticket of a Kerberoasting run, as the domain controller records it (the
+# base rule's events; the correlation counts distinct services per requester). rasd certify proves the
+# base rule matches every event of each variant (docs/CERTIFY.md). {i:text} is text with each ASCII
+# letter in either case; {l:text} is every spelling the rule's case-insensitive comparison treats as text.
+behaviour: >-
+  The domain controller issues a service ticket (event 4769, status 0x0) for a service account, with any
+  encryption type, at the request of another machine.
+
+sources:
+  - id: event-4769
+    title: Microsoft Learn, 4769(S, F) A Kerberos service ticket was requested (status 0x0, encryption types)
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769
+  - id: attack-kerberoasting
+    title: MITRE ATT&CK, T1558.003 Kerberoasting
+    url: https://attack.mitre.org/techniques/T1558/003/
+
+define:
+  loopback: '::1|127\.0\.0\.1|{l:::ffff:127.0.0.1}'
+
+variants:
+  - name: Service ticket issued, any encryption type
+    why: >-
+      Every issued ticket for a service account is crackable offline, AES included, so the base rule counts
+      each one whatever its encryption type [event-4769, attack-kerberoasting].
+    sources: [event-4769, attack-kerberoasting]
+    event:
+      EventID: '4769'
+      Status: '{i:0x0}|0'
+      ServiceName: {not: ['[\s\S]*\$', '{l:krbtgt}']}
+      IpAddress: {not: '{loopback}', missing: true}
+    examples:
+      - EventID: 4769
+        ServiceName: svc_sql
+        TicketEncryptionType: '0x12'
+        Status: '0x0'
+        IpAddress: '::ffff:10.0.0.21'
+
+  - name: Computer accounts and krbtgt
+    expect: quiet
+    why: Computer accounts end with $ and krbtgt is the ticket-granting service itself [event-4769].
+    reason: filter_machine and filter_krbtgt.
+    sources: [event-4769]
+    event:
+      ServiceName: '[\s\S]*\$|{l:krbtgt}'
+
+  - name: Requests from the domain controller itself
+    expect: quiet
+    why: A request from the loopback address comes from the domain controller's own services.
+    reason: filter_local.
+    sources: [event-4769]
+    event:
+      IpAddress: '{loopback}'

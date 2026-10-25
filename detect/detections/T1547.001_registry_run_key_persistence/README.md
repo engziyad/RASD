@@ -9,6 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 20 true positive · 6 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 96 variants |
+| **Behaviour proof** | 2 of 4 variants proven for every event · no known gap · 2 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1547001-run-key-persistence-pointing-to-suspicious-location)) |
 | **Parity** | KQL and SPL identical to the rule on 289 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 7 of 7 public recordings of its behaviour · held-out: 2 of 2 · 7 alerts · 0 labelled false positives · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1547.001_registry_run_key_persistence.kql) · [SPL](../../../queries/spl/T1547.001_registry_run_key_persistence.spl) · [Defender](../../../queries/mde/T1547.001_registry_run_key_persistence.kql) |

@@ -9,6 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 27 true positive · 13 true negative · 5 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 101 variants |
+| **Behaviour proof** | 3 of 8 variants proven for every event · 2 known gaps, each with an engine-confirmed event · 3 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1003001-suspicious-process-access-to-lsass-memory)) |
 | **Parity** | KQL and SPL identical to the rule on 680 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 25 of 27 public recordings of its behaviour · held-out: 2 of 2 · 103 alerts · 1 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../../queries/spl/T1003.001_lsass_memory_access.spl) |

@@ -35,6 +35,7 @@ import argparse
 import functools
 import json
 import re
+import subprocess
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -45,7 +46,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import automata as fa
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, YELLOW, load_detections
 from correlation import load_correlations
 from sigma_engine import (
     RE_FLAGS,
@@ -531,11 +532,36 @@ EXPECTATIONS = ("fires", "bypass", "quiet")
 BUILTINS = {"token": "[^\\x00]*"}            # one argument inside an argv pattern
 _REF = re.compile(r"(?<!\\)((?:\\\\)*)\{([A-Za-z_][A-Za-z0-9_]*)\}")     # {name}, unless its brace is escaped
 _ASCII_CI = re.compile(r"\{i:([^{}]*)\}")
+_LOWER_EQ = re.compile(r"\{l:([^{}]*)\}")
 
 
 def _ascii_ci(text: str) -> str:
-    """A literal, with each ASCII letter in either case and nothing else widened."""
+    """A literal, with each ASCII letter in either case and nothing else widened: what a program that
+    compares ASCII letters without case accepts."""
     return "".join(f"[{c.lower()}{c.upper()}]" if c.isascii() and c.isalpha() else re.escape(c) for c in text)
+
+
+@functools.cache
+def _same_lowercase() -> dict[str, str]:
+    """For each character, every character whose str.lower() is the same single character."""
+    groups: dict[str, set[str]] = {}
+    multi = fa.multi_lower()
+    for cp, low in enumerate(fa.lowered_text()):
+        if cp not in multi and low != chr(cp):          # characters that lowercase to another character
+            groups.setdefault(low, {low}).add(chr(cp))
+    return {low: "".join(sorted(chars)) for low, chars in groups.items()}
+
+
+def _lower_eq(text: str) -> str:
+    """A literal as the engine's case-insensitive comparison reads it: every character whose
+    lowercase equals the literal's (the Kelvin sign is a k), so an exclusion written with it is
+    exactly as wide as the rule's."""
+    same = _same_lowercase()
+    out = []
+    for c in text:
+        chars = same.get(c.lower(), c)
+        out.append(re.escape(c) if len(chars) == 1 else "[" + "".join(fa._escape(ord(x)) for x in chars) + "]")
+    return "".join(out)
 
 
 def expand(pattern: str, define: dict[str, str], where: str, depth: int = 0) -> str:
@@ -543,6 +569,7 @@ def expand(pattern: str, define: dict[str, str], where: str, depth: int = 0) -> 
     if depth > 25:
         raise CertifyError(f"{where}: the definitions refer to each other in a loop")
     pattern = _ASCII_CI.sub(lambda m: _ascii_ci(m.group(1)), pattern)
+    pattern = _LOWER_EQ.sub(lambda m: _lower_eq(m.group(1)), pattern)
 
     def sub(m: re.Match) -> str:
         slashes, name = m.group(1), m.group(2)
@@ -552,6 +579,150 @@ def expand(pattern: str, define: dict[str, str], where: str, depth: int = 0) -> 
             return slashes + "(?:" + BUILTINS[name] + ")"
         raise CertifyError(f"{where}: {{{name}}} is not defined")
     return _REF.sub(sub, pattern)
+
+
+@dataclass(frozen=True)
+class NumberSpec:
+    """Numerals of integers: a prefix, then digits in a base, the value inside [0, max] with given
+    bits set and clear. Bits of a number written in decimal depend on the whole numeral, yet the
+    language is regular: reading digit d moves the remainder r to (r * base + d) mod 2^(k+1), and
+    bit k is set exactly when that remainder is at least 2^k."""
+    base: int = 10
+    prefixes: tuple[str, ...] = ("",)
+    bits_set: tuple[int, ...] = ()
+    bits_clear: tuple[int, ...] = ()
+    maximum: int | None = None
+    leading_zeros: bool = False
+    case: str = "any"                      # letters of base 16: any, lower or upper
+
+    def digits(self) -> dict[str, int]:
+        out = {str(d): d for d in range(min(self.base, 10))}
+        for v in range(10, self.base):
+            letter = "abcdef"[v - 10]
+            if self.case in ("any", "lower"):
+                out[letter] = v
+            if self.case in ("any", "upper"):
+                out[letter.upper()] = v
+        return out
+
+    def value(self, text: str) -> int | None:
+        """The integer a numeral denotes under this spec, or None (read directly, for checking)."""
+        digits = self.digits()
+        for prefix in sorted(self.prefixes, key=len, reverse=True):
+            rest = text[len(prefix):] if text.startswith(prefix) else None
+            if not rest or any(c not in digits for c in rest):
+                continue
+            if not self.leading_zeros and len(rest) > 1 and rest[0] == "0":
+                continue
+            n = 0
+            for c in rest:
+                n = n * self.base + digits[c]
+            if self.maximum is not None and n > self.maximum:
+                continue
+            if all(n >> b & 1 for b in self.bits_set) and not any(n >> b & 1 for b in self.bits_clear):
+                return n
+        return None
+
+    def dfa(self) -> fa.DFA:
+        return _number_dfa(self)
+
+    def build(self) -> fa.DFA:
+        digits = self.digits()
+        modulus = 1 << (max([*self.bits_set, *self.bits_clear]) + 1) if self.bits_set or self.bits_clear else 1
+        top = None if self.maximum is None else self._numeral(self.maximum)
+        chars = sorted(set(digits) | {c for p in self.prefixes for c in p})
+        ab = fa.Alphabet([fa.CharSet.points([ord(c)]) for c in chars])
+        # a thread is ("pre", text read so far) or ("num", zero, length, order, remainder): zero - only
+        # zeros read so far; length - significant digits; order - -1/0/1 against the maximum's digits.
+        # A DFA state is the set of live threads (a prefix may be a prefix of another prefix).
+        start_num = ("num", True, 0, 0, 0)
+
+        def enter(text: str) -> set[tuple]:
+            out: set[tuple] = set()
+            if any(p.startswith(text) and p != text for p in self.prefixes):
+                out.add(("pre", text))
+            if text in self.prefixes:
+                out.add(start_num)
+            return out
+
+        def step(th: tuple, c: str) -> set[tuple]:
+            if th[0] == "pre":
+                return enter(th[1] + c)
+            if c not in digits:
+                return set()
+            _num, zero, length, order, rem = th
+            d = digits[c]
+            if zero and length > 0 and not self.leading_zeros:
+                return set()                       # nothing may follow a leading 0
+            rem = (rem * self.base + d) % modulus
+            if zero and d == 0:
+                return {("num", True, 1, 0, rem)}
+            if zero:                               # the first significant digit
+                length, order = 0, 0
+            length += 1
+            if top is not None:
+                if length > len(top):
+                    return set()
+                if order == 0:
+                    want = int(top[length - 1], 16)
+                    order = -1 if d < want else 1 if d > want else 0
+            return {("num", False, length, order, rem)}
+
+        def accepts(th: tuple) -> bool:
+            if th[0] == "pre":
+                return False
+            _num, zero, length, order, rem = th
+            if length == 0:
+                return False                       # a prefix with no digit after it
+            if top is not None and not zero and length == len(top) and order > 0:
+                return False
+            return all(rem >> b & 1 for b in self.bits_set) and not any(rem >> b & 1 for b in self.bits_clear)
+
+        first = frozenset(enter(""))
+        index = {first: 0}
+        order_ = [first]
+        delta: list[list[int]] = []
+        i = 0
+        while i < len(order_):
+            st = order_[i]
+            i += 1
+            row = []
+            for k in range(ab.size):
+                c = chr(ab.rep[k])
+                nxt = frozenset(t for th in st for t in step(th, c)) if c in chars else frozenset()
+                if nxt not in index:
+                    index[nxt] = len(order_)
+                    order_.append(nxt)
+                row.append(index[nxt])
+            delta.append(row)
+        return fa.DFA(ab, delta, [any(accepts(th) for th in st) for st in order_]).minimize()
+
+    def _numeral(self, n: int) -> str:
+        out = ""
+        while True:
+            out = "0123456789abcdef"[n % self.base] + out
+            n //= self.base
+            if n == 0:
+                return out
+
+
+@functools.cache
+def _number_dfa(spec: NumberSpec) -> fa.DFA:
+    return spec.build()
+
+
+def number_spec(raw: Any, where: str) -> NumberSpec:
+    if not isinstance(raw, dict) or set(raw) - {"base", "prefix", "set", "clear", "max", "leading_zeros", "case"}:
+        raise CertifyError(f"{where}: number takes base, prefix, set, clear, max, leading_zeros and case")
+    base = int(raw.get("base", 10))
+    if base not in (10, 16):
+        raise CertifyError(f"{where}: number base must be 10 or 16")
+    case = str(raw.get("case", "any"))
+    if case not in ("any", "lower", "upper"):
+        raise CertifyError(f"{where}: number case must be any, lower or upper")
+    return NumberSpec(base, tuple(_listed(raw.get("prefix", ""))) or ("",),
+                      tuple(int(b) for b in _listed(raw.get("set"))), tuple(int(b) for b in _listed(raw.get("clear"))),
+                      None if raw.get("max") is None else int(raw["max"]), bool(raw.get("leading_zeros", False)), case)
 
 
 @dataclass
@@ -565,6 +736,7 @@ class FieldSpec:
     argv: str | None
     missing: bool
     must_be_missing: bool = False
+    number: NumberSpec | None = None
 
     def automata(self) -> list[tuple[fa.DFA, bool]]:
         try:
@@ -574,6 +746,8 @@ class FieldSpec:
             raise CertifyError(f"{self.name}: {e}") from e
         if self.argv is not None:
             out.append((argv_dfa(self.argv), True))
+        if self.number is not None:
+            out.append((self.number.dfa(), True))
         return out
 
     def alphabets(self) -> list[fa.Alphabet]:
@@ -591,6 +765,8 @@ class FieldSpec:
         v = str(value)
         if any(re.fullmatch(p, v) is None for p in self.match) or any(re.fullmatch(p, v) for p in self.exclude):
             return False
+        if self.number is not None and self.number.value(v) is None:
+            return False
         if self.argv is not None:
             args = crt_argv(v)
             return args is not None and re.fullmatch(self.argv, ARGV_SEP.join(args)) is not None
@@ -607,6 +783,7 @@ class Variant:
     sources: list[str]
     fields: dict[str, FieldSpec]             # by field name in lowercase
     examples: list[dict]
+    counts: list[tuple[str, int]]            # (what, how many strings): exact sizes of finite pieces
 
 
 @dataclass
@@ -644,7 +821,7 @@ def load_spec(path: Path) -> Spec:
         here = f"{where}: variant {n} ({raw.get('name', '?') if isinstance(raw, dict) else '?'})"
         if not isinstance(raw, dict) or not raw.get("name") or not raw.get("why") or not isinstance(raw.get("event"), dict):
             raise CertifyError(f"{here}: needs a name, a why and an event map")
-        bad = set(raw) - {"name", "expect", "why", "reason", "fix", "sources", "event", "examples"}
+        bad = set(raw) - {"name", "expect", "why", "reason", "fix", "sources", "event", "examples", "counts"}
         if bad:
             raise CertifyError(f"{here}: unknown keys {sorted(bad)}")
         expect = str(raw.get("expect", "fires"))
@@ -664,16 +841,17 @@ def load_spec(path: Path) -> Spec:
             elif isinstance(fval, str):
                 fs = FieldSpec(str(fname), [expand(fval, define, fwhere)], [], None, missing=False)
             elif isinstance(fval, dict):
-                extra = set(fval) - {"match", "not", "argv", "missing"}
+                extra = set(fval) - {"match", "not", "argv", "missing", "number"}
                 if extra:
                     raise CertifyError(f"{fwhere}: unknown keys {sorted(extra)}")
                 argv = fval.get("argv")
                 fs = FieldSpec(str(fname), [expand(p, define, fwhere) for p in _listed(fval.get("match"))],
                                [expand(p, define, fwhere) for p in _listed(fval.get("not"))],
                                None if argv is None else expand(str(argv), define, fwhere),
-                               missing=bool(fval.get("missing", False)))
+                               missing=bool(fval.get("missing", False)),
+                               number=None if fval.get("number") is None else number_spec(fval["number"], fwhere))
             else:
-                raise CertifyError(f"{fwhere}: write a pattern, a map (match / not / argv / missing) or null")
+                raise CertifyError(f"{fwhere}: write a pattern, a map (match / not / argv / number / missing) or null")
             for p in [*fs.match, *fs.exclude, *([fs.argv] if fs.argv else [])]:
                 try:
                     re.compile(p)
@@ -686,8 +864,21 @@ def load_spec(path: Path) -> Spec:
         examples = raw.get("examples") or []
         if not isinstance(examples, list) or not all(isinstance(e, dict) for e in examples):
             raise CertifyError(f"{here}: examples must be a list of events")
+        counts = []
+        for item in raw.get("counts") or []:
+            if not isinstance(item, dict) or not item.get("what") or ("pattern" in item) == ("number" in item):
+                raise CertifyError(f"{here}: each count needs what, and a pattern or a number")
+            try:
+                dfa = (fa.compile_regex(expand(str(item["pattern"]), define, here), 0, False, False).dfa()
+                       if "pattern" in item else number_spec(item["number"], here).dfa())
+            except fa.AutomataError as e:
+                raise CertifyError(f"{here}: count {item['what']!r}: {e}") from e
+            size = dfa.count_all()
+            if size is None:
+                raise CertifyError(f"{here}: count {item['what']!r} describes infinitely many strings")
+            counts.append((str(item["what"]), size))
         variant = Variant(str(raw["name"]), expect, str(raw["why"]).strip(), str(raw.get("reason") or "").strip(),
-                          str(raw.get("fix") or "").strip(), cited, fields, examples)
+                          str(raw.get("fix") or "").strip(), cited, fields, examples, counts)
         for k, ex in enumerate(examples, 1):
             for f, fs in fields.items():
                 value = next((v for key, v in ex.items() if key.lower() == f), None)
@@ -730,6 +921,7 @@ class VariantCheck:
         for i, want in term:
             by_field.setdefault(self.model.atoms[i].field, []).append((i, want))
         cost, event = 0, {}
+        absent: set[str] = set()                         # fields the event must not carry
         for f in self.fields:
             lits, fs = sorted(by_field.get(f, [])), self.v.fields.get(f)
             missing_ok = (fs is None or fs.missing or fs.must_be_missing) and \
@@ -737,6 +929,7 @@ class VariantCheck:
             if fs is not None and fs.must_be_missing:
                 if not missing_ok:
                     return None
+                absent.add(f)
                 continue
             if fs is None and not lits:
                 continue
@@ -755,6 +948,11 @@ class VariantCheck:
             cost += c
             if value is not None:
                 event[self.name(f)] = value
+            else:
+                absent.add(f)
+        for k, v in (base or {}).items():               # the example's other fields cannot change the verdict
+            if not k.startswith("_") and k.lower() not in absent and all(k.lower() != e.lower() for e in event):
+                event[k] = v
         return cost, event
 
     def counterexample(self) -> tuple[int, dict] | None:
@@ -783,7 +981,7 @@ def check_spec(model: RuleModel, spec: Spec) -> list[dict]:
     rows = []
     for v in spec.variants:
         row: dict = {"variant": v.name, "expect": v.expect, "why": v.why, "reason": v.reason, "fix": v.fix,
-                     "sources": v.sources}
+                     "sources": v.sources, "counts": v.counts}
         found = VariantCheck(model, v).counterexample()
         if found is None:
             row["result"] = "proven"
@@ -865,6 +1063,161 @@ def run(filter_: str | None = None, paths: Sequence[str] = ()) -> list[dict]:
             found.append((p, "rule", rule))
         return [certify_rule(*r) for r in found]
     return [certify_rule(*r) for r in rules(filter_)]
+
+
+# --------------------------------------------------------------------------- #
+# Comparing two versions of a rule: do they classify every event the same way?
+# --------------------------------------------------------------------------- #
+def _remap(node: Node, mapping: Sequence[int]) -> Node:
+    """A formula's atom indices rewritten to another numbering."""
+    op = node[0]
+    if op == "atom":
+        return ("atom", mapping[node[1]])
+    if op == "not":
+        return ("not", _remap(node[1], mapping))
+    return (op, [_remap(n, mapping) for n in node[1]])
+
+
+class RulePair:
+    """Two versions of one rule over a single shared pool of atoms. Decides whether they give every
+    possible event the same verdict, or finds a smallest event they disagree on. The answer is exact:
+    an event is proved to exist (and replayed through the engine) or proved not to."""
+
+    def __init__(self, old: dict, new: dict):
+        self.old = RuleModel(old, "old")
+        self.new = RuleModel(new, "new")
+        self.atoms: list[Atom] = []
+        self._interned: dict[tuple, int] = {}
+        self.f_old = _remap(self.old.formula, [self._intern(a) for a in self.old.atoms])
+        self.f_new = _remap(self.new.formula, [self._intern(a) for a in self.new.atoms])
+        self.fields: dict[str, list[int]] = {}
+        self.names: dict[str, str] = {}
+        for i, a in enumerate(self.atoms):
+            self.fields.setdefault(a.field, []).append(i)
+            self.names.setdefault(a.field, a.name)
+        self._alphabet: dict[str, fa.Alphabet] = {}
+        self._dfa: dict[tuple[int, int], fa.DFA] = {}
+
+    def _intern(self, atom: Atom) -> int:
+        if atom.ident not in self._interned:
+            self._interned[atom.ident] = len(self.atoms)
+            self.atoms.append(atom)
+        return self._interned[atom.ident]
+
+    def alphabet(self, field: str) -> fa.Alphabet:
+        """One field's classes across both versions, so a value means the same to each."""
+        if field not in self._alphabet:
+            self._alphabet[field] = fa.joint([ab for i in self.fields[field] for ab in self.atoms[i].alphabets()])
+        return self._alphabet[field]
+
+    def _dfa_of(self, i: int, ab: fa.Alphabet) -> fa.DFA:
+        key = (i, id(ab))
+        if key not in self._dfa:
+            self._dfa[key] = self.atoms[i].dfa(ab)
+        return self._dfa[key]
+
+    def realize(self, term: Term) -> dict | None:
+        """An event satisfying every literal of the term, or None when none can (the same construction
+        RuleModel.realize uses, over the pooled atoms)."""
+        by_field: dict[str, list[tuple[int, bool]]] = {}
+        for i, want in term:
+            by_field.setdefault(self.atoms[i].field, []).append((i, want))
+        event: dict = {}
+        for f, lits in sorted(by_field.items()):
+            if all(self.atoms[i].when_missing == want for i, want in lits):
+                continue
+            ab = self.alphabet(f)
+            word = fa.solve([(self._dfa_of(i, ab), want) for i, want in sorted(lits)])
+            if word is None:
+                return None
+            event[self.names[f]] = ab.text(word)
+        return event
+
+    def difference(self) -> dict | None:
+        """A smallest event the two versions classify differently, or None when they are equivalent.
+        The disagreement set is (old and not new) or (not old and new); its disjunctive normal form
+        covers every event that could tell them apart, so None is a proof, not a sample."""
+        disagree: Node = ("or", [("and", [self.f_old, ("not", self.f_new)]),
+                                 ("and", [("not", self.f_old), self.f_new])])
+        for term in dnf(disagree, True):
+            event = self.realize(term)
+            if event is None:
+                continue
+            old_fires, new_fires = matches(self.old.rule, event), matches(self.new.rule, event)
+            if old_fires == new_fires or self.old.verdict(event) != old_fires or self.new.verdict(event) != new_fires:
+                raise CertifyError(f"internal error: the engine and the automata disagree on {event!r}")
+            return {"event": event, "old_fires": old_fires, "new_fires": new_fires}
+        return None
+
+
+def _git(args: Sequence[str]) -> tuple[int, str]:
+    try:
+        p = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)  # noqa: S607
+    except FileNotFoundError as e:
+        raise SystemExit("certify --equiv needs git on PATH") from e
+    return p.returncode, p.stdout
+
+
+def _rule_path(kind: str, folder: Path | str | None) -> str | None:
+    if folder is None:
+        return None
+    rel = _rel(folder) if isinstance(folder, Path) else folder
+    return f"{rel}/{'base.yml' if kind == 'base rule' else 'rule.yml'}"
+
+
+def _as_rule(text: str, where: str) -> dict:
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise CertifyError(f"{where}: {e}") from e
+    if not isinstance(data, dict):
+        raise CertifyError(f"{where}: not a Sigma rule")
+    return data
+
+
+def equiv_run(ref: str, filter_: str | None = None) -> list[dict]:
+    """Compare every current rule with its version at a git ref: unchanged, meaning-preserving
+    (equivalent), or meaning-changing (with the event that shows the change)."""
+    if _git(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"])[0] != 0:
+        raise SystemExit(f"certify --equiv: unknown git ref {ref!r}")
+    out: list[dict] = []
+    seen: set[str] = set()
+    for ident, kind, rule, folder in rules(filter_):
+        path = _rule_path(kind, folder)
+        row: dict = {"id": ident, "kind": kind, "path": path}
+        if path is None:
+            row["status"] = "skipped"
+            out.append(row)
+            continue
+        seen.add(path)
+        code, old_text = _git(["show", f"{ref}:{path}"])
+        if code != 0:
+            row["status"] = "added"
+            out.append(row)
+            continue
+        if old_text == (ROOT / path).read_text(encoding="utf-8"):
+            row["status"] = "identical"
+            out.append(row)
+            continue
+        try:
+            diff = RulePair(_as_rule(old_text, f"{ref}:{path}"), rule).difference()
+        except CertifyError as e:
+            row["status"] = "unmodelled"
+            row["detail"] = str(e)
+        else:
+            row["status"] = "changed" if diff else "equivalent"
+            if diff:
+                row["witness"] = diff
+        out.append(row)
+    code, listing = _git(["ls-tree", "-r", "--name-only", ref, "--", "detect/"])
+    if code == 0:
+        for p in listing.splitlines():
+            if p.endswith(("/rule.yml", "/base.yml")) and p not in seen:
+                ident = p.split("/")[-2]
+                if filter_ is None or filter_ in ident:
+                    out.append({"id": ident, "kind": "base rule" if p.endswith("/base.yml") else "rule",
+                                "path": p, "status": "removed"})
+    return out
 
 
 def behaviour_counts(row: dict) -> dict:
@@ -1019,6 +1372,8 @@ def render_certificates(report: list[dict]) -> str:
         out += ["", "<details><summary>Why each variant, the gaps and the planned fixes</summary>", ""]
         for v in b["variants"]:
             line = f"- **{v['variant']}.** {_cited(v['why'], src)}"
+            if v.get("counts"):
+                line += " *Exact sizes:* " + "; ".join(f"{n:,} {what}" for what, n in v["counts"]) + "."
             if v["reason"]:
                 line += (" *Gap:* " if v["expect"] == "bypass" else " *Why quiet:* ") + _cited(v["reason"], src)
             if v["fix"]:
@@ -1029,15 +1384,55 @@ def render_certificates(report: list[dict]) -> str:
     return "\n".join(out) + "\n"
 
 
+def _equiv_line(row: dict) -> str:
+    colour = {"identical": DIM, "equivalent": GREEN, "changed": YELLOW, "added": DIM,
+              "removed": DIM, "unmodelled": RED, "skipped": DIM}[row["status"]]
+    label = {"identical": "unchanged", "equivalent": "meaning preserved", "changed": "MEANING CHANGED",
+             "added": "new rule (no earlier version)", "removed": "removed since the ref",
+             "unmodelled": "cannot compare", "skipped": "no file"}[row["status"]]
+    return f"  {colour}{label:<28}{RESET} {row['id']}"
+
+
+def equiv_main(ref: str, filter_: str | None, as_json: bool, verbose: bool) -> int:
+    report = equiv_run(ref, filter_)
+    if as_json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 0
+    counts: dict[str, int] = {}
+    for row in report:
+        counts[row["status"]] = counts.get(row["status"], 0) + 1
+        print(_equiv_line(row))
+        if row["status"] == "unmodelled":
+            print(f"        {DIM}{row['detail']}{RESET}")
+        if row["status"] == "changed":
+            w = row["witness"]
+            was, now = ("fires", "stays quiet") if w["old_fires"] else ("stayed quiet", "now fires")
+            print(f"        {YELLOW}{was} before, {now} after{RESET}: "
+                  f"{json.dumps(w['event'], ensure_ascii=False)}")
+    changed = counts.get("changed", 0)
+    equiv = counts.get("equivalent", 0)
+    print(f"\n{BOLD}certify --equiv {ref}:{RESET} {len(report)} rules, "
+          f"{counts.get('identical', 0)} unchanged, {equiv} edited without changing meaning, "
+          f"{changed} edited with a different meaning"
+          + (f", {counts['unmodelled']} not comparable" if counts.get("unmodelled") else ""))
+    if changed:
+        print(f"{DIM}A meaning change may be intended; the event above is what now lands on the other side.{RESET}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Exact automata and proofs for every Sigma rule.")
     ap.add_argument("paths", nargs="*", help="Sigma rule files to certify instead of the repository's rules")
     ap.add_argument("--filter", help="only rules whose id contains this text")
+    ap.add_argument("--equiv", metavar="REF", help="compare every rule with its version at a git ref: "
+                    "which edits preserve meaning and which change what the rule catches (with the event)")
     ap.add_argument("--json", action="store_true", help="print the report as JSON")
     ap.add_argument("--write", action="store_true", help=f"refresh the generated part of {DOC.relative_to(ROOT)}")
     ap.add_argument("--check", action="store_true", help="CI: fail on a refusal, a disagreement or a stale page")
     ap.add_argument("-v", "--verbose", action="store_true", help="print the witness events")
     args = ap.parse_args()
+    if args.equiv:
+        return equiv_main(args.equiv, args.filter, args.json, args.verbose)
     report = run(args.filter, args.paths)
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))

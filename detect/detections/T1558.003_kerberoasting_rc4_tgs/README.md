@@ -9,6 +9,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | 11 true positive · 9 true negative · 6 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 53 variants |
+| **Behaviour proof** | 2 of 5 variants proven for every event · no known gap · 3 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1558003-kerberoasting---rc4-service-ticket-requested-for-user-account)) |
 | **Parity** | KQL and SPL identical to the rule on 685 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 3 of 3 public recordings of its behaviour · held-out: 0 of 1 · 13 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |

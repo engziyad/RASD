@@ -1,0 +1,63 @@
+# Behaviour spec: one request of an object-ID enumeration, as the web server logs it (the base rule's
+# events; the correlation counts distinct object paths per client). rasd certify proves the base rule
+# matches every event of each variant, or prints one it misses (docs/CERTIFY.md). {i:text} is text with
+# each ASCII letter in either case.
+behaviour: >-
+  A client reads an object that belongs to one user (a basket, user record, account, profile or wallet)
+  by its numeric identifier in the path, the request an IDOR enumeration repeats with the next number.
+
+sources:
+  - id: owasp-idor
+    title: OWASP Web Security Testing Guide, Testing for Insecure Direct Object References
+    url: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/04-Testing_for_Insecure_Direct_Object_References
+  - id: rfc9110
+    title: RFC 9110, HTTP Semantics (GET; HEAD is GET without the content)
+    url: https://www.rfc-editor.org/rfc/rfc9110
+  - id: w3c-fields
+    title: Microsoft Learn, W3C Logging (cs-uri-stem is the path; the query string is the separate cs-uri-query)
+    url: https://learn.microsoft.com/windows/win32/http/w3c-logging
+
+define:
+  owned: '(?:{i:basket}|{i:user}|{i:account}|{i:profile}|{i:wallet})'
+  stem: '(?:/[^/?]*)*/{owned}[sS]?/[0-9]+/?'
+
+variants:
+  - name: GET of an owned object by number
+    why: >-
+      The object's number in the path, under any prefix (/api, /rest), the resource name singular or plural
+      in any letter case, with or without a trailing slash [owasp-idor, w3c-fields].
+    sources: [owasp-idor, w3c-fields]
+    event:
+      cs-method: '{i:GET}'
+      cs-uri-stem: '{stem}'
+    examples:
+      - cs-method: GET
+        cs-uri-stem: /api/Users/7
+
+  - name: HEAD instead of GET
+    expect: bypass
+    why: HEAD returns what GET would, without the content [rfc9110], so the status alone tells whether each object exists.
+    reason: The base rule counts GET only.
+    fix: Count HEAD with GET (selection_method on both methods).
+    sources: [rfc9110, owasp-idor]
+    event:
+      cs-method: '{i:HEAD}'
+      cs-uri-stem: '{stem}'
+    examples:
+      - cs-method: HEAD
+        cs-uri-stem: /api/Users/7
+
+  - name: The number in the query string
+    expect: bypass
+    why: Some applications take the object's number as a query parameter, which the log keeps in cs-uri-query, not in the path [w3c-fields, owasp-idor].
+    reason: The base rule reads the path only.
+    fix: Add a selection on cs-uri-query for the same resource names with a numeric id parameter.
+    sources: [w3c-fields, owasp-idor]
+    event:
+      cs-method: '{i:GET}'
+      cs-uri-stem: '(?:/[^/?]*)*/{owned}[sS]?/?'
+      cs-uri-query: '(?:[^&]*&)*{i:id}=[0-9]+(?:&[^&]*)*'
+    examples:
+      - cs-method: GET
+        cs-uri-stem: /rest/basket
+        cs-uri-query: id=2

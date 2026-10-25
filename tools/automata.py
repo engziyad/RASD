@@ -738,6 +738,39 @@ class DFA:
             vec = nxt
         return sum(c for s, c in vec.items() if self.accept[s])
 
+    def count_all(self, weights: Sequence[int] | None = None) -> int | None:
+        """How many strings the automaton accepts in all, or None when there are infinitely many
+        (a cycle among states that can still reach acceptance)."""
+        w = self.alphabet.weight if weights is None else weights
+        dead = self.dead_states()
+        if 0 in dead:
+            return 0
+        moves = _moves(self, w)
+        order: list[int] = []
+        mark: dict[int, int] = {}                     # 1: on the current path, 2: finished
+        stack: list[tuple[int, int]] = [(0, 0)]
+        while stack:                                  # depth-first, iterative: a back edge is a cycle
+            s, i = stack.pop()
+            if i == 0:
+                if mark.get(s) == 2:
+                    continue
+                mark[s] = 1
+            targets = [t for t, _m in moves[s] if t not in dead]
+            if i < len(targets):
+                stack.append((s, i + 1))
+                t = targets[i]
+                if mark.get(t) == 1:
+                    return None
+                if mark.get(t) != 2:
+                    stack.append((t, 0))
+            else:
+                mark[s] = 2
+                order.append(s)
+        total: dict[int, int] = {}
+        for s in order:                               # children first
+            total[s] = (1 if self.accept[s] else 0) + sum(m * total[t] for t, m in moves[s] if t not in dead)
+        return total[0]
+
     def sample(self, n: int, rng: random.Random, weights: Sequence[int] | None = None) -> list[int] | None:
         """A uniformly random accepted word of length n (each class with its weight), or None."""
         w = self.alphabet.weight if weights is None else weights

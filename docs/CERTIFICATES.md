@@ -9,15 +9,76 @@ Each detection with a behaviour spec (`behavior.yml` beside its rule) lists the 
 
 CI fails when a gap appears that the spec does not list, when a listed gap closes (the spec must then say `fires`), and when an exclusion fires.
 
-**25 variants over 5 detections: 12 proven for every event, 12 known gaps, 1 exclusion proven quiet.**
+**57 variants over 12 detections: 25 proven for every event, 18 known gaps, 14 exclusions proven quiet.**
 
 | Detection | Variants | Proven | Known gaps | Exclusions proven quiet |
 |---|---:|---:|---:|---:|
+| [T1003.001_lsass_memory_access](#t1003001-suspicious-process-access-to-lsass-memory) | 8 | 3 | 2 | 3 |
 | [T1053.005_powershell_scheduled_task_creation](#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets) | 6 | 2 | 4 | 0 |
 | [T1059.001_powershell_encoded_command](#t1059001-powershell-execution-with-encoded-command) | 7 | 2 | 4 | 1 |
+| [T1547.001_registry_run_key_persistence](#t1547001-run-key-persistence-pointing-to-suspicious-location) | 4 | 2 | 0 | 2 |
+| [T1558.003_kerberoasting_rc4_tgs](#t1558003-kerberoasting---rc4-service-ticket-requested-for-user-account) | 5 | 2 | 0 | 3 |
 | [T1685.005_event_log_clearing](#t1685005-windows-event-log-clearing-via-command-line) | 9 | 5 | 4 | 0 |
 | [T1685.005_security_log_cleared](#t1685005-security-audit-log-cleared-event-1102) | 1 | 1 | 0 | 0 |
 | [T1685.005_system_log_cleared](#t1685005-windows-event-log-cleared-system-event-104) | 2 | 2 | 0 | 0 |
+| [T1110.003_password_spray_burst](#t1110003-authentication-failure-for-an-account---wrong-password-unknown-or-disabled) | 6 | 3 | 1 | 2 |
+| [T1190_object_id_enumeration](#t1190-web-request-for-a-single-owner-object-by-numeric-id) | 3 | 1 | 2 | 0 |
+| [T1558.003_kerberoasting_volume](#t1558003-service-ticket-issued-for-a-user-based-service-account) | 3 | 1 | 0 | 2 |
+| [T1595.003_api_auth_probing](#t1595003-web-request-rejected-with-401-or-403) | 3 | 1 | 1 | 1 |
+
+## T1003.001 Suspicious Process Access to LSASS Memory
+
+**Behaviour.** A process opens lsass.exe with an access mask that includes PROCESS_VM_READ (0x10), the right needed to read its memory, whatever other rights the mask holds.
+
+[`T1003.001_lsass_memory_access`](../detect/detections/T1003.001_lsass_memory_access/) · [spec](../detect/detections/T1003.001_lsass_memory_access/behavior.yml) · [rule](../detect/detections/T1003.001_lsass_memory_access/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Memory read access, hexadecimal as Sysmon writes it | fires | **proven** for every event |
+| A copy of an excluded Windows component elsewhere | fires | **proven** for every event |
+| PowerShell or the WinRM host reading lsass memory | fires | **proven** for every event |
+| Memory read access written in decimal | known gap | slips past (event below) |
+| MsMpEng.exe directly in the Platform folder | known gap | slips past (event below) |
+| Windows components named in the exclusion | stays quiet | **proven** for every event |
+| Defender's engine from its platform folder | stays quiet | **proven** for every event |
+| PowerShell or the WinRM host listing processes | stays quiet | **proven** for every event |
+
+Events found, each replayed through the engine and checked against its variant:
+
+*Memory read access written in decimal*
+
+```text
+GrantedAccess: 1040
+SourceImage:   C:\Users\Public\dump.exe
+TargetImage:   C:\Windows\system32\lsass.exe
+```
+
+*MsMpEng.exe directly in the Platform folder*
+
+```text
+GrantedAccess: 0x1010
+SourceImage:   C:\ProgramData\Microsoft\Windows Defender\Platform\MsMpEng.exe
+TargetImage:   C:\Windows\system32\lsass.exe
+```
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Memory read access, hexadecimal as Sysmon writes it.** Any mask with PROCESS_VM_READ [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)], which MiniDumpWriteDump and the dumping tools ask for [[minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump), [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html)], in hexadecimal with the 0x prefix, any letter case, leading zeros allowed, from any process outside the three exclusions below (paths as Windows reports them, without empty segments). *Exact sizes:* 2,147,483,648 access masks that include PROCESS_VM_READ (32-bit, written 0x with lowercase digits).
+- **A copy of an excluded Windows component elsewhere.** The exclusions name full paths, so a csrss.exe, wininit.exe or WmiPrvSE.exe outside its Windows folder is any other process [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)].
+- **PowerShell or the WinRM host reading lsass memory.** The process-listing exclusion needs the mask 0x1410 (or 5136) and System.ni.dll on the call stack; any other read from these two processes, such as a dumping tool loaded into PowerShell, is not a process listing [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights), [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html)].
+- **Memory read access written in decimal.** A pipeline that turns the mask into a number writes it in decimal; 1040 is 0x410, PROCESS_QUERY_INFORMATION with PROCESS_VM_READ, exactly what MiniDumpWriteDump asks for [[minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump), [access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)]. *Exact sizes:* 2,147,483,648 access masks that include PROCESS_VM_READ, in decimal. *Gap:* The decimal branch lists eight masks seen from dumping tools; every other decimal mask that grants PROCESS_VM_READ passes. *Fix:* Normalize GrantedAccess to hexadecimal in the pipeline, or test the bit in decimal: a mask grants PROCESS_VM_READ exactly when its value modulo 32 is between 16 and 31.
+- **MsMpEng.exe directly in the Platform folder.** Defender keeps its engine in a version folder under Platform; a file of the same name placed in the Platform folder itself is not Defender's engine [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)]. *Gap:* filter_defender asks only for the Platform folder at the start and \MsMpEng.exe at the end, and the backslash between them serves both, so MsMpEng.exe in Platform\ itself is excluded too. Writing there needs administrator rights and Defender's tamper protection off. *Fix:* Require a version folder, as SourceImage|re ^C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\[^\\]+\\MsMpEng\.exe$ (case-insensitive).
+- **Windows components named in the exclusion.** csrss.exe, wininit.exe and WMI's WmiPrvSE.exe read lsass memory in normal operation. *Why quiet:* filter_os_components excludes exactly these four paths, in any letter case.
+- **Defender's engine from its platform folder.** Microsoft Defender's MsMpEng.exe scans lsass from its versioned folder under the Platform directory. *Why quiet:* filter_defender excludes MsMpEng.exe only under C:\ProgramData\Microsoft\Windows Defender\Platform\.
+- **PowerShell or the WinRM host listing processes.** Get-Process in Windows PowerShell or a remote session opens every process with 0x1410 through System.ni.dll. *Why quiet:* filter_process_listing excludes that mask from these two processes when System.ni.dll is on the call stack.
+
+</details>
+
+Sources:
+
+- [access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights): Microsoft Learn, Process Security and Access Rights (PROCESS_VM_READ is 0x0010, required to read a process's memory)
+- [minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump): Microsoft Learn, MiniDumpWriteDump (the handle needs PROCESS_QUERY_INFORMATION and PROCESS_VM_READ)
+- [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html): Splunk Threat Research, You Bet Your Lsass (the masks dumping tools ask for, as Sysmon writes them, 0x1010, 0x1410, 0x1fffff)
 
 ## T1053.005 Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets
 
@@ -155,6 +216,63 @@ Sources:
 - [crt-args](https://learn.microsoft.com/cpp/c-language/parsing-c-command-line-arguments): Microsoft Learn, Parsing C command-line arguments (how wmain's argv is split; a quoted string can sit inside an argument)
 - [dosfuscation](https://www.exploit-db.com/docs/44347): D. Bohannon, DOSfuscation (2018) - double quotes inside arguments change nothing at run time and stay in the logged command line
 
+## T1547.001 Run Key Persistence Pointing to Suspicious Location
+
+**Behaviour.** A value is written under a Run or RunOnce key (Sysmon event 13) whose data starts a script interpreter, or points into a user-writable folder, or drops a binary straight into a user profile; the two signed-vendor autostarts the rule knows are left alone.
+
+[`T1547.001_registry_run_key_persistence`](../detect/detections/T1547.001_registry_run_key_persistence/) · [spec](../detect/detections/T1547.001_registry_run_key_persistence/behavior.yml) · [rule](../detect/detections/T1547.001_registry_run_key_persistence/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| A Run key launching a script interpreter | fires | **proven** for every event |
+| A binary dropped straight into a user profile | fires | **proven** for every event |
+| OneDrive's own autostart | stays quiet | **proven** for every event |
+| Microsoft Teams' Squirrel updater | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **A Run key launching a script interpreter.** Logon persistence most often runs an interpreter from the Run key, which the rule lists by name (PowerShell, pwsh, mshta, wscript, cscript, rundll32, regsvr32, cmd /c) [[run-keys](https://learn.microsoft.com/en-us/windows/desktop/SetupApi/run-and-runonce-registry-keys), [mitre](https://attack.mitre.org/techniques/T1547/001/)]. The two signed-vendor exclusions are excluded here, because their filters read the whole value and a crafted user name could otherwise place "powershell" inside an OneDrive-shaped path.
+- **A binary dropped straight into a user profile.** A value whose data is an executable or script placed directly in a profile folder (C:\Users\<name>\<file>.exe) is caught by the profile-root branch [[mitre](https://attack.mitre.org/techniques/T1547/001/)]; the vendor exclusions sit deeper under AppData\Local\Microsoft, so a profile-root drop is never one of them.
+- **OneDrive's own autostart.** OneDrive registers its signed client under the Run key at every sign-in; this is normal. *Why quiet:* filter_onedrive excludes exactly OneDrive.exe under the user's AppData\Local\Microsoft\OneDrive folder, with nothing appended but an optional /background.
+- **Microsoft Teams' Squirrel updater.** The Teams machine-wide installer registers Squirrel's Update.exe to start Teams at logon. *Why quiet:* filter_teams excludes exactly Update.exe under AppData\Local\Microsoft\Teams starting Teams.exe; any other binary under that folder still alerts.
+
+</details>
+
+Sources:
+
+- [run-keys](https://learn.microsoft.com/en-us/windows/desktop/SetupApi/run-and-runonce-registry-keys): Microsoft Learn, Run and RunOnce Registry Keys (HKLM/HKCU ...\CurrentVersion\Run and RunOnce start a program at logon)
+- [mitre](https://attack.mitre.org/techniques/T1547/001/): MITRE ATT&CK, T1547.001 Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
+- [sysmon13](https://isc.sans.edu/diary/28558): SANS ISC, Sysmon's RegistryEvent (Value Set) - event 13 carries TargetObject (the value) and Details (its data)
+
+## T1558.003 Kerberoasting - RC4 Service Ticket Requested for User Account
+
+**Behaviour.** The domain controller issues a service ticket (event 4769, status 0x0) encrypted with RC4 or DES for a service account, at the request of another machine: the ticket an attacker takes away to crack.
+
+[`T1558.003_kerberoasting_rc4_tgs`](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) · [spec](../detect/detections/T1558.003_kerberoasting_rc4_tgs/behavior.yml) · [rule](../detect/detections/T1558.003_kerberoasting_rc4_tgs/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| RC4 or DES ticket as the domain controller writes it | fires | **proven** for every event |
+| Codes in another letter case or in decimal | fires | **proven** for every event |
+| AES tickets | stays quiet | **proven** for every event |
+| Computer accounts and krbtgt | stays quiet | **proven** for every event |
+| Requests from the domain controller itself | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **RC4 or DES ticket as the domain controller writes it.** Encryption types 0x17 (RC4-HMAC), 0x18 (RC4-HMAC-EXP), 0x1 and 0x3 (DES) in the hexadecimal form of the event, status 0x0 [[event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769)], for a service account requested from another machine [[attack-kerberoasting](https://attack.mitre.org/techniques/T1558/003/)].
+- **Codes in another letter case or in decimal.** Pipelines and SIEM extractions write the same codes in upper case or as decimal numbers (23, 24, 1, 3 and 0).
+- **AES tickets.** AES-128 and AES-256 (0x11, 0x12) are the normal encryption types since Windows Server 2008 [[event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769)]. *Why quiet:* Only the weak types are this rule's concern; the volume correlation counts AES roasting.
+- **Computer accounts and krbtgt.** Computer accounts end with $ and krbtgt is the ticket-granting service itself; neither is a roasting target [[event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769)]. *Why quiet:* filter_machine and filter_krbtgt.
+- **Requests from the domain controller itself.** A request from the loopback address comes from the domain controller's own services. *Why quiet:* filter_local excludes the three loopback forms the event uses.
+
+</details>
+
+Sources:
+
+- [event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769): Microsoft Learn, 4769(S, F) A Kerberos service ticket was requested (encryption types 0x1, 0x3, 0x11, 0x12, 0x17, 0x18; status 0x0)
+- [attack-kerberoasting](https://attack.mitre.org/techniques/T1558/003/): MITRE ATT&CK, T1558.003 Kerberoasting
+
 ## T1685.005 Windows Event Log Clearing via Command Line
 
 **Behaviour.** A process clears or removes a Windows event log: wevtutil cl / clear-log, the PowerShell event log cmdlets and .NET methods, or the ClearEventLog method of WMI's Win32_NTEventlogFile.
@@ -271,3 +389,150 @@ Sources:
 
 - [event-104](https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.cleared): Velociraptor, Windows.EventLogs.Cleared (System log event 104 and Security log event 1102 mark a cleared log)
 - [sigma-104](https://detection.fyi/sigmahq/sigma/windows/builtin/system/microsoft_windows_eventlog/win_system_eventlog_cleared/): SigmaHQ, Eventlog Cleared (System event 104 from Microsoft-Windows-Eventlog)
+
+## T1110.003 Authentication Failure for an Account - Wrong Password, Unknown or Disabled
+
+**Behaviour.** One guess of a password against an account fails: Kerberos pre-authentication with a wrong password, a ticket request for an account that does not exist or is disabled, or a logon with a wrong password or an unknown user name.
+
+[`T1110.003_password_spray_burst`](../detect/correlations/T1110.003_password_spray_burst/) · [spec](../detect/correlations/T1110.003_password_spray_burst/behavior.yml) · [rule](../detect/correlations/T1110.003_password_spray_burst/base.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Wrong password in Kerberos pre-authentication | fires | **proven** for every event |
+| Unknown or disabled account in a ticket request | fires | **proven** for every event |
+| Wrong password or unknown user in a logon | fires | **proven** for every event |
+| NTLM credential validation on the domain controller | known gap | slips past (event below) |
+| Computer accounts | stays quiet | **proven** for every event |
+| Local and loopback sources | stays quiet | **proven** for every event |
+
+Events found, each replayed through the engine and checked against its variant:
+
+*NTLM credential validation on the domain controller*
+
+```text
+EventID:        4776
+Status:         0xC000006A
+TargetUserName: lab.user07
+Workstation:    WS07
+```
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Wrong password in Kerberos pre-authentication.** Event 4771 with failure code 0x18, written in hexadecimal or decimal [[event-4771](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4771)].
+- **Unknown or disabled account in a ticket request.** Event 4768 with result 0x6 (no such account) or 0x12 (disabled, expired or locked out) [[event-4768](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4768)].
+- **Wrong password or unknown user in a logon.** Event 4625 with sub status 0xC000006A or 0xC0000064, in hexadecimal of either case or in decimal [[event-4625](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625)].
+- **NTLM credential validation on the domain controller.** When a member server or workstation is sprayed over NTLM, the domain controller records event 4776 with the wrong-password or unknown-user code [[event-4776](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4776)]; the 4625 stays on the sprayed host [[event-4625](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625)]. *Gap:* The base rule counts Kerberos failures and 4625 logon failures, not 4776, so a spray seen only in the domain controller's NTLM validations is not counted. *Fix:* Count 4776 with 0xC000006A and 0xC0000064 per workstation name (the roadmap's NTLM sprays by workstation).
+- **Computer accounts.** A computer account whose password changed recently fails until replication catches up. *Why quiet:* filter_machine leaves out account names ending with $.
+- **Local and loopback sources.** Logons without a network source (-) or from the loopback address are local, not a spray from another machine [[event-4625](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625)]. *Why quiet:* filter_local.
+
+</details>
+
+Sources:
+
+- [event-4771](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4771): Microsoft Learn, 4771(F) Kerberos pre-authentication failed (failure code 0x18, KDC_ERR_PREAUTH_FAILED - wrong password)
+- [event-4768](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4768): Microsoft Learn, 4768(S, F) A Kerberos authentication ticket (TGT) was requested (0x6 unknown client, 0x12 credentials revoked)
+- [event-4625](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625): Microsoft Learn, 4625(F) An account failed to log on (sub status 0xC000006A wrong password, 0xC0000064 unknown user name)
+- [event-4776](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4776): Microsoft Learn, 4776(S, F) The computer attempted to validate the credentials for an account (NTLM)
+
+## T1190 Web Request for a Single-Owner Object by Numeric ID
+
+**Behaviour.** A client reads an object that belongs to one user (a basket, user record, account, profile or wallet) by its numeric identifier in the path, the request an IDOR enumeration repeats with the next number.
+
+[`T1190_object_id_enumeration`](../detect/correlations/T1190_object_id_enumeration/) · [spec](../detect/correlations/T1190_object_id_enumeration/behavior.yml) · [rule](../detect/correlations/T1190_object_id_enumeration/base.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| GET of an owned object by number | fires | **proven** for every event |
+| HEAD instead of GET | known gap | slips past (event below) |
+| The number in the query string | known gap | slips past (event below) |
+
+Events found, each replayed through the engine and checked against its variant:
+
+*HEAD instead of GET*
+
+```text
+cs-method:   HEAD
+cs-uri-stem: /api/Users/7
+```
+
+*The number in the query string*
+
+```text
+cs-method:    GET
+cs-uri-query: id=2
+cs-uri-stem:  /rest/basket
+```
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **GET of an owned object by number.** The object's number in the path, under any prefix (/api, /rest), the resource name singular or plural in any letter case, with or without a trailing slash [[owasp-idor](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/04-Testing_for_Insecure_Direct_Object_References), [w3c-fields](https://learn.microsoft.com/windows/win32/http/w3c-logging)].
+- **HEAD instead of GET.** HEAD returns what GET would, without the content [[rfc9110](https://www.rfc-editor.org/rfc/rfc9110)], so the status alone tells whether each object exists. *Gap:* The base rule counts GET only. *Fix:* Count HEAD with GET (selection_method on both methods).
+- **The number in the query string.** Some applications take the object's number as a query parameter, which the log keeps in cs-uri-query, not in the path [[w3c-fields](https://learn.microsoft.com/windows/win32/http/w3c-logging), [owasp-idor](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/04-Testing_for_Insecure_Direct_Object_References)]. *Gap:* The base rule reads the path only. *Fix:* Add a selection on cs-uri-query for the same resource names with a numeric id parameter.
+
+</details>
+
+Sources:
+
+- [owasp-idor](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/04-Testing_for_Insecure_Direct_Object_References): OWASP Web Security Testing Guide, Testing for Insecure Direct Object References
+- [rfc9110](https://www.rfc-editor.org/rfc/rfc9110): RFC 9110, HTTP Semantics (GET; HEAD is GET without the content)
+- [w3c-fields](https://learn.microsoft.com/windows/win32/http/w3c-logging): Microsoft Learn, W3C Logging (cs-uri-stem is the path; the query string is the separate cs-uri-query)
+
+## T1558.003 Service Ticket Issued for a User-Based Service Account
+
+**Behaviour.** The domain controller issues a service ticket (event 4769, status 0x0) for a service account, with any encryption type, at the request of another machine.
+
+[`T1558.003_kerberoasting_volume`](../detect/correlations/T1558.003_kerberoasting_volume/) · [spec](../detect/correlations/T1558.003_kerberoasting_volume/behavior.yml) · [rule](../detect/correlations/T1558.003_kerberoasting_volume/base.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Service ticket issued, any encryption type | fires | **proven** for every event |
+| Computer accounts and krbtgt | stays quiet | **proven** for every event |
+| Requests from the domain controller itself | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Service ticket issued, any encryption type.** Every issued ticket for a service account is crackable offline, AES included, so the base rule counts each one whatever its encryption type [[event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769), [attack-kerberoasting](https://attack.mitre.org/techniques/T1558/003/)].
+- **Computer accounts and krbtgt.** Computer accounts end with $ and krbtgt is the ticket-granting service itself [[event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769)]. *Why quiet:* filter_machine and filter_krbtgt.
+- **Requests from the domain controller itself.** A request from the loopback address comes from the domain controller's own services. *Why quiet:* filter_local.
+
+</details>
+
+Sources:
+
+- [event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769): Microsoft Learn, 4769(S, F) A Kerberos service ticket was requested (status 0x0, encryption types)
+- [attack-kerberoasting](https://attack.mitre.org/techniques/T1558/003/): MITRE ATT&CK, T1558.003 Kerberoasting
+
+## T1595.003 Web Request Rejected With 401 or 403
+
+**Behaviour.** The server refuses a request to a protected path, for missing or wrong credentials (401) or for lack of rights (403).
+
+[`T1595.003_api_auth_probing`](../detect/correlations/T1595.003_api_auth_probing/) · [spec](../detect/correlations/T1595.003_api_auth_probing/behavior.yml) · [rule](../detect/correlations/T1595.003_api_auth_probing/base.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Request refused with 401 or 403 | fires | **proven** for every event |
+| Forbidden paths answered with 404 | known gap | slips past (event below) |
+| CORS preflight | stays quiet | **proven** for every event |
+
+Events found, each replayed through the engine and checked against its variant:
+
+*Forbidden paths answered with 404*
+
+```text
+cs-method:   GET
+cs-uri-stem: /rest/admin/application-configuration
+sc-status:   404
+```
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Request refused with 401 or 403.** Any method other than OPTIONS, any path, refused for authentication (401) or authorization (403) [[rfc9110](https://www.rfc-editor.org/rfc/rfc9110)].
+- **Forbidden paths answered with 404.** A server that wants to hide that a forbidden resource exists may answer 404 instead of 403 [[rfc9110](https://www.rfc-editor.org/rfc/rfc9110)]. *Gap:* The base rule counts only 401 and 403: a probe against such a server looks like requests for paths that do not exist, which every web server sees all day. *Fix:* Treat 404 on paths the application knows to be protected (an allow-list per application), not all 404s.
+- **CORS preflight.** Browsers send an OPTIONS preflight before a cross-origin call, and some servers refuse it with 401 or 403 [[fetch-preflight](https://fetch.spec.whatwg.org/#cors-preflight-request)]. *Why quiet:* filter_preflight leaves out the OPTIONS method, in any letter case.
+
+</details>
+
+Sources:
+
+- [rfc9110](https://www.rfc-editor.org/rfc/rfc9110): RFC 9110, HTTP Semantics (401 Unauthorized, 403 Forbidden; a server may answer 404 to hide a forbidden resource)
+- [fetch-preflight](https://fetch.spec.whatwg.org/#cors-preflight-request): WHATWG Fetch, CORS-preflight request (an OPTIONS request the browser sends before a cross-origin call)

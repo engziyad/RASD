@@ -1,0 +1,150 @@
+# Behaviour spec: every process access to lsass.exe that can read its memory, as Sysmon records it.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; a number field is a numeral
+# whose value has the given bits set. {i:text} is text with each ASCII letter in either case; {l:text} is
+# every spelling the rule's case-insensitive comparison treats as text (where the spec mirrors the rule).
+behaviour: >-
+  A process opens lsass.exe with an access mask that includes PROCESS_VM_READ (0x10), the right needed
+  to read its memory, whatever other rights the mask holds.
+
+sources:
+  - id: access-rights
+    title: Microsoft Learn, Process Security and Access Rights (PROCESS_VM_READ is 0x0010, required to read a process's memory)
+    url: https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights
+  - id: minidump
+    title: Microsoft Learn, MiniDumpWriteDump (the handle needs PROCESS_QUERY_INFORMATION and PROCESS_VM_READ)
+    url: https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump
+  - id: splunk-lsass
+    title: Splunk Threat Research, You Bet Your Lsass (the masks dumping tools ask for, as Sysmon writes them, 0x1010, 0x1410, 0x1fffff)
+    url: https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html
+
+define:
+  lsass: '.*\\{i:lsass.exe}'
+  # a path as Windows reports it: segments joined by single backslashes, none of them empty
+  path: '[^\\]+(?:\\[^\\]+)*'
+  os_components: '{l:C:\Windows\System32\csrss.exe}|{l:C:\Windows\System32\wininit.exe}|{l:C:\Windows\System32\wbem\WmiPrvSE.exe}|{l:C:\Windows\SysWOW64\wbem\WmiPrvSE.exe}'
+  defender: '{l:C:\ProgramData\Microsoft\Windows Defender\Platform\}(?:[^\\]+\\)+{l:MsMpEng.exe}'
+  defender_root: '{l:C:\ProgramData\Microsoft\Windows Defender\Platform\MsMpEng.exe}'
+  listers: '{l:C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe}|{l:C:\Windows\System32\wsmprovhost.exe}'
+
+variants:
+  - name: Memory read access, hexadecimal as Sysmon writes it
+    why: >-
+      Any mask with PROCESS_VM_READ [access-rights], which MiniDumpWriteDump and the dumping tools ask for
+      [minidump, splunk-lsass], in hexadecimal with the 0x prefix, any letter case, leading zeros allowed,
+      from any process outside the three exclusions below (paths as Windows reports them, without empty
+      segments).
+    sources: [access-rights, minidump, splunk-lsass]
+    event:
+      TargetImage: '{lsass}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}}
+      SourceImage: {match: '{path}', not: ['{os_components}', '{defender}', '{defender_root}', '{listers}'], missing: true}
+    counts:
+      - what: access masks that include PROCESS_VM_READ (32-bit, written 0x with lowercase digits)
+        number: {base: 16, prefix: '0x', set: [4], max: 4294967295, case: lower}
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1010'
+        SourceImage: 'C:\Users\Public\mimikatz.exe'
+
+  - name: A copy of an excluded Windows component elsewhere
+    why: >-
+      The exclusions name full paths, so a csrss.exe, wininit.exe or WmiPrvSE.exe outside its Windows
+      folder is any other process [access-rights].
+    sources: [access-rights]
+    event:
+      TargetImage: '{lsass}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}}
+      SourceImage: {match: '.*\\(?:{i:csrss.exe}|{i:wininit.exe}|{i:WmiPrvSE.exe})', not: '{os_components}'}
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1fffff'
+        SourceImage: 'C:\Users\Public\csrss.exe'
+
+  - name: PowerShell or the WinRM host reading lsass memory
+    why: >-
+      The process-listing exclusion needs the mask 0x1410 (or 5136) and System.ni.dll on the call stack;
+      any other read from these two processes, such as a dumping tool loaded into PowerShell, is not a
+      process listing [access-rights, splunk-lsass].
+    sources: [access-rights, splunk-lsass]
+    event:
+      TargetImage: '{lsass}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}, not: '{l:0x1410}'}
+      SourceImage: '{listers}'
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1fffff'
+        SourceImage: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+
+  - name: Memory read access written in decimal
+    expect: bypass
+    why: >-
+      A pipeline that turns the mask into a number writes it in decimal; 1040 is 0x410, PROCESS_QUERY_INFORMATION
+      with PROCESS_VM_READ, exactly what MiniDumpWriteDump asks for [minidump, access-rights].
+    reason: >-
+      The decimal branch lists eight masks seen from dumping tools; every other decimal mask that grants
+      PROCESS_VM_READ passes.
+    fix: >-
+      Normalize GrantedAccess to hexadecimal in the pipeline, or test the bit in decimal: a mask grants
+      PROCESS_VM_READ exactly when its value modulo 32 is between 16 and 31.
+    sources: [minidump, access-rights]
+    event:
+      TargetImage: '{lsass}'
+      GrantedAccess: {number: {base: 10, set: [4], max: 4294967295}}
+      SourceImage: {match: '{path}', not: ['{os_components}', '{defender}', '{defender_root}', '{listers}'], missing: true}
+    counts:
+      - what: access masks that include PROCESS_VM_READ, in decimal
+        number: {base: 10, set: [4], max: 4294967295}
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '1040'
+        SourceImage: 'C:\Users\Public\dump.exe'
+
+  - name: MsMpEng.exe directly in the Platform folder
+    expect: bypass
+    why: >-
+      Defender keeps its engine in a version folder under Platform; a file of the same name placed in the
+      Platform folder itself is not Defender's engine [access-rights].
+    reason: >-
+      filter_defender asks only for the Platform folder at the start and \MsMpEng.exe at the end, and the
+      backslash between them serves both, so MsMpEng.exe in Platform\ itself is excluded too. Writing there
+      needs administrator rights and Defender's tamper protection off.
+    fix: Require a version folder, as SourceImage|re ^C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\[^\\]+\\MsMpEng\.exe$ (case-insensitive).
+    sources: [access-rights]
+    event:
+      TargetImage: '{lsass}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}}
+      SourceImage: '{defender_root}'
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1010'
+        SourceImage: 'C:\ProgramData\Microsoft\Windows Defender\Platform\MsMpEng.exe'
+
+  - name: Windows components named in the exclusion
+    expect: quiet
+    why: csrss.exe, wininit.exe and WMI's WmiPrvSE.exe read lsass memory in normal operation.
+    reason: filter_os_components excludes exactly these four paths, in any letter case.
+    sources: [access-rights]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{os_components}'
+
+  - name: Defender's engine from its platform folder
+    expect: quiet
+    why: Microsoft Defender's MsMpEng.exe scans lsass from its versioned folder under the Platform directory.
+    reason: filter_defender excludes MsMpEng.exe only under C:\ProgramData\Microsoft\Windows Defender\Platform\.
+    sources: [access-rights]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{defender}'
+
+  - name: PowerShell or the WinRM host listing processes
+    expect: quiet
+    why: Get-Process in Windows PowerShell or a remote session opens every process with 0x1410 through System.ni.dll.
+    reason: filter_process_listing excludes that mask from these two processes when System.ni.dll is on the call stack.
+    sources: [access-rights, splunk-lsass]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{listers}'
+      GrantedAccess: '{l:0x1410}|5136'
+      CallTrace: '[\s\S]*\\{l:System.ni.dll}\+[\s\S]*'

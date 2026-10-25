@@ -315,6 +315,22 @@ class Prove(unittest.TestCase):
             self.assertEqual(r["survivors"], [], det)
             self.assertEqual(r["stale"], [], det)
 
+    def test_accepted_equivalence_is_decided_by_the_automata(self):
+        # 'powershell.exe' sits inside 'powershell', so a value with the longer substring has the shorter
+        rule = {"detection": {"sel": {"CommandLine|contains": ["powershell", "powershell.exe"]},
+                              "condition": "sel"}}
+        by_id = {mid: m for mid, _k, _d, m, _meta in prove.mutants(rule)}
+        # dropping the subsumed value changes no event: proven equivalent on every input
+        self.assertIs(prove._prove_equivalent(rule, by_id["value:sel:CommandLine|contains:powershell.exe"],
+                                              False, {}), True)
+        # dropping the broader value does change events: an input exists that only it matched
+        entry: dict = {}
+        self.assertIs(prove._prove_equivalent(rule, by_id["value:sel:CommandLine|contains:powershell"],
+                                              True, entry), False)
+        self.assertIn("distinguisher", entry)
+        self.assertNotEqual(matches(rule, entry["distinguisher"]["event"]),
+                            matches(by_id["value:sel:CommandLine|contains:powershell"], entry["distinguisher"]["event"]))
+
 
 class Evidence(unittest.TestCase):
     """A simulated lab run: two steps fire, one step's detection is missing from the export."""

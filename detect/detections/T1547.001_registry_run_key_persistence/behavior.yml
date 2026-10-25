@@ -1,0 +1,78 @@
+# Behaviour spec: an autostart entry written under a Run / RunOnce key, as Sysmon records it.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full. {i:text} is text with each
+# ASCII letter in either case (what the rule's case-insensitive comparison accepts); {l:text} is every
+# spelling str.lower() treats as equal (it mirrors the rule and includes the Kelvin sign).
+behaviour: >-
+  A value is written under a Run or RunOnce key (Sysmon event 13) whose data starts a script interpreter,
+  or points into a user-writable folder, or drops a binary straight into a user profile; the two
+  signed-vendor autostarts the rule knows are left alone.
+
+sources:
+  - id: run-keys
+    title: Microsoft Learn, Run and RunOnce Registry Keys (HKLM/HKCU ...\CurrentVersion\Run and RunOnce start a program at logon)
+    url: https://learn.microsoft.com/en-us/windows/desktop/SetupApi/run-and-runonce-registry-keys
+  - id: mitre
+    title: MITRE ATT&CK, T1547.001 Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
+    url: https://attack.mitre.org/techniques/T1547/001/
+  - id: sysmon13
+    title: SANS ISC, Sysmon's RegistryEvent (Value Set) - event 13 carries TargetObject (the value) and Details (its data)
+    url: https://isc.sans.edu/diary/28558
+
+define:
+  # a value under Run or RunOnce, 32- or 64-bit view, as Sysmon writes the full value path in TargetObject
+  runkey: '.*\\Software\\(?:WOW6432Node\\)?Microsoft\\Windows\\CurrentVersion\\Run(?:Once)?\\[^\\]+'
+  # the two autostarts the rule deliberately excludes, copied verbatim from its (?i) filters so the define's
+  # language equals the filter's exactly: the same set is removed from the fire variants and proven quiet
+  onedrive: '(?i:"?[a-z]:\\Users\\[^\\"]+\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive\.exe"?(?: /background)?)'
+  teams: '(?i:"?[a-z]:\\Users\\[^\\"]+\\AppData\\Local\\Microsoft\\Teams\\Update\.exe"? --processStart "?Teams\.exe"?(?: --process-start-args "--system-initiated")?)'
+
+variants:
+  - name: A Run key launching a script interpreter
+    why: >-
+      Logon persistence most often runs an interpreter from the Run key, which the rule lists by name
+      (PowerShell, pwsh, mshta, wscript, cscript, rundll32, regsvr32, cmd /c) [run-keys, mitre]. The two
+      signed-vendor exclusions are excluded here, because their filters read the whole value and a crafted
+      user name could otherwise place "powershell" inside an OneDrive-shaped path.
+    sources: [run-keys, mitre, sysmon13]
+    event:
+      TargetObject: '{runkey}'
+      Details: {match: '.*{i:powershell}.*', not: ['{onedrive}', '{teams}']}
+    examples:
+      - TargetObject: 'HKU\S-1-5-21-1\Software\Microsoft\Windows\CurrentVersion\Run\Updater'
+        Details: 'powershell -nop -w hidden -enc ZQBjAGgAbwA='
+
+  - name: A binary dropped straight into a user profile
+    why: >-
+      A value whose data is an executable or script placed directly in a profile folder
+      (C:\Users\<name>\<file>.exe) is caught by the profile-root branch [mitre]; the vendor exclusions sit
+      deeper under AppData\Local\Microsoft, so a profile-root drop is never one of them.
+    sources: [mitre, sysmon13]
+    event:
+      TargetObject: '{runkey}'
+      Details: {match: '.*[\\/]{i:Users}[\\/][^\\/"]+[\\/][^\\/"]+\.{i:exe}', not: ['{onedrive}', '{teams}']}
+    examples:
+      - TargetObject: 'HKU\S-1-5-21-1\Software\Microsoft\Windows\CurrentVersion\Run\Sync'
+        Details: 'C:\Users\alice\updater.exe'
+
+  - name: OneDrive's own autostart
+    expect: quiet
+    why: OneDrive registers its signed client under the Run key at every sign-in; this is normal.
+    reason: >-
+      filter_onedrive excludes exactly OneDrive.exe under the user's AppData\Local\Microsoft\OneDrive
+      folder, with nothing appended but an optional /background.
+    sources: [run-keys]
+    event:
+      TargetObject: '{runkey}'
+      Details: '{onedrive}'
+
+  - name: Microsoft Teams' Squirrel updater
+    expect: quiet
+    why: The Teams machine-wide installer registers Squirrel's Update.exe to start Teams at logon.
+    reason: >-
+      filter_teams excludes exactly Update.exe under AppData\Local\Microsoft\Teams starting Teams.exe; any
+      other binary under that folder still alerts.
+    sources: [run-keys]
+    event:
+      TargetObject: '{runkey}'
+      Details: '{teams}'

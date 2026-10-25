@@ -22,6 +22,7 @@ rasd certify --check    # CI: a refusal, an engine disagreement, an unlisted gap
 | The rule can stay quiet, and where its edge is | The event closest to the firing one, in single-character edits, on which the rule stays quiet; replayed through the engine |
 | No rule is dead or matches everything | If no firing event (or no quiet event) existed, the search would prove it and the build would fail |
 | The rule catches the documented behaviour | Each variant of the detection's behaviour spec is proven for every event it describes, or an event that slips past is shown; a gap the spec does not list, or a listed gap that has closed, fails the build ([behaviour proofs](#behaviour-proofs)) |
+| An edit changed nothing, or exactly this | On request, each rule is compared with an earlier version: the edit is proven to classify every possible event the same way, or an event the two versions disagree on is shown ([comparing two versions](#comparing-two-versions-of-a-rule)) |
 
 The generated part of this page, at the end, lists every rule with the size of its automata and both events; [CERTIFICATES](CERTIFICATES.md) holds the behaviour certificates.
 
@@ -92,6 +93,19 @@ A statement such as "some event fires the rule" asks whether a set of events is 
 Atoms on different fields read different parts of the event, and an event can combine any value of one field with any value of another. So a term is satisfiable exactly when, field by field, some value satisfies that field's literals, or a missing field does. For one field this is the emptiness of an intersection of regular languages and complements: the automata run in lockstep, and a breadth-first search over the reachable combinations of states either reaches a combination where every automaton gives the wanted verdict, which spells out a shortest value, or exhausts them. The set of combinations is finite, so exhausting it is a proof that no value exists, not a timeout. Two reductions keep it small without leaving anything out: an automaton in a state that accepts (or rejects) whatever follows is settled and drops out, and a combination where a wanted verdict has become impossible is cut.
 
 The quiet event is chosen to be close to the firing one. Given a string w and automata, **Wagner's correction algorithm** (1974) finds the fewest single-character insertions, deletions and substitutions that turn w into a string with the wanted verdicts: a shortest path over (position in w, combination of states), where keeping a character costs nothing and each edit costs one. certify tries each term of the negated formula on the firing event and keeps the cheapest.
+
+## Comparing two versions of a rule
+
+Editing a rule raises one question: did the change alter what the rule catches, and if so, how? The same decision procedure answers it exactly.
+
+Take the old version and the new one. Their atoms are pooled, so an atom both versions share is one automaton, and each field's classes are built across both versions at once, so a value means the same thing to each. Each version's condition becomes a formula over that shared pool. The two versions disagree on an event exactly when `(old fires and new does not) or (new fires and old does not)` holds, which is an ordinary formula over the same atoms. Its disjunctive normal form is searched term by term, field by field, just as [deciding a statement](#deciding-a-statement) does: either a term is satisfiable, which spells out an event the two versions classify differently, or every term is ruled out. Exhausting them is a proof that no such event exists, so the two versions accept exactly the same events. Any event found is replayed through the engine against both versions, which must give it opposite verdicts, before it is shown.
+
+```
+rasd certify --equiv HEAD~1        # compare every rule with its version one commit back
+rasd certify --equiv main --filter T1059   # one technique, against another branch
+```
+
+Each rule is reported as unchanged (the file is byte-for-byte the same), **meaning preserved** (the text changed but no event can tell the versions apart), or **meaning changed** (with the event that now lands on the other side, and which version fires on it). A meaning-preserving result lets a rule be refactored, split, or reordered with proof that nothing it catches moved. A meaning change is often intended; the event shown is what to check it against. A rule that uses a construct the model refuses is reported as not comparable rather than guessed at.
 
 ## Behaviour proofs
 

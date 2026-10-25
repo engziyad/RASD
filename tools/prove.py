@@ -52,6 +52,7 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from certify import CertifyError, RulePair
 from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections
 from fuzz import load_baseline, variants
 from mutation_test import generic_mutations, technique_mutations
@@ -265,6 +266,20 @@ def accepted(det) -> dict[str, str]:
     return {a["id"]: a["reason"] for a in (doc or {}).get("accepted_rule_mutants") or []}
 
 
+def _prove_equivalent(rule: dict, mutant: dict, want_event: bool, entry: dict) -> bool | None:
+    """Ask the automata whether the dropped part changes any event's verdict. True: no event can tell the
+    two versions apart, so the part is redundant on every possible input (a proof, not a sample). False:
+    an event distinguishes them, so the acceptance holds only for realistic inputs, not for all of them;
+    the event is attached when events are wanted. None: the pair cannot be modelled exactly."""
+    try:
+        diff = RulePair(rule, mutant).difference()
+    except CertifyError:
+        return None
+    if diff is not None and want_event:
+        entry["distinguisher"] = diff
+    return diff is None
+
+
 def prove(filter_: str | None = None, want_suggestions: bool = False) -> dict:
     report = {}
     for det in load_detections(filter_):
@@ -275,7 +290,9 @@ def prove(filter_: str | None = None, want_suggestions: bool = False) -> dict:
             if killed_by(mrule, tests) is None:
                 s = {"id": mid, "kind": kind, "description": desc}
                 if mid in accept:
-                    equivalent.append({**s, "reason": accept[mid]})
+                    entry = {**s, "reason": accept[mid]}
+                    entry["proven_equivalent"] = _prove_equivalent(det.rule, mrule, want_suggestions, entry)
+                    equivalent.append(entry)
                     continue
                 if want_suggestions:
                     s["suggestion"] = suggest(det.rule, mrule, meta, tests)
@@ -284,7 +301,8 @@ def prove(filter_: str | None = None, want_suggestions: bool = False) -> dict:
         counted = total - len(equivalent)
         score = 100.0 if counted == 0 else round(100 * (counted - len(survivors)) / counted, 1)
         report[det.id] = {"mutants": total, "survivors": survivors, "accepted": equivalent, "stale": stale,
-                          "score": score, "tests": len(tests)}
+                          "score": score, "tests": len(tests),
+                          "proven_equiv": sum(e.get("proven_equivalent") is True for e in equivalent)}
     return report
 
 
@@ -319,6 +337,18 @@ def main() -> int:
         extra = f"  {DIM}{len(r['accepted'])} accepted as equivalent{RESET}" if r["accepted"] else ""
         print(f"{colour}{r['score']:5.1f}%{RESET}  {det:<{width}}  {r['mutants']:3d} mutants  "
               f"{len(r['survivors']):2d} surviving  {DIM}{r['tests']} tests{RESET}{extra}")
+        for a in r["accepted"]:
+            pe = a.get("proven_equivalent")
+            tag = (f"{GREEN}proven equivalent on every input{RESET}" if pe is True else
+                   f"{YELLOW}redundant only on realistic inputs{RESET}" if pe is False else
+                   f"{DIM}not comparable by the automata{RESET}")
+            print(f"         {DIM}accepted{RESET} {a['description']}  {tag}")
+            if pe is False and args.suggest and a.get("distinguisher"):
+                w = a["distinguisher"]
+                side = "the original fires, the trimmed rule stays quiet" if w["old_fires"] else \
+                       "the trimmed rule fires, the original stays quiet"
+                print(f"           {DIM}an input the stated reason rules out ({side}): "
+                      f"{json.dumps(w['event'], ensure_ascii=False)[:200]}{RESET}")
         for sid in r["stale"]:
             print(f"         {RED}stale acceptance{RESET} {sid} - no longer a surviving mutant, remove it from mutations.yml")
         for s in r["survivors"]:
@@ -333,8 +363,9 @@ def main() -> int:
                     print(f"           {DIM}no candidate found - the mutant may be equivalent (redundant rule part){RESET}")
     overall = 100.0 if total == 0 else 100 * dead / total
     eq = sum(len(r["accepted"]) for r in report.values())
-    print(f"\n{BOLD}{total + eq} rule mutants · {dead} killed · {eq} accepted as equivalent · "
-          f"proof score {overall:.1f}%{RESET}")
+    proven_eq = sum(r["proven_equiv"] for r in report.values())
+    print(f"\n{BOLD}{total + eq} rule mutants · {dead} killed · {eq} accepted as equivalent "
+          f"({proven_eq} proven so for every input by the automata) · proof score {overall:.1f}%{RESET}")
     return 1 if failing else 0
 
 

@@ -18,7 +18,8 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Correlation mutants | 24 parameter mutants (24 killed) · 45 base-rule mutants |
 | Aggregation parity | 4502 SPL and KQL sequence runs identical to the engine |
 | Exact automata (certify) | 18/18 Sigma rules compiled to exact automata over every Unicode code point (2603 states) · 36 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](CERTIFY.md)) |
-| Behaviour proofs (certify) | 25 variants of documented attacker behaviour over 5 detections: 12 proven for every event, 12 known gaps (each shown by an engine-confirmed event), 1 exclusion proven quiet ([certificates](CERTIFICATES.md)) |
+| Behaviour proofs (certify) | 57 variants of documented attacker behaviour over 12 detections: 25 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 14 exclusions proven quiet ([certificates](CERTIFICATES.md)) |
+| Edit equivalence (certify) | `rasd certify --equiv REF` compares every rule with its version at a git ref and proves the edit preserves every event's verdict, or shows the event it changes ([CERTIFY](CERTIFY.md#comparing-two-versions-of-a-rule)) |
 | Near misses (replay corpus) | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
 | SIEM backends | SPL / KQL |
 | Hunting queries | 5 (KQL + SPL) |

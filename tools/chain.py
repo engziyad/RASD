@@ -695,6 +695,7 @@ def render_metrics(repo: Repo) -> str:
                                   if all(f["parity_ok"] for f in cf) else "NOT proven")] if cf else []),
         ("Exact automata (certify)", certify_line(repo, "")),
         *([("Behaviour proofs (certify)", behaviour_line(repo, ""))] if repo.certify["variants"] else []),
+        ("Edit equivalence (certify)", equiv_line("")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -745,6 +746,13 @@ def behaviour_line(repo: Repo, docs: str) -> str:
     return (f"{_n(c['variants'], 'variant')} of documented attacker behaviour over {_n(c['specs'], 'detection')}: "
             f"{c['proven']} proven for every event, {_n(c['gaps'], 'known gap')} (each shown by an engine-confirmed "
             f"event), {_n(c['quiet'], 'exclusion')} proven quiet ([certificates]({docs}CERTIFICATES.md))")
+
+
+def equiv_line(docs: str) -> str:
+    """The edit-equivalence capability; `docs` is the path to docs/ from the page."""
+    return ("`rasd certify --equiv REF` compares every rule with its version at a git ref and proves the edit "
+            f"preserves every event's verdict, or shows the event it changes "
+            f"([CERTIFY]({docs}CERTIFY.md#comparing-two-versions-of-a-rule))")
 
 
 def behaviour_cell(repo: Repo, d) -> str | None:
@@ -1016,6 +1024,7 @@ def render_readme_metrics(repo: Repo) -> str:
                             "verified")] if cf else []),
         ("Exact automata", certify_line(repo, "docs/")),
         *([("Behaviour proofs", behaviour_line(repo, "docs/"))] if repo.certify["variants"] else []),
+        ("Edit equivalence", equiv_line("docs/")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1109,6 +1118,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
                                      f"KQL and SPL parity, evasion fuzzing · Engineering Score {eng:.0f}/100"),
         ("Replayed on public data", public_summary_line(repo, docs)),
         *([("Behaviour proofs", behaviour_line(repo, docs))] if repo.certify["variants"] else []),
+        ("Edit equivalence", equiv_line(docs)),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "

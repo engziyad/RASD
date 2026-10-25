@@ -1,0 +1,55 @@
+# Behaviour spec: one refused request of an API probe, as the web server logs it (the base rule's events;
+# the correlation counts distinct paths per client). rasd certify proves the base rule matches every event
+# of each variant, or prints one it misses (docs/CERTIFY.md). {i:text} is text with each ASCII letter in
+# either case; {l:text} is every spelling the rule's case-insensitive comparison treats as text.
+behaviour: >-
+  The server refuses a request to a protected path, for missing or wrong credentials (401) or for lack of
+  rights (403).
+
+sources:
+  - id: rfc9110
+    title: RFC 9110, HTTP Semantics (401 Unauthorized, 403 Forbidden; a server may answer 404 to hide a forbidden resource)
+    url: https://www.rfc-editor.org/rfc/rfc9110
+  - id: fetch-preflight
+    title: WHATWG Fetch, CORS-preflight request (an OPTIONS request the browser sends before a cross-origin call)
+    url: https://fetch.spec.whatwg.org/#cors-preflight-request
+
+define:
+  method: '[A-Za-z]+'
+
+variants:
+  - name: Request refused with 401 or 403
+    why: Any method other than OPTIONS, any path, refused for authentication (401) or authorization (403) [rfc9110].
+    sources: [rfc9110]
+    event:
+      sc-status: '401|403'
+      cs-method: {match: '{method}', not: '{l:OPTIONS}', missing: true}
+    examples:
+      - sc-status: '401'
+        cs-method: GET
+        cs-uri-stem: /api/Cards
+
+  - name: Forbidden paths answered with 404
+    expect: bypass
+    why: A server that wants to hide that a forbidden resource exists may answer 404 instead of 403 [rfc9110].
+    reason: >-
+      The base rule counts only 401 and 403: a probe against such a server looks like requests for paths
+      that do not exist, which every web server sees all day.
+    fix: Treat 404 on paths the application knows to be protected (an allow-list per application), not all 404s.
+    sources: [rfc9110]
+    event:
+      sc-status: '404'
+      cs-method: {match: '{method}', not: '{l:OPTIONS}'}
+    examples:
+      - sc-status: '404'
+        cs-method: GET
+        cs-uri-stem: /rest/admin/application-configuration
+
+  - name: CORS preflight
+    expect: quiet
+    why: Browsers send an OPTIONS preflight before a cross-origin call, and some servers refuse it with 401 or 403 [fetch-preflight].
+    reason: filter_preflight leaves out the OPTIONS method, in any letter case.
+    sources: [fetch-preflight]
+    event:
+      sc-status: '401|403'
+      cs-method: '{l:OPTIONS}'

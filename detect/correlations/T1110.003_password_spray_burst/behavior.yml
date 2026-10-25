@@ -1,0 +1,101 @@
+# Behaviour spec: the failed authentications a password spray leaves on a domain controller (the base
+# rule's events; the correlation counts them per source). rasd certify proves the base rule matches every
+# event of each variant, or prints one it misses (docs/CERTIFY.md). {i:text} is text with each ASCII
+# letter in either case; {l:text} is every spelling the rule's case-insensitive comparison treats as text.
+behaviour: >-
+  One guess of a password against an account fails: Kerberos pre-authentication with a wrong password,
+  a ticket request for an account that does not exist or is disabled, or a logon with a wrong password or
+  an unknown user name.
+
+sources:
+  - id: event-4771
+    title: Microsoft Learn, 4771(F) Kerberos pre-authentication failed (failure code 0x18, KDC_ERR_PREAUTH_FAILED - wrong password)
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4771
+  - id: event-4768
+    title: Microsoft Learn, 4768(S, F) A Kerberos authentication ticket (TGT) was requested (0x6 unknown client, 0x12 credentials revoked)
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4768
+  - id: event-4625
+    title: Microsoft Learn, 4625(F) An account failed to log on (sub status 0xC000006A wrong password, 0xC0000064 unknown user name)
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625
+  - id: event-4776
+    title: Microsoft Learn, 4776(S, F) The computer attempted to validate the credentials for an account (NTLM)
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4776
+
+define:
+  local: '-|::1|127\.0\.0\.1|{l:::ffff:127.0.0.1}'
+
+variants:
+  - name: Wrong password in Kerberos pre-authentication
+    why: Event 4771 with failure code 0x18, written in hexadecimal or decimal [event-4771].
+    sources: [event-4771]
+    event:
+      EventID: '4771'
+      Status: '{i:0x18}|24'
+      TargetUserName: {not: '[\s\S]*\$', missing: true}
+      IpAddress: {not: '{local}', missing: true}
+    examples:
+      - EventID: 4771
+        TargetUserName: lab.user03
+        Status: '0x18'
+        IpAddress: '::ffff:10.0.0.21'
+
+  - name: Unknown or disabled account in a ticket request
+    why: Event 4768 with result 0x6 (no such account) or 0x12 (disabled, expired or locked out) [event-4768].
+    sources: [event-4768]
+    event:
+      EventID: '4768'
+      Status: '{i:0x6}|6|{i:0x12}|18'
+      TargetUserName: {not: '[\s\S]*\$', missing: true}
+      IpAddress: {not: '{local}', missing: true}
+    examples:
+      - EventID: 4768
+        TargetUserName: guessed.name
+        Status: '0x6'
+        IpAddress: '::ffff:10.0.0.21'
+
+  - name: Wrong password or unknown user in a logon
+    why: Event 4625 with sub status 0xC000006A or 0xC0000064, in hexadecimal of either case or in decimal [event-4625].
+    sources: [event-4625]
+    event:
+      EventID: '4625'
+      SubStatus: '{i:0xC000006A}|3221225578|{i:0xC0000064}|3221225572'
+      TargetUserName: {not: '[\s\S]*\$', missing: true}
+      IpAddress: {not: '{local}', missing: true}
+    examples:
+      - EventID: 4625
+        TargetUserName: lab.user07
+        SubStatus: '0xC000006A'
+        IpAddress: '10.0.0.21'
+
+  - name: NTLM credential validation on the domain controller
+    expect: bypass
+    why: >-
+      When a member server or workstation is sprayed over NTLM, the domain controller records event 4776 with
+      the wrong-password or unknown-user code [event-4776]; the 4625 stays on the sprayed host [event-4625].
+    reason: The base rule counts Kerberos failures and 4625 logon failures, not 4776, so a spray seen only in the domain controller's NTLM validations is not counted.
+    fix: Count 4776 with 0xC000006A and 0xC0000064 per workstation name (the roadmap's NTLM sprays by workstation).
+    sources: [event-4776, event-4625]
+    event:
+      EventID: '4776'
+      Status: '{i:0xC000006A}|{i:0xC0000064}'
+    examples:
+      - EventID: 4776
+        TargetUserName: lab.user07
+        Workstation: WS07
+        Status: '0xC000006A'
+
+  - name: Computer accounts
+    expect: quiet
+    why: A computer account whose password changed recently fails until replication catches up.
+    reason: filter_machine leaves out account names ending with $.
+    sources: [event-4771]
+    event:
+      TargetUserName: '[\s\S]*\$'
+
+  - name: Local and loopback sources
+    expect: quiet
+    why: Logons without a network source (-) or from the loopback address are local, not a spray from another machine [event-4625].
+    reason: filter_local.
+    sources: [event-4625]
+    event:
+      IpAddress: '{local}'

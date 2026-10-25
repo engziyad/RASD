@@ -372,5 +372,72 @@ class BehaviourSpecs(unittest.TestCase):
         self.assertEqual(certify.expand(r"\\{x}\{y}", {"x": "X"}, "w"), r"\\(?:X)\{y}")
 
 
+def _vrule(detection):
+    return {"title": "t", "logsource": {"product": "windows"}, "detection": detection}
+
+
+class RuleVersions(unittest.TestCase):
+    """certify.RulePair decides whether two versions of a rule classify every event alike, and the
+    event it returns when they differ is real: the engine gives the two versions opposite verdicts on it."""
+
+    def assertEquivalent(self, old, new):
+        self.assertIsNone(certify.RulePair(old, new).difference())
+        self.assertIsNone(certify.RulePair(new, old).difference())      # symmetric
+
+    def assertDiffers(self, old, new):
+        d = certify.RulePair(old, new).difference()
+        self.assertIsNotNone(d)
+        self.assertNotEqual(matches(old, d["event"]), matches(new, d["event"]))
+        self.assertEqual((matches(old, d["event"]), matches(new, d["event"])), (d["old_fires"], d["new_fires"]))
+        return d
+
+    def test_a_rule_equals_itself(self):
+        for det in load_detections():
+            self.assertIsNone(certify.RulePair(det.rule, det.rule).difference(), det.id)
+
+    def test_meaning_preserving_refactors_are_proven_equivalent(self):
+        # one contains-list is the OR of its values
+        self.assertEquivalent(
+            _vrule({"sel": {"CommandLine|contains": ["foo", "bar"]}, "condition": "sel"}),
+            _vrule({"a": {"CommandLine|contains": "foo"}, "b": {"CommandLine|contains": "bar"},
+                    "condition": "a or b"}))
+        # De Morgan
+        self.assertEquivalent(
+            _vrule({"a": {"Image|endswith": "\\p.exe"}, "b": {"CommandLine|contains": "zz"},
+                    "condition": "not (a and b)"}),
+            _vrule({"a": {"Image|endswith": "\\p.exe"}, "b": {"CommandLine|contains": "zz"},
+                    "condition": "(not a) or (not b)"}))
+        # a redundant branch that is subsumed by another changes nothing
+        self.assertEquivalent(
+            _vrule({"sel": {"CommandLine|contains": "powershell"}, "condition": "sel"}),
+            _vrule({"a": {"CommandLine|contains": "powershell"}, "b": {"CommandLine|contains": "powershell.exe"},
+                    "condition": "a or b"}))
+
+    def test_a_meaning_change_produces_an_engine_verified_event(self):
+        base = _vrule({"sel": {"CommandLine|contains": ["foo"]}, "condition": "sel"})
+        self.assertEqual(self.assertDiffers(base,                                   # a value added to a list
+            _vrule({"sel": {"CommandLine|contains": ["foo", "bar"]}, "condition": "sel"}))["new_fires"], True)
+        self.assertDiffers(                                                         # a field condition dropped
+            _vrule({"sel": {"Image|endswith": "\\s.exe", "CommandLine|contains": "k"}, "condition": "sel"}),
+            _vrule({"sel": {"Image|endswith": "\\s.exe"}, "condition": "sel"}))
+        self.assertDiffers(                                                         # an exclusion added
+            _vrule({"sel": {"Image|endswith": "\\s.exe"}, "condition": "sel"}),
+            _vrule({"sel": {"Image|endswith": "\\s.exe"}, "f": {"CommandLine|contains": "safe"},
+                    "condition": "sel and not f"}))
+        self.assertDiffers(                                                         # endswith widened to contains
+            _vrule({"sel": {"Image|endswith": "cmd.exe"}, "condition": "sel"}),
+            _vrule({"sel": {"Image|contains": "cmd.exe"}, "condition": "sel"}))
+
+    def test_equiv_run_sees_the_working_tree_as_unchanged(self):
+        # every current rule equals its own committed version; nothing is a meaning change or uncomparable
+        if certify._git(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"])[0] != 0:
+            self.skipTest("not a git checkout")
+        report = certify.equiv_run("HEAD")
+        self.assertTrue(report)
+        bad = [r for r in report if r["status"] in ("changed", "unmodelled")]
+        self.assertEqual(bad, [], bad)
+        self.assertTrue(all(r["status"] in ("identical", "added", "equivalent") for r in report))
+
+
 if __name__ == "__main__":
     unittest.main()

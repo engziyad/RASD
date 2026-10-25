@@ -10,6 +10,7 @@
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
 | **Tests** | base rule: 5 true positive · 6 true negative · 5 technique mutations · 10 scenarios (4 fire, 6 silent) |
 | **Proof** | base rule: 100% of 2 mutants killed · fuzzer n/a (no evasion strategy applies to its fields) · correlation: 5/5 parameter mutants killed |
+| **Behaviour proof** | base rule: 1 of 3 variants proven for every event · 2 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1190-web-request-for-a-single-owner-object-by-numeric-id)) |
 | **Parity** | base filter identical on 80 events · aggregation identical in SPL and KQL on 960 runs (160 sequences × 6 parameter sets) |
 | **Guarantee** | a burst of 5+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 4 can be split by a boundary |
 | **Public data** | no public dataset records it yet · [why](public_evidence.md) |

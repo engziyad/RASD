@@ -2,7 +2,8 @@
 # rasd certify proves the rule fires on every event of each variant, or prints one that slips past
 # (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; an argv pattern is matched
 # against the arguments the program receives, joined by NUL (\x00), after the C runtime has split the
-# command line. {i:text} is text with each ASCII letter in either case.
+# command line. {i:text} is text with each ASCII letter in either case; {l:text} is every spelling the
+# rule's case-insensitive comparison treats as text (used where the spec mirrors one of the rule's values).
 behaviour: >-
   powershell.exe or pwsh.exe is started with -EncodedCommand (any spelling the console host accepts)
   followed by Base64 text that Convert.FromBase64String decodes.
@@ -33,7 +34,7 @@ sources:
 define:
   image: '.*\\(?:{i:powershell.exe}|{i:pwsh.exe})'
   pwsh: '.*\\{i:pwsh.exe}'
-  sccm: '{i:C:\Windows\CCM\CcmExec.exe}'
+  sccm: '{l:C:\Windows\CCM\CcmExec.exe}'
   # a switch is one switch character (pwsh also takes the same dash twice), then a prefix of
   # encodedcommand or the alias ec, compared without case
   switch_char: '(?:/|-|--|\u2013|\u2013\u2013|\u2014|\u2014\u2014|\u2015|\u2015\u2015)'
