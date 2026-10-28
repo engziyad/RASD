@@ -233,6 +233,7 @@ RASD
 | [Detection backlog](intel/outputs/detection_backlog.md) · [actor tradecraft map](intel/mappings/actor_tradecraft_map.md) | The open gaps ranked by telemetry already mapped and by the groups documented using each technique |
 | [CONTROL_EVIDENCE](docs/CONTROL_EVIDENCE.md) · [role views](docs/views/) | Evidence for audit; SOC, IR, GRC and purple-team views |
 | [RELEASE_ROADMAP](docs/RELEASE_ROADMAP.md) | v1.0 (this release), v2.0: Reference on lab evidence, and the new data domains after it |
+| [CONTRIBUTING](CONTRIBUTING.md) | Branch, pull request and the CI gate every change passes before it reaches main |
 | [GUIDE_AR](docs/GUIDE_AR.md) | الدليل الكامل بالعربي |
 
 ## Scope and safety
