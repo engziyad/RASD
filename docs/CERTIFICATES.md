@@ -9,14 +9,18 @@ Each detection with a behaviour spec (`behavior.yml` beside its rule) lists the 
 
 CI fails when a gap appears that the spec does not list, when a listed gap closes (the spec must then say `fires`), and when an exclusion fires.
 
-**57 variants over 12 detections: 25 proven for every event, 18 known gaps, 14 exclusions proven quiet.**
+**81 variants over 16 detections: 37 proven for every event, 18 known gaps, 26 exclusions proven quiet.**
 
 | Detection | Variants | Proven | Known gaps | Exclusions proven quiet |
 |---|---:|---:|---:|---:|
 | [T1003.001_lsass_memory_access](#t1003001-suspicious-process-access-to-lsass-memory) | 8 | 3 | 2 | 3 |
+| [T1046_decoy_service_interaction](#t1046-deception---interaction-with-a-decoy-network-service) | 7 | 3 | 0 | 4 |
 | [T1053.005_powershell_scheduled_task_creation](#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets) | 6 | 2 | 4 | 0 |
 | [T1059.001_powershell_encoded_command](#t1059001-powershell-execution-with-encoded-command) | 7 | 2 | 4 | 1 |
+| [T1078.002_honey_account_authentication](#t1078002-deception---authentication-attempt-with-a-honey-account) | 8 | 6 | 0 | 2 |
 | [T1547.001_registry_run_key_persistence](#t1547001-run-key-persistence-pointing-to-suspicious-location) | 4 | 2 | 0 | 2 |
+| [T1552.001_honey_file_access](#t1552001-deception---honey-credentials-file-opened) | 5 | 1 | 0 | 4 |
+| [T1558.003_honey_spn_ticket_request](#t1558003-deception---service-ticket-requested-for-a-honey-spn-account) | 4 | 2 | 0 | 2 |
 | [T1558.003_kerberoasting_rc4_tgs](#t1558003-kerberoasting---rc4-service-ticket-requested-for-user-account) | 5 | 2 | 0 | 3 |
 | [T1685.005_event_log_clearing](#t1685005-windows-event-log-clearing-via-command-line) | 9 | 5 | 4 | 0 |
 | [T1685.005_security_log_cleared](#t1685005-security-audit-log-cleared-event-1102) | 1 | 1 | 0 | 0 |
@@ -79,6 +83,40 @@ Sources:
 - [access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights): Microsoft Learn, Process Security and Access Rights (PROCESS_VM_READ is 0x0010, required to read a process's memory)
 - [minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump): Microsoft Learn, MiniDumpWriteDump (the handle needs PROCESS_QUERY_INFORMATION and PROCESS_VM_READ)
 - [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html): Splunk Threat Research, You Bet Your Lsass (the masks dumping tools ask for, as Sysmon writes them, 0x1010, 0x1410, 0x1fffff)
+
+## T1046 Deception - Interaction With a Decoy Network Service
+
+**Behaviour.** A client on the network probes or connects to one of the decoy services, or tries to log on to one of them. OpenCanary writes one JSON record per interaction with the module's event code (logtype), the decoy's identity (node_id) and the client (src_host). Nothing legitimate talks to the decoy, so any record from a client other than the authorised scanner and the decoy itself is the signal.
+
+[`T1046_decoy_service_interaction`](../detect/detections/T1046_decoy_service_interaction/) · [spec](../detect/detections/T1046_decoy_service_interaction/behavior.yml) · [rule](../detect/detections/T1046_decoy_service_interaction/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Connection to a decoy service | fires | **proven** for every event |
+| Login attempt on a decoy service | fires | **proven** for every event |
+| Port scan of the decoy | fires | **proven** for every event |
+| The decoy's own records | stays quiet | **proven** for every event |
+| Modules the inventory does not enable, and the LLMNR responder | stays quiet | **proven** for every event |
+| The authorised scanner and the decoy itself | stays quiet | **proven** for every event |
+| Another canary | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Connection to a decoy service.** The FTP, web, SSH, SMB, Telnet, VNC and RDP modules log a record when a client connects, fetches the login page or opens a file on the share [[opencanary-logger](https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py)] [[opencanary-docs](https://opencanary.readthedocs.io/en/latest/)]; reaching a service nobody advertised is network service discovery [[attack-network-service-discovery](https://attack.mitre.org/techniques/T1046/)].
+- **Login attempt on a decoy service.** The FTP, web, SSH, Telnet and MSSQL modules log every credential presented to them [[opencanary-logger](https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py)] [[opencanary-docs](https://opencanary.readthedocs.io/en/latest/)].
+- **Port scan of the decoy.** The port scan module reads the kernel's log of SYN packets and Nmap probes to closed ports, and writes the ports as strings [[opencanary-logger](https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py)].
+- **The decoy's own records.** Start-up, messages, debug, errors, the heartbeat, configuration saves and the example module write records with codes 1000 to 1006 and no client [[opencanary-logger](https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py)]. *Why quiet:* Only the interaction codes of the enabled modules are selected.
+- **Modules the inventory does not enable, and the LLMNR responder.** Records of modules that are not enabled on this decoy cannot be produced by it; the LLMNR responder's records (19001) are name resolution chatter from Windows hosts, not an interaction with a service [[opencanary-logger](https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py)]. *Why quiet:* The rule lists the codes of the enabled modules; rasd deceive --check keeps the list and the inventory in step.
+- **The authorised scanner and the decoy itself.** The lab's vulnerability scanner probes every host on its schedule, and the decoy's health check connects to its own services over loopback. *Why quiet:* filter_authorised_scanner and filter_loopback, each recorded in tuning.yml.
+- **Another canary.** A test canary that is not in the inventory writes the same records under its own node_id; the inventory decides which decoys alert. *Why quiet:* node_id must be the inventory's decoy.
+
+</details>
+
+Sources:
+
+- [opencanary-logger](https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py): thinkst/opencanary, opencanary/logger.py (the LOG_* event codes; sanitizeLog writes node_id, src_host, dst_port and logtype into every record)
+- [opencanary-docs](https://opencanary.readthedocs.io/en/latest/): OpenCanary documentation (modules and their alerts)
+- [attack-network-service-discovery](https://attack.mitre.org/techniques/T1046/): MITRE ATT&CK, T1046 Network Service Discovery
 
 ## T1053.005 Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets
 
@@ -216,6 +254,45 @@ Sources:
 - [crt-args](https://learn.microsoft.com/cpp/c-language/parsing-c-command-line-arguments): Microsoft Learn, Parsing C command-line arguments (how wmain's argv is split; a quoted string can sit inside an argument)
 - [dosfuscation](https://www.exploit-db.com/docs/44347): D. Bohannon, DOSfuscation (2018) - double quotes inside arguments change nothing at run time and stay in the logged command line
 
+## T1078.002 Deception - Authentication Attempt With a Honey Account
+
+**Behaviour.** Someone presents a decoy domain account to Windows authentication: a logon attempt that succeeds or fails (4624, 4625), a Kerberos ticket-granting ticket request or pre-authentication failure (4768, 4771), or an NTLM credential validation (4776). Nobody is supposed to use these accounts, so the outcome, the logon type and the source do not matter: any such event is the signal.
+
+[`T1078.002_honey_account_authentication`](../detect/detections/T1078.002_honey_account_authentication/) · [spec](../detect/detections/T1078.002_honey_account_authentication/behavior.yml) · [rule](../detect/detections/T1078.002_honey_account_authentication/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Logon failure with a decoy account | fires | **proven** for every event |
+| Logon success with a decoy account | fires | **proven** for every event |
+| Kerberos ticket-granting ticket requested for a decoy account | fires | **proven** for every event |
+| Kerberos pre-authentication failure for a decoy account | fires | **proven** for every event |
+| NTLM credential validation of a decoy account | fires | **proven** for every event |
+| Decoy account written as a user principal name | fires | **proven** for every event |
+| Authentication of any other account | stays quiet | **proven** for every event |
+| Events about a decoy that are not an authentication | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Logon failure with a decoy account.** A wrong or guessed password for the decoy is refused by a domain controller or a member server, which writes the account as typed in Account Name [[event-4625](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4625)]; the lure (the credentials file the description points at) was read and its password tried [[attack-domain-accounts](https://attack.mitre.org/techniques/T1078/002/)].
+- **Logon success with a decoy account.** A logon of any type was granted with the decoy, so its real password was obtained [[event-4624](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4624)]; the lures hold wrong ones.
+- **Kerberos ticket-granting ticket requested for a decoy account.** An AS-REQ for the decoy, whatever the result: a TGT issued after a right password, a request refused with 0x18, or a TGT issued without pre-authentication (Pre-Authentication Type 0), which is what AS-REP roasting collects from an account whose pre-authentication is disabled [[event-4768](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4768)].
+- **Kerberos pre-authentication failure for a decoy account.** A wrong password presented over Kerberos fails pre-authentication on the domain controller [[event-4771](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4771)].
+- **NTLM credential validation of a decoy account.** NTLM authentication with the decoy is validated by a domain controller, which logs the account and the workstation [[event-4776](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4776)].
+- **Decoy account written as a user principal name.** Logon prompts accept user@realm, and 4625 records the name as it was typed [[event-4625](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4625)]; any realm or suffix may follow the @.
+- **Authentication of any other account.** The decoys are the only accounts the rule names; every other account, including names that merely start or end like a decoy's, is ordinary traffic. *Why quiet:* TargetUserName must equal a decoy name, or a decoy name followed by @ and a realm.
+- **Events about a decoy that are not an authentication.** A logoff, an explicit-credential logon record, a privilege assignment, an account change or lockout, and a service ticket (the honey SPN rule's event) name the account without presenting its credential. *Why quiet:* Only the five authentication events are selected.
+
+</details>
+
+Sources:
+
+- [event-4624](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4624): Microsoft Learn, 4624(S) An account was successfully logged on (Target Account: Account Name)
+- [event-4625](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4625): Microsoft Learn, 4625(F) An account failed to log on (Account For Which Logon Failed: Account Name, as typed, sAMAccountName or UPN)
+- [event-4768](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4768): Microsoft Learn, 4768(S, F) A Kerberos authentication ticket (TGT) was requested (Account Name; Pre-Authentication Type 0 when none was used)
+- [event-4771](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4771): Microsoft Learn, 4771(F) Kerberos pre-authentication failed (Account Name; Failure Code 0x18 = wrong password)
+- [event-4776](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4776): Microsoft Learn, 4776(S, F) The computer attempted to validate the credentials for an account (Logon Account)
+- [attack-domain-accounts](https://attack.mitre.org/techniques/T1078/002/): MITRE ATT&CK, T1078.002 Valid Accounts, Domain Accounts
+
 ## T1547.001 Run Key Persistence Pointing to Suspicious Location
 
 **Behaviour.** A value is written under a Run or RunOnce key (Sysmon event 13) whose data starts a script interpreter, or points into a user-writable folder, or drops a binary straight into a user profile; the two signed-vendor autostarts the rule knows are left alone.
@@ -243,6 +320,63 @@ Sources:
 - [run-keys](https://learn.microsoft.com/en-us/windows/desktop/SetupApi/run-and-runonce-registry-keys): Microsoft Learn, Run and RunOnce Registry Keys (HKLM/HKCU ...\CurrentVersion\Run and RunOnce start a program at logon)
 - [mitre](https://attack.mitre.org/techniques/T1547/001/): MITRE ATT&CK, T1547.001 Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
 - [sysmon13](https://isc.sans.edu/diary/28558): SANS ISC, Sysmon's RegistryEvent (Value Set) - event 13 carries TargetObject (the value) and Details (its data)
+
+## T1552.001 Deception - Honey Credentials File Opened
+
+**Behaviour.** A user account reads, writes, appends to or deletes one of the decoy credential files, on the server that holds it, through any process. The file's SACL makes Windows write event 4663 with the access that was exercised; the decoy files exist only to be found, so the access itself is the signal.
+
+[`T1552.001_honey_file_access`](../detect/detections/T1552.001_honey_file_access/) · [spec](../detect/detections/T1552.001_honey_file_access/behavior.yml) · [rule](../detect/detections/T1552.001_honey_file_access/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Data access to a decoy file by a user account | fires | **proven** for every event |
+| Attribute reads of a decoy | stays quiet | **proven** for every event |
+| Every other file | stays quiet | **proven** for every event |
+| The server's own machine account and the search indexer | stays quiet | **proven** for every event |
+| The search indexer reading a decoy | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Data access to a decoy file by a user account.** Opening the file to read it (ReadData, %%4416), writing or appending to it (%%4417, %%4418) or deleting it (%%1537) exercises an access the decoy's SACL audits, and 4663 records the object's local path, the type File and the %%-coded accesses [[event-4663](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663)] [[audit-file-system](https://learn.microsoft.com/windows/security/threat-protection/auditing/audit-file-system)]. Searching shares for files that hold passwords is the documented behaviour [[attack-credentials-in-files](https://attack.mitre.org/techniques/T1552/001/)].
+- **Attribute reads of a decoy.** Listing a folder reads each file's attributes (ReadAttributes, %%4423) and, for a handle that only reads security or synchronises, no data; Explorer does this for every file it shows [[event-4663](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663)]. *Why quiet:* AccessList must contain one of the four data accesses.
+- **Every other file.** The SACL and the rule name three files; the real documents beside them, and names that merely contain a decoy's name, are ordinary traffic. *Why quiet:* ObjectName must end with one of the three decoy paths.
+- **The server's own machine account and the search indexer.** Backup and antivirus run as SYSTEM, which the server logs as its machine account (a name ending in $), and Windows Search reads every file it indexes through SearchProtocolHost.exe or SearchIndexer.exe [[event-4663](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663)]. *Why quiet:* filter_machine_account and filter_search_indexer, each recorded in tuning.yml.
+- **The search indexer reading a decoy.** Windows Search reads file content minutes after a file is created or changed, through SearchProtocolHost.exe or SearchIndexer.exe, under the logged-on user [[event-4663](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663)]. *Why quiet:* filter_search_indexer.
+
+</details>
+
+Sources:
+
+- [event-4663](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663): Microsoft Learn, 4663(S) An attempt was made to access an object (Object Name, Object Type File, Accesses as %%-codes, Process Name)
+- [audit-file-system](https://learn.microsoft.com/windows/security/threat-protection/auditing/audit-file-system): Microsoft Learn, Audit File System (4663 is written when a SACL on the object matches the access)
+- [attack-credentials-in-files](https://attack.mitre.org/techniques/T1552/001/): MITRE ATT&CK, T1552.001 Unsecured Credentials, Credentials In Files
+
+## T1558.003 Deception - Service Ticket Requested for a Honey SPN Account
+
+**Behaviour.** The domain controller logs a service ticket request (event 4769) whose service is the decoy account: issued or refused, with RC4, AES or DES, from any client including the domain controller itself. No real service runs under that account, so the request can only come from someone collecting tickets.
+
+[`T1558.003_honey_spn_ticket_request`](../detect/detections/T1558.003_honey_spn_ticket_request/) · [spec](../detect/detections/T1558.003_honey_spn_ticket_request/behavior.yml) · [rule](../detect/detections/T1558.003_honey_spn_ticket_request/rule.yml)
+
+| Variant | Expected | Result |
+|---|---|---|
+| Service ticket requested for the decoy account, any encryption, any outcome | fires | **proven** for every event |
+| Decoy account written with its realm | fires | **proven** for every event |
+| Service tickets for every other service | stays quiet | **proven** for every event |
+| Other Kerberos events that name the decoy | stays quiet | **proven** for every event |
+
+<details><summary>Why each variant, the gaps and the planned fixes</summary>
+
+- **Service ticket requested for the decoy account, any encryption, any outcome.** Kerberoasting tools request a ticket for every SPN they enumerate [[attack-kerberoasting](https://attack.mitre.org/techniques/T1558/003/)]; the domain controller writes the SPN's account in Service Name, the encryption type the KDC chose and the result code [[event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769)]. The decoy's ticket is requested with the real ones, so the type and the outcome are not what matters.
+- **Decoy account written with its realm.** Some pipelines and tools write the service account as account@REALM; the rule accepts any suffix after the @.
+- **Service tickets for every other service.** Real service accounts, machine accounts and krbtgt are requested all day; names that merely start or end like the decoy's are ordinary too. *Why quiet:* ServiceName must equal the decoy, or the decoy followed by @ and a realm.
+- **Other Kerberos events that name the decoy.** A TGT request by the decoy account itself (the honey account rule's event), a ticket renewal and a pre-authentication failure carry the name without being a service ticket request. *Why quiet:* Only event 4769 is selected.
+
+</details>
+
+Sources:
+
+- [event-4769](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769): Microsoft Learn, 4769(S, F) A Kerberos service ticket was requested (Service Name is the account the SPN belongs to; encryption types 0x1, 0x3, 0x11, 0x12, 0x17, 0x18; Failure Code 0x0 on success)
+- [attack-kerberoasting](https://attack.mitre.org/techniques/T1558/003/): MITRE ATT&CK, T1558.003 Kerberoasting (tools request tickets for the SPNs they enumerate)
 
 ## T1558.003 Kerberoasting - RC4 Service Ticket Requested for User Account
 

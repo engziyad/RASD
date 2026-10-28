@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (AES service ticket for svc_sqlreport).
+mutations:
+  - name: rc4_ticket_for_the_decoy
+    base: 1
+    set: {TicketEncryptionType: "0x17"}
+    should_match: true
+  - name: des_ticket_for_the_decoy
+    base: 1
+    set: {TicketEncryptionType: "0x3"}
+    should_match: true
+  - name: refused_request_still_a_touch
+    description: The KDC refused the ticket, but the SPN was still asked for
+    base: 1
+    set: {Status: "0x1b", TicketEncryptionType: "0xffffffff"}
+    should_match: true
+  - name: decoy_with_realm_suffix
+    base: 1
+    set: {ServiceName: "svc_sqlreport@LAB.LOCAL"}
+    should_match: true
+  - name: decoy_in_upper_case
+    base: 1
+    set: {ServiceName: "SVC_SQLREPORT"}
+    should_match: true
+  - name: requested_from_the_domain_controller_itself
+    description: The RC4 rule filters loopback requests; a decoy is a decoy wherever the request comes from
+    base: 1
+    set: {IpAddress: "::1"}
+    should_match: true
+  - name: real_service_account_not_matched
+    base: 1
+    set: {ServiceName: "svc_sql"}
+    should_match: false
+  - name: name_that_only_starts_like_the_decoy
+    base: 1
+    set: {ServiceName: "svc_sqlreports"}
+    should_match: false
+  - name: ticket_renewal_is_not_a_request
+    base: 1
+    set: {EventID: 4770}
+    should_match: false

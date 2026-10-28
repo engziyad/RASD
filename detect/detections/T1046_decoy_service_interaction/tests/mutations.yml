@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (FTP login attempt on lab-canary-01 from 10.0.0.21).
+mutations:
+  - name: ssh_login_attempt_instead_of_ftp
+    base: 1
+    set: {logtype: 4002, dst_port: 22}
+    should_match: true
+  - name: port_scan_record_with_string_ports
+    description: The port scan module reads the kernel log, so its ports are strings
+    base: 1
+    set: {logtype: 5001, dst_port: "8443", src_port: "51040"}
+    should_match: true
+  - name: client_on_another_subnet
+    base: 1
+    set: {src_host: "10.0.5.77"}
+    should_match: true
+  - name: ipv6_client
+    base: 1
+    set: {src_host: "fd00:10::77"}
+    should_match: true
+  - name: decoy_identity_in_upper_case
+    base: 1
+    set: {node_id: "LAB-CANARY-01"}
+    should_match: true
+  - name: rdp_connection
+    base: 1
+    set: {logtype: 14001, dst_port: 3389}
+    should_match: true
+  - name: authorised_scanner_still_filtered
+    base: 1
+    set: {src_host: "10.0.0.9"}
+    should_match: false
+  - name: loopback_still_filtered
+    base: 1
+    set: {src_host: "127.0.0.1"}
+    should_match: false
+  - name: another_canary_not_in_the_inventory
+    base: 1
+    set: {node_id: "dev-canary"}
+    should_match: false
+  - name: heartbeat_is_not_an_interaction
+    base: 1
+    set: {logtype: 1004, src_host: "", src_port: -1, dst_port: -1}
+    should_match: false
+  - name: llmnr_chatter_not_matched
+    base: 1
+    set: {logtype: 19001, dst_port: 5355}
+    should_match: false

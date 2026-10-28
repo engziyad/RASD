@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1552.001_honey_file_access
+name: Deception - Honey Credentials File Opened
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1552.001
+related_techniques:
+- attack.t1083
+data_contract:
+  required_logsource:
+    product: windows
+    service: security
+  required_events:
+  - Security Event ID 4663 on the file servers that hold the decoys (Audit File System, success), with a SACL on each decoy file that audits ReadData, WriteData, AppendData and DELETE for Everyone
+  required_fields:
+  - EventID
+  - ObjectType
+  - ObjectName
+  - AccessList
+  - SubjectUserName
+  - ProcessName
+  optional_fields:
+  - AccessMask
+  - SubjectDomainName
+  - SubjectLogonId
+  - HandleId
+  - ProcessId
+  - ObjectServer
+  telemetry_risk:
+    file_server_security_log_not_forwarded: critical
+    object_access_auditing_disabled: critical
+    decoy_sacl_missing: critical
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - An attacker running as SYSTEM or as the server's machine account reads the decoy under the backup filter; the filter exists because backup agents read every file nightly, and the risk is accepted and recorded in tuning.yml
+  - A decoy read through a path the SACL does not cover - a shadow copy, a restored backup, an offline copy of the disk - logs no 4663
+  - Attackers who recognise a decoy (a passwords folder nobody else touches, a file whose modification date never moves) and leave it; the deployment script refreshes the files' timestamps and the folder's ordinary neighbours are part of the placement
+  - Decoys that drift from the inventory, a moved or deleted file stops alerting silently (rasd deceive --check compares inventory, rule and tests; Test-RasdDecoys.ps1 compares them with the servers)
+coverage_depth:
+  level: medium
+  reason: Every data access to the decoy files by a user account is read; machine-account and indexer access is filtered by design
+risk_model:
+  base_score: 80
+  increase_if:
+  - condition: outside_business_hours
+    add: 10
+  - condition: host_is_critical
+    add: 5
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 40
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Confirm the file is a decoy in deceive/decoys.yml and that no data-classification scan or migration was declared for the time
+  - Identify the accessing account (SubjectUserName) and, for a share access, the client host from the matching 5145 event on the server
+  - Check whether the credentials inside the file were tried afterwards - the honey account rule fires on every attempt
+  escalate_if:
+  - The account is not a documented administrator of the share
+  - The decoy credentials were used afterwards (a honey account alert from the same hour)
+  - Several decoy files, or decoys on several servers, were opened by the same account
+response:
+  l1_action: Confirm the decoy is in the inventory and that no declared scan explains the access; open an incident otherwise
+  l2_action: Build the account's timeline on the server and the client host (logons, share accesses, process creation), list every file the account read in the same session, and check the honey account alerts for the credentials the file holds
+  ir_action: Disable or reset the accessing account, isolate the client host, rotate credentials the account could reach, keep the decoy in place and rotate its contents after the case
+  evidence:
+  - The 4663 event with the account, process and access type
+  - The share access events (5140, 5145) of the same session on the server, with the client address
+  - Logons of the account on the client host and the server around the access
+  - The decoy's history in the inventory (when it was planted, by whom)
+  containment:
+  - Disable or reset the accessing account
+  - Isolate the client host
+  - Rotate any real credential the account could have reached; keep the decoy and record the touch in the deception log
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook
+  - decoy inventory

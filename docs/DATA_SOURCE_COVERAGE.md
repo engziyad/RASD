@@ -9,13 +9,16 @@ Which telemetry each detection depends on, and what goes blind without it. Gener
 | Data Source | Used By | Criticality | Risk if Missing |
 |---|---|---|---|
 | Sysmon EID 1 | [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/), [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/), [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/), [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/), [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/), [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | Critical | 6 detection(s) go blind |
-| Security EID 4769 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/), [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) | High | 2 detection(s) go blind |
+| Security EID 4769 | [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/), [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/), [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) | Critical | 3 detection(s) go blind |
 | Sysmon for Linux EID 1 | [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/), [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | High | 2 detection(s) go blind |
 | Web access log | [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/), [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) | High | 2 detection(s) go blind |
+| OpenCanary decoy service record | [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | High | 1 detection(s) go blind |
 | Security EID 1102 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | High | 1 detection(s) go blind |
 | Security EID 4625 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | High | 1 detection(s) go blind |
+| Security EID 4663 | [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | High | 1 detection(s) go blind |
 | Security EID 4768 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | High | 1 detection(s) go blind |
 | Security EID 4771 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | High | 1 detection(s) go blind |
+| Security EID [4624, 4625, 4768, 4771, 4776] | [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | High | 1 detection(s) go blind |
 | Sysmon EID 10 | [T1003.001_lsass_memory_access](../detect/detections/T1003.001_lsass_memory_access/) | High | 1 detection(s) go blind |
 | Sysmon EID 13 | [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | Medium | 1 detection(s) go blind |
 | System EID 104 | [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | High | 1 detection(s) go blind |
@@ -36,6 +39,7 @@ Not used by a rule today, but the DFIR playbooks and the offensive tests rely on
 | Security (domain controller) · 4662 · An operation was performed on an object | ldap_enumeration | Investigation and hunting lose this view |
 | Security (domain controller) · 4776 · The computer attempted to validate the credentials | password_spray_simulation | Investigation and hunting lose this view |
 | Security (target) · 4624 · An account was successfully logged on | winrm_access_validation | Investigation and hunting lose this view |
+| Security · 4656 · A handle to an object was requested | honey_file_access | Investigation and hunting lose this view |
 | Security · 4688 · Process created | powershell_encoded_command | Investigation and hunting lose this view |
 | Security · 4697 · A service was installed in the system | service_creation | Investigation and hunting lose this view |
 | Security · 4698 · A scheduled task was created | scheduled_task_creation | Investigation and hunting lose this view |

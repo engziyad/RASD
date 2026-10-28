@@ -10,7 +10,17 @@ registry_set: [EventID, EventType, UtcTime, ProcessGuid, ProcessId, Image, Targe
 windows/security: [EventID, Channel, Computer, SubjectUserSid, SubjectUserName, SubjectDomainName, SubjectLogonId,
   TargetUserName, TargetDomainName, ServiceName, ServiceSid, TicketOptions, TicketEncryptionType, IpAddress, IpPort,
   Status, SubStatus, FailureReason, LogonGuid, TransmittedServices, LogonType, ProcessName, WorkstationName,
-  Workstation, PreAuthType, TargetSid]
+  Workstation, PreAuthType, TargetSid, ObjectServer, ObjectType, ObjectName, HandleId, AccessList, AccessMask,
+  ProcessId, AuthenticationPackageName, LogonProcessName]
+# OpenCanary (github.com/thinkst/opencanary) writes one JSON record per interaction with a decoy service:
+# the top-level keys below, as opencanary/logger.py names them (logtype is the module's event code,
+# src_host the client, dst_port the decoy service port, node_id the decoy's configured identity), and a
+# nested logdata object whose keys depend on the module (USERNAME and PASSWORD for login attempts, PATH and
+# USERAGENT for the web skins, FILENAME and AUDITACTION for the SMB share ...).
+opencanary/honeypot: [logtype, node_id, src_host, src_port, dst_host, dst_port, utc_time, local_time, local_time_adjusted,
+  honeycred, logdata.USERNAME, logdata.PASSWORD, logdata.PATH, logdata.USERAGENT, logdata.HOSTNAME, logdata.SKIN,
+  logdata.LOCALVERSION, logdata.REMOTEVERSION, logdata.SESSION, logdata.FILENAME, logdata.AUDITACTION, logdata.SHARENAME,
+  logdata.REMOTENAME, logdata.FUNCTION, logdata.DATA]
 windows/system: [EventID, Channel, Computer, Provider_Name, ServiceName, ImagePath, ServiceType, StartType,
   AccountName, SubjectUserName, SubjectDomainName, Channel_Cleared]
 webserver: [c-ip, cs-username, cs-method, cs-uri-stem, cs-uri-query, sc-status, sc-bytes, cs-referer,

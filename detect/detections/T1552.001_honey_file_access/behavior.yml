@@ -1,0 +1,98 @@
+# Behaviour spec: a honey credentials file opened, as the file server's Security log records it.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; {l:text} is every spelling
+# the rule's case-insensitive comparison treats as text (where the spec mirrors one of the rule's values).
+behaviour: >-
+  A user account reads, writes, appends to or deletes one of the decoy credential files, on the server
+  that holds it, through any process. The file's SACL makes Windows write event 4663 with the access
+  that was exercised; the decoy files exist only to be found, so the access itself is the signal.
+
+sources:
+  - id: event-4663
+    title: Microsoft Learn, 4663(S) An attempt was made to access an object (Object Name, Object Type File, Accesses as %%-codes, Process Name)
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663
+  - id: audit-file-system
+    title: Microsoft Learn, Audit File System (4663 is written when a SACL on the object matches the access)
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/audit-file-system
+  - id: attack-credentials-in-files
+    title: MITRE ATT&CK, T1552.001 Unsecured Credentials, Credentials In Files
+    url: https://attack.mitre.org/techniques/T1552/001/
+
+define:
+  decoy_paths: '{l:\IT\Passwords\service_accounts.xlsx}|{l:\IT\Tools\credentials_backup.kdbx}|{l:\Public\Onboarding\vpn_and_wifi_codes.txt}'
+  decoy: '[\s\S]*(?:{decoy_paths})'
+  data_access: '[\s\S]*(?:%%4416|%%4417|%%4418|%%1537)[\s\S]*'
+  indexer: '[\s\S]*(?:{l:\SearchProtocolHost.exe}|{l:\SearchIndexer.exe})'
+
+variants:
+  - name: Data access to a decoy file by a user account
+    why: >-
+      Opening the file to read it (ReadData, %%4416), writing or appending to it (%%4417, %%4418) or deleting it
+      (%%1537) exercises an access the decoy's SACL audits, and 4663 records the object's local path, the type
+      File and the %%-coded accesses [event-4663] [audit-file-system]. Searching shares for files that hold
+      passwords is the documented behaviour [attack-credentials-in-files].
+    sources: [event-4663, audit-file-system, attack-credentials-in-files]
+    event:
+      EventID: '4663'
+      ObjectType: '{l:File}'
+      ObjectName: '{decoy}'
+      AccessList: '{data_access}'
+      SubjectUserName: {not: '[\s\S]*\$', missing: true}
+      ProcessName: {not: '{indexer}', missing: true}
+    examples:
+      - EventID: 4663
+        ObjectType: File
+        ObjectName: 'D:\Shares\IT\Passwords\service_accounts.xlsx'
+        AccessList: '%%4416'
+        SubjectUserName: lab.user04
+        ProcessName: System
+      - EventID: 4663
+        ObjectType: File
+        ObjectName: 'E:\DATA\it\tools\CREDENTIALS_BACKUP.KDBX'
+        AccessList: "%%4416\r\n\t\t\t\t%%1541"
+        SubjectUserName: lab.user07
+        ProcessName: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+
+  - name: Attribute reads of a decoy
+    expect: quiet
+    why: Listing a folder reads each file's attributes (ReadAttributes, %%4423) and, for a handle that only reads security or synchronises, no data; Explorer does this for every file it shows [event-4663].
+    reason: AccessList must contain one of the four data accesses.
+    sources: [event-4663]
+    event:
+      EventID: '4663'
+      ObjectType: '{l:File}'
+      ObjectName: '{decoy}'
+      AccessList: {not: '{data_access}', missing: true}
+
+  - name: Every other file
+    expect: quiet
+    why: The SACL and the rule name three files; the real documents beside them, and names that merely contain a decoy's name, are ordinary traffic.
+    reason: ObjectName must end with one of the three decoy paths.
+    sources: [event-4663]
+    event:
+      EventID: '4663'
+      ObjectName: {not: '{decoy}', missing: true}
+
+  - name: The server's own machine account and the search indexer
+    expect: quiet
+    why: Backup and antivirus run as SYSTEM, which the server logs as its machine account (a name ending in $), and Windows Search reads every file it indexes through SearchProtocolHost.exe or SearchIndexer.exe [event-4663].
+    reason: filter_machine_account and filter_search_indexer, each recorded in tuning.yml.
+    sources: [event-4663]
+    event:
+      EventID: '4663'
+      ObjectType: '{l:File}'
+      ObjectName: '{decoy}'
+      AccessList: '{data_access}'
+      SubjectUserName: '[\s\S]*\$'
+
+  - name: The search indexer reading a decoy
+    expect: quiet
+    why: Windows Search reads file content minutes after a file is created or changed, through SearchProtocolHost.exe or SearchIndexer.exe, under the logged-on user [event-4663].
+    reason: filter_search_indexer.
+    sources: [event-4663]
+    event:
+      EventID: '4663'
+      ObjectType: '{l:File}'
+      ObjectName: '{decoy}'
+      AccessList: '{data_access}'
+      ProcessName: '{indexer}'

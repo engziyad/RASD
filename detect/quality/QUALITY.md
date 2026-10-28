@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Engineering Score** | **100/100** average across 18 detections (14 single-event rules, 4 correlations) |
+| **Engineering Score** | **100/100** average across 22 detections (18 single-event rules, 4 correlations) |
 | **Operational Score** | **pending** - no lab run evidence yet |
 
 ## Engineering Score
@@ -13,13 +13,17 @@
 |---|---|---|---|---|---|---|---|---|---|
 | [Suspicious Process Access to LSASS Memory](../detections/T1003.001_lsass_memory_access/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Suspicious Child Process of a WinRM Session Host](../detections/T1021.006_wsmprovhost_suspicious_child/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Deception - Interaction With a Decoy Network Service](../detections/T1046_decoy_service_interaction/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Crontab Installed From Standard Input or a File](../detections/T1053.003_crontab_noninteractive_install/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets](../detections/T1053.005_powershell_scheduled_task_creation/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Scheduled Task Created With Suspicious Action](../detections/T1053.005_schtasks_suspicious_creation/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [PowerShell Execution With Encoded Command](../detections/T1059.001_powershell_encoded_command/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Deception - Authentication Attempt With a Honey Account](../detections/T1078.002_honey_account_authentication/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Run Key Persistence Pointing to Suspicious Location](../detections/T1547.001_registry_run_key_persistence/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Deception - Honey Credentials File Opened](../detections/T1552.001_honey_file_access/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
+| [Deception - Service Ticket Requested for a Honey SPN Account](../detections/T1558.003_honey_spn_ticket_request/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
 | [Windows Event Log Clearing via Command Line](../detections/T1685.005_event_log_clearing/) | **100** | 25 | 20 | 15 | 15 | 10 | 10 | 5 | - |
@@ -43,15 +47,19 @@ Scored on the same areas from what `rasd correlate` proves: scenarios and parame
 |---|---|---|---|---|---|---|
 | [Suspicious Process Access to LSASS Memory](../detections/T1003.001_lsass_memory_access/) | pending | - | - | - | - | - |
 | [Suspicious Child Process of a WinRM Session Host](../detections/T1021.006_wsmprovhost_suspicious_child/) | pending | - | - | - | - | - |
+| [Deception - Interaction With a Decoy Network Service](../detections/T1046_decoy_service_interaction/) | pending | - | - | - | - | - |
 | [Crontab Installed From Standard Input or a File](../detections/T1053.003_crontab_noninteractive_install/) | pending | - | - | - | - | - |
 | [Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets](../detections/T1053.005_powershell_scheduled_task_creation/) | pending | - | - | - | - | - |
 | [Scheduled Task Created With Suspicious Action](../detections/T1053.005_schtasks_suspicious_creation/) | pending | - | - | - | - | - |
 | [PowerShell Execution With Encoded Command](../detections/T1059.001_powershell_encoded_command/) | pending | - | - | - | - | - |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../detections/T1059.004_linux_suspicious_shell_execution/) | pending | - | - | - | - | - |
+| [Deception - Authentication Attempt With a Honey Account](../detections/T1078.002_honey_account_authentication/) | pending | - | - | - | - | - |
 | [Password Spray - One Source Failing Authentication for Many Accounts](../correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - |
 | [Object ID Enumeration - One Client Walking Single-Owner Objects](../correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - |
 | [Rundll32 Proxy Execution From Suspicious Context](../detections/T1218.011_rundll32_suspicious_execution/) | pending | - | - | - | - | - |
 | [Run Key Persistence Pointing to Suspicious Location](../detections/T1547.001_registry_run_key_persistence/) | pending | - | - | - | - | - |
+| [Deception - Honey Credentials File Opened](../detections/T1552.001_honey_file_access/) | pending | - | - | - | - | - |
+| [Deception - Service Ticket Requested for a Honey SPN Account](../detections/T1558.003_honey_spn_ticket_request/) | pending | - | - | - | - | - |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../detections/T1558.003_kerberoasting_rc4_tgs/) | pending | - | - | - | - | - |
 | [Kerberoasting - One Client Requesting Tickets for Many Service Accounts](../correlations/T1558.003_kerberoasting_volume/) | pending | - | - | - | - | - |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../detections/T1569.002_suspicious_service_installation/) | pending | - | - | - | - | - |

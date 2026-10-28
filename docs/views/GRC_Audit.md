@@ -10,13 +10,17 @@ Every row below is backed by artifacts in this repository and re-verified by CI 
 |---|---|---|---|---|---|---|---|
 | [Suspicious Process Access to LSASS Memory](../../detect/detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | SIEM-Ready | detection-engineering | 27 / 13 | 5 | **medium** | [KQL](../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../queries/spl/T1003.001_lsass_memory_access.spl) |
 | [Suspicious Child Process of a WinRM Session Host](../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | SIEM-Ready | detection-engineering | 18 / 7 | 7 | **medium** | [KQL](../../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) · [SPL](../../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) |
+| [Deception - Interaction With a Decoy Network Service](../../detect/detections/T1046_decoy_service_interaction/) | [T1046](https://attack.mitre.org/techniques/T1046/) | SIEM-Ready | detection-engineering | 23 / 12 | 11 | **medium** | [KQL](../../queries/kql/T1046_decoy_service_interaction.kql) · [SPL](../../queries/spl/T1046_decoy_service_interaction.spl) |
 | [Crontab Installed From Standard Input or a File](../../detect/detections/T1053.003_crontab_noninteractive_install/) | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | SIEM-Ready | detection-engineering | 5 / 7 | 5 | **partial** | [KQL](../../queries/kql/T1053.003_crontab_noninteractive_install.kql) · [SPL](../../queries/spl/T1053.003_crontab_noninteractive_install.spl) |
 | [Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets](../../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | SIEM-Ready | detection-engineering | 14 / 6 | 3 | **partial** | [KQL](../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) · [SPL](../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) |
 | [Scheduled Task Created With Suspicious Action](../../detect/detections/T1053.005_schtasks_suspicious_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | SIEM-Ready | detection-engineering | 24 / 6 | 7 | **partial** | [KQL](../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) · [SPL](../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) |
 | [PowerShell Execution With Encoded Command](../../detect/detections/T1059.001_powershell_encoded_command/) | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | SIEM-Ready | detection-engineering | 13 / 6 | 8 | **medium** | [KQL](../../queries/kql/T1059.001_powershell_encoded_command.kql) · [SPL](../../queries/spl/T1059.001_powershell_encoded_command.spl) |
 | [Linux Shell Executing Decoded Base64 or Code From a Temporary Directory](../../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | SIEM-Ready | detection-engineering | 11 / 7 | 6 | **medium** | [KQL](../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) · [SPL](../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) |
+| [Deception - Authentication Attempt With a Honey Account](../../detect/detections/T1078.002_honey_account_authentication/) | [T1078.002](https://attack.mitre.org/techniques/T1078/002/) | SIEM-Ready | detection-engineering | 12 / 11 | 11 | **high** | [KQL](../../queries/kql/T1078.002_honey_account_authentication.kql) · [SPL](../../queries/spl/T1078.002_honey_account_authentication.spl) |
 | [Rundll32 Proxy Execution From Suspicious Context](../../detect/detections/T1218.011_rundll32_suspicious_execution/) | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | SIEM-Ready | detection-engineering | 21 / 8 | 4 | **medium** | [KQL](../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) |
 | [Run Key Persistence Pointing to Suspicious Location](../../detect/detections/T1547.001_registry_run_key_persistence/) | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | SIEM-Ready | detection-engineering | 20 / 6 | 4 | **partial** | [KQL](../../queries/kql/T1547.001_registry_run_key_persistence.kql) · [SPL](../../queries/spl/T1547.001_registry_run_key_persistence.spl) |
+| [Deception - Honey Credentials File Opened](../../detect/detections/T1552.001_honey_file_access/) | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) | SIEM-Ready | detection-engineering | 9 / 9 | 13 | **medium** | [KQL](../../queries/kql/T1552.001_honey_file_access.kql) · [SPL](../../queries/spl/T1552.001_honey_file_access.spl) |
+| [Deception - Service Ticket Requested for a Honey SPN Account](../../detect/detections/T1558.003_honey_spn_ticket_request/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | SIEM-Ready | detection-engineering | 7 / 7 | 9 | **high** | [KQL](../../queries/kql/T1558.003_honey_spn_ticket_request.kql) · [SPL](../../queries/spl/T1558.003_honey_spn_ticket_request.spl) |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](../../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | SIEM-Ready | detection-engineering | 11 / 9 | 6 | **medium** | [KQL](../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |
 | [Suspicious Service Installation (PsExec-style / Command Services)](../../detect/detections/T1569.002_suspicious_service_installation/) | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | SIEM-Ready | detection-engineering | 24 / 8 | 4 | **medium** | [KQL](../../queries/kql/T1569.002_suspicious_service_installation.kql) · [SPL](../../queries/spl/T1569.002_suspicious_service_installation.spl) |
 | [Windows Event Log Clearing via Command Line](../../detect/detections/T1685.005_event_log_clearing/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | SIEM-Ready | detection-engineering | 15 / 8 | 4 | **medium** | [KQL](../../queries/kql/T1685.005_event_log_clearing.kql) · [SPL](../../queries/spl/T1685.005_event_log_clearing.spl) |
@@ -56,6 +60,19 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Commands that run as cmdlets inside wsmprovhost.exe start no child process
 - Binaries outside the listed shells and proxies (custom tools copied to the target)
 - WMI and DCOM remote execution, which run under WmiPrvSE.exe and other hosts
+
+### Deception - Interaction With a Decoy Network Service
+
+**Depth:** medium. Every interaction with the enabled decoy services from any client is read; traffic to other hosts and passive reconnaissance are not
+
+**Depends on:**
+- OpenCanary JSON records of the decoy host (opencanary.log, one JSON object per line) forwarded to the SIEM, for the modules the inventory enables (ftp, ssh, telnet, http, smb, mssql, rdp, vnc, portscan)
+
+**Known blind spots:**
+- A scan that skips the decoy's address, or probes only ports the decoy does not listen on and the port scan module does not see (the module reads the kernel's SYN log; without it, only connections to enabled services are recorded)
+- An attacker who fingerprints the decoy (the OpenCanary SSH banner, a NAS login page on a host with no other role) and moves on; the inventory sets banners and skins that fit the network, and `rasd deceive --rename` adopts your host identity
+- Reconnaissance that never touches the network - reading a host list from a file share, a CMDB or DNS - produces no decoy record
+- The decoy host itself: if it is down or its log is not forwarded, nothing is recorded, and nothing says so until Test-RasdDecoys.ps1 or the SIEM's heartbeat check runs
 
 ### Crontab Installed From Standard Input or a File
 
@@ -122,6 +139,21 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Interpreters other than shells (python, perl) running code from temporary directories
 - Temporary directories outside /tmp, /var/tmp and /dev/shm, such as a user's ~/.cache
 
+### Deception - Authentication Attempt With a Honey Account
+
+**Depth:** high. Every authentication path to a domain account (interactive, network, Kerberos AS-REQ, NTLM) is read, with no outcome or source filter
+
+**Depends on:**
+- Security Event ID 4624 and 4625 on domain controllers and member servers (Audit Logon, success and failure)
+- Security Event ID 4768 and 4771 on domain controllers (Audit Kerberos Authentication Service, success and failure)
+- Security Event ID 4776 on domain controllers (Audit Credential Validation, success and failure)
+
+**Known blind spots:**
+- An attacker who recognises the decoys (a name that fits no naming convention, an account never logged on, a description that looks planted) and leaves them alone; the inventory and `rasd deceive --rename` exist so the names are yours, not the repository's
+- Enumeration without authentication - reading the description attribute or the pre-authentication flag over LDAP - logs nothing the rule reads; only the use of what was read does
+- A logon that reaches a server whose Security log is not forwarded, or an NTLM validation on a domain controller with Credential Validation auditing off
+- Honey accounts that fall out of step with the inventory: a renamed or deleted decoy stops alerting silently (`rasd deceive --check` compares inventory, rule and tests; the deployment check compares the directory)
+
 ### Rundll32 Proxy Execution From Suspicious Context
 
 **Depth:** medium. Eight distinct abuse patterns; blind to malicious DLLs placed in trusted paths
@@ -147,6 +179,32 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Other autostart locations (Winlogon, IFEO, Startup folder, UserInitMprLogonScript)
 - Payload placed in a trusted path (DLL side-loading)
 - Offline hive edits
+
+### Deception - Honey Credentials File Opened
+
+**Depth:** medium. Every data access to the decoy files by a user account is read; machine-account and indexer access is filtered by design
+
+**Depends on:**
+- Security Event ID 4663 on the file servers that hold the decoys (Audit File System, success), with a SACL on each decoy file that audits ReadData, WriteData, AppendData and DELETE for Everyone
+
+**Known blind spots:**
+- An attacker running as SYSTEM or as the server's machine account reads the decoy under the backup filter; the filter exists because backup agents read every file nightly, and the risk is accepted and recorded in tuning.yml
+- A decoy read through a path the SACL does not cover - a shadow copy, a restored backup, an offline copy of the disk - logs no 4663
+- Attackers who recognise a decoy (a passwords folder nobody else touches, a file whose modification date never moves) and leave it; the deployment script refreshes the files' timestamps and the folder's ordinary neighbours are part of the placement
+- Decoys that drift from the inventory, a moved or deleted file stops alerting silently (rasd deceive --check compares inventory, rule and tests; Test-RasdDecoys.ps1 compares them with the servers)
+
+### Deception - Service Ticket Requested for a Honey SPN Account
+
+**Depth:** high. Every service ticket request for the decoy is read, with any encryption type, any status and any source, including the domain controller itself
+
+**Depends on:**
+- Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations, success and failure)
+
+**Known blind spots:**
+- Roasting tools that request tickets only for hand-picked SPNs (a known server's MSSQLSvc) never ask for the decoy; the RC4 rule and the volume correlation cover the targeted case
+- An attacker who recognises the decoy - an SPN whose host does not resolve, a service account that never logged on - and skips it; keep the SPN host in DNS and the account's logon history fresh
+- A domain controller whose Security log is not forwarded, or Kerberos Service Ticket Operations auditing off
+- Decoys that drift from the inventory, a renamed or removed account stops alerting silently (rasd deceive --check compares inventory, rule and tests)
 
 ### Kerberoasting - RC4 Service Ticket Requested for User Account
 

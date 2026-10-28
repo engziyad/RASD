@@ -4010,6 +4010,16 @@ gaps:
     the catalog hold the exploited servers'' process and file telemetry, not access logs. The lab run (red/web) is the evidence path.'
   T1190_object_id_enumeration: No public dataset holds access logs of object-ID enumeration against an API; the T1190 files in the catalog
     hold the exploited servers' process and file telemetry. The lab run (red/web) is the evidence path.
+  T1078.002_honey_account_authentication: A deception rule fires only on the decoy identities of deceive/decoys.yml, which exist in no
+    public environment; public authentication captures (the T1110.003 sprays in this catalog) hold real lab accounts, so by design
+    the rule stays quiet on them. The lab run (red/active_directory/honey_account_use, against deployed decoys) is the evidence path.
+  T1558.003_honey_spn_ticket_request: The decoy service account exists in no public dataset; the public Kerberoasting captures
+    (T1558.003 files in this catalog) request tickets for the labs' own service accounts, so by design the rule stays quiet on them.
+    The lab run (red/active_directory/honey_account_use) is the evidence path.
+  T1552.001_honey_file_access: No public dataset holds 4663 object-access events for the decoy file paths of deceive/decoys.yml,
+    which exist only where the decoys are deployed. The lab run (red/windows/honey_file_access) is the evidence path.
+  T1046_decoy_service_interaction: No public dataset holds OpenCanary records, and the rule reads the inventory's decoy host only.
+    The lab run (red/linux/decoy_service_probe, against the decoy host) is the evidence path.
 next:
 - id: cron_directory_write
   technique: T1053.003

@@ -104,6 +104,50 @@ Base score **50**.
 
 ---
 
+## Deception - Interaction With a Decoy Network Service
+
+| | |
+|---|---|
+| **Technique** | [T1046](https://attack.mitre.org/techniques/T1046/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1046_decoy_service_interaction`](../../detect/detections/T1046_decoy_service_interaction/) |
+
+### What triggered
+Detects any interaction with the decoy services an OpenCanary host offers on behalf of RASD-Deceive (deceive/decoys.yml): a port probe or scan, a connection to the decoy FTP, SSH, Telnet, web, SMB, database, RDP or VNC service, a login attempt against one of them.
+
+### L1 action
+Confirm the decoy is in the inventory and that no declared scan explains the source; open an incident otherwise
+
+### First checks
+1. Confirm node_id is a decoy in deceive/decoys.yml and that no network scan or asset discovery run was declared for the time
+2. Resolve src_host to a host and its logged-on user (DHCP lease, 4624 events, EDR)
+3. Count the decoy records from that source in the last hour and which services it touched; a login attempt (logtype 2000, 3001, 4002, 6001, 9001) carries the credential it tried in logdata
+
+### Escalate if
+- The source is a workstation or a server with no network management role
+- A login attempt used a real account name of the organisation
+- Several decoys, or several services of the decoy, were touched from the same source
+
+### Risk
+Base score **75**.
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- +5 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
+- -40 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+
+### Known benign sources
+- Network management or asset discovery tools that sweep every address, when their scanner is not the filtered one
+- A new administrator who connects to the decoy because it looks like a real server
+
+### Never tune
+- Never filter by destination port or by logtype: the decoy exists to record every service someone touches.
+- Never filter a whole subnet: one filtered address is one blind host; a subnet is a blind network.
+- Never drop the decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1046_decoy_service_interaction/closure.md) for this detection.
+
+---
+
 ## Crontab Installed From Standard Input or a File
 
 | | |
@@ -333,6 +377,50 @@ Base score **60**.
 
 ---
 
+## Deception - Authentication Attempt With a Honey Account
+
+| | |
+|---|---|
+| **Technique** | [T1078.002](https://attack.mitre.org/techniques/T1078/002/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1078.002_honey_account_authentication`](../../detect/detections/T1078.002_honey_account_authentication/) |
+
+### What triggered
+Detects any authentication attempt as one of the decoy domain accounts RASD-Deceive plants (deceive/decoys.yml): a logon success or failure (4624, 4625), a Kerberos TGT request (4768) or pre-authentication failure (4771), or an NTLM credential validation (4776), whatever the outcome.
+
+### L1 action
+Confirm the decoy is listed in the inventory and that no declared audit or test explains the source; open an incident for anything else
+
+### First checks
+1. Confirm the account is a decoy in deceive/decoys.yml and that nobody was told to use it (a password audit, a penetration test)
+2. Resolve the source - IpAddress or WorkstationName - to a host and its logged-on user
+3. Check which lure led there - the description attribute and the credentials file it points at (4625/4771/4776 with the lure's wrong password; a 4663 alert minutes earlier), or pre-authentication disabled (4768 with PreAuthType 0)
+
+### Escalate if
+- Any 4624 - the decoy's own password is in someone's hands (the lures hold wrong passwords)
+- The source host is not a security team machine running a declared audit
+- Other decoys alerted from the same host or user in the same hour
+
+### Risk
+Base score **85**.
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- +5 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
+- -40 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+
+### Known benign sources
+- A password audit or account-discovery tool run by the security team that authenticates as every account it finds
+- A penetration test of the lab that was not told which accounts are decoys
+
+### Never tune
+- Never filter by outcome: a failed attempt means the lure was read, a successful one that the credential works.
+- Never filter by source address: the decoys are meant to catch any host, including trusted administration hosts.
+- Never drop a decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1078.002_honey_account_authentication/closure.md) for this detection.
+
+---
+
 ## Rundll32 Proxy Execution From Suspicious Context
 
 | | |
@@ -415,6 +503,93 @@ Base score **40**.
 
 ### Close or escalate
 [Closure and escalation notes](../../detect/detections/T1547.001_registry_run_key_persistence/closure.md) for this detection.
+
+---
+
+## Deception - Honey Credentials File Opened
+
+| | |
+|---|---|
+| **Technique** | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1552.001_honey_file_access`](../../detect/detections/T1552.001_honey_file_access/) |
+
+### What triggered
+Detects a read, write, append or delete (Security 4663) of one of the decoy credential files RASD-Deceive plants on file shares (deceive/decoys.yml): a service-account password list, a password-manager database, a note of VPN and Wi-Fi codes.
+
+### L1 action
+Confirm the decoy is in the inventory and that no declared scan explains the access; open an incident otherwise
+
+### First checks
+1. Confirm the file is a decoy in deceive/decoys.yml and that no data-classification scan or migration was declared for the time
+2. Identify the accessing account (SubjectUserName) and, for a share access, the client host from the matching 5145 event on the server
+3. Check whether the credentials inside the file were tried afterwards - the honey account rule fires on every attempt
+
+### Escalate if
+- The account is not a documented administrator of the share
+- The decoy credentials were used afterwards (a honey account alert from the same hour)
+- Several decoy files, or decoys on several servers, were opened by the same account
+
+### Risk
+Base score **80**.
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- +5 if host is critical *(auto: The host's role in the assets file is domain-controller, server or critical)*
+- -40 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+
+### Known benign sources
+- A data-classification or backup agent that runs under a user account instead of the machine account
+- A curious employee who opens a file named passwords
+
+### Never tune
+- Never filter by client host or by business hours: the decoys exist to catch any account from anywhere.
+- Never widen the filters to a process name an attacker can choose, such as explorer.exe or powershell.exe.
+- Never drop a decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1552.001_honey_file_access/closure.md) for this detection.
+
+---
+
+## Deception - Service Ticket Requested for a Honey SPN Account
+
+| | |
+|---|---|
+| **Technique** | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) |
+| **Severity** | `high` · confidence `high` · expected noise `low` |
+| **Rule** | [`T1558.003_honey_spn_ticket_request`](../../detect/detections/T1558.003_honey_spn_ticket_request/) |
+
+### What triggered
+Detects any Kerberos service ticket request (Security 4769) for the decoy service account that RASD-Deceive registers with a service principal name no real service answers to (deceive/decoys.yml).
+
+### L1 action
+Confirm the decoy is in the inventory and that no declared assessment explains the request; open an incident otherwise
+
+### First checks
+1. Confirm the service account is a decoy in deceive/decoys.yml and that no Active Directory assessment was declared for the time
+2. Resolve IpAddress to the requesting host and identify the requesting account (TargetUserName)
+3. Count the distinct SPNs that host requested in the same ten minutes - the decoy's ticket is usually one of many
+
+### Escalate if
+- The requesting host is a workstation
+- Several distinct SPNs were requested from the host in minutes (Kerberoasting in progress)
+- The decoy's ticket was requested with RC4 while the account allows AES (a deliberate downgrade)
+
+### Risk
+Base score **85**.
+- +10 if outside business hours *(auto: The event time falls outside local business hours (default 07:00-19:00; set with replay --hours and --utc-offset))*
+- +5 if user is privileged *(auto: The user is marked privileged in the users file, or is a built-in administrator account (or root))*
+- -40 if approved admin activity *(ask: The action is documented, expected administration by a known administrator)*
+
+### Known benign sources
+- A vulnerability scanner or Active Directory assessment tool that requests a ticket for every SPN it finds
+
+### Never tune
+- Never filter by encryption type: AES requests for the decoy are the gap this rule exists to close.
+- Never filter loopback or domain controller sources: a roasting tool run on a domain controller still asks for the decoy.
+- Never drop the decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.
+
+### Close or escalate
+[Closure and escalation notes](../../detect/detections/T1558.003_honey_spn_ticket_request/closure.md) for this detection.
 
 ---
 

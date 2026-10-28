@@ -14,18 +14,18 @@
 ![License](https://img.shields.io/badge/license-MIT-bcbcbc)
 
 <!-- rasd:status:start -->
-![detections: 18](https://img.shields.io/badge/detections-18-87afaf)
+![detections: 22](https://img.shields.io/badge/detections-22-87afaf)
 ![engineering: 100/100](https://img.shields.io/badge/engineering-100%2F100-87af87)
 ![operational: pending](https://img.shields.io/badge/operational-pending-d7af87)
-![public data: 16/18](https://img.shields.io/badge/public%20data-16%2F18-87afaf)
-![validated: 0/18](https://img.shields.io/badge/validated-0%2F18-bcbcbc)
+![public data: 16/22](https://img.shields.io/badge/public%20data-16%2F22-87afaf)
+![validated: 0/22](https://img.shields.io/badge/validated-0%2F22-bcbcbc)
 
-**Status:** SIEM-Ready, not yet Validated: 18 of 18 detections are SIEM-Ready and 16 fire on public attack datasets, meeting 25 of 26 expectations in 23 of 105 held-out files ([public data](docs/PUBLIC_DATA_VALIDATION.md)); none has lab evidence yet ([evidence plan](docs/EVIDENCE_PLAN.md)).
+**Status:** SIEM-Ready, not yet Validated: 22 of 22 detections are SIEM-Ready and 16 fire on public attack datasets, meeting 25 of 26 expectations in 23 of 105 held-out files ([public data](docs/PUBLIC_DATA_VALIDATION.md)); none has lab evidence yet ([evidence plan](docs/EVIDENCE_PLAN.md)).
 <!-- rasd:status:end -->
 
 </div>
 
-RASD is a cybersecurity validation framework that connects offensive security labs, detection engineering, DFIR playbooks, CTI mapping, and purple-team validation into one measurable workflow.
+RASD is a cybersecurity validation framework that connects offensive security labs, detection engineering, cyber deception, DFIR playbooks, CTI mapping, and purple-team validation into one measurable workflow.
 
 **RASD = Resilient Adversary Signal Detection**, an attack-to-defense validation framework built to transform adversary behavior into tested detections, investigation workflows, CTI mappings, and operational evidence.
 
@@ -35,19 +35,20 @@ RASD is a cybersecurity validation framework that connects offensive security la
 <!-- rasd:readme-metrics:start -->
 | | |
 |---|---|
-| **Detections · techniques** | 18 detections (14 single-event, 4 correlations) across 14 ATT&CK v19.2 techniques ([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml)) |
-| **Offensive tests** | 19: 14 mapped to current detections (only these can raise the Operational Score) · 5 gap or posture tests reserved for future coverage |
-| **Tests** | 313 cases · 494 mutations · 1546 fuzzer variants (0 bypasses) on the 14 single-event rules; the 4 correlation base rules add 51 cases, 24 technique mutations and 53 fuzzer variants |
-| **Proof** | 230/230 rule mutants killed or accepted · 13990 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
+| **Detections · techniques** | 22 detections (18 single-event, 4 correlations) across 17 ATT&CK v19.2 techniques ([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml)) |
+| **Offensive tests** | 22: 17 mapped to current detections (only these can raise the Operational Score) · 5 gap or posture tests reserved for future coverage |
+| **Tests** | 403 cases · 640 mutations · 1621 fuzzer variants (0 bypasses) on the 18 single-event rules; the 4 correlation base rules add 51 cases, 24 technique mutations and 53 fuzzer variants |
+| **Proof** | 291/291 rule mutants killed or accepted · 16284 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
 | **Correlations** | 43 scenarios · 24/24 parameter mutants killed · 4502 aggregation parity runs (0 divergences) · burst guarantee verified |
-| **Exact automata** | 18/18 Sigma rules compiled to exact automata over every Unicode code point (2603 states) · 36 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](docs/CERTIFY.md)) |
-| **Behaviour proofs** | 57 variants of documented attacker behaviour over 12 detections: 25 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 14 exclusions proven quiet ([certificates](docs/CERTIFICATES.md)) |
+| **Exact automata** | 22/22 Sigma rules compiled to exact automata over every Unicode code point (2883 states) · 44 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](docs/CERTIFY.md)) |
+| **Behaviour proofs** | 81 variants of documented attacker behaviour over 16 detections: 37 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 26 exclusions proven quiet ([certificates](docs/CERTIFICATES.md)) |
 | **Edit equivalence** | `rasd certify --equiv REF` compares every rule with its version at a git ref and proves the edit preserves every event's verdict, or shows the event it changes ([CERTIFY](docs/CERTIFY.md#comparing-two-versions-of-a-rule)) |
-| **Near misses** | 167 events one field edit away from an alert, on 8 boundaries (8 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
-| **Public datasets** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](docs/PUBLIC_DATA_VALIDATION.md)) |
+| **Deception** | 7 decoys (2 account, 1 spn, 3 file, 1 service) read by 4 deception detections and touched by 3 red tests · inventory, rules, tests, red tests and the decoy host's configuration agree · 5 decoy classes planned ([DECEPTION](docs/DECEPTION.md), [inventory](deceive/)) |
+| **Near misses** | 246 events one field edit away from an alert, on 10 boundaries (10 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1046_decoy_service_interaction, T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
+| **Public datasets** | 16/22 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](docs/PUBLIC_DATA_VALIDATION.md)) |
 | **Engineering Score** | 100/100 |
 | **Operational Score** | pending a real lab run |
-| **Chain completeness** | 252/280 items ([validation matrix](purple/validation_matrix.md)) |
+| **Chain completeness** | 306/340 items ([validation matrix](purple/validation_matrix.md)) |
 
 <sub>Counted by `tools/chain.py` on every build.</sub>
 <!-- rasd:readme-metrics:end -->
@@ -61,12 +62,14 @@ RASD is a cybersecurity validation framework that connects offensive security la
 | [RASD-DFIR](dfir/) | Investigation, evidence, and response |
 | [RASD-Intel](intel/) | CTI to detection opportunities |
 | [RASD-Purple](purple/) | Attack-to-defense validation |
+| [RASD-Deceive](deceive/) | Decoys as tested detections: honey accounts, a honey SPN, honey files, a decoy host, one inventory held in step with the rules |
 
 ## Workflow
 
 ```text
 Red behavior generates telemetry.
 Telemetry drives detection logic.
+Decoys turn the first touch into a signal.
 Detection triggers investigation.
 Investigation produces evidence.
 CTI gives context.
@@ -96,6 +99,7 @@ RASD keeps legacy ATT&CK v18 aliases for compatibility, while primary mappings f
 | It stays quiet on normal activity | True-negative tests, a filter-coverage gate, and **tuning impact analysis** (`rasd tune`) that measures every proposed filter: attack variants hidden versus corpus alerts removed |
 | The analyst knows what to do | Triage and response cards, closure notes (benign or false positive) and an escalation note, generated from each detection's contract (L1 / L2 / IR actions, risk model, evidence, containment), and a DFIR playbook for every technique |
 | The offensive test and the rule agree | Every red test's sample event **is** one of its detection's true positives, and CI proves it matches |
+| The first touch of a decoy is an alert, and the decoys stay real | **RASD-Deceive** (`rasd deceive`): seven decoys - honey accounts, a honey SPN account, honey credential files, a decoy host - defined once in an inventory and read by four Sigma rules that pass every proof above (each proven to fire on every documented way of touching a decoy and to stay quiet on everything else). `--check` fails the build when the inventory, a rule, its tests, its red test or the decoy host's configuration drift apart; `--rename` adopts your own identities everywhere so the proofs are about your decoys, not the examples ([DECEPTION](docs/DECEPTION.md)) |
 | It fires on attack telemetry recorded by others | **Public dataset replay** (`rasd datasets`): files from three public sources (Splunk Attack Data, OTRF Security-Datasets, EVTX-ATTACK-SAMPLES), each pinned to a commit and a SHA-256, replayed through every detection and correlation. Every alert is either the recorded attack or explained in the catalog (the labs' test harness, other benign activity, or false positive); every record is counted once, with repeats inside a file and copies between files found and declared; every documented limit is re-checked on each run; and the applied tunings are measured on the labs' background activity. It showed rules blind to real attacks - Invoke-Mimikatz and PPLdump behind the LSASS rule's System32 filter, a bare `cmd.exe` service binary, three rundll32 proxy exports, a Run value pointing into `C:\Windows\Tasks`, sprays over guessed account names - and each fix is proven on the public events, so those rules' results there are marked in-sample. Public data is not lab evidence: it does not raise a detection's maturity |
 | It can be proven in a real environment | `rasd evidence` joins a lab run, its telemetry export and optional SIEM alerts, and writes evidence only when the rule really fired on an event bound to that run (host or client address, time window, run marker) - with the SHA-256 of every input. No run is committed yet: the status line above says how many detections have one |
 | Nothing is overstated | Maturity levels and both scores are computed; a contract cannot claim more than the repository proves. Without lab evidence a detection stops at **SIEM-Ready** (deployable, not validated), and the Operational Score stays **pending** until a real run is committed |
@@ -169,6 +173,7 @@ Logs from Elastic, Sentinel ASIM, Defender advanced hunting or Splunk CIM run th
 | | `profiles` | Which telemetry profile fits an export, and which log sources each profile carries |
 | | `splunk` | The detections as a Splunk app: one scheduled alert per rule and per correlation (once per window), indexes, forwarder inputs, the alert export for evidence |
 | Operate | `red` | Validate and render every offensive test from its test.yml |
+| | `deceive` | The decoy inventory against the rules, tests, red tests and the decoy host's configuration; `--rename` adopts your own decoy identities with the proofs intact; `--gaps` ranks the decoy classes not built |
 | | `replay` | Run every rule and correlation over logs: risk-ranked alerts, noise forecast, attack storylines; `--case-dir` writes a case folder per storyline (summary, `timeline.json`, observables, closure notes to fill in) |
 | | `benchmark` | Events per second through rules and correlations, peak memory, slowest rule and regex - on an export or on N synthetic events; `--stream` keeps memory flat at any size |
 | | `evidence` | Turn a real lab run into verifiable evidence (FIRED / MISSED), for rules and correlations; `--run` reads the lab run's zip or folder directly, `--strict` also requires the `.sha256` and a complete manifest |
@@ -187,6 +192,7 @@ What the repository detects today, and what it only exercises. Detections are co
 | Windows registry (Sysmon 13) | Covered | Run / RunOnce persistence |
 | Windows Security log | Covered | Security log cleared (1102), RC4 Kerberos service tickets (4769); authentication failures for many accounts (4771, 4768, 4625) and service tickets of any encryption (4769) counted by the correlations |
 | Windows System log | Covered | Other logs cleared (104), suspicious service installation (7045) |
+| Deception (decoys) | Covered | Honey accounts used (4624, 4625, 4768, 4771, 4776), the honey SPN account requested (4769, any encryption), honey credential files opened (4663), the decoy host probed or logged on to (OpenCanary records); each a first-class detection with a red test, a playbook and a scenario ([RASD-Deceive](deceive/)) |
 | Active Directory | Partial | Kerberoasting (RC4 rule + encryption-agnostic volume correlation); password spray (correlation, tested on its red test's scenario; lab run pending); LDAP enumeration as a red test only |
 | Web applications (access log) | Partial | API authentication probing and object-ID enumeration (correlations); JWT, file upload and security headers as red tests only |
 | Linux (Sysmon for Linux 1) | Partial | Crontab installed from standard input or a file, Base64 decoded into a shell, execution from /tmp, /var/tmp and /dev/shm; privilege-escalation recon as a red test only |
@@ -198,8 +204,9 @@ What the repository detects today, and what it only exercises. Detections are co
 
 ```text
 RASD
-├── red/        → Offensive Validation      19 tests: Windows, Active Directory, web, Linux
+├── red/        → Offensive Validation      22 tests: Windows, Active Directory, web, Linux
 ├── detect/     → Detection Engineering     detections, correlations, coverage, quality, evasion baseline
+├── deceive/    → Cyber Deception           decoy inventory, deployment and health-check scripts, decoy host configuration
 ├── dfir/       → Investigation & Response  playbooks, queries, templates, models
 ├── intel/      → CTI to Detection          templates, technique and actor maps, analyses
 ├── purple/     → Attack-to-Defense         scenarios, validation / evidence / latency matrices
@@ -226,6 +233,7 @@ RASD
 | [SIGMA_SUPPORT](docs/SIGMA_SUPPORT.md) | The Sigma constructs RASD evaluates and converts, and the ones it refuses |
 | [CERTIFY](docs/CERTIFY.md) · [CERTIFICATES](docs/CERTIFICATES.md) | Rules as exact automata over every Unicode character: the model, the mathematics, why each answer is a proof; behaviour specs and their certificates |
 | [CORRELATIONS](docs/CORRELATIONS.md) | Correlation detections: format, semantics, scenarios, proofs, burst guarantee, SIEM scheduling |
+| [DECEPTION](docs/DECEPTION.md) · [decoy inventory](deceive/) | Decoys as first-class detections: the inventory, the chain of lures, what `rasd deceive --check` proves, adopting your own identities, what waits for the lab |
 | [PUBLIC_DATA_VALIDATION](docs/PUBLIC_DATA_VALIDATION.md) · [datasets](datasets/README.md) | Every detection replayed on pinned public attack data: what fired, what stays quiet and why, what public data asks for next |
 | [OPERATIONAL_VALIDATION](docs/OPERATIONAL_VALIDATION.md) · [EVIDENCE_PLAN](docs/EVIDENCE_PLAN.md) · [SIEM_VALIDATION_SCORECARD](docs/SIEM_VALIDATION_SCORECARD.md) | Lab runs and evidence; which lab machine and step proves each detection; the live Splunk and Defender scorecard, per detection |
 | [ENTERPRISE_ADOPTION](docs/ENTERPRISE_ADOPTION.md) · [SIEM_DEPLOYMENT_NOTES](docs/SIEM_DEPLOYMENT_NOTES.md) | Taking the detections into an organisation's SIEM; Sentinel and Splunk specifics |
@@ -233,6 +241,7 @@ RASD
 | [Detection backlog](intel/outputs/detection_backlog.md) · [actor tradecraft map](intel/mappings/actor_tradecraft_map.md) | The open gaps ranked by telemetry already mapped and by the groups documented using each technique |
 | [CONTROL_EVIDENCE](docs/CONTROL_EVIDENCE.md) · [role views](docs/views/) | Evidence for audit; SOC, IR, GRC and purple-team views |
 | [RELEASE_ROADMAP](docs/RELEASE_ROADMAP.md) | v1.0 (this release), v2.0: Reference on lab evidence, and the new data domains after it |
+| [CONTRIBUTING](CONTRIBUTING.md) | Branch, pull request and the CI gate every change passes before it reaches main |
 | [GUIDE_AR](docs/GUIDE_AR.md) | الدليل الكامل بالعربي |
 
 ## Scope and safety

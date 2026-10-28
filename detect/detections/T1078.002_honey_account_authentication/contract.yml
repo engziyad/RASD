@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1078.002_honey_account_authentication
+name: Deception - Authentication Attempt With a Honey Account
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1078.002
+related_techniques:
+- attack.t1558.004
+- attack.t1110.003
+data_contract:
+  required_logsource:
+    product: windows
+    service: security
+  required_events:
+  - Security Event ID 4624 and 4625 on domain controllers and member servers (Audit Logon, success and failure)
+  - Security Event ID 4768 and 4771 on domain controllers (Audit Kerberos Authentication Service, success and failure)
+  - Security Event ID 4776 on domain controllers (Audit Credential Validation, success and failure)
+  required_fields:
+  - EventID
+  - TargetUserName
+  optional_fields:
+  - IpAddress
+  - WorkstationName
+  - Workstation
+  - Status
+  - SubStatus
+  - LogonType
+  - PreAuthType
+  - TicketEncryptionType
+  - SubjectUserName
+  telemetry_risk:
+    dc_security_log_not_forwarded: critical
+    member_server_logon_auditing_disabled: high
+    decoy_accounts_not_deployed: critical
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - An attacker who recognises the decoys (a name that fits no naming convention, an account never logged on, a description that looks planted) and leaves them alone; the inventory and `rasd deceive --rename` exist so the names are yours, not the repository's
+  - Enumeration without authentication - reading the description attribute or the pre-authentication flag over LDAP - logs nothing the rule reads; only the use of what was read does
+  - A logon that reaches a server whose Security log is not forwarded, or an NTLM validation on a domain controller with Credential Validation auditing off
+  - 'Honey accounts that fall out of step with the inventory: a renamed or deleted decoy stops alerting silently (`rasd deceive --check` compares inventory, rule and tests; the deployment check compares the directory)'
+coverage_depth:
+  level: high
+  reason: Every authentication path to a domain account (interactive, network, Kerberos AS-REQ, NTLM) is read, with no outcome or source filter
+risk_model:
+  base_score: 85
+  increase_if:
+  - condition: outside_business_hours
+    add: 10
+  - condition: host_is_critical
+    add: 5
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 40
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Confirm the account is a decoy in deceive/decoys.yml and that nobody was told to use it (a password audit, a penetration test)
+  - Resolve the source - IpAddress or WorkstationName - to a host and its logged-on user
+  - Check which lure led there - the description attribute and the credentials file it points at (4625/4771/4776 with the lure's wrong password; a 4663 alert minutes earlier), or pre-authentication disabled (4768 with PreAuthType 0)
+  escalate_if:
+  - Any 4624 - the decoy's own password is in someone's hands (the lures hold wrong passwords)
+  - The source host is not a security team machine running a declared audit
+  - Other decoys alerted from the same host or user in the same hour
+response:
+  l1_action: Confirm the decoy is listed in the inventory and that no declared audit or test explains the source; open an incident for anything else
+  l2_action: Build the source host's timeline (logons, process creation, LDAP activity) around the attempt, list every account that authenticated from it since, and find how the lure was read
+  ir_action: Isolate the source host, reset the credentials it had access to, keep the decoy in place (its history is the evidence) and rotate the lure after the case
+  evidence:
+  - The 4624/4625/4768/4771/4776 event with the decoy, the source address and the workstation
+  - LDAP reads of the decoy's attributes from the source (Directory Service 1644 or EDR LDAP telemetry, if collected)
+  - Logons from the source host before and after the attempt
+  - The decoy's history in the inventory (when it was planted, by whom)
+  containment:
+  - Isolate the source host from the network
+  - Reset the passwords of the accounts logged on at the source
+  - Keep the decoy, review its lure, and record the touch in the deception log
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook
+  - decoy inventory

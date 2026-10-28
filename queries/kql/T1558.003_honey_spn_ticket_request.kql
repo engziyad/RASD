@@ -1,0 +1,4 @@
+// Deception - Service Ticket Requested for a Honey SPN Account | ae95a035-3ae6-48b7-8168-384f29612940
+SecurityEvent
+| extend ServiceName = coalesce(tostring(column_ifexists("ServiceName", "")), extract(@'Name="ServiceName">([^<]*)<', 1, EventData))
+| where (EventID == 4769 and (ServiceName =~ @"svc_sqlreport" or ServiceName matches regex @"(?i)^svc_sqlreport@.*$"))

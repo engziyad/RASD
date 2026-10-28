@@ -26,12 +26,14 @@
 - [ ] Purple scenario updated
 - [ ] Evidence status reviewed
 - [ ] Engineering and Operational Scores reviewed
+- [ ] Rule-edit equivalence reviewed (`rasd certify --equiv origin/main`): meaning preserved, or the changed event is intended
 
 ## Proof
-Paste the relevant output:
+Paste the relevant output ([contributing](../CONTRIBUTING.md)):
 
 ```text
 rasd ci
+rasd certify --equiv origin/main
 rasd diff --base origin/main --fuzz
 ```
 

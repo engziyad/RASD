@@ -1,0 +1,65 @@
+title: Deception - Interaction With a Decoy Network Service
+id: bc5d7997-cc24-4d89-b28a-2b9811598f1c
+status: test
+description: |
+  Detects any interaction with the decoy services an OpenCanary host offers on behalf of
+  RASD-Deceive (deceive/decoys.yml): a port probe or scan, a connection to the decoy FTP, SSH,
+  Telnet, web, SMB, database, RDP or VNC service, a login attempt against one of them. The
+  host answers on ports no real system on the network needs, so there is no legitimate
+  traffic to it: the first packet is reconnaissance (network service discovery), a login
+  attempt is password guessing. The event codes are those of the modules the inventory enables
+  on the decoy (opencanary/logger.py), and `rasd deceive --check` keeps rule and inventory in
+  step. The decoy's own records (start-up, heartbeat, configuration) and the LLMNR responder
+  are not interactions and are not selected; the authorised vulnerability scanner and loopback
+  are filtered, each a documented tuning.
+references:
+  - https://attack.mitre.org/techniques/T1046/
+  - https://attack.mitre.org/techniques/T1110/001/
+  - https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py
+  - https://opencanary.readthedocs.io/en/latest/
+author: Ziyad (github.com/engziyad)
+date: 2026-10-28
+tags:
+  - attack.discovery
+  - attack.t1046
+  - attack.credential-access
+  - attack.t1110.001
+logsource:
+  product: opencanary
+  service: honeypot
+detection:
+  selection:
+    node_id: 'lab-canary-01'    # the decoy host of deceive/decoys.yml
+    logtype:                    # the event codes of the modules enabled on the decoy (opencanary/logger.py)
+      - 2000   # ftp: login attempt
+      - 2001   # ftp: authentication initiated
+      - 3000   # http: GET of the login page
+      - 3001   # http: POST login attempt
+      - 3002   # http: unimplemented method
+      - 3003   # http: redirect
+      - 4000   # ssh: new connection
+      - 4001   # ssh: remote version sent
+      - 4002   # ssh: login attempt
+      - 5000   # smb: file open on the decoy share
+      - 5001   # portscan: TCP SYN to a closed port
+      - 5002   # portscan: Nmap OS detection
+      - 5003   # portscan: Nmap NULL scan
+      - 5004   # portscan: Nmap Xmas scan
+      - 5005   # portscan: Nmap FIN scan
+      - 6001   # telnet: login attempt
+      - 6002   # telnet: connection
+      - 9001   # mssql: login with SQL authentication
+      - 9002   # mssql: login with Windows authentication
+      - 12001  # vnc: connection
+      - 14001  # rdp: connection
+  filter_authorised_scanner:    # the lab's vulnerability scanner probes every host on its schedule
+    src_host: '10.0.0.9'
+  filter_loopback:              # the decoy's own health checks
+    src_host:
+      - '127.0.0.1'
+      - '::1'
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - Network management or asset discovery tools that sweep every address, when their scanner is not the filtered one
+  - A new administrator who connects to the decoy because it looks like a real server
+level: high

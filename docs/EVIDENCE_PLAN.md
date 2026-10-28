@@ -4,7 +4,7 @@
 
 How every detection moves from SIEM-Ready to Validated: the lab machine, the offensive step that produces the attack, the logs to export and how `rasd evidence` binds them to the run. A status changes only when the detection's `evidence.md` is committed; nothing here is estimated.
 
-**Progress:** 0/18 detections Validated (lab evidence) · Operational Score pending.
+**Progress:** 0/22 detections Validated (lab evidence) · Operational Score pending.
 
 ## 1 · Windows lab VM, default run
 
@@ -14,8 +14,11 @@ A domain-joined Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-ra
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
+| [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | [honey_account_use](../red/active_directory/honey_account_use/) · `bind_as_honey_account` | logged on the lab host | pending |
+| [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/) | [honey_account_use](../red/active_directory/honey_account_use/) · `request_honey_spn_ticket` | client address is the lab host | pending |
 | [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
 | [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | [honey_file_access](../red/windows/honey_file_access/) · `read_honey_file` | logged on the lab host | pending |
 | [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | [powershell_encoded_command](../red/windows/powershell_encoded_command/) · `encoded_command` | logged on the lab host, carries the run token | pending |
 | [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | [run_key_persistence](../red/windows/run_key_persistence/) · `run_value` | logged on the lab host, carries the run token | pending |
 | [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rundll32_execution](../red/windows/rundll32_execution/) · `javascript_proxy` | logged on the lab host, carries the run token | pending |
@@ -69,6 +72,7 @@ A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app.
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
 | [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | [cron_persistence](../red/linux/cron_persistence/) · `crontab_entry` | logged on the lab host | pending |
+| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | [decoy_service_probe](../red/linux/decoy_service_probe/) · `probe_decoy_services` | logged on the decoy; the client address (src_host) is the lab host | pending |
 | [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [suspicious_shell_execution](../red/linux/suspicious_shell_execution/) · `shell_patterns` | logged on the lab host, carries the run token | pending |
 
 ## 6 · Lab web application

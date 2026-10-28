@@ -17,7 +17,10 @@ Each playbook starts with a small front matter block (`techniques`, `detections`
 | Playbook | Techniques | Detections | Red tests |
 |---|---|---|---|
 | [ad_reconnaissance](playbooks/ad_reconnaissance.md) | T1087.002, T1069.002, T1018 | none yet | ldap_enumeration |
+| [decoy_service_interaction](playbooks/decoy_service_interaction.md) | T1046, T1110.001, T1021.004 | `T1046_decoy_service_interaction` | decoy_service_probe |
 | [event_log_clearing](playbooks/event_log_clearing.md) | T1685.005 | `T1685.005_event_log_clearing`, `T1685.005_security_log_cleared`, `T1685.005_system_log_cleared` | event_log_clearing |
+| [honey_account_use](playbooks/honey_account_use.md) | T1078.002, T1558.003, T1558.004, T1110.003 | `T1078.002_honey_account_authentication`, `T1558.003_honey_spn_ticket_request` | honey_account_use, kerberoasting, password_spray_simulation |
+| [honey_file_access](playbooks/honey_file_access.md) | T1552.001, T1083, T1039 | `T1552.001_honey_file_access`, `T1078.002_honey_account_authentication` | honey_file_access, honey_account_use |
 | [kerberoasting](playbooks/kerberoasting.md) | T1558.003, T1110.002 | `T1558.003_kerberoasting_rc4_tgs`, `T1558.003_kerberoasting_volume` | kerberoasting, ldap_enumeration |
 | [lateral_movement](playbooks/lateral_movement.md) | T1021.002, T1021.006, T1569.002, T1053.005 | `T1569.002_suspicious_service_installation`, `T1053.005_schtasks_suspicious_creation`, `T1021.006_wsmprovhost_suspicious_child` | service_creation, scheduled_task_creation, winrm_access_validation |
 | [linux_persistence](playbooks/linux_persistence.md) | T1053.003, T1059.004, T1083, T1548.001 | `T1053.003_crontab_noninteractive_install`, `T1059.004_linux_suspicious_shell_execution` | cron_persistence, suspicious_shell_execution, privilege_escalation_checks |

@@ -1,0 +1,50 @@
+title: Deception - Honey Credentials File Opened
+id: a9476ede-f9c9-49ac-87c5-5537dc6c1408
+status: test
+description: |
+  Detects a read, write, append or delete (Security 4663) of one of the decoy credential files
+  RASD-Deceive plants on file shares (deceive/decoys.yml): a service-account password list, a
+  password-manager database, a note of VPN and Wi-Fi codes. The files carry a system access
+  control list that audits data access, and nobody is supposed to open them, so one event is
+  a high-confidence signal that someone is looking for credentials in files. Attribute reads,
+  which Explorer makes while listing a folder, do not fire. The file server's own machine
+  account (backup running as SYSTEM) and the Windows Search indexer are filtered, each a
+  documented tuning.
+references:
+  - https://attack.mitre.org/techniques/T1552/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/audit-file-system
+author: Ziyad (github.com/engziyad)
+date: 2026-10-28
+tags:
+  - attack.credential-access
+  - attack.t1552.001
+  - attack.discovery
+  - attack.t1083
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4663
+    ObjectType: 'File'
+    ObjectName|endswith:                 # the honey files of deceive/decoys.yml, as the server stores them
+      - '\IT\Passwords\service_accounts.xlsx'
+      - '\IT\Tools\credentials_backup.kdbx'
+      - '\Public\Onboarding\vpn_and_wifi_codes.txt'
+    AccessList|contains:
+      - '%%4416'    # ReadData
+      - '%%4417'    # WriteData
+      - '%%4418'    # AppendData
+      - '%%1537'    # DELETE
+  filter_machine_account:                # the server itself (backup and antivirus run as SYSTEM)
+    SubjectUserName|endswith: '$'
+  filter_search_indexer:                 # Windows Search reads file content to index it
+    ProcessName|endswith:
+      - '\SearchProtocolHost.exe'
+      - '\SearchIndexer.exe'
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - A data-classification or backup agent that runs under a user account instead of the machine account
+  - A curious employee who opens a file named passwords
+level: high

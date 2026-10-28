@@ -1,0 +1,4 @@
+// Deception - Authentication Attempt With a Honey Account | fc5660cb-a0f2-4100-b8d1-a0ef490f5dae
+SecurityEvent
+| extend TargetUserName = coalesce(tostring(column_ifexists("TargetUserName", "")), extract(@'Name="TargetUserName">([^<]*)<', 1, EventData))
+| where ((EventID == 4624 or EventID == 4625 or EventID == 4768 or EventID == 4771 or EventID == 4776) and (TargetUserName =~ @"svc_backup_adm" or TargetUserName matches regex @"(?i)^svc_backup_adm@.*$" or TargetUserName =~ @"adm_helpdesk_tier2" or TargetUserName matches regex @"(?i)^adm_helpdesk_tier2@.*$"))

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1558.003_honey_spn_ticket_request
+expected_noise: low
+noise_sources:
+- A vulnerability scanner or Active Directory assessment tool that requests a ticket for every SPN it finds
+tunings:
+- id: declared_assessment_host
+  status: proposed
+  scope: environment
+  residual_risk: high
+  reason: The security team's assessment host requests a ticket for every SPN once a quarter and would alert once per run.
+  filter:
+    IpAddress: 10.0.0.9
+  alternative: Do not filter the host. Register the assessment window in the deception log and close the alert as the declared run; an attacker on that host would otherwise be invisible to this decoy.
+never_tune:
+- 'Never filter by encryption type: AES requests for the decoy are the gap this rule exists to close.'
+- 'Never filter loopback or domain controller sources: a roasting tool run on a domain controller still asks for the decoy.'
+- 'Never drop the decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

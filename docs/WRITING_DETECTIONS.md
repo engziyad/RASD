@@ -26,6 +26,17 @@ When the attack is only visible in aggregate - many accounts, many service ticke
 - [ ] `rasd correlate` kills every **parameter mutant** with a verdict flip, shows zero **aggregation parity** divergences, and the README states the **burst guarantee**.
 - [ ] Known limits of tumbling windows are pinned as `known_limit` scenarios, not hidden.
 
+## Deception detections
+
+A rule that reads a decoy - an account, a file, a service principal name or a host nobody legitimate touches - is an ordinary detection with one more source of truth, the inventory [`deceive/decoys.yml`](../deceive/decoys.yml) ([design](DECEPTION.md)):
+
+- [ ] The decoy is **in the inventory first**: identity, what it looks like, its lure, the telemetry it produces, the detection, the red test, and what the lure leads to (`credentials_for`).
+- [ ] The rule names the identity **exactly as the inventory writes it** (an account as `name` and `name@*`, a file by its path under `endswith`, a host by its `node_id`), with no outcome or source filter that an intruder could sit behind; the only filters are documented tunings proven by true negatives (the authorised scanner, the backup machine account).
+- [ ] One **true positive carries each identity**, and one of them is the red test's `red: ... emulation` case; the behaviour spec proves the rule fires on every way of touching the decoy and stays quiet on everything else.
+- [ ] The **red test touches the decoy** as an attacker would and refuses to run against anything the inventory does not describe (it checks the lure before trying a password).
+- [ ] The lure holds **nothing real**: wrong passwords, random real ones kept nowhere, no group memberships.
+- [ ] `rasd deceive --check` passes, and `rasd deceive --rename` still works on the new identity (no wildcard characters, unique in the repository).
+
 ## Conventions
 
 | Item | Convention |

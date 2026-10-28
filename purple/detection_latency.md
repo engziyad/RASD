@@ -8,13 +8,17 @@ Measured from the start of the emulation step. *Telemetry* is the time until the
 |---|---|---|---|---|
 | T1003.001_lsass_memory_access | pending | pending | - | - |
 | T1021.006_wsmprovhost_suspicious_child | pending | pending | - | - |
+| T1046_decoy_service_interaction | pending | pending | - | - |
 | T1053.003_crontab_noninteractive_install | pending | pending | - | - |
 | T1053.005_powershell_scheduled_task_creation | pending | pending | - | - |
 | T1053.005_schtasks_suspicious_creation | pending | pending | - | - |
 | T1059.001_powershell_encoded_command | pending | pending | - | - |
 | T1059.004_linux_suspicious_shell_execution | pending | pending | - | - |
+| T1078.002_honey_account_authentication | pending | pending | - | - |
 | T1218.011_rundll32_suspicious_execution | pending | pending | - | - |
 | T1547.001_registry_run_key_persistence | pending | pending | - | - |
+| T1552.001_honey_file_access | pending | pending | - | - |
+| T1558.003_honey_spn_ticket_request | pending | pending | - | - |
 | T1558.003_kerberoasting_rc4_tgs | pending | pending | - | - |
 | T1569.002_suspicious_service_installation | pending | pending | - | - |
 | T1685.005_event_log_clearing | pending | pending | - | - |

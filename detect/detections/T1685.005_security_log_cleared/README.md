@@ -10,7 +10,7 @@
 | **Tests** | 5 true positive · 4 true negative · 2 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 4 variants |
 | **Behaviour proof** | 1 of 1 variant proven for every event · no known gap ([certificate](../../../docs/CERTIFICATES.md#t1685005-security-audit-log-cleared-event-1102)) |
-| **Parity** | KQL and SPL identical to the rule on 439 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 494 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 2 of 2 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1685.005_security_log_cleared.kql) · [SPL](../../../queries/spl/T1685.005_security_log_cleared.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

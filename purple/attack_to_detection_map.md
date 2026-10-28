@@ -38,6 +38,21 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **Purple:** [T1021.006_winrm](scenarios/T1021.006_winrm.md) · **Intel:** Wizard Spider
 
+## [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Discovery
+
+**Red:** [Decoy service probe - connect to the decoy host and guess one credential on its portal](../red/linux/decoy_service_probe/)
+
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| OpenCanary (decoy host) | 4000 · SSH new connection | The TCP connection to the decoy's SSH service, with the client address | `T1046_decoy_service_interaction` |
+| OpenCanary (decoy host) | 3001 · HTTP POST login attempt | The credential guess on the portal; logdata.USERNAME carries the run marker, which binds the record to this run | `T1046_decoy_service_interaction` |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | SIEM-Ready | [kql](../queries/kql/T1046_decoy_service_interaction.kql) | [spl](../queries/spl/T1046_decoy_service_interaction.spl) | [triage](../detect/detections/T1046_decoy_service_interaction/triage.md) | [response](../detect/detections/T1046_decoy_service_interaction/response.md) |
+
+**DFIR:** [decoy_service_interaction](../dfir/playbooks/decoy_service_interaction.md) · **Purple:** [T1046_decoy_service](scenarios/T1046_decoy_service.md) · **Intel:** OilRig, Lazarus Group, APT41, Rocke, Fox Kitten, APT39, Volt Typhoon
+
 ## [T1053.003](https://attack.mitre.org/techniques/T1053/003/) Scheduled Task/Job: Cron
 
 **Red:** [User crontab persistence](../red/linux/cron_persistence/)
@@ -104,6 +119,22 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [linux_persistence](../dfir/playbooks/linux_persistence.md) · **Purple:** [T1059.004_unix_shell](scenarios/T1059.004_unix_shell.md) · **Intel:** Rocke
 
+## [T1078.002](https://attack.mitre.org/techniques/T1078/002/) Valid Accounts: Domain Accounts
+
+**Red:** [Honey account use - try the decoy credential, request the decoy's service ticket](../red/active_directory/honey_account_use/)
+
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Security (domain controller) | 4771 · Kerberos pre-authentication failed | The wrong password for the decoy, refused by the KDC (Failure Code 0x18); on NTLM fallback the DC logs 4776 and 4625 instead | `T1078.002_honey_account_authentication` |
+| Security (domain controller) | 4776 · The computer attempted to validate the credentials | NTLM validation of the decoy when the bind falls back to NTLM (Error Code 0xC000006A) | `T1078.002_honey_account_authentication` |
+| Security (domain controller) | 4769 · A Kerberos service ticket was requested | The ticket request for the honey SPN account, issued (0x0) or refused, with whatever encryption type the KDC chose | `T1558.003_honey_spn_ticket_request` |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | SIEM-Ready | [kql](../queries/kql/T1078.002_honey_account_authentication.kql) | [spl](../queries/spl/T1078.002_honey_account_authentication.spl) | [triage](../detect/detections/T1078.002_honey_account_authentication/triage.md) | [response](../detect/detections/T1078.002_honey_account_authentication/response.md) |
+
+**DFIR:** [honey_account_use](../dfir/playbooks/honey_account_use.md) · **DFIR:** [honey_file_access](../dfir/playbooks/honey_file_access.md) · **Purple:** [T1078.002_honey_account](scenarios/T1078.002_honey_account.md) · **Intel:** OilRig, Wizard Spider, Volt Typhoon
+
 ## [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Brute Force: Password Spraying
 
 **Red:** [Password spray simulation with a password that cannot be right](../red/active_directory/password_spray_simulation/)
@@ -118,7 +149,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 |---|---|---|---|---|---|
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1110.003_password_spray_burst.kql) | [spl](../queries/spl/correlations/T1110.003_password_spray_burst.spl) | [triage](../detect/correlations/T1110.003_password_spray_burst/triage.md) | [response](../detect/correlations/T1110.003_password_spray_burst/response.md) |
 
-**DFIR:** [password_spray](../dfir/playbooks/password_spray.md) · **Purple:** [T1110.003_password_spray](scenarios/T1110.003_password_spray.md) · **Intel:** APT33, APT28
+**DFIR:** [honey_account_use](../dfir/playbooks/honey_account_use.md) · **DFIR:** [password_spray](../dfir/playbooks/password_spray.md) · **Purple:** [T1110.003_password_spray](scenarios/T1110.003_password_spray.md) · **Intel:** APT33, APT28
 
 ## [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application
 
@@ -163,6 +194,21 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 **DFIR:** [run_key_persistence](../dfir/playbooks/run_key_persistence.md) · **Purple:** [T1547.001_run_key](scenarios/T1547.001_run_key.md) · **Intel:** MuddyWater
 
+## [T1552.001](https://attack.mitre.org/techniques/T1552/001/) Unsecured Credentials: Credentials In Files
+
+**Red:** [Honey file access - read the decoy credentials spreadsheet](../red/windows/honey_file_access/)
+
+| Telemetry | Event | What it shows | Used by |
+|---|---|---|---|
+| Security | 4663 · An attempt was made to access an object | The read of the decoy through its audit entry, logged on the host that holds the file | `T1552.001_honey_file_access` |
+| Security | 4656 · A handle to an object was requested | The handle open that precedes the read (when Audit Handle Manipulation is on); the rule reads 4663, not this | investigation |
+
+| Detection | Maturity | KQL | SPL | Triage | Response |
+|---|---|---|---|---|---|
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | SIEM-Ready | [kql](../queries/kql/T1552.001_honey_file_access.kql) | [spl](../queries/spl/T1552.001_honey_file_access.spl) | [triage](../detect/detections/T1552.001_honey_file_access/triage.md) | [response](../detect/detections/T1552.001_honey_file_access/response.md) |
+
+**DFIR:** [honey_file_access](../dfir/playbooks/honey_file_access.md) · **Purple:** [T1552.001_honey_file](scenarios/T1552.001_honey_file.md) · **Intel:** OilRig, MuddyWater, APT33, Fox Kitten
+
 ## [T1558.003](https://attack.mitre.org/techniques/T1558/003/) Steal or Forge Kerberos Tickets: Kerberoasting
 
 **Red:** [Kerberoasting - request an RC4 service ticket for a lab SPN](../red/active_directory/kerberoasting/)
@@ -173,10 +219,11 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
+| [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/) | SIEM-Ready | [kql](../queries/kql/T1558.003_honey_spn_ticket_request.kql) | [spl](../queries/spl/T1558.003_honey_spn_ticket_request.spl) | [triage](../detect/detections/T1558.003_honey_spn_ticket_request/triage.md) | [response](../detect/detections/T1558.003_honey_spn_ticket_request/response.md) |
 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | SIEM-Ready | [kql](../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) | [spl](../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) | [triage](../detect/detections/T1558.003_kerberoasting_rc4_tgs/triage.md) | [response](../detect/detections/T1558.003_kerberoasting_rc4_tgs/response.md) |
 | [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) (correlation) | SIEM-Ready | [kql](../queries/kql/correlations/T1558.003_kerberoasting_volume.kql) | [spl](../queries/spl/correlations/T1558.003_kerberoasting_volume.spl) | [triage](../detect/correlations/T1558.003_kerberoasting_volume/triage.md) | [response](../detect/correlations/T1558.003_kerberoasting_volume/response.md) |
 
-**DFIR:** [kerberoasting](../dfir/playbooks/kerberoasting.md) · **Purple:** [T1558.003_kerberoasting](scenarios/T1558.003_kerberoasting.md) · **Intel:** Wizard Spider
+**DFIR:** [honey_account_use](../dfir/playbooks/honey_account_use.md) · **DFIR:** [kerberoasting](../dfir/playbooks/kerberoasting.md) · **Purple:** [T1558.003_honey_spn](scenarios/T1558.003_honey_spn.md) · **Purple:** [T1558.003_kerberoasting](scenarios/T1558.003_kerberoasting.md) · **Intel:** Wizard Spider
 
 ## [T1569.002](https://attack.mitre.org/techniques/T1569/002/) System Services: Service Execution
 

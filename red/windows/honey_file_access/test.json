@@ -1,0 +1,26 @@
+{
+  "id": "honey_file_access",
+  "name": "Honey file access - read the decoy credentials spreadsheet",
+  "platform": "windows",
+  "technique": "T1552.001",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "read_honey_file",
+      "name": "Read the decoy service-accounts spreadsheet",
+      "script": "emulate_honey_file_read.ps1",
+      "detections": [
+        "T1552.001_honey_file_access"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

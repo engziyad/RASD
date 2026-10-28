@@ -72,10 +72,21 @@ LEVEL_WEIGHT = {"informational": 1, "low": 2, "medium": 4, "high": 7, "critical"
 # the record time first: TimeCreated is the clock every channel of a host shares. Sysmon writes its own
 # UtcTime too, and public captures show it hours away from TimeCreated when a pipeline re-renders one
 # of them, which would put a Sysmon event and the Security event beside it hours apart
-TIME_FIELDS = ("TimeCreated", "UtcTime", "@timestamp", "_time", "timestamp", "TimeGenerated")
-HOST_FIELDS = ("Computer", "host", "Hostname", "DeviceName")
+TIME_FIELDS = ("TimeCreated", "UtcTime", "@timestamp", "_time", "timestamp", "TimeGenerated", "utc_time")
+HOST_FIELDS = ("Computer", "host", "Hostname", "DeviceName", "node_id")   # node_id: the OpenCanary decoy that logged the record
 USER_FIELDS = ("User", "SubjectUserName", "TargetUserName", "AccountName", "SourceUser")
 NETWORK_EVENTS = {4768, 4769, 4771, 4776, 4624, 4625}   # logged by a DC / target about a client: entity = client
+
+
+def is_network(ev: dict) -> bool:
+    """The record was logged by a server about a client: a Security logon or Kerberos event, or an OpenCanary
+    record (logged on the decoy, about src_host). The client, not the logging host, is the entity."""
+    try:
+        eid = int(ev.get("EventID", 0))
+    except (TypeError, ValueError):
+        eid = 0
+    return eid in NETWORK_EVENTS or ("logtype" in ev and "src_host" in ev)
+
 CRITICAL_ROLES = {"domain-controller", "server", "critical"}
 WRITABLE_PATH = re.compile(r"(?i)[\\/](AppData|ProgramData|Users[\\/]Public|Windows[\\/]Temp|Downloads)[\\/]"
                            r"|(?:^|[\s'\"=(])/(?:tmp|var/tmp|dev/shm)/")      # Linux: the world-writable temp folders
@@ -100,10 +111,13 @@ def route(ev: dict) -> str | None:
         return "linux/process_creation" if eid in ("", "1") else None
     if "sysmon" in ch or (not ch and ("Image" in ev or "TargetImage" in ev or "TargetObject" in ev)):
         return {"1": "process_creation", "10": "process_access", "13": "registry_set"}.get(eid)
-    if ch.endswith("security") or (not ch and eid in {"4769", "4768", "4624", "4625", "1102", "4698", "4688"}):
+    if ch.endswith("security") or (not ch and eid in {"4769", "4768", "4771", "4776", "4624", "4625", "4648", "4663",
+                                                      "1102", "4698", "4688"}):
         return "process_creation" if eid == "4688" else "windows/security"
     if ch.endswith("system") or (not ch and eid in {"7045", "104", "7036"}):
         return "windows/system"
+    if not ch and "logtype" in ev and ("node_id" in ev or "src_host" in ev):     # an OpenCanary JSON record
+        return "opencanary/honeypot"
     return None
 
 
@@ -139,7 +153,9 @@ def first(ev: dict, fields) -> str:
 
 
 def summary(ev: dict) -> str:
-    s = first(ev, ("CommandLine", "ImagePath", "Details", "ServiceName", "SourceImage"))
+    s = first(ev, ("CommandLine", "ImagePath", "Details", "ServiceName", "SourceImage", "ObjectName"))
+    if s == "-" and "logtype" in ev:
+        return f"decoy {first(ev, ('node_id', 'dst_host'))} port {ev.get('dst_port', '-')} event {ev.get('logtype')}"
     return "" if s == "-" else s
 
 
@@ -151,12 +167,8 @@ def load_assets(path: str | None) -> dict:
 
 
 def entity(ev: dict, assets: dict) -> str:
-    ip = str(ev.get("IpAddress") or "").replace("::ffff:", "")
-    try:
-        eid = int(ev.get("EventID", 0))
-    except (TypeError, ValueError):
-        eid = 0
-    if ip and ip not in ("-", "::1", "127.0.0.1") and eid in NETWORK_EVENTS:
+    ip = str(ev.get("IpAddress") or ev.get("src_host") or "").replace("::ffff:", "")
+    if ip and ip not in ("-", "::1", "127.0.0.1") and is_network(ev):
         return assets.get(ip, {}).get("host", ip)
     return first(ev, HOST_FIELDS)
 

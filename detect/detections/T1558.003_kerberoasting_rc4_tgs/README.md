@@ -10,11 +10,11 @@
 | **Tests** | 11 true positive · 9 true negative · 6 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 53 variants |
 | **Behaviour proof** | 2 of 5 variants proven for every event · no known gap · 3 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1558003-kerberoasting---rc4-service-ticket-requested-for-user-account)) |
-| **Parity** | KQL and SPL identical to the rule on 685 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 740 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 3 of 3 public recordings of its behaviour · held-out: 0 of 1 · 13 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1558.003_kerberoasting_rc4_tgs.kql) · [SPL](../../../queries/spl/T1558.003_kerberoasting_rc4_tgs.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
-| **Chain** | red: [kerberoasting](../../../red/active_directory/kerberoasting/) · DFIR: [kerberoasting](../../../dfir/playbooks/kerberoasting.md) · purple: [T1558.003_kerberoasting](../../../purple/scenarios/T1558.003_kerberoasting.md) |
+| **Chain** | red: [kerberoasting](../../../red/active_directory/kerberoasting/) · DFIR: [honey_account_use](../../../dfir/playbooks/honey_account_use.md) · DFIR: [kerberoasting](../../../dfir/playbooks/kerberoasting.md) · purple: [T1558.003_honey_spn](../../../purple/scenarios/T1558.003_honey_spn.md) · purple: [T1558.003_kerberoasting](../../../purple/scenarios/T1558.003_kerberoasting.md) |
 <!-- rasd:facts:end -->
 
 ## Telemetry required
@@ -27,7 +27,7 @@ Pair this single-event rule with the volume correlation [T1558.003_kerberoasting
 
 ## Evasion & coverage gaps
 - Attackers requesting **AES** tickets (Rubeus `/aes`) to blend in. The rule cannot see them; the volume correlation and the [volume hunt](../../../queries/hunts/kerberoasting_volume_hunt.kql) count service tickets of every encryption type per client, so AES roasting of 5 or more accounts still surfaces there.
-- **AES roasting of one to four accounts** stays under the correlation's threshold and is invisible to this RC4 rule. A honeypot SPN account (any ticket request for it is an alert) is the recommended control; RASD has no rule for it yet.
+- **AES roasting of one to four accounts** stays under the correlation's threshold and is invisible to this RC4 rule. The control is a honeypot SPN account, for which any ticket request is an alert: [T1558.003_honey_spn_ticket_request](../T1558.003_honey_spn_ticket_request/) ([RASD-Deceive](../../../deceive/)), which fires on the decoy's ticket whatever its encryption type, because enumeration-driven roasting requests every SPN.
 - Roasting run **on a domain controller**: tickets requested from the loopback (`::1`, `127.0.0.1`, `::ffff:127.0.0.1` - the same forms the volume correlation filters), the domain controller itself, are filtered out with its own service traffic. Public data shows Rubeus run on a domain controller requesting 30 RC4 tickets that way ([held-out evidence](public_evidence.md)). Watch for interactive logons and tool execution on domain controllers instead.
 - The real fix: gMSA or 25+ character passwords for service accounts, and disabling RC4.
 

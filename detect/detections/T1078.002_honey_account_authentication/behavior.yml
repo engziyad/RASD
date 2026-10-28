@@ -1,0 +1,127 @@
+# Behaviour spec: a honey account used, as domain controllers and servers record it.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; {l:text} is every spelling
+# the rule's case-insensitive comparison treats as text (where the spec mirrors one of the rule's values).
+behaviour: >-
+  Someone presents a decoy domain account to Windows authentication: a logon attempt that succeeds or
+  fails (4624, 4625), a Kerberos ticket-granting ticket request or pre-authentication failure (4768,
+  4771), or an NTLM credential validation (4776). Nobody is supposed to use these accounts, so the
+  outcome, the logon type and the source do not matter: any such event is the signal.
+
+sources:
+  - id: event-4624
+    title: 'Microsoft Learn, 4624(S) An account was successfully logged on (Target Account: Account Name)'
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4624
+  - id: event-4625
+    title: 'Microsoft Learn, 4625(F) An account failed to log on (Account For Which Logon Failed: Account Name, as typed, sAMAccountName or UPN)'
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4625
+  - id: event-4768
+    title: Microsoft Learn, 4768(S, F) A Kerberos authentication ticket (TGT) was requested (Account Name; Pre-Authentication Type 0 when none was used)
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4768
+  - id: event-4771
+    title: Microsoft Learn, 4771(F) Kerberos pre-authentication failed (Account Name; Failure Code 0x18 = wrong password)
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4771
+  - id: event-4776
+    title: Microsoft Learn, 4776(S, F) The computer attempted to validate the credentials for an account (Logon Account)
+    url: https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4776
+  - id: attack-domain-accounts
+    title: MITRE ATT&CK, T1078.002 Valid Accounts, Domain Accounts
+    url: https://attack.mitre.org/techniques/T1078/002/
+
+define:
+  decoy: '{l:svc_backup_adm}|{l:adm_helpdesk_tier2}'
+  decoy_any_form: '(?:{decoy})(?:@[\s\S]*)?'
+  auth_events: '4624|4625|4768|4771|4776'
+
+variants:
+  - name: Logon failure with a decoy account
+    why: >-
+      A wrong or guessed password for the decoy is refused by a domain controller or a member server, which
+      writes the account as typed in Account Name [event-4625]; the lure (the credentials file the description
+      points at) was read and its password tried [attack-domain-accounts].
+    sources: [event-4625, attack-domain-accounts]
+    event:
+      EventID: '4625'
+      TargetUserName: '{decoy}'
+    examples:
+      - EventID: 4625
+        TargetUserName: svc_backup_adm
+        Status: '0xc000006d'
+        LogonType: '3'
+
+  - name: Logon success with a decoy account
+    why: A logon of any type was granted with the decoy, so its real password was obtained [event-4624]; the lures hold wrong ones.
+    sources: [event-4624, attack-domain-accounts]
+    event:
+      EventID: '4624'
+      TargetUserName: '{decoy}'
+    examples:
+      - EventID: 4624
+        TargetUserName: svc_backup_adm
+        LogonType: '3'
+
+  - name: Kerberos ticket-granting ticket requested for a decoy account
+    why: >-
+      An AS-REQ for the decoy, whatever the result: a TGT issued after a right password, a request refused
+      with 0x18, or a TGT issued without pre-authentication (Pre-Authentication Type 0), which is what AS-REP
+      roasting collects from an account whose pre-authentication is disabled [event-4768].
+    sources: [event-4768]
+    event:
+      EventID: '4768'
+      TargetUserName: '{decoy}'
+    examples:
+      - EventID: 4768
+        TargetUserName: adm_helpdesk_tier2
+        PreAuthType: '0'
+        Status: '0x0'
+
+  - name: Kerberos pre-authentication failure for a decoy account
+    why: A wrong password presented over Kerberos fails pre-authentication on the domain controller [event-4771].
+    sources: [event-4771]
+    event:
+      EventID: '4771'
+      TargetUserName: '{decoy}'
+    examples:
+      - EventID: 4771
+        TargetUserName: svc_backup_adm
+        Status: '0x18'
+
+  - name: NTLM credential validation of a decoy account
+    why: NTLM authentication with the decoy is validated by a domain controller, which logs the account and the workstation [event-4776].
+    sources: [event-4776]
+    event:
+      EventID: '4776'
+      TargetUserName: '{decoy}'
+    examples:
+      - EventID: 4776
+        TargetUserName: adm_helpdesk_tier2
+        Status: '0xc000006a'
+
+  - name: Decoy account written as a user principal name
+    why: Logon prompts accept user@realm, and 4625 records the name as it was typed [event-4625]; any realm or suffix may follow the @.
+    sources: [event-4625, event-4624]
+    event:
+      EventID: '{auth_events}'
+      TargetUserName: '(?:{decoy})@[\s\S]*'
+    examples:
+      - EventID: 4625
+        TargetUserName: svc_backup_adm@lab.local
+        LogonType: '10'
+
+  - name: Authentication of any other account
+    expect: quiet
+    why: The decoys are the only accounts the rule names; every other account, including names that merely start or end like a decoy's, is ordinary traffic.
+    reason: TargetUserName must equal a decoy name, or a decoy name followed by @ and a realm.
+    sources: [event-4624, event-4625]
+    event:
+      EventID: '{auth_events}'
+      TargetUserName: {not: '{decoy_any_form}', missing: true}
+
+  - name: Events about a decoy that are not an authentication
+    expect: quiet
+    why: A logoff, an explicit-credential logon record, a privilege assignment, an account change or lockout, and a service ticket (the honey SPN rule's event) name the account without presenting its credential.
+    reason: Only the five authentication events are selected.
+    sources: [event-4624]
+    event:
+      EventID: '4634|4647|4648|4672|4720|4738|4740|4769'
+      TargetUserName: '{decoy_any_form}'

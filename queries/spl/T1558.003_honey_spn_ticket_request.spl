@@ -1,0 +1,2 @@
+index=wineventlog source="XmlWinEventLog:Security"
+| where ('EventCode'=4769 AND (lower('ServiceName')="svc_sqlreport" OR match('ServiceName', "(?i)^svc_sqlreport@.*$")))

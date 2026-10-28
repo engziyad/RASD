@@ -4,6 +4,8 @@
 # ATT&CK releases a new version, because wording and IDs can change. tools/chain.py renders
 # actor_tradecraft_map.md from this file and fails on a technique RASD does not know.
 # last_checked: the date someone opened every source page and confirmed the rows (null = not yet).
+# The T1046, T1078.002 and T1552.001 rows (the deception detections' techniques) were confirmed on
+# 2026-10-28 against the procedure examples of the technique pages, not the group pages.
 # Technique IDs follow ATT&CK v19.2, like the rules; the v18 aliases are in attack_v18_aliases.yml.
 last_checked: 2026-10-13
 actors:
@@ -18,6 +20,12 @@ actors:
         note: net user /domain and net group "domain admins" /domain to list domain accounts
       - id: T1505.003
         note: Web shells to maintain access to victim networks
+      - id: T1078.002
+        note: An exfiltration tool named STEALHOOK to retrieve valid domain credentials
+      - id: T1552.001
+        note: Credential dumping tools such as LaZagne to steal credentials to accounts logged into the compromised system
+      - id: T1046
+        note: The publicly available SoftPerfect Network Scanner and a custom tool called GOLDIRONY for network scanning
   - group: MuddyWater
     id: G0069
     source: https://attack.mitre.org/groups/G0069/
@@ -29,6 +37,8 @@ actors:
         note: Registry Run key values for persistence
       - id: T1087.002
         note: cmd.exe net user /domain to enumerate domain users
+      - id: T1552.001
+        note: A tool that steals passwords saved in victim email
   - group: APT33
     id: G0064
     source: https://attack.mitre.org/groups/G0064/
@@ -38,6 +48,8 @@ actors:
         note: Scheduled tasks that run its payloads repeatedly
       - id: T1110.003
         note: Password spraying to gain access to target systems
+      - id: T1552.001
+        note: Publicly available tools like LaZagne to gather credentials
   - group: Wizard Spider
     id: G0102
     source: https://attack.mitre.org/groups/G0102/
@@ -51,6 +63,8 @@ actors:
         note: Windows Remote Management to move laterally through a victim network
       - id: T1087.002
         note: net group "Domain admins" /DOMAIN, and Get-ADComputer to collect account names
+      - id: T1078.002
+        note: Administrative accounts, including Domain Admin, to move laterally within a victim network
   - group: APT28
     id: G0007
     source: https://attack.mitre.org/groups/G0007/
@@ -75,6 +89,8 @@ actors:
         note: rundll32 to load malicious DLLs
       - id: T1083
         note: Malware that finds files by extension and lists the files on every drive
+      - id: T1046
+        note: nmap from a router VM to scan ports on systems within the restricted segment of an enterprise network
   - group: HAFNIUM
     id: G0125
     source: https://attack.mitre.org/groups/G0125/
@@ -107,6 +123,8 @@ actors:
       - id: T1595.003
         note: Tools and frameworks to brute-force directories on web servers
         coverage_note: partial - only paths answered 401 or 403 count; a brute force answered mostly 404 stays silent
+      - id: T1046
+        note: A malware variant called WIDETONE to conduct port scans on specified subnets
   - group: Volatile Cedar
     id: G0123
     source: https://attack.mitre.org/groups/G0123/
@@ -124,6 +142,8 @@ actors:
         note: A cron job that downloaded and executed files from its command-and-control server
       - id: T1059.004
         note: Shell scripts to gain persistence and run its cryptocurrency miner
+      - id: T1046
+        note: Scanning for exposed TCP port 7001 as well as SSH and Redis servers
   - group: Fox Kitten
     id: G0117
     source: https://attack.mitre.org/groups/G0117/
@@ -135,6 +155,10 @@ actors:
         note: Web shells on compromised hosts to maintain access
       - id: T1083
         note: WizTree to list network files and directories
+      - id: T1552.001
+        note: Accessed files to gain valid credentials
+      - id: T1046
+        note: Tools including NMAP to conduct broad scanning to identify open ports
   - group: APT39
     id: G0087
     source: https://attack.mitre.org/groups/G0087/
@@ -144,6 +168,8 @@ actors:
         note: ANTAK and ASPXSPY web shells
       - id: T1083
         note: Tools that search for files on a compromised host
+      - id: T1046
+        note: CrackMapExec and a custom port scanner known as BLUETORCH for network scanning
   - group: Volt Typhoon
     id: G1017
     source: https://attack.mitre.org/groups/G1017/
@@ -153,3 +179,7 @@ actors:
         note: net group /dom and net group "Domain Admins" /dom for account discovery
       - id: T1505.003
         note: Web shells including AuditReport.jspx and iisstart.aspx
+      - id: T1078.002
+        note: Compromised domain accounts to authenticate to devices on compromised networks
+      - id: T1046
+        note: Commercial tools, LOTL utilities and appliances already present on the system for network service discovery

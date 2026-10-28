@@ -37,6 +37,7 @@ import splunk_app  # noqa: E402
 import benchmark  # noqa: E402
 import profiles  # noqa: E402
 import datasets  # noqa: E402
+import deceive  # noqa: E402
 import validate  # noqa: E402
 from common import find_detection, load_detections, load_jsonl  # noqa: E402
 from convert import logsource_key  # noqa: E402
@@ -411,7 +412,7 @@ class EvidenceBinding(unittest.TestCase):
     """An event is evidence of THIS run only: right host (or client IP for DC-logged events) and token."""
 
     def test_dc_logged_events_need_the_hosts_own_address(self):
-        det = find_detection("T1558.003")
+        det = find_detection("T1558.003_kerberoasting_rc4_tgs")
         tp = next(e for e in det.tests("true_positive") if e["_case"] == "red: kerberoasting emulation")
         step = {"host": "LAB-WS01", "host_ips": ["10.10.10.21", "fe80::1"], "marker": "rasd_0badf00d",
                 "detections": [det.id], "utc_start": "2026-10-12T06:00:00Z", "utc_end": "2026-10-12T06:00:02Z"}
@@ -1740,7 +1741,7 @@ class Tune(unittest.TestCase):
         rows = {r["id"]: r for r in tune.analyse(find_detection("T1569"), logs)}
         self.assertEqual(rows["psexec_service_name"]["verdict"], "RISKY")
         self.assertGreater(len(rows["psexec_service_name"]["hidden"]), 0)
-        kerb = {r["id"]: r for r in tune.analyse(find_detection("T1558"), logs)}
+        kerb = {r["id"]: r for r in tune.analyse(find_detection("T1558.003_kerberoasting_rc4_tgs"), logs)}
         self.assertEqual(kerb["legacy_rc4_scanner"]["verdict"], "SAFE")
         self.assertEqual(kerb["legacy_rc4_scanner"]["removed"], 2)
         self.assertEqual(kerb["machine_accounts"]["verdict"], "APPLIED")
@@ -2316,6 +2317,87 @@ class WebTelemetry(unittest.TestCase):
         step = {"host": "lab-ws01", "host_ips": ["10.0.0.21", "127.0.0.1", "::1"]}
         self.assertTrue(evidence.is_host("127.0.0.1", step))
         self.assertIn("c-ip", evidence.CLIENT_FIELDS)
+
+
+class Deceive(unittest.TestCase):
+    """RASD-Deceive: the inventory agrees with the rules, tests, red tests and the decoy host's configuration,
+    OpenCanary records are routed and bound like network events, and a renamed decoy keeps every proof."""
+
+    def test_inventory_agrees_with_rules_tests_red_tests_and_configuration(self):
+        doc = deceive.load_inventory()
+        self.assertEqual(deceive.check(doc), [])
+        self.assertEqual(len(doc["decoys"]), 7)
+        self.assertEqual({d["kind"] for d in doc["decoys"]}, set(deceive.KINDS))
+
+    def test_check_catches_a_decoy_missing_from_its_rule_and_from_its_tests(self):
+        doc = copy.deepcopy(deceive.load_inventory())
+        account = next(d for d in doc["decoys"] if d["id"] == "honey_account_backup_admin")
+        account["name"] = "svc_not_planted"
+        errs = deceive.check(doc)
+        self.assertTrue(any("does not list the decoy account 'svc_not_planted'" in e for e in errs), errs)
+        self.assertTrue(any("no true positive carries the decoy 'svc_not_planted'" in e for e in errs), errs)
+        service = next(d for d in doc["decoys"] if d["kind"] == "service")
+        service["modules"].append("redis")
+        errs = deceive.check(doc)
+        self.assertTrue(any("lacks the event codes ['17001']" in e for e in errs), errs)
+        self.assertTrue(any("settings.json: enables" in e for e in errs), errs)
+
+    def test_opencanary_records_are_routed_and_bound_through_the_client(self):
+        det = find_detection("T1046")
+        tp = next(e for e in det.tests("true_positive") if e["_case"] == "red: decoy service probe emulation")
+        self.assertEqual(replay.route(tp), logsource_key(det.rule))
+        self.assertTrue(replay.is_network(tp))
+        self.assertEqual(replay.entity(tp, {}), "10.0.0.21")
+        self.assertEqual(replay.parse_time(tp).isoformat(), "2026-10-12T09:15:02.418221")
+        step = {"host": "lab-ws01", "host_ips": ["10.0.0.21"], "marker": "rasd_1a2b3c4d", "detections": [det.id],
+                "bind": {det.id: "{marker}"}, "utc_start": "2026-10-12T09:15:00Z", "utc_end": "2026-10-12T09:15:05Z"}
+        other = {**tp, "src_host": "10.0.0.99"}
+        hits = evidence.find_hits(det, step, [tp, other], grace=60)
+        self.assertEqual(len(hits), 1)
+        self.assertIn("client address 10.0.0.21", hits[0][2])
+        self.assertEqual(replay.route({"EventID": 4663, "ObjectName": "D:\\x"}), "windows/security")
+
+    def test_rename_keeps_the_rule_its_tests_and_the_red_test_in_step(self):
+        doc = deceive.load_inventory()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rel in ("deceive", "dfir/playbooks", "purple/scenarios", "docs", "red/active_directory/honey_account_use",
+                        "red/windows/honey_file_access", "red/linux/decoy_service_probe", "red/lab",
+                        *sorted({f"detect/detections/{d['detection']}" for d in doc["decoys"]})):
+                shutil.copytree(ROOT / rel, root / rel, ignore=shutil.ignore_patterns("*.png", "*.svg"))
+            patched = {"ROOT": root, "DECEIVE": root / "deceive", "INVENTORY": root / "deceive" / "decoys.yml",
+                       "README": root / "deceive" / "README.md", "DETECTIONS": root / "detect" / "detections",
+                       "DFIR": root / "dfir", "PURPLE": root / "purple", "DOCS": root / "docs"}
+            with mock.patch.multiple(deceive, **patched), mock.patch.object(red, "RED_DIR", root / "red"), \
+                    mock.patch.object(red, "ROOT", root):
+                with self.assertRaises(SystemExit):                      # a name that already occurs is refused
+                    deceive.rename(deceive.load_inventory(), "svc_sqlreport", "svc_sql")
+                with self.assertRaises(SystemExit):                      # not a decoy
+                    deceive.rename(deceive.load_inventory(), "svc_sql", "svc_other")
+                changed = deceive.rename(deceive.load_inventory(), "svc_backup_adm", "svc_veeam_adm")
+                self.assertTrue(any(c.endswith("rule.yml") for c in changed) and any(c.endswith("true_positive.jsonl") for c in changed)
+                                and any(c.endswith("behavior.yml") for c in changed) and any(c.endswith("test.yml") for c in changed), changed)
+                self.assertTrue(any(c.endswith("Deploy-RasdDecoys.ps1") for c in changed), changed)
+                renamed = deceive.load_inventory()
+                self.assertIn("svc_veeam_adm", deceive.identities(renamed))
+                self.assertEqual(deceive.check(renamed), [])
+                folder = root / "detect" / "detections" / "T1078.002_honey_account_authentication"
+                rule = yaml.safe_load((folder / "rule.yml").read_text(encoding="utf-8"))
+                for name in ("rule.yml", "behavior.yml", "tests/true_positive.jsonl", "tests/mutations.yml", "README.md"):
+                    self.assertNotIn("svc_backup_adm", (folder / name).read_text(encoding="utf-8").lower(), name)
+                tps = load_jsonl(folder / "tests" / "true_positive.jsonl")
+                self.assertTrue(all(matches(rule, ev) for ev in tps))
+                muts = yaml.safe_load((folder / "tests" / "mutations.yml").read_text(encoding="utf-8"))["mutations"]
+                self.assertIn("SVC_VEEAM_ADM@lab.local", [m["set"].get("TargetUserName") for m in muts], "case variants follow the new name")
+                self.assertFalse(any(matches(rule, ev) for ev in load_jsonl(folder / "tests" / "true_negative.jsonl")))
+                paths = deceive.rename(deceive.load_inventory(), "\\IT\\Passwords\\service_accounts.xlsx", "\\Finance\\Admin\\logins.xlsx")
+                self.assertTrue(paths)
+                hf = root / "detect" / "detections" / "T1552.001_honey_file_access"
+                hrule = yaml.safe_load((hf / "rule.yml").read_text(encoding="utf-8"))
+                self.assertIn("\\Finance\\Admin\\logins.xlsx", hrule["detection"]["selection"]["ObjectName|endswith"])
+                self.assertTrue(all(matches(hrule, ev) for ev in load_jsonl(hf / "tests" / "true_positive.jsonl")))
+                self.assertEqual(deceive.check(deceive.load_inventory()), [])
+        self.assertEqual(deceive.check(deceive.load_inventory()), [])      # the repository itself is untouched
 
 
 class Banner(unittest.TestCase):

@@ -1,0 +1,30 @@
+{
+  "id": "decoy_service_probe",
+  "name": "Decoy service probe - connect to the decoy host and guess one credential on its portal",
+  "platform": "linux",
+  "technique": "T1046",
+  "runner": "bash",
+  "steps": [
+    {
+      "id": "probe_decoy_services",
+      "name": "TCP connection to the decoy's SSH port, then one login attempt on its web portal",
+      "script": "probe_decoy.sh",
+      "detections": [
+        "T1046_decoy_service_interaction"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": [
+        "Target"
+      ],
+      "correlations": [],
+      "bind": {
+        "T1046_decoy_service_interaction": "{marker}"
+      }
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.sh",
+    "collect": null
+  }
+}

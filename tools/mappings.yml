@@ -17,6 +17,13 @@
 #                   sc-status ...). KQL reads the stock W3CIISLog table; SPL reads access_combined
 #                   (nginx, Apache, Node). For another access-log table, change the logsource and
 #                   the column names below.
+# Deception       : OpenCanary decoy services (deceive/). Rules use the keys of OpenCanary's JSON
+#                   record (logtype, src_host, dst_port, node_id). KQL reads it through a parser
+#                   function named `OpenCanary` that returns those keys as columns - logtype as an integer
+#                   (toint), the others as strings - whatever table the records land in (a custom table
+#                   over the JSON log file, or Syslog with parse_json);
+#                   SPL reads the JSON log file as sourcetype opencanary in index deception, with
+#                   Splunk's automatic JSON field extraction.
 # --------------------------------------------------------------------------- #
 kql:
   fields:
@@ -57,6 +64,8 @@ kql:
       | where EventID == 1
     webserver: |
       W3CIISLog
+    opencanary/honeypot: |
+      OpenCanary
 
 spl:
   fields:
@@ -84,6 +93,8 @@ spl:
       index=linux sourcetype="sysmon:linux" EventID=1
     webserver: |
       index=web sourcetype=access_combined
+    opencanary/honeypot: |
+      index=deception sourcetype=opencanary
 
 # --------------------------------------------------------------------------- #
 # Microsoft Defender XDR advanced hunting (queries/mde). Optional: only the log sources a

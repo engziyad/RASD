@@ -5,17 +5,18 @@ RASD answers one question for every attack technique it covers: would we detect 
 <!-- rasd:executive:start -->
 | | |
 |---|---|
-| **Detections** | 18 (14 single-event rules, 4 correlations) across 14 ATT&CK techniques and 9 tactics |
+| **Detections** | 22 (18 single-event rules, 4 correlations) across 17 ATT&CK techniques and 10 tactics |
 | **Platforms** | Windows, Active Directory, Linux, web applications |
-| **Proven in the repository** | 18 of 18 SIEM-Ready: tests, rule mutation proof, KQL and SPL parity, evasion fuzzing · Engineering Score 100/100 |
-| **Replayed on public data** | 16/18 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](PUBLIC_DATA_VALIDATION.md)) |
-| **Behaviour proofs** | 57 variants of documented attacker behaviour over 12 detections: 25 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 14 exclusions proven quiet ([certificates](CERTIFICATES.md)) |
+| **Proven in the repository** | 22 of 22 SIEM-Ready: tests, rule mutation proof, KQL and SPL parity, evasion fuzzing · Engineering Score 100/100 |
+| **Replayed on public data** | 16/22 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](PUBLIC_DATA_VALIDATION.md)) |
+| **Behaviour proofs** | 81 variants of documented attacker behaviour over 16 detections: 37 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 26 exclusions proven quiet ([certificates](CERTIFICATES.md)) |
 | **Edit equivalence** | `rasd certify --equiv REF` compares every rule with its version at a git ref and proves the edit preserves every event's verdict, or shows the event it changes ([CERTIFY](CERTIFY.md#comparing-two-versions-of-a-rule)) |
-| **Validated (lab evidence)** | 0 of 18 · Operational Score pending |
-| **Analyst guidance** | 18 of 18 with triage, response, closure and escalation notes · 14 DFIR playbooks |
+| **Deception** | 7 decoys (2 account, 1 spn, 3 file, 1 service) read by 4 deception detections and touched by 3 red tests · inventory, rules, tests, red tests and the decoy host's configuration agree · 5 decoy classes planned ([DECEPTION](../docs/DECEPTION.md), [inventory](../deceive/)) |
+| **Validated (lab evidence)** | 0 of 22 · Operational Score pending |
+| **Analyst guidance** | 22 of 22 with triage, response, closure and escalation notes · 17 DFIR playbooks |
 | **Measured gaps** | 4 gaps without a detection (ldap_enumeration, privilege_escalation_checks, file_upload_testing, jwt_testing) · 1 posture check without a detection (security_headers_testing) |
 
-**Status:** SIEM-Ready, not yet Validated: 18 of 18 detections are SIEM-Ready and 16 fire on public attack datasets, meeting 25 of 26 expectations in 23 of 105 held-out files ([public data](PUBLIC_DATA_VALIDATION.md)); none has lab evidence yet ([evidence plan](EVIDENCE_PLAN.md)).
+**Status:** SIEM-Ready, not yet Validated: 22 of 22 detections are SIEM-Ready and 16 fire on public attack datasets, meeting 25 of 26 expectations in 23 of 105 held-out files ([public data](PUBLIC_DATA_VALIDATION.md)); none has lab evidence yet ([evidence plan](EVIDENCE_PLAN.md)).
 
 <sub>Counted by `tools/chain.py` on every build.</sub>
 <!-- rasd:executive:end -->
