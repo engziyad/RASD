@@ -1,6 +1,14 @@
 # Release Roadmap
 
-## v1.1: the public release (this release; v1.0.0 is the tag before RASD-Deceive and the CI gate)
+## v1.2: RASD-Agent (this release)
+| Area | Delivered |
+|---|---|
+| Structure | Seven pillars: `red/`, `detect/`, `dfir/`, `intel/`, `purple/`, `deceive/`, `agent/` |
+| Agent | RASD-Agent ([AGENT](AGENT.md)): `rasd advise` turns every measurement of the pipeline into ranked findings with the evidence and the exact next step, for four roles (analyst, engineer, purple, executive); stable finding ids; `--decide` records what people decided and the agent ranks accordingly (a family rejected twice ranks lower, an accepted finding that disappears counts as resolved); `--logs` reads your own telemetry (blind, degraded, noisy, near misses, headroom, storylines; `--learn` keeps the counts locally); `--explain` reads an alert field by field with the contract's guidance and the deception chain; `--propose` drafts changes verified before they are written (tests for unpinned boundaries and surviving mutants, tunings with the look-alike tests that prove them and the certificate re-checked, scaffolds, decoy entries) and `--apply` copies them in and runs the gates, never committing; `--ask` answers on the counsel and the pages. Tunings are now also measured against the behaviour specs: a proposed filter that would leave a documented variant unproven is reported as such |
+| Model | Optional, by environment variable: any chat-completions server or a local Ollama (`tools/agent_model.py`). Adds a narrative to `--explain`, candidate rule edits and new rules to `--propose`, answers to `--ask`; everything it writes passes the engine, the tests, the converters, the automata and the mutation proof before it is kept, and the refusal is recorded otherwise. Shared events are redacted and shared only on request |
+| CI | `rasd advise --write` in the build, `--check` in CI: the counsel page is generated and drift-checked like every other page; `agent/decisions.yml` validated |
+
+## v1.1: the public release (v1.0.0 is the tag before RASD-Deceive and the CI gate)
 | Area | Delivered |
 |---|---|
 | Structure | Six pillars: `red/`, `detect/`, `dfir/`, `intel/`, `purple/`, `deceive/` |

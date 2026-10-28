@@ -1,0 +1,10 @@
+# agent/decisions.yml - the decisions people took on the counsel of `rasd advise`, in the order they were taken.
+# `rasd advise --decide <finding id> accept|reject|defer --note "why" [--until YYYY-MM-DD] [--by name]` appends here;
+# `rasd advise --apply <finding id>` records `applied`. The last decision on a finding is the one that counts.
+#
+# What the agent does with them (docs/AGENT.md): a rejected finding is set aside and listed with its reason; a deferred
+# one waits until its date; an accepted one stays ranked and carries the decision; an accepted finding that disappears
+# from the counsel counts as resolved; a family of findings rejected twice ranks one level lower from then on.
+# CI validates every entry: finding (a finding id), decision (accepted, rejected, deferred, applied), date (YYYY-MM-DD),
+# a note on every rejection, `until` on every deferral; `by` and `source` are optional.
+decisions: []

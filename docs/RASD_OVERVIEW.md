@@ -23,8 +23,9 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | Was it ever proven in a real environment? | Offensive tests, telemetry export, `rasd evidence`, Operational Score |
 | What can we not see? | Blind spots, coverage depth, measured gaps in the validation matrix |
 | What catches the attacker who evades every rule? | RASD-Deceive (`rasd deceive`): decoys nobody legitimate touches, read by rules proven like every other, and the inventory that keeps them real |
+| What should we do next, and why that first? | RASD-Agent (`rasd advise`): every measurement above turned into ranked findings with the evidence and the exact next step, for the analyst, the engineer, the purple team and the executive; it remembers your decisions, reads your telemetry, explains alerts and drafts changes the gates verify |
 
-## The six pillars
+## The seven pillars
 
 | Pillar | Folder | Purpose |
 |---|---|---|
@@ -34,6 +35,7 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | RASD-Intel | [`intel/`](../intel/) | CTI turned into detection opportunities and hunts |
 | RASD-Purple | [`purple/`](../purple/) | Attack-to-defense validation across the whole chain |
 | RASD-Deceive | [`deceive/`](../deceive/) | Decoys as tested detections: one inventory of honey accounts, a honey SPN, honey files and a decoy host, held in step with the rules that read them ([design](DECEPTION.md)) |
+| RASD-Agent | [`agent/`](../agent/) | The counsel: what to do next, computed from what the repository proves, learning from the decisions people take; an optional language model, gated by the proofs ([design](AGENT.md)) |
 
 ## Workflow
 
@@ -45,6 +47,7 @@ Detection triggers investigation.
 Investigation produces evidence.
 CTI gives context.
 Purple validation measures the full chain.
+The agent reads every measurement and says what comes next.
 ```
 
 ## Two honest scores

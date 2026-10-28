@@ -26,7 +26,7 @@ Each step of a safe release maps to a check CI already enforces.
 | Release step | Enforced by |
 |---|---|
 | Verify base | the branch is up to date with `main`; the working tree is clean |
-| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, Splunk app, profiles, datasets, build, chain, links |
+| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, Splunk app, profiles, datasets, build, chain, advise, links |
 | Formal proofs and certificates | `rasd certify --check` (inside `rasd ci`): every rule compiles to exact automata, every behaviour spec gets its expected verdict, and the certificate pages are current |
 | Differential | `rasd parity` (the generated SPL and KQL match the engine) and `rasd diff --base origin/<base>` (the events whose verdict changes in this PR) and `rasd certify --equiv origin/main` (the rule's own meaning across the edit) |
 | No stale output | the "generated files are out of date" check fails the build until `rasd build` is committed |

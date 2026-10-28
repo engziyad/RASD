@@ -9,7 +9,7 @@ banner.py - the RASD signature, in the terminal and as an SVG for the README.
 Hidden automatically in CI, when output is piped, or with NO_BANNER=1.
 NO_COLOR=1 prints it without colour. Uses 24-bit colour when the terminal
 advertises it (COLORTERM=truecolor), otherwise the nearest 256-colour shade.
-The text lines carry the framework name, the five pillars of its chain (RASD-Deceive feeds Detect) and the author credit.
+The text lines carry the framework name, the five pillars of its chain (RASD-Deceive feeds Detect; RASD-Agent reads every link) and the author credit.
 """
 from __future__ import annotations
 

@@ -37,7 +37,7 @@ jobs:
           ruff check .
           mypy
 
-      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, deceive, Splunk app, profiles, datasets, build, chain, links)
+      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, deceive, Splunk app, profiles, datasets, build, chain, advise, links)
         run: rasd ci
 
       - name: Detection tests as JUnit
@@ -78,14 +78,16 @@ jobs:
         if: always()
         run: |
           rasd score > reports/score.txt || true
+          NO_COLOR=1 rasd advise --for executive > reports/advice.txt || true
           {
             echo '## Detection quality'; echo '```'; cat reports/score.txt; echo '```'
             echo '## Metrics'; cat docs/RASD_METRICS.md | sed -n '/^| Metric/,/^$/p'
+            echo '## Counsel (rasd advise --for executive)'; echo '```'; head -60 reports/advice.txt; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail if generated files are out of date
         run: |
-          stale=$(git status --porcelain --untracked-files=all -- queries detect docs red deceive dfir intel purple profiles README.md)
+          stale=$(git status --porcelain --untracked-files=all -- queries detect docs red deceive agent dfir intel purple profiles README.md)
           if [ -n "$stale" ]; then
             echo "$stale"
             echo "::error::Generated files are stale. Run 'rasd build' and commit the result."
