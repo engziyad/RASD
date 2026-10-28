@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parent.parent
 DETECT = ROOT / "detect"
 DETECTIONS = DETECT / "detections"          # one folder per detection (rule, contract, tests, guides)

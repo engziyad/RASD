@@ -1,6 +1,6 @@
 # Release Roadmap
 
-## v1.0: first public release (this release)
+## v1.1: the public release (this release; v1.0.0 is the tag before RASD-Deceive and the CI gate)
 | Area | Delivered |
 |---|---|
 | Structure | Six pillars: `red/`, `detect/`, `dfir/`, `intel/`, `purple/`, `deceive/` |
@@ -9,7 +9,7 @@
 | Correlations | Sigma v2 correlation rules (`event_count`, `value_count`) in `detect/correlations/`: offline engine, SPL / KQL conversion, Splunk alerts that run once per window over exactly that window. Four detections: password spraying (T1110.003), Kerberoasting by volume (T1558.003, catching AES roasting), API authentication probing (T1595.003) and object-ID enumeration (T1190) |
 | Correlation proof | `rasd correlate`: event-sequence scenarios, parameter mutation testing (threshold, window, group-by, count type, normalisation), aggregation parity of the generated SPL and KQL on scenarios and seeded random sequences for the rule and every mutant, and a verified burst guarantee (2T-1 always alerts) |
 | Exact automata | `rasd certify`: every Sigma rule compiled into finite automata over every Unicode code point (Python's own parser and engine decide each character class), an event that fires it and its nearest quiet event built and replayed through the engine, each value test checked on its complete W-method conformance suite ([CERTIFY](CERTIFY.md)) |
-| Behaviour proofs | `behavior.yml` beside a rule: documented attacker variants with their sources, command lines read through the C runtime's argument split (a finite-state transducer), each variant proven caught for every event or its gap shown with a replayed event; design exclusions proven quiet. 57 variants over 12 detections ([CERTIFICATES](CERTIFICATES.md)) |
+| Behaviour proofs | `behavior.yml` beside a rule: documented attacker variants with their sources, command lines read through the C runtime's argument split (a finite-state transducer), each variant proven caught for every event or its gap shown with a replayed event; design exclusions proven quiet. 81 variants over 16 detections ([CERTIFICATES](CERTIFICATES.md)) |
 | Edit equivalence | `rasd certify --equiv REF`: the current rule and its version at a git ref over one shared set of automata, with the events they disagree on searched exhaustively; an edit is proven to preserve meaning on every possible event, or the event that changed is shown and replayed against both versions ([CERTIFY](CERTIFY.md#comparing-two-versions-of-a-rule)) |
 | Near misses | `rasd nearmiss`: traffic one field edit away from an alert, proven by engine-confirmed witnesses; boundary load per condition and whether a true negative pins it (a CI gate); correlation threshold headroom, with the single-event rules that caught a near miss |
 | Red | 22 offensive tests defined by `test.yml` (Windows, Active Directory, web, Linux): 17 linked to a detection, 5 kept as measured gaps or posture checks. Generated documents, runners for PowerShell and Python, artifact collection and verified cleanup, streaming telemetry export (Windows, Sysmon for Linux, web access log), lab-run manifest with input hashes |
