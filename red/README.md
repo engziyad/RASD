@@ -47,11 +47,13 @@ Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory a
 <!-- rasd:red-catalog:start -->
 | Test | Platform | ATT&CK | Detect | Runner |
 |---|---|---|---|---|
+| [Honey account use - try the decoy credential, request the decoy's service ticket](active_directory/honey_account_use/) | active directory | [T1078.002](https://attack.mitre.org/techniques/T1078/002/) | covered | powershell |
 | [Kerberoasting - request an RC4 service ticket for a lab SPN](active_directory/kerberoasting/) | active directory | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | covered | powershell |
 | [LDAP enumeration of users, groups and SPNs](active_directory/ldap_enumeration/) | active directory | [T1087.002](https://attack.mitre.org/techniques/T1087/002/) | gap | powershell |
 | [Password spray simulation with a password that cannot be right](active_directory/password_spray_simulation/) | active directory | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | covered | powershell |
 | [WinRM remote command on a lab host](active_directory/winrm_access_validation/) | active directory | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | covered | powershell |
 | [User crontab persistence](linux/cron_persistence/) | linux | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | covered | bash |
+| [Decoy service probe - connect to the decoy host and guess one credential on its portal](linux/decoy_service_probe/) | linux | [T1046](https://attack.mitre.org/techniques/T1046/) | covered | bash |
 | [Read-only privilege-escalation reconnaissance](linux/privilege_escalation_checks/) | linux | [T1083](https://attack.mitre.org/techniques/T1083/) | gap | bash |
 | [Encoded shell command and execution from /tmp](linux/suspicious_shell_execution/) | linux | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | covered | bash |
 | [API authentication enforcement](web/api_auth_testing/) | web | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) | covered | python |
@@ -60,6 +62,7 @@ Safety is part of each test, not an afterthought: `-LabConfirmed` is mandatory a
 | [JWT validation (unsigned and tampered tokens)](web/jwt_testing/) | web | [T1606](https://attack.mitre.org/techniques/T1606/) | gap | python |
 | [HTTP security headers and cookie flags](web/security_headers_testing/) | web | - | posture | python |
 | [Event log clearing (dedicated test log, optional Security log)](windows/event_log_clearing/) | windows | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | covered | powershell |
+| [Honey file access - read the decoy credentials spreadsheet](windows/honey_file_access/) | windows | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) | covered | powershell |
 | [LSASS memory dump with comsvcs.dll MiniDump](windows/lsass_memory_access/) | windows | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | covered | powershell |
 | [PowerShell -EncodedCommand with a benign payload](windows/powershell_encoded_command/) | windows | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | covered | powershell |
 | [HKCU Run value pointing into a user-writable folder](windows/run_key_persistence/) | windows | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | covered | powershell |

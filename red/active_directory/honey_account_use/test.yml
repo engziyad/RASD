@@ -1,0 +1,107 @@
+id: honey_account_use
+name: Honey account use - try the decoy credential, request the decoy's service ticket
+platform: active_directory
+mitre:
+  technique: T1078.002
+  technique_name: "Valid Accounts: Domain Accounts"
+  related: [T1558.003, T1558.004, T1110.003]
+  tactics: [initial-access, persistence, privilege-escalation, stealth]
+objective: >
+  Do what an attacker does after reading the lures RASD-Deceive plants: try the honey account's
+  credential (one LDAP bind as svc_backup_adm with a wrong password) and request a service ticket
+  for the honey SPN account (svc_sqlreport, as every Kerberoasting tool does for each SPN it
+  enumerates), and prove that the domain controller's events fire the two deception rules. The
+  password is random and never the lure's; the ticket stays in the session cache; nothing is
+  exported or cracked.
+prerequisites:
+  - Domain-joined lab workstation and a lab domain controller
+  - "The decoys deployed in the lab domain: deceive\\Deploy-RasdDecoys.ps1 -LabConfirmed -Accounts (svc_backup_adm with its description, adm_helpdesk_tier2, svc_sqlreport with its SPN)"
+  - "DC audit policy: Account Logon > Audit Kerberos Authentication Service = Failure (4771), Audit Credential Validation = Failure (4776), Audit Kerberos Service Ticket Operations = Success and Failure (4769); Logon/Logoff > Audit Logon = Failure (4625)"
+  - A lockout threshold that leaves the decoy one failure of room, or none; the step refuses otherwise
+safety:
+  - Runs only with -LabConfirmed on a machine its owner marked as a lab (red/lab/README.md, Lab guard)
+  - The bind refuses unless the account carries the decoy's description from deceive/decoys.yml, so a real account with the same name is never tried
+  - The bind uses a random 40-character password and refuses when one more failure could lock the decoy
+  - One ticket request; the ticket is not exported, saved or cracked, and klist purge runs first so the DC really logs it
+execution:
+  - "Invoke-RasdEmulation.ps1 -Test honey_account_use -LabConfirmed"
+  - The first step looks the decoy up, checks its description and badPwdCount, and binds once with a random password (System.DirectoryServices.DirectoryEntry)
+  - The second step reads the honey SPN account's servicePrincipalName, purges the session's ticket cache and requests one service ticket (System.IdentityModel KerberosRequestorSecurityToken)
+  - collect_artifacts.ps1 saves klist output and the decoys' AD attributes at run time
+  - "Export the domain controller's Security log (Export-LabTelemetry.ps1 -LogName Security -EventId 4625,4771,4776,4768,4769) and pass it to evidence: both events are logged on the DC about this workstation"
+steps:
+  - id: bind_as_honey_account
+    name: One LDAP bind as the honey account with a wrong password
+    script: emulate_honey_account_bind.ps1
+    detections: [T1078.002_honey_account_authentication]
+  - id: request_honey_spn_ticket
+    name: Request a service ticket for the honey SPN account (no export, no cracking)
+    script: emulate_honey_spn_request.ps1
+    detections: [T1558.003_honey_spn_ticket_request]
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Security (domain controller)
+    event: "4771 · Kerberos pre-authentication failed"
+    description: The wrong password for the decoy, refused by the KDC (Failure Code 0x18); on NTLM fallback the DC logs 4776 and 4625 instead
+    fields:
+      TargetUserName: 'svc_backup_adm'
+      Status: '0x18'
+      IpAddress: '::ffff:<workstation IP>'
+    used_by: [T1078.002_honey_account_authentication]
+  - source: Security (domain controller)
+    event: "4776 · The computer attempted to validate the credentials"
+    description: NTLM validation of the decoy when the bind falls back to NTLM (Error Code 0xC000006A)
+    fields:
+      TargetUserName: 'svc_backup_adm'
+      Status: '0xc000006a'
+      Workstation: '<workstation name>'
+    used_by: [T1078.002_honey_account_authentication]
+  - source: Security (domain controller)
+    event: "4769 · A Kerberos service ticket was requested"
+    description: The ticket request for the honey SPN account, issued (0x0) or refused, with whatever encryption type the KDC chose
+    fields:
+      ServiceName: 'svc_sqlreport'
+      TicketEncryptionType: '0x12 (AES) or 0x17 (RC4)'
+      IpAddress: '::ffff:<workstation IP>'
+      TargetUserName: '<user>@<DOMAIN>'
+    used_by: [T1558.003_honey_spn_ticket_request]
+logging:
+  - "DC: Audit Kerberos Authentication Service = Failure; Audit Credential Validation = Failure; Audit Kerberos Service Ticket Operations = Success and Failure; Audit Logon = Failure"
+  - "DC Security log forwarded to the SIEM"
+dfir_artifacts:
+  - artifact: Decoy attributes at run time
+    location: Active Directory (badPwdCount, lastLogon, servicePrincipalName, description)
+    collect: collect_artifacts.ps1 saves decoy-accounts.json
+    purpose: Shows the decoys were in place as the inventory describes them when the events were produced
+  - artifact: Ticket cache
+    location: Workstation logon session
+    collect: klist
+    purpose: Shows the honey SPN's ticket and its encryption type on the client, if the KDC issued one
+  - artifact: Authentication events for the decoy
+    location: DC Security log
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4771,4776,4625,4768} on the DC, filtered on the decoy's name"
+    purpose: Every attempt against the decoy, with the source address or workstation
+  - artifact: 4769 for the decoy SPN
+    location: DC Security log
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4769} on the DC, filtered on ServiceName"
+    purpose: Who requested the decoy's ticket, from where, with which encryption type
+cleanup:
+  actions:
+    - Nothing persists on disk or in the registry; the failed bind adds one badPwdCount to the decoy, which the lockout observation window resets, and the ticket lives in the session cache until it expires
+  verify: No files or registry values are created; klist purge drops the ticket early; the decoy's badPwdCount is back to 0 after the observation window
+sample_output:
+  console: |
+    [T1078.002] One LDAP bind as the honey account with a wrong password
+    bind as svc_backup_adm rejected as a wrong password (the domain controller logged the attempt)
+    [T1078.002] Request a service ticket for the honey SPN account (no export, no cracking)
+    requested a service ticket for MSSQLSvc/sqlrpt01.lab.local:1433 (svc_sqlreport)
+    [cleanup] verified: nothing persisted (one failed bind on the decoy; the ticket cache expires with the session)
+  events:
+    - detection: T1078.002_honey_account_authentication
+      case: "red: honey account use emulation"
+    - detection: T1558.003_honey_spn_ticket_request
+      case: "red: honey SPN ticket request emulation"
+dfir_playbook: dfir/playbooks/honey_account_use.md
+purple_scenario: purple/scenarios/T1078.002_honey_account.md

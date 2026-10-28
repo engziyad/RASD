@@ -103,7 +103,7 @@ class PowerShellScripts(unittest.TestCase):
         return [json.loads(line) for line in r.stdout.splitlines() if line.strip()]
 
     def test_every_script_parses(self):
-        script = ("$bad = 0; foreach ($f in Get-ChildItem -Path red -Recurse -Filter *.ps1) { $t = $null; $e = $null; "
+        script = ("$bad = 0; foreach ($f in Get-ChildItem -Path red, deceive -Recurse -Filter *.ps1) { $t = $null; $e = $null; "
                   "[void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$t, [ref]$e); "
                   "foreach ($x in $e) { Write-Output \"$($f.Name):$($x.Extent.StartLineNumber): $($x.Message)\"; $bad++ } }; "
                   "exit $bad")

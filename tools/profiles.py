@@ -53,7 +53,7 @@ from sigma_engine import _get_field
 PROFILES_DIR = ROOT / "profiles"
 NATIVE = "sysmon-native"
 LOGSOURCES = ("process_creation", "process_access", "registry_set", "windows/security", "windows/system",
-              "linux/process_creation", "webserver")
+              "linux/process_creation", "webserver", "opencanary/honeypot")
 README_START, README_END = "<!-- rasd:profiles:start -->", "<!-- rasd:profiles:end -->"
 
 

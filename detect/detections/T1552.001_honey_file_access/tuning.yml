@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1552.001_honey_file_access
+expected_noise: low
+noise_sources:
+- A data-classification or backup agent that runs under a user account instead of the machine account
+- A curious employee who opens a file named passwords
+tunings:
+- id: machine_account
+  status: applied
+  selection: filter_machine_account
+  reason: Backup and antivirus agents run as SYSTEM, which the server logs as its own machine account, and read every file on the share nightly; an attacker already running as SYSTEM on the file server is the accepted residual risk.
+- id: search_indexer
+  status: applied
+  selection: filter_search_indexer
+  reason: Windows Search reads the content of every file it indexes through SearchProtocolHost.exe and SearchIndexer.exe, minutes after the file is created or changed.
+- id: classification_agent_account
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: A data-classification agent runs under a dedicated domain account and reads every document on the share once a week.
+  filter:
+    SubjectUserName: svc_classify
+  alternative: Exclude the decoy folders from the agent's scan scope, so the account never touches them and no filter is needed.
+never_tune:
+- 'Never filter by client host or by business hours: the decoys exist to catch any account from anywhere.'
+- 'Never widen the filters to a process name an attacker can choose, such as explorer.exe or powershell.exe.'
+- 'Never drop a decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

@@ -1,0 +1,191 @@
+# RASD-Deceive inventory: every decoy RASD plants, defined once.
+#
+# The detections in detect/detections read these identities (account names, the SPN account, the
+# file paths, the decoy host's node_id), their tests and behaviour specs prove them, the red tests
+# touch them, and the deployment scripts create them. `rasd deceive --check` fails the build when
+# any of those disagree with this file; `rasd deceive --rename OLD NEW` adopts your own names in all
+# of them at once, so the proofs keep holding after you leave the shipped lab identities behind.
+#
+# The shipped identities belong to the lab domain lab.local (red/lab). They are examples of the
+# shape a decoy should have, not names to deploy as they are: an attacker who has read this
+# repository knows them.
+version: 1
+realm: lab.local
+decoys:
+  - id: honey_account_backup_admin
+    kind: account
+    name: svc_backup_adm
+    detection: T1078.002_honey_account_authentication
+    red_test: honey_account_use
+    looks_like: A backup service account with an old, over-privileged feel; the kind of account whose password is "temporarily" written down
+    lure: The description attribute names the spreadsheet that holds its password (the honey file below); the password written there is plausible and wrong, the decoy's real password is random and kept nowhere, so every attempt fails and every attempt alerts
+    attributes:
+      description: "Backup service account - pw reset 2024-03, temp pw in \\\\LAB-FS01\\IT\\Passwords\\service_accounts.xlsx"
+      preauth_required: true
+      password_never_expires: true
+      claimed_groups: [Backup Operators]     # what the lure implies; the account is a member of no group
+    telemetry: Security 4624, 4625, 4768, 4771, 4776 on domain controllers and member servers (TargetUserName)
+    fires_when: Anyone presents the account to Windows authentication, with the lure's password or any other
+
+  - id: honey_account_helpdesk_asrep
+    kind: account
+    name: adm_helpdesk_tier2
+    detection: T1078.002_honey_account_authentication
+    red_test: honey_account_use
+    looks_like: A legacy helpdesk administrator account
+    lure: Kerberos pre-authentication is disabled, so AS-REP roasting tools (Rubeus asreproast, GetNPUsers) select it and request its TGT
+    attributes:
+      description: "Helpdesk tier 2 - legacy admin, do not remove (ticket 48112)"
+      preauth_required: false
+      password_never_expires: true
+      claimed_groups: [Account Operators]    # what the lure implies; the account is a member of no group
+    telemetry: Security 4768 (PreAuthType 0 when roasted), 4624, 4625, 4771, 4776 on domain controllers and member servers
+    fires_when: The account is AS-REP roasted, sprayed or used
+
+  - id: honey_spn_sqlreport
+    kind: spn
+    name: svc_sqlreport
+    spn: MSSQLSvc/sqlrpt01.lab.local:1433
+    detection: T1558.003_honey_spn_ticket_request
+    red_test: honey_account_use
+    looks_like: The service account of a reporting SQL Server instance
+    lure: A registered service principal name, so (servicePrincipalName=*) enumeration lists it and Kerberoasting tools request its ticket together with the real ones; its host name resolves to the decoy host, whose MSSQL decoy answers on 1433
+    attributes:
+      description: "SQL Server Reporting (SQLRPT01) service account"
+      dns: {sqlrpt01.lab.local: 10.0.0.40}
+      allow_rc4: true
+    telemetry: Security 4769 on domain controllers (ServiceName), any encryption type, any status
+    fires_when: Anyone requests a service ticket for the account
+
+  - id: honey_file_service_accounts
+    kind: file
+    path: '\IT\Passwords\service_accounts.xlsx'
+    unc: '\\LAB-FS01\IT\Passwords\service_accounts.xlsx'
+    local_root: 'D:\Shares'
+    detection: T1552.001_honey_file_access
+    red_test: honey_file_access
+    looks_like: An administrator's spreadsheet of service accounts and passwords, in a folder named Passwords on the IT share
+    lure: The sheet lists the honey accounts with plausible wrong passwords, the honey SPN account and the decoy host's portal, so whoever reads it and tries anything trips the next decoy
+    credentials_for: [honey_account_backup_admin, honey_spn_sqlreport, decoy_service_canary]
+    telemetry: Security 4663 on the file server (ObjectName, AccessList), through a SACL that audits data access for Everyone
+    fires_when: A user account reads, writes or deletes the file
+
+  - id: honey_file_keepass
+    kind: file
+    path: '\IT\Tools\credentials_backup.kdbx'
+    unc: '\\LAB-FS01\IT\Tools\credentials_backup.kdbx'
+    local_root: 'D:\Shares'
+    detection: T1552.001_honey_file_access
+    red_test: honey_file_access
+    looks_like: A password-manager database backup left in a tools folder
+    lure: It carries the KDBX signature and random content, so it cannot be opened; it only needs to be worth taking, and taking it is a read
+    credentials_for: []
+    telemetry: Security 4663 on the file server (ObjectName, AccessList)
+    fires_when: A user account reads, writes or deletes the file
+
+  - id: honey_file_vpn_codes
+    kind: file
+    path: '\Public\Onboarding\vpn_and_wifi_codes.txt'
+    unc: '\\LAB-FS01\Public\Onboarding\vpn_and_wifi_codes.txt'
+    local_root: 'D:\Shares'
+    detection: T1552.001_honey_file_access
+    red_test: honey_file_access
+    looks_like: An onboarding note with VPN and Wi-Fi codes, where new joiners find it and attackers look first
+    lure: The note names the decoy host's portal and the helpdesk account, so following it trips the next decoy
+    credentials_for: [honey_account_helpdesk_asrep, decoy_service_canary]
+    telemetry: Security 4663 on the file server (ObjectName, AccessList)
+    fires_when: A user account reads, writes or deletes the file
+
+  - id: decoy_service_canary
+    kind: service
+    node_id: lab-canary-01
+    address: 10.0.0.40
+    dns: [nas01.lab.local, sqlrpt01.lab.local]
+    modules: [ftp, ssh, telnet, http, smb, mssql, rdp, vnc, portscan]
+    config: deceive/opencanary/settings.json
+    detection: T1046_decoy_service_interaction
+    red_test: decoy_service_probe
+    looks_like: A NAS and reporting SQL Server host - a NAS login page, SSH, FTP, Telnet, a Backups share, SQL Server, RDP and VNC - on an address nothing else uses
+    lure: The honey files and the honey SPN point at it; a port scan finds it; its login pages take any credential and refuse it
+    telemetry: OpenCanary JSON records (logtype, node_id, src_host) forwarded from the decoy host
+    fires_when: Any client except the authorised scanner probes, connects to or logs on to one of its services
+
+# The decoy classes RASD knows, each with its MITRE D3FEND technique (Decoy Object, D3-DO, in D3FEND 1.6:
+# Decoy User Credential D3-DUC, Decoy File D3-DF, Decoy Network Resource D3-DNR). `rasd deceive --gaps`
+# ranks the ones not built the way the detection backlog ranks techniques: first the classes whose telemetry RASD already maps and whose red test can
+# produce today, then those that need a red test step, then those that need a new log source.
+classes:
+  - kind: account
+    d3fend: D3-DUC
+    name: Honey account
+    status: built
+    techniques: [T1078.002, T1558.004, T1110.003]
+    telemetry: Security 4624, 4625, 4768, 4771, 4776
+  - kind: spn
+    d3fend: D3-DUC
+    name: Honey service principal name
+    status: built
+    techniques: [T1558.003]
+    telemetry: Security 4769
+  - kind: file
+    d3fend: D3-DF
+    name: Honey credentials file
+    status: built
+    techniques: [T1552.001, T1083]
+    telemetry: Security 4663 with a SACL
+  - kind: service
+    d3fend: D3-DNR
+    name: Decoy network service
+    status: built
+    techniques: [T1046, T1110.001]
+    telemetry: OpenCanary records
+  - kind: directory_object
+    d3fend: D3-DUC
+    name: Honey account attribute read
+    status: planned
+    techniques: [T1087.002]
+    telemetry: Security 4662 (an operation was performed on an object) on the domain controllers, through a SACL on the decoy account that audits reads of its attributes
+    log_source_mapped: true
+    red_test_produces: true
+    missing: The 4662 fields (ObjectName, ObjectType, Properties, OperationType) in tools/fields.yml, and the SACL in Deploy-RasdDecoys.ps1; the red test ldap_enumeration already reads every account's attributes, the decoys' included
+    next: A windows/security rule on 4662 for the decoy's object, the AD reconnaissance item of the roadmap, which turns the T1087.002 backlog entry into a detection
+  - kind: document_beacon
+    d3fend: D3-DF
+    name: Document beacon
+    status: planned
+    techniques: [T1005, T1039]
+    telemetry: Web access log of the lab web server (webserver), a GET of a per-document token when the decoy document is opened
+    log_source_mapped: true
+    red_test_produces: false
+    missing: A red test step that opens the document, and the token in the decoy document
+    next: A decoy document whose remote image is a per-document URL on the lab web server, and a webserver rule on the token path
+  - kind: credential_manager
+    d3fend: D3-DUC
+    name: Honey credential in Windows Credential Manager
+    status: planned
+    techniques: [T1555.004]
+    telemetry: Security 5379 (Credential Manager credentials were read) on the host that holds it
+    log_source_mapped: true
+    red_test_produces: false
+    missing: The 5379 fields in tools/fields.yml and a red test step that enumerates the vault (cmdkey /list, vaultcmd)
+    next: A windows/security rule on 5379 for the decoy TargetName, after the fields are added
+  - kind: share
+    d3fend: D3-DNR
+    name: Decoy SMB share on a Windows server
+    status: planned
+    techniques: [T1135, T1039]
+    telemetry: Security 5140, 5145 (a network share object was accessed) on the server
+    log_source_mapped: true
+    red_test_produces: false
+    missing: The 5140/5145 fields (ShareName, RelativeTargetName) in tools/fields.yml and a red test step that lists the share
+    next: A windows/security rule on 5145 for the decoy share, with the client address for evidence
+  - kind: cloud_token
+    d3fend: D3-DUC
+    name: Canary cloud access key
+    status: planned
+    techniques: [T1552.001, T1078.004]
+    telemetry: Cloud audit log (an API call made with the decoy key)
+    log_source_mapped: false
+    red_test_produces: false
+    missing: A cloud audit log source, which RASD does not map yet
+    next: After the cloud data domain of the roadmap exists

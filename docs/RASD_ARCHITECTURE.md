@@ -13,6 +13,7 @@
 RASD
 ├── red/        Offensive validation: one test.yml per test, runners, telemetry exporter
 ├── detect/     Detections, correlations, ATT&CK coverage, Engineering and Operational Scores, evasion baseline, risk conditions
+├── deceive/    RASD-Deceive: the decoy inventory, the deployment and health-check scripts, the decoy host's configuration
 ├── dfir/       Playbooks, investigation queries, templates, models
 ├── intel/      CTI templates, technique and actor maps, worked analysis, outputs
 ├── purple/     Scenarios and the generated validation, evidence and latency matrices
@@ -35,6 +36,12 @@ flowchart TB
         TY[test.yml] --> RD[red.py] --> RG[README · expected telemetry · sample output · test.json]
         TJ[test.json] --> RUN[Invoke-RasdEmulation.ps1 / run_red.py] --> RES[emulation-results.json]
         RUN --> EXP[Export-LabTelemetry.ps1] --> LOGS[lab-export.jsonl]
+    end
+    subgraph Deceive
+        DY[decoys.yml] --> DC[deceive.py] --> DCAT[deceive/README catalogue]
+        DY -. identities .-> R
+        DY -. identities .-> TY
+        DY -. identities .-> DEP[Deploy-RasdDecoys.ps1 · Test-RasdDecoys.ps1 · opencanary/settings.json]
     end
     subgraph Detect
         R[rule.yml] --> E[sigma_engine.py]
@@ -69,6 +76,7 @@ flowchart TB
 | `overlap.py` | Which detections fire on the same events? |
 | `tune.py` | What does a proposed filter hide, and what noise does it remove? |
 | `doctor.py` | Is a log export ready for the rules (fields present, aliases, truncation)? |
+| `deceive.py` | Do the decoys of `deceive/decoys.yml` agree with everything built on them: each identity a value of its rule and present in a true positive, the red test triggering the detection, the decoy host's rule listing exactly the event codes of the modules the inventory enables and its OpenCanary configuration enabling exactly those, the lures pointing at decoys that exist, the catalogue current? `--rename` adopts your own identities everywhere so the proofs are about your decoys; `--gaps` ranks the decoy classes not built |
 
 ### Operations tools
 | Tool | Purpose |
@@ -96,10 +104,10 @@ flowchart TB
    2. unit tests (engine, converter, every tool; the PowerShell tests run when `pwsh` is installed)
    3. detection tests, mutation tests
    4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), certify `--check` (every rule compiled exactly, both constructed events confirmed by the engine, every behaviour variant as its spec expects, pages current), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
-   5. tune `--check`, red `--check`, Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
-   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the Splunk app, the profiles README, the public data pages, the certify pages, chain (matrices, metrics, intel maps, facts blocks)
+   5. tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
+   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, chain (matrices, metrics, intel maps, facts blocks)
    7. chain `--check` and link check
-3. detection tests as JUnit, the PowerShell and shell parse checks of every red script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
+3. detection tests as JUnit, the PowerShell and shell parse checks of every red and deception script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
 4. **drift check**: any generated file that differs from what the sources produce fails the build
 
 A second job runs lint, unit tests, detection tests, mutations, rule proofs and parity on Python 3.10 (the oldest supported version) and 3.13.

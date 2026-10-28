@@ -1,0 +1,39 @@
+{
+  "id": "honey_account_use",
+  "name": "Honey account use - try the decoy credential, request the decoy's service ticket",
+  "platform": "active_directory",
+  "technique": "T1078.002",
+  "runner": "powershell",
+  "steps": [
+    {
+      "id": "bind_as_honey_account",
+      "name": "One LDAP bind as the honey account with a wrong password",
+      "script": "emulate_honey_account_bind.ps1",
+      "detections": [
+        "T1078.002_honey_account_authentication"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    },
+    {
+      "id": "request_honey_spn_ticket",
+      "name": "Request a service ticket for the honey SPN account (no export, no cracking)",
+      "script": "emulate_honey_spn_request.ps1",
+      "detections": [
+        "T1558.003_honey_spn_ticket_request"
+      ],
+      "needs_admin": null,
+      "opt_in": null,
+      "parameters": null,
+      "correlations": [],
+      "bind": {}
+    }
+  ],
+  "scripts": {
+    "cleanup": "cleanup.ps1",
+    "collect": "collect_artifacts.ps1"
+  }
+}

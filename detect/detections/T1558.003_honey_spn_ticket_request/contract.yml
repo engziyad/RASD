@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1558.003_honey_spn_ticket_request
+name: Deception - Service Ticket Requested for a Honey SPN Account
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1558.003
+related_techniques: []
+data_contract:
+  required_logsource:
+    product: windows
+    service: security
+  required_events:
+  - Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations, success and failure)
+  required_fields:
+  - EventID
+  - ServiceName
+  optional_fields:
+  - TargetUserName
+  - TicketEncryptionType
+  - Status
+  - IpAddress
+  telemetry_risk:
+    dc_security_log_not_forwarded: critical
+    kerberos_ticket_auditing_disabled: critical
+    decoy_spn_account_not_deployed: critical
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - Roasting tools that request tickets only for hand-picked SPNs (a known server's MSSQLSvc) never ask for the decoy; the RC4 rule and the volume correlation cover the targeted case
+  - An attacker who recognises the decoy - an SPN whose host does not resolve, a service account that never logged on - and skips it; keep the SPN host in DNS and the account's logon history fresh
+  - A domain controller whose Security log is not forwarded, or Kerberos Service Ticket Operations auditing off
+  - Decoys that drift from the inventory, a renamed or removed account stops alerting silently (rasd deceive --check compares inventory, rule and tests)
+coverage_depth:
+  level: high
+  reason: Every service ticket request for the decoy is read, with any encryption type, any status and any source, including the domain controller itself
+risk_model:
+  base_score: 85
+  increase_if:
+  - condition: outside_business_hours
+    add: 10
+  - condition: user_is_privileged
+    add: 5
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 40
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Confirm the service account is a decoy in deceive/decoys.yml and that no Active Directory assessment was declared for the time
+  - Resolve IpAddress to the requesting host and identify the requesting account (TargetUserName)
+  - Count the distinct SPNs that host requested in the same ten minutes - the decoy's ticket is usually one of many
+  escalate_if:
+  - The requesting host is a workstation
+  - Several distinct SPNs were requested from the host in minutes (Kerberoasting in progress)
+  - The decoy's ticket was requested with RC4 while the account allows AES (a deliberate downgrade)
+response:
+  l1_action: Confirm the decoy is in the inventory and that no declared assessment explains the request; open an incident otherwise
+  l2_action: Pull every 4769 from the requesting host in the last hour, the LDAP SPN enumeration before them, and the logons of the requesting account; identify the tool from the process telemetry of the host
+  ir_action: Rotate the passwords of every real service account roasted in the same burst, isolate the requesting host, and keep the decoy in place
+  evidence:
+  - The 4769 event for the decoy, with the requesting account, host and encryption type
+  - All 4769 events from the same host in the surrounding hour (the roasting burst)
+  - LDAP queries for servicePrincipalName from the host, if collected
+  - Process telemetry of the requesting host around the request
+  containment:
+  - Rotate the passwords of the real service accounts requested in the same burst
+  - Isolate the requesting host
+  - Keep the decoy; review its lure and record the touch in the deception log
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook
+  - decoy inventory

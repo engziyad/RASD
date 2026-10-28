@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=../../../schemas/contract.schema.json
+detection_id: T1046_decoy_service_interaction
+name: Deception - Interaction With a Decoy Network Service
+maturity: siem-ready
+owner: detection-engineering
+primary_technique: attack.t1046
+related_techniques:
+- attack.t1110.001
+data_contract:
+  required_logsource:
+    product: opencanary
+    service: honeypot
+  required_events:
+  - OpenCanary JSON records of the decoy host (opencanary.log, one JSON object per line) forwarded to the SIEM, for the modules the inventory enables (ftp, ssh, telnet, http, smb, mssql, rdp, vnc, portscan)
+  required_fields:
+  - logtype
+  - node_id
+  - src_host
+  optional_fields:
+  - dst_host
+  - dst_port
+  - src_port
+  - utc_time
+  - logdata.USERNAME
+  - logdata.PASSWORD
+  - logdata.PATH
+  - logdata.USERAGENT
+  - logdata.FILENAME
+  telemetry_risk:
+    decoy_log_not_forwarded: critical
+    decoy_host_down: critical
+    portscan_module_without_kernel_log: medium
+detection_logic:
+  type: single-event
+  confidence: high
+  severity: high
+  expected_noise: low
+  blind_spots:
+  - A scan that skips the decoy's address, or probes only ports the decoy does not listen on and the port scan module does not see (the module reads the kernel's SYN log; without it, only connections to enabled services are recorded)
+  - An attacker who fingerprints the decoy (the OpenCanary SSH banner, a NAS login page on a host with no other role) and moves on; the inventory sets banners and skins that fit the network, and `rasd deceive --rename` adopts your host identity
+  - Reconnaissance that never touches the network - reading a host list from a file share, a CMDB or DNS - produces no decoy record
+  - 'The decoy host itself: if it is down or its log is not forwarded, nothing is recorded, and nothing says so until Test-RasdDecoys.ps1 or the SIEM''s heartbeat check runs'
+coverage_depth:
+  level: medium
+  reason: Every interaction with the enabled decoy services from any client is read; traffic to other hosts and passive reconnaissance are not
+risk_model:
+  base_score: 75
+  increase_if:
+  - condition: outside_business_hours
+    add: 10
+  - condition: host_is_critical
+    add: 5
+  decrease_if:
+  - condition: approved_admin_activity
+    subtract: 40
+validation:
+  mutation_tests_required: true
+  lab_emulation_available: true
+  siem_backends:
+  - splunk
+  - kql
+triage:
+  first_checks:
+  - Confirm node_id is a decoy in deceive/decoys.yml and that no network scan or asset discovery run was declared for the time
+  - Resolve src_host to a host and its logged-on user (DHCP lease, 4624 events, EDR)
+  - Count the decoy records from that source in the last hour and which services it touched; a login attempt (logtype 2000, 3001, 4002, 6001, 9001) carries the credential it tried in logdata
+  escalate_if:
+  - The source is a workstation or a server with no network management role
+  - A login attempt used a real account name of the organisation
+  - Several decoys, or several services of the decoy, were touched from the same source
+response:
+  l1_action: Confirm the decoy is in the inventory and that no declared scan explains the source; open an incident otherwise
+  l2_action: Build the source host's timeline (process creation, network connections to other hosts, logons) around the first decoy record, and check whether the credentials tried on the decoy belong to real accounts
+  ir_action: Isolate the source host, reset the credentials that were tried if they are real, and keep the decoy running - its log is the evidence
+  evidence:
+  - The decoy records from the source, in order, with the services and credentials tried
+  - The source host's process and network telemetry around the first record
+  - Logons on the source host before the scan
+  - The decoy's configuration and the inventory entry (which services were enabled when)
+  containment:
+  - Isolate the source host
+  - Reset any real credential tried against the decoy
+  - Keep the decoy running; record the touch in the deception log
+governance:
+  evidence_type:
+  - detection rule
+  - test results
+  - generated SIEM query
+  - ATT&CK mapping
+  - response playbook
+  - decoy inventory

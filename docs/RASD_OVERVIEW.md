@@ -22,8 +22,9 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | Who uses this technique against organisations like ours? | Actor tradecraft map, CTI-to-detection reports |
 | Was it ever proven in a real environment? | Offensive tests, telemetry export, `rasd evidence`, Operational Score |
 | What can we not see? | Blind spots, coverage depth, measured gaps in the validation matrix |
+| What catches the attacker who evades every rule? | RASD-Deceive (`rasd deceive`): decoys nobody legitimate touches, read by rules proven like every other, and the inventory that keeps them real |
 
-## The five pillars
+## The six pillars
 
 | Pillar | Folder | Purpose |
 |---|---|---|
@@ -32,12 +33,14 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | RASD-DFIR | [`dfir/`](../dfir/) | Investigation playbooks, evidence, timelines, response |
 | RASD-Intel | [`intel/`](../intel/) | CTI turned into detection opportunities and hunts |
 | RASD-Purple | [`purple/`](../purple/) | Attack-to-defense validation across the whole chain |
+| RASD-Deceive | [`deceive/`](../deceive/) | Decoys as tested detections: one inventory of honey accounts, a honey SPN, honey files and a decoy host, held in step with the rules that read them ([design](DECEPTION.md)) |
 
 ## Workflow
 
 ```text
 Red behavior generates telemetry.
 Telemetry drives detection logic.
+Decoys turn the first touch into a signal.
 Detection triggers investigation.
 Investigation produces evidence.
 CTI gives context.

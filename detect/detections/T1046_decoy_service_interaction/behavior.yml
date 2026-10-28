@@ -1,0 +1,108 @@
+# Behaviour spec: an interaction with the decoy host, as OpenCanary records it.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; {l:text} is every spelling
+# the rule's case-insensitive comparison treats as text (where the spec mirrors one of the rule's values).
+behaviour: >-
+  A client on the network probes or connects to one of the decoy services, or tries to log on to one of
+  them. OpenCanary writes one JSON record per interaction with the module's event code (logtype), the
+  decoy's identity (node_id) and the client (src_host). Nothing legitimate talks to the decoy, so any
+  record from a client other than the authorised scanner and the decoy itself is the signal.
+
+sources:
+  - id: opencanary-logger
+    title: thinkst/opencanary, opencanary/logger.py (the LOG_* event codes; sanitizeLog writes node_id, src_host, dst_port and logtype into every record)
+    url: https://github.com/thinkst/opencanary/blob/main/opencanary/logger.py
+  - id: opencanary-docs
+    title: OpenCanary documentation (modules and their alerts)
+    url: https://opencanary.readthedocs.io/en/latest/
+  - id: attack-network-service-discovery
+    title: MITRE ATT&CK, T1046 Network Service Discovery
+    url: https://attack.mitre.org/techniques/T1046/
+
+define:
+  decoy: '{l:lab-canary-01}'
+  connection_codes: '2001|3000|3002|3003|4000|4001|5000|6002|12001|14001'
+  login_codes: '2000|3001|4002|6001|9001|9002'
+  scan_codes: '5001|5002|5003|5004|5005'
+  housekeeping: '100[0-6]'
+  excluded_client: '127\.0\.0\.1|::1|10\.0\.0\.9'
+
+variants:
+  - name: Connection to a decoy service
+    why: >-
+      The FTP, web, SSH, SMB, Telnet, VNC and RDP modules log a record when a client connects, fetches the login
+      page or opens a file on the share [opencanary-logger] [opencanary-docs]; reaching a service nobody
+      advertised is network service discovery [attack-network-service-discovery].
+    sources: [opencanary-logger, opencanary-docs, attack-network-service-discovery]
+    event:
+      node_id: '{decoy}'
+      logtype: '{connection_codes}'
+      src_host: {not: '{excluded_client}', missing: true}
+    examples:
+      - node_id: lab-canary-01
+        logtype: 4000
+        src_host: 10.0.0.21
+        dst_port: 22
+
+  - name: Login attempt on a decoy service
+    why: The FTP, web, SSH, Telnet and MSSQL modules log every credential presented to them [opencanary-logger] [opencanary-docs].
+    sources: [opencanary-logger, opencanary-docs]
+    event:
+      node_id: '{decoy}'
+      logtype: '{login_codes}'
+      src_host: {not: '{excluded_client}', missing: true}
+    examples:
+      - node_id: lab-canary-01
+        logtype: 4002
+        src_host: 10.0.0.21
+        dst_port: 22
+
+  - name: Port scan of the decoy
+    why: The port scan module reads the kernel's log of SYN packets and Nmap probes to closed ports, and writes the ports as strings [opencanary-logger].
+    sources: [opencanary-logger]
+    event:
+      node_id: '{decoy}'
+      logtype: '{scan_codes}'
+      src_host: {not: '{excluded_client}', missing: true}
+    examples:
+      - node_id: lab-canary-01
+        logtype: 5001
+        src_host: 10.0.0.21
+        dst_port: '8443'
+
+  - name: The decoy's own records
+    expect: quiet
+    why: Start-up, messages, debug, errors, the heartbeat, configuration saves and the example module write records with codes 1000 to 1006 and no client [opencanary-logger].
+    reason: Only the interaction codes of the enabled modules are selected.
+    sources: [opencanary-logger]
+    event:
+      node_id: '{decoy}'
+      logtype: '{housekeeping}'
+
+  - name: Modules the inventory does not enable, and the LLMNR responder
+    expect: quiet
+    why: Records of modules that are not enabled on this decoy cannot be produced by it; the LLMNR responder's records (19001) are name resolution chatter from Windows hosts, not an interaction with a service [opencanary-logger].
+    reason: The rule lists the codes of the enabled modules; rasd deceive --check keeps the list and the inventory in step.
+    sources: [opencanary-logger]
+    event:
+      node_id: '{decoy}'
+      logtype: '7001|8001|9003|10001|11001|13001|15001|16001|17001|1800[1-5]|19001|20001|9900[0-9]'
+
+  - name: The authorised scanner and the decoy itself
+    expect: quiet
+    why: The lab's vulnerability scanner probes every host on its schedule, and the decoy's health check connects to its own services over loopback.
+    reason: filter_authorised_scanner and filter_loopback, each recorded in tuning.yml.
+    sources: [opencanary-docs]
+    event:
+      node_id: '{decoy}'
+      logtype: '{connection_codes}|{login_codes}|{scan_codes}'
+      src_host: '{excluded_client}'
+
+  - name: Another canary
+    expect: quiet
+    why: A test canary that is not in the inventory writes the same records under its own node_id; the inventory decides which decoys alert.
+    reason: node_id must be the inventory's decoy.
+    sources: [opencanary-logger]
+    event:
+      node_id: {not: '{decoy}', missing: true}
+      logtype: '{connection_codes}|{login_codes}|{scan_codes}'

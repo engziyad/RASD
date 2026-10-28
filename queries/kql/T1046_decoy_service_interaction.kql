@@ -1,0 +1,3 @@
+// Deception - Interaction With a Decoy Network Service | bc5d7997-cc24-4d89-b28a-2b9811598f1c
+OpenCanary
+| where ((node_id =~ @"lab-canary-01" and (logtype == 2000 or logtype == 2001 or logtype == 3000 or logtype == 3001 or logtype == 3002 or logtype == 3003 or logtype == 4000 or logtype == 4001 or logtype == 4002 or logtype == 5000 or logtype == 5001 or logtype == 5002 or logtype == 5003 or logtype == 5004 or logtype == 5005 or logtype == 6001 or logtype == 6002 or logtype == 9001 or logtype == 9002 or logtype == 12001 or logtype == 14001)) and not((src_host =~ @"10.0.0.9" or (src_host =~ @"127.0.0.1" or src_host =~ @"::1"))))

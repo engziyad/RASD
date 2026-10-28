@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (service_accounts.xlsx read over the share).
+mutations:
+  - name: other_share_root
+    description: The same decoy stored under another local path on another server
+    base: 1
+    set: {ObjectName: "C:\\Data\\Shares\\IT\\Passwords\\service_accounts.xlsx", Computer: "LAB-FS02.lab.local"}
+    should_match: true
+  - name: path_in_another_case
+    base: 1
+    set: {ObjectName: "d:\\shares\\it\\passwords\\Service_Accounts.XLSX"}
+    should_match: true
+  - name: read_bundled_with_other_rights
+    description: AccessList lists several rights of one handle operation
+    base: 1
+    set: {AccessList: "%%4416\r\n\t\t\t\t%%4423\r\n\t\t\t\t%%1541", AccessMask: "0x100081"}
+    should_match: true
+  - name: write_instead_of_read
+    base: 1
+    set: {AccessList: "%%4417", AccessMask: "0x2"}
+    should_match: true
+  - name: delete_of_the_decoy
+    base: 1
+    set: {AccessList: "%%1537", AccessMask: "0x10000"}
+    should_match: true
+  - name: second_decoy_file
+    base: 1
+    set: {ObjectName: "D:\\Shares\\IT\\Tools\\credentials_backup.kdbx"}
+    should_match: true
+  - name: third_decoy_file
+    base: 1
+    set: {ObjectName: "D:\\Shares\\Public\\Onboarding\\vpn_and_wifi_codes.txt"}
+    should_match: true
+  - name: read_by_a_user_process_on_the_server
+    base: 1
+    set: {ProcessName: "C:\\Windows\\explorer.exe", ProcessId: "0x1c40"}
+    should_match: true
+  - name: attribute_read_only_not_matched
+    description: Explorer listing the folder reads attributes, not data
+    base: 1
+    set: {AccessList: "%%4423", AccessMask: "0x80"}
+    should_match: false
+  - name: another_file_in_the_folder_not_matched
+    base: 1
+    set: {ObjectName: "D:\\Shares\\IT\\Passwords\\readme.txt"}
+    should_match: false
+  - name: machine_account_still_filtered
+    base: 1
+    set: {SubjectUserName: "LAB-FS01$", SubjectUserSid: "S-1-5-18"}
+    should_match: false
+  - name: search_indexer_still_filtered
+    base: 1
+    set: {ProcessName: "C:\\Windows\\System32\\SearchProtocolHost.exe"}
+    should_match: false
+  - name: handle_request_is_not_the_access
+    base: 1
+    set: {EventID: 4656}
+    should_match: false

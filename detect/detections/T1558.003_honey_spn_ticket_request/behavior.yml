@@ -1,0 +1,71 @@
+# Behaviour spec: a service ticket requested for the honey SPN account, as the domain controller records it.
+# rasd certify proves the rule fires on every event of each variant, or prints one that slips past
+# (docs/CERTIFY.md). Patterns are Python regular expressions matched in full; {l:text} is every spelling
+# the rule's case-insensitive comparison treats as text (where the spec mirrors one of the rule's values).
+behaviour: >-
+  The domain controller logs a service ticket request (event 4769) whose service is the decoy account:
+  issued or refused, with RC4, AES or DES, from any client including the domain controller itself. No
+  real service runs under that account, so the request can only come from someone collecting tickets.
+
+sources:
+  - id: event-4769
+    title: Microsoft Learn, 4769(S, F) A Kerberos service ticket was requested (Service Name is the account the SPN belongs to; encryption types 0x1, 0x3, 0x11, 0x12, 0x17, 0x18; Failure Code 0x0 on success)
+    url: https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769
+  - id: attack-kerberoasting
+    title: MITRE ATT&CK, T1558.003 Kerberoasting (tools request tickets for the SPNs they enumerate)
+    url: https://attack.mitre.org/techniques/T1558/003/
+
+define:
+  decoy: '{l:svc_sqlreport}'
+  decoy_any_form: '(?:{decoy})(?:@[\s\S]*)?'
+
+variants:
+  - name: Service ticket requested for the decoy account, any encryption, any outcome
+    why: >-
+      Kerberoasting tools request a ticket for every SPN they enumerate [attack-kerberoasting]; the domain
+      controller writes the SPN's account in Service Name, the encryption type the KDC chose and the result
+      code [event-4769]. The decoy's ticket is requested with the real ones, so the type and the outcome are
+      not what matters.
+    sources: [event-4769, attack-kerberoasting]
+    event:
+      EventID: '4769'
+      ServiceName: '{decoy}'
+    examples:
+      - EventID: 4769
+        ServiceName: svc_sqlreport
+        TicketEncryptionType: '0x12'
+        Status: '0x0'
+        IpAddress: '::ffff:10.0.0.21'
+      - EventID: 4769
+        ServiceName: svc_sqlreport
+        TicketEncryptionType: '0x17'
+        Status: '0x1b'
+        IpAddress: '::1'
+
+  - name: Decoy account written with its realm
+    why: Some pipelines and tools write the service account as account@REALM; the rule accepts any suffix after the @.
+    sources: [event-4769]
+    event:
+      EventID: '4769'
+      ServiceName: '(?:{decoy})@[\s\S]*'
+    examples:
+      - EventID: 4769
+        ServiceName: svc_sqlreport@LAB.LOCAL
+
+  - name: Service tickets for every other service
+    expect: quiet
+    why: Real service accounts, machine accounts and krbtgt are requested all day; names that merely start or end like the decoy's are ordinary too.
+    reason: ServiceName must equal the decoy, or the decoy followed by @ and a realm.
+    sources: [event-4769]
+    event:
+      EventID: '4769'
+      ServiceName: {not: '{decoy_any_form}', missing: true}
+
+  - name: Other Kerberos events that name the decoy
+    expect: quiet
+    why: A TGT request by the decoy account itself (the honey account rule's event), a ticket renewal and a pre-authentication failure carry the name without being a service ticket request.
+    reason: Only event 4769 is selected.
+    sources: [event-4769]
+    event:
+      EventID: '4768|4770|4771'
+      ServiceName: '{decoy_any_form}'

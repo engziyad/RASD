@@ -22,6 +22,13 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 | Sysmon (target) | 1 · ProcessCreate | cmd.exe started by the session host to run the remote command | yes |
 | Sysmon (source) | 3 · NetworkConnect | Connection to the target on TCP 5985 (HTTP) or 5986 (HTTPS) | no |
 
+## [T1046](https://attack.mitre.org/techniques/T1046/)
+
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| OpenCanary (decoy host) | 4000 · SSH new connection | The TCP connection to the decoy's SSH service, with the client address | yes |
+| OpenCanary (decoy host) | 3001 · HTTP POST login attempt | The credential guess on the portal; logdata.USERNAME carries the run marker, which binds the record to this run | yes |
+
 ## [T1053.003](https://attack.mitre.org/techniques/T1053/003/)
 
 | Source | Event | What it shows | Rule uses it |
@@ -54,6 +61,14 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 | auditd | EXECVE · sh -c, base64 -d, sh | The decode-and-pipe chain, one EXECVE record per process | no |
 | auditd | EXECVE · /tmp/&lt;marker&gt;.sh | Execution of a file under /tmp | no |
 | Sysmon for Linux | 1 · ProcessCreate / 11 · FileCreate | Process creation with the full command line; file creation in /tmp | yes |
+
+## [T1078.002](https://attack.mitre.org/techniques/T1078/002/)
+
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Security (domain controller) | 4771 · Kerberos pre-authentication failed | The wrong password for the decoy, refused by the KDC (Failure Code 0x18); on NTLM fallback the DC logs 4776 and 4625 instead | yes |
+| Security (domain controller) | 4776 · The computer attempted to validate the credentials | NTLM validation of the decoy when the bind falls back to NTLM (Error Code 0xC000006A) | yes |
+| Security (domain controller) | 4769 · A Kerberos service ticket was requested | The ticket request for the honey SPN account, issued (0x0) or refused, with whatever encryption type the KDC chose | yes |
 
 ## [T1083](https://attack.mitre.org/techniques/T1083/)
 
@@ -104,6 +119,13 @@ The telemetry each technique leaves, from the offensive tests' expected telemetr
 | Source | Event | What it shows | Rule uses it |
 |---|---|---|---|
 | Sysmon | 13 · RegistryEvent (value set) | The Run value written by powershell.exe | yes |
+
+## [T1552.001](https://attack.mitre.org/techniques/T1552/001/)
+
+| Source | Event | What it shows | Rule uses it |
+|---|---|---|---|
+| Security | 4663 · An attempt was made to access an object | The read of the decoy through its audit entry, logged on the host that holds the file | yes |
+| Security | 4656 · A handle to an object was requested | The handle open that precedes the read (when Audit Handle Manipulation is on); the rule reads 4663, not this | no |
 
 ## [T1558.003](https://attack.mitre.org/techniques/T1558/003/)
 

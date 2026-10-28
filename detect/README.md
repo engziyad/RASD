@@ -37,6 +37,7 @@ Acceptance criteria: [docs/DETECTION_ACCEPTANCE_CRITERIA.md](../docs/DETECTION_A
 
 | Detection | ATT&CK | Platform |
 |---|---|---|
+| [Deception - Authentication Attempt With a Honey Account](detections/T1078.002_honey_account_authentication/) | [T1078.002](https://attack.mitre.org/techniques/T1078/002/) | Windows |
 | [Crontab Installed From Standard Input or a File](detections/T1053.003_crontab_noninteractive_install/) | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | Linux |
 | [Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets](detections/T1053.005_powershell_scheduled_task_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | Windows |
 | [Scheduled Task Created With Suspicious Action](detections/T1053.005_schtasks_suspicious_creation/) | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | Windows |
@@ -49,7 +50,10 @@ Acceptance criteria: [docs/DETECTION_ACCEPTANCE_CRITERIA.md](../docs/DETECTION_A
 | [Security Audit Log Cleared (Event 1102)](detections/T1685.005_security_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Windows |
 | [Windows Event Log Cleared (System Event 104)](detections/T1685.005_system_log_cleared/) | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) | Windows |
 | [Suspicious Process Access to LSASS Memory](detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | Windows |
+| [Deception - Honey Credentials File Opened](detections/T1552.001_honey_file_access/) | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) | Windows |
+| [Deception - Service Ticket Requested for a Honey SPN Account](detections/T1558.003_honey_spn_ticket_request/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Windows |
 | [Kerberoasting - RC4 Service Ticket Requested for User Account](detections/T1558.003_kerberoasting_rc4_tgs/) | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Windows |
+| [Deception - Interaction With a Decoy Network Service](detections/T1046_decoy_service_interaction/) | [T1046](https://attack.mitre.org/techniques/T1046/) | opencanary |
 | [Suspicious Child Process of a WinRM Session Host](detections/T1021.006_wsmprovhost_suspicious_child/) | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | Windows |
 
 ## Correlation detections

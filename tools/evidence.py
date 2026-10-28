@@ -81,7 +81,7 @@ from correlation import (CorrelationError, evaluate as evaluate_correlation, gro
                          load_correlations, value_reader)
 from convert import logsource_key
 import profiles
-from replay import HOST_FIELDS, NETWORK_EVENTS, USER_FIELDS, first, parse_time, route
+from replay import HOST_FIELDS, USER_FIELDS, first, is_network, parse_time, route
 from sigma_engine import SigmaError, compile_rule
 from validate import rule_fields
 
@@ -157,7 +157,7 @@ def expected_detections(step: dict, dets) -> list:
     return [d for d in dets if d.technique == step.get("technique")]   # results without a detections list
 
 
-CLIENT_FIELDS = ("IpAddress", "ClientAddress", "SourceAddress", "SourceNetworkAddress", "c-ip")
+CLIENT_FIELDS = ("IpAddress", "ClientAddress", "SourceAddress", "SourceNetworkAddress", "c-ip", "src_host")
 WORKSTATION_FIELDS = ("WorkstationName", "Workstation")
 
 
@@ -187,11 +187,7 @@ def on_host(ev: dict, step: dict) -> tuple[bool, str]:
     logged_on = first(ev, HOST_FIELDS)
     if not names or short(logged_on) in names:
         return True, ""
-    try:
-        eid = int(ev.get("EventID", 0))
-    except (TypeError, ValueError):
-        eid = 0
-    if eid not in NETWORK_EVENTS:
+    if not is_network(ev):
         return False, ""
     client = norm_ip(first(ev, CLIENT_FIELDS))
     if client and client in {norm_ip(i) for i in step.get("host_ips") or []}:
@@ -221,12 +217,8 @@ def from_host(ev: dict, step: dict) -> bool:
     """The activity came FROM the emulation host: a network event (4625, 4771 ...) whose client is
     the host, or a local event logged on it. Unlike on_host, a network event logged on the host
     about another client - someone spraying AT the host - does not count."""
-    try:
-        eid = int(ev.get("EventID", 0))
-    except (TypeError, ValueError):
-        eid = 0
     client, ws = norm_ip(first(ev, CLIENT_FIELDS)), first(ev, WORKSTATION_FIELDS)
-    if eid in NETWORK_EVENTS and (client or ws != "-"):
+    if is_network(ev) and (client or ws != "-"):
         return is_host(client, step) or (ws != "-" and is_host(ws, step))
     names = host_names(step)
     return not names or short(first(ev, HOST_FIELDS)) in names

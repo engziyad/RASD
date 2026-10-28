@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../../schemas/tuning.schema.json
+detection_id: T1046_decoy_service_interaction
+expected_noise: low
+noise_sources:
+- Network management or asset discovery tools that sweep every address, when their scanner is not the filtered one
+- A new administrator who connects to the decoy because it looks like a real server
+tunings:
+- id: authorised_scanner
+  status: applied
+  selection: filter_authorised_scanner
+  reason: The lab's vulnerability scanner (10.0.0.9) probes every host on its schedule and would alert on every run; the address is the scanner's and only the scanner's. Replace it with yours when you adopt the inventory.
+- id: loopback
+  status: applied
+  selection: filter_loopback
+  reason: The decoy's own health check connects to its services over loopback.
+- id: monitoring_poller
+  status: proposed
+  scope: environment
+  residual_risk: medium
+  reason: A network monitoring system polls every host's SSH port once a minute to measure availability.
+  filter:
+    src_host: 10.0.0.12
+  alternative: Exclude the decoy's address from the monitoring system's inventory instead, so the poller never touches it and nothing on that host is hidden.
+never_tune:
+- 'Never filter by destination port or by logtype: the decoy exists to record every service someone touches.'
+- 'Never filter a whole subnet: one filtered address is one blind host; a subnet is a blind network.'
+- 'Never drop the decoy from the rule without removing it from deceive/decoys.yml; rasd deceive --check fails on the difference.'
+review:
+  owner: detection-engineering
+  cadence_days: 90

@@ -1,0 +1,81 @@
+id: honey_file_access
+name: Honey file access - read the decoy credentials spreadsheet
+platform: windows
+mitre:
+  technique: T1552.001
+  technique_name: "Unsecured Credentials: Credentials In Files"
+  related: [T1083]
+  tactics: [credential-access]
+objective: >
+  Do what a search for credentials in files ends with: open the decoy spreadsheet of service
+  accounts that RASD-Deceive plants in a Passwords folder, on the lab host that holds it, and
+  prove that the host's 4663 (ReadData through the decoy's audit entry) fires the honey file
+  rule. The file is read, not changed; its contents are the lures of the other decoys.
+prerequisites:
+  - Windows lab host (workstation or file server) with the decoy files deployed on it
+  - "deceive\\Deploy-RasdDecoys.ps1 -LabConfirmed -Files: creates C:\\Shares\\IT\\Passwords\\service_accounts.xlsx (and the other two decoys), sets the audit entry on each, and enables the File System audit subcategory (Success)"
+  - "Audit policy: Object Access > Audit File System = Success; the step warns when it is off"
+  - RASD_DECOY_ROOT when the decoys live under another root than C:\Shares
+safety:
+  - Runs only with -LabConfirmed on a machine its owner marked as a lab (red/lab/README.md, Lab guard)
+  - The decoy is read once and never changed; the step refuses when the file is missing or carries no audit entry
+  - The decoy files hold decoy credentials only (deceive/decoys.yml); nothing real is written into them
+execution:
+  - "Invoke-RasdEmulation.ps1 -Test honey_file_access -LabConfirmed"
+  - The step checks the decoy's audit entry and the audit policy, then reads the file once (System.IO.File ReadAllBytes)
+  - collect_artifacts.ps1 saves the decoy's audit entries and the File System audit policy
+  - "Export-LabTelemetry.ps1 -LogName Security -EventId 4663 -Since <start> -OutFile lab-export.jsonl, then rasd evidence"
+steps:
+  - id: read_honey_file
+    name: Read the decoy service-accounts spreadsheet
+    script: emulate_honey_file_read.ps1
+    detections: [T1552.001_honey_file_access]
+scripts:
+  cleanup: cleanup.ps1
+  collect: collect_artifacts.ps1
+telemetry:
+  - source: Security
+    event: "4663 · An attempt was made to access an object"
+    description: The read of the decoy through its audit entry, logged on the host that holds the file
+    fields:
+      ObjectType: 'File'
+      ObjectName: 'C:\Shares\IT\Passwords\service_accounts.xlsx'
+      AccessList: '%%4416 (ReadData)'
+      SubjectUserName: '<lab user>'
+      ProcessName: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+    used_by: [T1552.001_honey_file_access]
+  - source: Security
+    event: "4656 · A handle to an object was requested"
+    description: The handle open that precedes the read (when Audit Handle Manipulation is on); the rule reads 4663, not this
+    fields:
+      ObjectName: 'C:\Shares\IT\Passwords\service_accounts.xlsx'
+logging:
+  - "Host: Audit File System = Success (Object Access), and an audit entry (SACL) on each decoy file"
+  - "Security log of the file servers forwarded to the SIEM"
+dfir_artifacts:
+  - artifact: Decoy audit entries and audit policy
+    location: The decoy file's SACL; the host's advanced audit policy
+    collect: collect_artifacts.ps1 saves decoy-file-audit.txt
+    purpose: Shows that 4663 could be written when the file was read
+  - artifact: Access events for the decoys
+    location: Host Security log
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4663} filtered on the decoy paths"
+    purpose: Every data access to the decoys, with the account, process and access type
+  - artifact: Share session of a remote reader
+    location: File server Security log (5140, 5145)
+    collect: "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=5140,5145} around the 4663"
+    purpose: The client address of a reader that came over the share, which 4663 does not carry
+cleanup:
+  actions:
+    - Nothing to remove; the decoy is read, not changed, and stays deployed for the next intruder
+  verify: The decoy file still exists at its path (cleanup.ps1 checks and exits 0)
+sample_output:
+  console: |
+    [T1552.001] Read the decoy service-accounts spreadsheet
+    read 1683 bytes of C:\Shares\IT\Passwords\service_accounts.xlsx as LAB\labuser
+    [cleanup] verified: nothing persisted (the decoy was read, not changed)
+  events:
+    - detection: T1552.001_honey_file_access
+      case: "red: honey file access emulation"
+dfir_playbook: dfir/playbooks/honey_file_access.md
+purple_scenario: purple/scenarios/T1552.001_honey_file.md

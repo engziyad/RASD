@@ -1,0 +1,87 @@
+id: decoy_service_probe
+name: Decoy service probe - connect to the decoy host and guess one credential on its portal
+platform: linux
+mitre:
+  technique: T1046
+  technique_name: "Network Service Discovery"
+  related: [T1110.001]
+  tactics: [discovery]
+objective: >
+  Touch the decoy host the way reconnaissance and a credential guess do: open a TCP connection
+  to its SSH port, as a port scan or an SSH client does, and post one login attempt to its web
+  portal with the run marker as the user name, and prove that the decoy's records fire the
+  decoy service rule. The marker in the recorded user name binds the record to this run.
+prerequisites:
+  - Linux lab host with bash and curl, on the same network as the decoy
+  - "The decoy host running OpenCanary with deceive/opencanary/settings.json (node_id lab-canary-01, ssh and http enabled), and its log forwarded to the SIEM or copied out for evidence"
+  - "--target: the decoy portal's URL (http://10.0.0.40 in the shipped inventory); the lab guard refuses a public address"
+safety:
+  - Runs only with --lab-confirmed on a disposable lab host you own, marked by /etc/rasd-lab-host (red/lab/README.md, Lab guard)
+  - One TCP connection, opened and closed without sending data, and one HTTP POST with a made-up credential; nothing is left anywhere
+  - The target must be a private lab address; the runner refuses public ones
+execution:
+  - "python3 red/run_red.py --test decoy_service_probe --lab-confirmed --target http://10.0.0.40"
+  - "On the decoy host: cp /var/tmp/opencanary.log canary-export.jsonl, copy it to the analysis host, then rasd evidence --results <results>/emulation-results.json --logs canary-export.jsonl"
+  - "bash -c 'exec 3<>/dev/tcp/<decoy>/22' then curl --data-urlencode username=<marker> --data-urlencode password=probe http://<decoy>/index.html"
+steps:
+  - id: probe_decoy_services
+    name: TCP connection to the decoy's SSH port, then one login attempt on its web portal
+    script: probe_decoy.sh
+    parameters: [Target]
+    detections: [T1046_decoy_service_interaction]
+    bind:
+      T1046_decoy_service_interaction: '{marker}'
+scripts:
+  cleanup: cleanup.sh
+telemetry:
+  - source: OpenCanary (decoy host)
+    event: "4000 · SSH new connection"
+    description: The TCP connection to the decoy's SSH service, with the client address
+    fields:
+      node_id: 'lab-canary-01'
+      logtype: '4000'
+      src_host: '<lab host IP>'
+      dst_port: '22'
+    used_by: [T1046_decoy_service_interaction]
+  - source: OpenCanary (decoy host)
+    event: "3001 · HTTP POST login attempt"
+    description: The credential guess on the portal; logdata.USERNAME carries the run marker, which binds the record to this run
+    fields:
+      node_id: 'lab-canary-01'
+      logtype: '3001'
+      src_host: '<lab host IP>'
+      dst_port: '80'
+      logdata.USERNAME: '<marker>'
+      logdata.PATH: '/index.html'
+    used_by: [T1046_decoy_service_interaction]
+logging:
+  - "Decoy host: OpenCanary file logger to /var/tmp/opencanary.log (deceive/opencanary/settings.json), forwarded as the opencanary/honeypot log source"
+  - "Portscan module: iptables LOG rules to the kernel log, as the OpenCanary documentation describes, for SYN and Nmap records"
+dfir_artifacts:
+  - artifact: Decoy records from the client
+    location: /var/tmp/opencanary.log on the decoy host
+    collect: "grep '\"src_host\": \"<client>\"' /var/tmp/opencanary.log"
+    purpose: Every service the client touched, in order, with the credentials it tried
+  - artifact: Client process and connections
+    location: auditd / Sysmon for Linux on the client, or the EDR of a Windows client
+    collect: "ausearch -k exec -ts <first record time>"
+    purpose: Which tool made the connections (nmap, a script, a browser)
+  - artifact: Client logons
+    location: Client host authentication logs (auth.log, Security 4624)
+    collect: "journalctl _COMM=sshd --since <time>"
+    purpose: Who was on the client when it scanned
+cleanup:
+  actions:
+    - Nothing to remove on this host; the decoy keeps its records, which are the evidence
+  verify: cleanup.sh exits 0 after confirming the marker; nothing was written anywhere
+sample_output:
+  console: |
+    [T1046] TCP connection to the decoy's SSH port, then one login attempt on its web portal
+    connected to 10.0.0.40:22 (the decoy logs a new SSH connection)
+    posted one login attempt to http://10.0.0.40/index.html as rasd_1a2b3c4d (HTTP 200)
+    [cleanup] verified: nothing persisted (one connection and one request; the decoy keeps the records)
+  events:
+    - detection: T1046_decoy_service_interaction
+      case: "red: decoy service probe emulation"
+dfir_playbook: dfir/playbooks/decoy_service_interaction.md
+purple_scenario: purple/scenarios/T1046_decoy_service.md

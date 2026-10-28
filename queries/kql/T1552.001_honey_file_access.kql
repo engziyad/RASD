@@ -1,0 +1,8 @@
+// Deception - Honey Credentials File Opened | a9476ede-f9c9-49ac-87c5-5537dc6c1408
+SecurityEvent
+| extend ObjectType = coalesce(tostring(column_ifexists("ObjectType", "")), extract(@'Name="ObjectType">([^<]*)<', 1, EventData))
+| extend ObjectName = coalesce(tostring(column_ifexists("ObjectName", "")), extract(@'Name="ObjectName">([^<]*)<', 1, EventData))
+| extend AccessList = coalesce(tostring(column_ifexists("AccessList", "")), extract(@'Name="AccessList">([^<]*)<', 1, EventData))
+| extend SubjectUserName = coalesce(tostring(column_ifexists("SubjectUserName", "")), extract(@'Name="SubjectUserName">([^<]*)<', 1, EventData))
+| extend ProcessName = coalesce(tostring(column_ifexists("ProcessName", "")), extract(@'Name="ProcessName">([^<]*)<', 1, EventData))
+| where ((EventID == 4663 and ObjectType =~ @"File" and (ObjectName endswith @"\IT\Passwords\service_accounts.xlsx" or ObjectName endswith @"\IT\Tools\credentials_backup.kdbx" or ObjectName endswith @"\Public\Onboarding\vpn_and_wifi_codes.txt") and (AccessList contains @"%%4416" or AccessList contains @"%%4417" or AccessList contains @"%%4418" or AccessList contains @"%%1537")) and not((SubjectUserName endswith @"$" or (ProcessName endswith @"\SearchProtocolHost.exe" or ProcessName endswith @"\SearchIndexer.exe"))))

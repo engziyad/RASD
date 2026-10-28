@@ -1,0 +1,32 @@
+title: Deception - Service Ticket Requested for a Honey SPN Account
+id: ae95a035-3ae6-48b7-8168-384f29612940
+status: test
+description: |
+  Detects any Kerberos service ticket request (Security 4769) for the decoy service account that
+  RASD-Deceive registers with a service principal name no real service answers to
+  (deceive/decoys.yml). Kerberoasting tools enumerate every SPN in the directory and request a
+  ticket for each, so the decoy's ticket is requested together with the real ones - with RC4
+  or with AES, succeeded or refused. Nothing legitimate ever asks for it, so a single 4769 is a
+  high-confidence signal, and it closes the gap the RC4 rule leaves open: AES roasting of a few
+  accounts, which stays under the volume correlation's threshold.
+references:
+  - https://attack.mitre.org/techniques/T1558/003/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4769
+author: Ziyad (github.com/engziyad)
+date: 2026-10-28
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4769
+    ServiceName:              # the honey SPN account of deceive/decoys.yml, any encryption type, any status
+      - 'svc_sqlreport'
+      - 'svc_sqlreport@*'
+  condition: selection
+falsepositives:
+  - A vulnerability scanner or Active Directory assessment tool that requests a ticket for every SPN it finds
+level: high

@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=../../../../schemas/mutation.schema.json
+# Variants of true_positive.jsonl line 1 (failed network logon with svc_backup_adm).
+mutations:
+  - name: upn_form_of_the_decoy
+    description: The account typed as a UPN at a logon prompt
+    base: 1
+    set: {TargetUserName: "svc_backup_adm@LAB.LOCAL"}
+    should_match: true
+  - name: upper_case_upn
+    base: 1
+    set: {TargetUserName: "SVC_BACKUP_ADM@lab.local"}
+    should_match: true
+  - name: second_decoy_account
+    base: 1
+    set: {TargetUserName: "adm_helpdesk_tier2"}
+    should_match: true
+  - name: kerberos_preauth_failure_instead_of_ntlm
+    description: The same wrong password tried over Kerberos
+    base: 1
+    set: {EventID: 4771, Status: "0x18", ServiceName: "krbtgt/LAB.LOCAL", PreAuthType: "2"}
+    should_match: true
+  - name: ntlm_credential_validation_on_the_dc
+    base: 1
+    set: {EventID: 4776, Status: "0xc000006a", Workstation: "LAB-WS01"}
+    should_match: true
+  - name: successful_logon_with_the_decoy
+    base: 1
+    set: {EventID: 4624, Status: "0x0", LogonType: "3"}
+    should_match: true
+  - name: tgt_request_for_the_decoy
+    base: 1
+    set: {EventID: 4768, Status: "0x0", PreAuthType: "0", ServiceName: "krbtgt"}
+    should_match: true
+  - name: ordinary_account_not_matched
+    base: 1
+    set: {TargetUserName: "lab.user09"}
+    should_match: false
+  - name: name_that_only_starts_like_the_decoy
+    base: 1
+    set: {TargetUserName: "svc_backup_adm2"}
+    should_match: false
+  - name: service_ticket_for_the_decoy_is_the_kerberoasting_rule
+    description: 4769 names the decoy in ServiceName, which the honey SPN rule reads
+    base: 1
+    set: {EventID: 4769}
+    should_match: false
+  - name: logoff_is_not_authentication
+    base: 1
+    set: {EventID: 4634}
+    should_match: false

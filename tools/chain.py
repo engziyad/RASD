@@ -65,6 +65,7 @@ from certify import behaviour_counts, certificate_slug, run as run_certify, summ
 from convert import logsource_key
 from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
+from deceive import check as deceive_check, load_inventory as load_decoys
 from datasets import load_catalog as load_dataset_catalog, load_results as load_dataset_results, summary as public_summary
 from nearmiss import analyse as near_misses, unpinned
 from evidence import OPERATIONAL_WEIGHTS
@@ -95,7 +96,7 @@ CHECKLIST = ["Red emulation", "Expected telemetry", "Detection rule", "SPL query
 PENDING_ITEMS = {"Evidence file", "Operational Score"}           # can only come from a real lab run
 LOGSOURCE_LABEL = {"process_creation": "Sysmon EID 1", "process_access": "Sysmon EID 10",
                    "registry_set": "Sysmon EID 13", "linux/process_creation": "Sysmon for Linux EID 1",
-                   "webserver": "Web access log"}
+                   "webserver": "Web access log", "opencanary/honeypot": "OpenCanary decoy service record"}
 
 
 # --------------------------------------------------------------------------- #
@@ -696,6 +697,7 @@ def render_metrics(repo: Repo) -> str:
         ("Exact automata (certify)", certify_line(repo, "")),
         *([("Behaviour proofs (certify)", behaviour_line(repo, ""))] if repo.certify["variants"] else []),
         ("Edit equivalence (certify)", equiv_line("")),
+        ("Deception (deceive)", deceive_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -746,6 +748,21 @@ def behaviour_line(repo: Repo, docs: str) -> str:
     return (f"{_n(c['variants'], 'variant')} of documented attacker behaviour over {_n(c['specs'], 'detection')}: "
             f"{c['proven']} proven for every event, {_n(c['gaps'], 'known gap')} (each shown by an engine-confirmed "
             f"event), {_n(c['quiet'], 'exclusion')} proven quiet ([certificates]({docs}CERTIFICATES.md))")
+
+
+def deceive_line(root: str) -> str:
+    """RASD-Deceive, counted from the inventory and its check; `root` is the path to the repository root from the page."""
+    doc = load_decoys()
+    decoys = doc.get("decoys") or []
+    kinds = {k: sum(1 for d in decoys if d.get("kind") == k) for k in ("account", "spn", "file", "service")}
+    dets = {str(d.get("detection")) for d in decoys}
+    reds = {str(d.get("red_test")) for d in decoys}
+    planned = [c for c in doc.get("classes") or [] if c.get("status") == "planned"]
+    agree = "inventory, rules, tests, red tests and the decoy host's configuration agree" if not deceive_check(doc) \
+        else "`rasd deceive --check` reports problems"
+    return (f"{len(decoys)} decoys ({', '.join(f'{n} {k}' for k, n in kinds.items() if n)}) read by {len(dets)} deception "
+            f"detections and touched by {len(reds)} red tests · {agree} · {len(planned)} decoy classes planned "
+            f"([DECEPTION]({root}docs/DECEPTION.md), [inventory]({root}deceive/))")
 
 
 def equiv_line(docs: str) -> str:
@@ -1025,6 +1042,7 @@ def render_readme_metrics(repo: Repo) -> str:
         ("Exact automata", certify_line(repo, "docs/")),
         *([("Behaviour proofs", behaviour_line(repo, "docs/"))] if repo.certify["variants"] else []),
         ("Edit equivalence", equiv_line("docs/")),
+        ("Deception", deceive_line("")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1119,6 +1137,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Replayed on public data", public_summary_line(repo, docs)),
         *([("Behaviour proofs", behaviour_line(repo, docs))] if repo.certify["variants"] else []),
         ("Edit equivalence", equiv_line(docs)),
+        ("Deception", deceive_line("../")),                 # both executive pages live one level below the root
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "
@@ -1221,6 +1240,8 @@ def binding_of(repo: Repo, det, step: dict, wave: str) -> str:
         return "enough base events from the lab host's address in one window"
     if wave == "target":
         return "logged on the target, carries the run token"
+    if logsource_key(det.rule) == "opencanary/honeypot":
+        return "logged on the decoy; the client address (src_host) is the lab host"
     eids = {int(v) for sel in det.rule["detection"].values() if isinstance(sel, dict)
             for k, v in sel.items() if k.split("|")[0] == "EventID" and str(v).isdigit()}
     if eids & NETWORK_EVENTS:

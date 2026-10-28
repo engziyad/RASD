@@ -11,12 +11,12 @@
 | **Tests** | base rule: 11 true positive · 8 true negative · 8 technique mutations · 12 scenarios (6 fire, 6 silent) |
 | **Proof** | base rule: 100% of 27 mutants killed · fuzzer resistance 100% over 35 variants · correlation: 7/7 parameter mutants killed |
 | **Behaviour proof** | base rule: 3 of 6 variants proven for every event · 1 known gap, each with an engine-confirmed event · 2 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1110003-authentication-failure-for-an-account---wrong-password-unknown-or-disabled)) |
-| **Parity** | base filter identical on 369 events · aggregation identical in SPL and KQL on 1296 runs (162 sequences × 8 parameter sets) |
+| **Parity** | base filter identical on 424 events · aggregation identical in SPL and KQL on 1296 runs (162 sequences × 8 parameter sets) |
 | **Guarantee** | a burst of 9+ always alerts, whatever the window alignment (checked with the engine at 120 alignments × 3 spreads); 8 can be split by a boundary |
 | **Public data** | fires on 8 of 16 public recordings of its behaviour · 8 alerts · 0 labelled false positives · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`correlation.yml`](correlation.yml) · [`base.yml`](base.yml) · [KQL](../../../queries/kql/correlations/T1110.003_password_spray_burst.kql) · [SPL](../../../queries/spl/correlations/T1110.003_password_spray_burst.spl) · [scenarios](tests/scenarios.yml) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
-| **Chain** | red: [password_spray_simulation](../../../red/active_directory/password_spray_simulation/) · DFIR: [password_spray](../../../dfir/playbooks/password_spray.md) · purple: [T1110.003_password_spray](../../../purple/scenarios/T1110.003_password_spray.md) |
+| **Chain** | red: [password_spray_simulation](../../../red/active_directory/password_spray_simulation/) · DFIR: [honey_account_use](../../../dfir/playbooks/honey_account_use.md) · DFIR: [password_spray](../../../dfir/playbooks/password_spray.md) · purple: [T1110.003_password_spray](../../../purple/scenarios/T1110.003_password_spray.md) |
 <!-- rasd:facts:end -->
 
 ## Telemetry required

@@ -67,6 +67,19 @@
       ]
     },
     {
+      "techniqueID": "T1046",
+      "score": 64,
+      "comment": "Deception - Interaction With a Decoy Network Service (T1046_decoy_service_interaction) - depth medium - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "1"
+        }
+      ]
+    },
+    {
       "techniqueID": "T1053.003",
       "score": 36,
       "comment": "Crontab Installed From Standard Input or a File (T1053.003_crontab_noninteractive_install) - depth partial - tests pass",
@@ -119,15 +132,54 @@
       ]
     },
     {
-      "techniqueID": "T1110.003",
-      "score": 64,
-      "comment": "Password Spray - One Source Failing Authentication for Many Accounts (T1110.003_password_spray_burst, correlation) - depth medium - tests pass",
+      "techniqueID": "T1078.002",
+      "score": 80,
+      "comment": "Deception - Authentication Attempt With a Honey Account (T1078.002_honey_account_authentication) - depth high - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
         {
           "name": "rules",
           "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1083",
+      "score": 32,
+      "comment": "Deception - Honey Credentials File Opened (T1552.001_honey_file_access) - depth medium (related) - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1110.001",
+      "score": 32,
+      "comment": "Deception - Interaction With a Decoy Network Service (T1046_decoy_service_interaction) - depth medium (related) - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1110.003",
+      "score": 64,
+      "comment": "Deception - Authentication Attempt With a Honey Account (T1078.002_honey_account_authentication) - depth high (related) - tests pass\nPassword Spray - One Source Failing Authentication for Many Accounts (T1110.003_password_spray_burst, correlation) - depth medium - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "2"
         }
       ]
     },
@@ -171,15 +223,41 @@
       ]
     },
     {
-      "techniqueID": "T1558.003",
-      "score": 80,
-      "comment": "Kerberoasting - RC4 Service Ticket Requested for User Account (T1558.003_kerberoasting_rc4_tgs) - depth medium - tests pass\nKerberoasting - One Client Requesting Tickets for Many Service Accounts (T1558.003_kerberoasting_volume, correlation) - depth high - tests pass",
+      "techniqueID": "T1552.001",
+      "score": 64,
+      "comment": "Deception - Honey Credentials File Opened (T1552.001_honey_file_access) - depth medium - tests pass",
       "enabled": true,
       "showSubtechniques": true,
       "metadata": [
         {
           "name": "rules",
-          "value": "2"
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1558.003",
+      "score": 80,
+      "comment": "Deception - Service Ticket Requested for a Honey SPN Account (T1558.003_honey_spn_ticket_request) - depth high - tests pass\nKerberoasting - RC4 Service Ticket Requested for User Account (T1558.003_kerberoasting_rc4_tgs) - depth medium - tests pass\nKerberoasting - One Client Requesting Tickets for Many Service Accounts (T1558.003_kerberoasting_volume, correlation) - depth high - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "3"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1558.004",
+      "score": 40,
+      "comment": "Deception - Authentication Attempt With a Honey Account (T1078.002_honey_account_authentication) - depth high (related) - tests pass",
+      "enabled": true,
+      "showSubtechniques": true,
+      "metadata": [
+        {
+          "name": "rules",
+          "value": "1"
         }
       ]
     },

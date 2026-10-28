@@ -47,6 +47,28 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 
 ---
 
+## Deception - Interaction With a Decoy Network Service
+
+**Technique:** [T1046](https://attack.mitre.org/techniques/T1046/) · **Rule:** [`T1046_decoy_service_interaction`](../../detect/detections/T1046_decoy_service_interaction/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Build the source host's timeline (process creation, network connections to other hosts, logons) around the first decoy record, and check whether the credentials tried on the decoy belong to real accounts |
+| Incident response | Isolate the source host, reset the credentials that were tried if they are real, and keep the decoy running - its log is the evidence |
+
+### Evidence to collect
+- The decoy records from the source, in order, with the services and credentials tried
+- The source host's process and network telemetry around the first record
+- Logons on the source host before the scan
+- The decoy's configuration and the inventory entry (which services were enabled when)
+
+### Containment
+1. Isolate the source host
+2. Reset any real credential tried against the decoy
+3. Keep the decoy running; record the touch in the deception log
+
+---
+
 ## Crontab Installed From Standard Input or a File
 
 **Technique:** [T1053.003](https://attack.mitre.org/techniques/T1053/003/) · **Rule:** [`T1053.003_crontab_noninteractive_install`](../../detect/detections/T1053.003_crontab_noninteractive_install/)
@@ -157,6 +179,28 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 
 ---
 
+## Deception - Authentication Attempt With a Honey Account
+
+**Technique:** [T1078.002](https://attack.mitre.org/techniques/T1078/002/) · **Rule:** [`T1078.002_honey_account_authentication`](../../detect/detections/T1078.002_honey_account_authentication/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Build the source host's timeline (logons, process creation, LDAP activity) around the attempt, list every account that authenticated from it since, and find how the lure was read |
+| Incident response | Isolate the source host, reset the credentials it had access to, keep the decoy in place (its history is the evidence) and rotate the lure after the case |
+
+### Evidence to collect
+- The 4624/4625/4768/4771/4776 event with the decoy, the source address and the workstation
+- LDAP reads of the decoy's attributes from the source (Directory Service 1644 or EDR LDAP telemetry, if collected)
+- Logons from the source host before and after the attempt
+- The decoy's history in the inventory (when it was planted, by whom)
+
+### Containment
+1. Isolate the source host from the network
+2. Reset the passwords of the accounts logged on at the source
+3. Keep the decoy, review its lure, and record the touch in the deception log
+
+---
+
 ## Rundll32 Proxy Execution From Suspicious Context
 
 **Technique:** [T1218.011](https://attack.mitre.org/techniques/T1218/011/) · **Rule:** [`T1218.011_rundll32_suspicious_execution`](../../detect/detections/T1218.011_rundll32_suspicious_execution/)
@@ -196,6 +240,50 @@ Preserve evidence **before** containment actions that destroy it (deleting tasks
 1. Export the key, then remove the value
 2. Quarantine the payload
 3. Isolate the host if the payload executed
+
+---
+
+## Deception - Honey Credentials File Opened
+
+**Technique:** [T1552.001](https://attack.mitre.org/techniques/T1552/001/) · **Rule:** [`T1552.001_honey_file_access`](../../detect/detections/T1552.001_honey_file_access/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Build the account's timeline on the server and the client host (logons, share accesses, process creation), list every file the account read in the same session, and check the honey account alerts for the credentials the file holds |
+| Incident response | Disable or reset the accessing account, isolate the client host, rotate credentials the account could reach, keep the decoy in place and rotate its contents after the case |
+
+### Evidence to collect
+- The 4663 event with the account, process and access type
+- The share access events (5140, 5145) of the same session on the server, with the client address
+- Logons of the account on the client host and the server around the access
+- The decoy's history in the inventory (when it was planted, by whom)
+
+### Containment
+1. Disable or reset the accessing account
+2. Isolate the client host
+3. Rotate any real credential the account could have reached; keep the decoy and record the touch in the deception log
+
+---
+
+## Deception - Service Ticket Requested for a Honey SPN Account
+
+**Technique:** [T1558.003](https://attack.mitre.org/techniques/T1558/003/) · **Rule:** [`T1558.003_honey_spn_ticket_request`](../../detect/detections/T1558.003_honey_spn_ticket_request/)
+
+| Role | Action |
+|---|---|
+| SOC L2 | Pull every 4769 from the requesting host in the last hour, the LDAP SPN enumeration before them, and the logons of the requesting account; identify the tool from the process telemetry of the host |
+| Incident response | Rotate the passwords of every real service account roasted in the same burst, isolate the requesting host, and keep the decoy in place |
+
+### Evidence to collect
+- The 4769 event for the decoy, with the requesting account, host and encryption type
+- All 4769 events from the same host in the surrounding hour (the roasting burst)
+- LDAP queries for servicePrincipalName from the host, if collected
+- Process telemetry of the requesting host around the request
+
+### Containment
+1. Rotate the passwords of the real service accounts requested in the same burst
+2. Isolate the requesting host
+3. Keep the decoy; review its lure and record the touch in the deception log
 
 ---
 

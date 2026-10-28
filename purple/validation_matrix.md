@@ -8,14 +8,17 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 |---|---|---|---|---|---|---|---|
 | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
+| [T1046](https://attack.mitre.org/techniques/T1046/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
+| [T1078.002](https://attack.mitre.org/techniques/T1078/002/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1190](https://attack.mitre.org/techniques/T1190/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
+| [T1552.001](https://attack.mitre.org/techniques/T1552/001/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
 | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) | Ready | Ready | Ready | Ready | Ready | Pending | SIEM-Ready |
@@ -23,30 +26,30 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 
 ## 20-point completeness map
 
-| Item | T1003.001 | T1021.006 | T1053.003 | T1053.005 | T1059.001 | T1059.004 | T1110.003 | T1190 | T1218.011 | T1547.001 | T1558.003 | T1569.002 | T1595.003 | T1685.005 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Red emulation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Expected telemetry | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Detection rule | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SPL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| KQL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| TP tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| TN tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Mutation tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Triage guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Response guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| DFIR playbook | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| CTI mapping | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Purple scenario | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Cleanup steps | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Evidence file | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
-| Engineering Score | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Operational Score | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
-| Coverage depth | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Known blind spots | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Data source requirements | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Item | T1003.001 | T1021.006 | T1046 | T1053.003 | T1053.005 | T1059.001 | T1059.004 | T1078.002 | T1110.003 | T1190 | T1218.011 | T1547.001 | T1552.001 | T1558.003 | T1569.002 | T1595.003 | T1685.005 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Red emulation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Expected telemetry | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Detection rule | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SPL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| KQL query | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TP tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TN tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Mutation tests | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Triage guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Response guide | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| DFIR playbook | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CTI mapping | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Purple scenario | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Cleanup steps | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Evidence file | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| Engineering Score | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Operational Score | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
+| Coverage depth | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Known blind spots | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Data source requirements | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-252/280 items done · ✅ done · ⏳ pending a real lab run · ❌ missing
+306/340 items done · ✅ done · ⏳ pending a real lab run · ❌ missing
 
 ## Maturity per detection
 
@@ -54,13 +57,17 @@ Every technique RASD covers, across the whole chain. Ready means the repository 
 |---|---|---|---|---|
 | [T1003.001_lsass_memory_access](../detect/detections/T1003.001_lsass_memory_access/) | T1003.001 | **SIEM-Ready** | 100/100 | pending |
 | [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | T1021.006 | **SIEM-Ready** | 100/100 | pending |
+| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | T1046 | **SIEM-Ready** | 100/100 | pending |
 | [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | T1053.003 | **SIEM-Ready** | 100/100 | pending |
 | [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | T1053.005 | **SIEM-Ready** | 100/100 | pending |
 | [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | T1053.005 | **SIEM-Ready** | 100/100 | pending |
 | [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | T1059.001 | **SIEM-Ready** | 100/100 | pending |
 | [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | T1059.004 | **SIEM-Ready** | 100/100 | pending |
+| [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | T1078.002 | **SIEM-Ready** | 100/100 | pending |
 | [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | T1218.011 | **SIEM-Ready** | 100/100 | pending |
 | [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | T1547.001 | **SIEM-Ready** | 100/100 | pending |
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | T1552.001 | **SIEM-Ready** | 100/100 | pending |
+| [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/) | T1558.003 | **SIEM-Ready** | 100/100 | pending |
 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | T1558.003 | **SIEM-Ready** | 100/100 | pending |
 | [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | T1569.002 | **SIEM-Ready** | 100/100 | pending |
 | [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | T1685.005 | **SIEM-Ready** | 100/100 | pending |

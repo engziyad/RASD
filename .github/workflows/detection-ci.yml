@@ -37,7 +37,7 @@ jobs:
           ruff check .
           mypy
 
-      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, Splunk app, profiles, datasets, build, chain, links)
+      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, deceive, Splunk app, profiles, datasets, build, chain, links)
         run: rasd ci
 
       - name: Detection tests as JUnit
@@ -48,7 +48,7 @@ jobs:
         shell: pwsh
         run: |
           $bad = 0
-          foreach ($f in Get-ChildItem -Path red -Recurse -Filter *.ps1) {
+          foreach ($f in Get-ChildItem -Path red, deceive -Recurse -Filter *.ps1) {
             $tokens = $null; $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tokens, [ref]$errors)
             foreach ($e in $errors) { Write-Host "::error file=$($f.FullName),line=$($e.Extent.StartLineNumber)::$($e.Message)"; $bad++ }
@@ -85,7 +85,7 @@ jobs:
 
       - name: Fail if generated files are out of date
         run: |
-          stale=$(git status --porcelain --untracked-files=all -- queries detect docs red dfir intel purple profiles README.md)
+          stale=$(git status --porcelain --untracked-files=all -- queries detect docs red deceive dfir intel purple profiles README.md)
           if [ -n "$stale" ]; then
             echo "$stale"
             echo "::error::Generated files are stale. Run 'rasd build' and commit the result."
