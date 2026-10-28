@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rasd"
-version = "1.1.0"
+version = "1.2.0"
 description = "Attack-to-defense validation framework: lab emulation, tested Sigma detections, KQL and SPL checked against the rules, DFIR playbooks and lab evidence tooling."
 readme = "README.md"
 requires-python = ">=3.10"

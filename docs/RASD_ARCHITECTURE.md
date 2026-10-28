@@ -14,6 +14,7 @@ RASD
 ├── red/        Offensive validation: one test.yml per test, runners, telemetry exporter
 ├── detect/     Detections, correlations, ATT&CK coverage, Engineering and Operational Scores, evasion baseline, risk conditions
 ├── deceive/    RASD-Deceive: the decoy inventory, the deployment and health-check scripts, the decoy host's configuration
+├── agent/      RASD-Agent: the counsel page, the decisions people took on it; proposals and your environment's shape stay local
 ├── dfir/       Playbooks, investigation queries, templates, models
 ├── intel/      CTI templates, technique and actor maps, worked analysis, outputs
 ├── purple/     Scenarios and the generated validation, evidence and latency matrices
@@ -54,6 +55,7 @@ flowchart TB
     RES & LOGS --> EV[evidence.py] --> EVD[evidence.md]
     RT & MT & FZ & PV & PA & EVD --> SC[score.py] --> QM[QUALITY.md]
     SC & RG & EVD --> CH[chain.py] --> MX[validation and executive matrices · evidence plan · metrics · status badges · facts blocks]
+    CH & TN & DC --> AG[advise.py] --> ADV[agent/ADVICE.md · proposals · decisions]
 ```
 
 ### Engine and conversion
@@ -93,6 +95,8 @@ flowchart TB
 | `datasets.py` | Public dataset replay: fetch the pinned files, replay them through every detection and correlation, keep reduced extracts, check them offline and render the public evidence pages |
 | `splunk_app.py` | Builds the `rasd` Splunk app (indexes, one scheduled alert per detection and per correlation, the alert export reports) and the forwarder apps |
 | `profiles.py` | Telemetry profiles (ECS, CIM, ASIM, Defender field names to rule field names): `--check` and the profiles README |
+| `advise.py` | RASD-Agent: ranked findings computed from every measurement above (the chain's facts, proofs, certificates, near misses, tunings measured on the corpus and against the behaviour specs, backlog, decoys, public data), for the analyst, the engineer, the purple team and the executive; `--logs` reads your own telemetry, `--explain` an alert, `--propose` drafts a change verified by the gates, `--apply` copies it in and runs them, `--decide` records your decision (the agent ranks accordingly and counts what got resolved), `--ask` answers on the facts; `--write` the page, `--check` its drift ([AGENT](AGENT.md)) |
+| `agent_model.py` | The optional language model behind `rasd advise`: any chat-completions server or a local Ollama, configured by environment variables; JSON answers only, redaction of shared events; everything it writes is gated before it is kept |
 
 ## CI pipeline
 
@@ -105,8 +109,8 @@ flowchart TB
    3. detection tests, mutation tests
    4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), certify `--check` (every rule compiled exactly, both constructed events confirmed by the engine, every behaviour variant as its spec expects, pages current), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
    5. tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
-   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, chain (matrices, metrics, intel maps, facts blocks)
-   7. chain `--check` and link check
+   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, chain (matrices, metrics, intel maps, facts blocks), the counsel page
+   7. chain `--check`, advise `--check` (the counsel page current, the decisions file valid) and link check
 3. detection tests as JUnit, the PowerShell and shell parse checks of every red and deception script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
 4. **drift check**: any generated file that differs from what the sources produce fails the build
 

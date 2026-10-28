@@ -39,6 +39,8 @@ import profiles  # noqa: E402
 import datasets  # noqa: E402
 import deceive  # noqa: E402
 import validate  # noqa: E402
+import advise  # noqa: E402
+import agent_model  # noqa: E402
 from common import find_detection, load_detections, load_jsonl  # noqa: E402
 from convert import logsource_key  # noqa: E402
 from correlation import load_correlations  # noqa: E402
@@ -1660,10 +1662,20 @@ class ReplayRisk(unittest.TestCase):
         self.assertTrue(any("approved" in q for q in psexec["risk_questions"]))
 
 
+_REPO: list = []
+
+
+def shared_repo():
+    """One chain.Repo for every test class that needs the repository's measurements (it takes ~20 s to build)."""
+    if not _REPO:
+        _REPO.append(chain.Repo())
+    return _REPO[0]
+
+
 class Chain(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.repo = chain.Repo()
+        cls.repo = shared_repo()
 
     def test_no_chain_item_is_missing(self):
         for t in self.repo.techniques():
@@ -2408,6 +2420,318 @@ class Banner(unittest.TestCase):
         self.assertNotIn("\033[", text)
         svg = banner.svg()
         self.assertTrue(svg.startswith("<svg") and svg.rstrip().endswith("</svg>"))
+
+
+class FakeModel(agent_model.Model):
+    """A model that answers from a queue of JSON documents, so the gates can be tested without a server."""
+
+    def __init__(self, *answers):
+        super().__init__("fake", "http://fake.invalid", "chat")
+        self.answers = list(answers)
+        self.prompts: list[str] = []
+
+    def complete(self, system, user, max_tokens=1500):
+        self.prompts.append(user)
+        if not self.answers:
+            raise agent_model.ModelError("no answer queued")
+        a = self.answers.pop(0)
+        return a if isinstance(a, str) else json.dumps(a)
+
+
+class Advise(unittest.TestCase):
+    """RASD-Agent: the counsel is computed, stable and ranked; decisions change the ranking and are validated;
+    the page is current; proposals are verified before they are written; a model's output is gated."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.repo = shared_repo()
+        cls.findings = advise.counsel(cls.repo)
+        cls.by_id = {f.id: f for f in cls.findings}
+
+    def test_findings_are_unique_well_formed_and_proven_parts_raise_none(self):
+        ids = [f.id for f in self.findings]
+        self.assertEqual(len(ids), len(set(ids)))
+        for f in self.findings:
+            self.assertRegex(f.id, advise.FINDING_ID.pattern)
+            self.assertIn(f.priority, (1, 2, 3, 4))
+            self.assertTrue(set(f.roles) <= set(advise.ROLES) and f.roles, f.id)
+            self.assertTrue(f.title and f.evidence and f.action, f.id)
+        # every proof holds on this build, so no finding of the "not proven" families exists
+        families = {advise.family(i) for i in ids}
+        self.assertFalse(families & {"tests", "proof", "fuzz", "parity", "correlate", "certify.failed", "score", "chain",
+                                     "tune.broken", "tune.risky"}, families)
+        # the lab run that validates the most detections is the one finding ranked "now"
+        now = [f for f in self.findings if f.priority == 1]
+        self.assertEqual([f.id for f in now], ["evidence.wave.windows"])
+        self.assertIn("Invoke-RasdLabRun.ps1", now[0].action)
+        self.assertEqual(len(now[0].data["detections"]), 11)
+        # one known-gap finding per behaviour gap the certificates show, each with its engine-confirmed event and fix
+        gaps = [f for f in self.findings if f.id.startswith("certify.gap.")]
+        self.assertEqual(len(gaps), self.repo.certify["gaps"])
+        self.assertTrue(all(isinstance(f.data["event"], dict) and f.proposal == "rule-edit" for f in gaps))
+        # the backlog in its order, lab-ready first
+        backlog = [f for f in self.findings if f.id.startswith("backlog.")]
+        self.assertEqual([f.data["technique"] for f in backlog], ["T1083", "T1505.003", "T1087.002", "T1606"])
+        self.assertEqual([f.priority for f in backlog], [2, 3, 3, 3])
+        # tunings measured on the corpus and against the behaviour spec
+        self.assertEqual(self.by_id["tune.proposed.T1218.011_rundll32_suspicious_execution.msi-custom-actions"].proposal, "tuning")
+        spec = self.by_id["tune.spec.T1558.003_kerberoasting_rc4_tgs.legacy-rc4-scanner"]
+        self.assertIsNone(spec.proposal)
+        self.assertIn("RC4 or DES ticket as the domain controller writes it", spec.data["breaks"])
+        self.assertNotIn("tune.proposed.T1558.003_kerberoasting_rc4_tgs.legacy-rc4-scanner", self.by_id)
+
+    def test_the_counsel_is_deterministic(self):
+        again = advise.counsel(self.repo)
+        self.assertEqual([(f.id, f.priority, f.weight) for f in again], [(f.id, f.priority, f.weight) for f in self.findings])
+
+    def test_decisions_set_aside_defer_demote_and_count_resolved(self):
+        import datetime as dt
+        doc = {"decisions": [
+            {"finding": "backlog.T1083", "decision": "rejected", "date": "2026-10-01", "note": "the baseline comes first"},
+            {"finding": "backlog.T1505.003", "decision": "rejected", "date": "2026-10-02", "note": "needs the WAF log source"},
+            {"finding": "coverage.breadth", "decision": "deferred", "date": "2026-10-03", "until": "2027-01-01"},
+            {"finding": "evidence.wave.windows", "decision": "accepted", "date": "2026-10-04", "by": "lab"},
+            {"finding": "proof.T1218.011_rundll32_suspicious_execution.old-mutant", "decision": "accepted", "date": "2026-09-01"},
+        ]}
+        self.assertEqual(advise.decision_errors(doc), [])
+        view = advise.apply_decisions(self.findings, doc, dt.date(2026, 10, 28))
+        ranked = {f.id: f for f in view["ranked"]}
+        self.assertEqual({f.id for f in view["set_aside"]}, {"backlog.T1083", "backlog.T1505.003"})
+        self.assertEqual([f.id for f in view["deferred"]], ["coverage.breadth"])
+        self.assertNotIn("coverage.breadth", ranked)
+        self.assertEqual(ranked["evidence.wave.windows"].decision["by"], "lab")
+        # the backlog family was rejected twice: its remaining findings rank one level lower, nothing else moves
+        self.assertEqual(ranked["backlog.T1087.002"].priority, 4)
+        self.assertEqual(ranked["backlog.T1087.002"].base_priority, 3)
+        self.assertEqual(ranked["evidence.wave.windows"].priority, 1)
+        led = view["ledger"]
+        self.assertEqual((led["accepted"], led["resolved"], led["open"], led["rejected"], led["deferred"]), (2, 1, 1, 2, 1))
+        self.assertEqual(led["resolved_ids"], ["proof.T1218.011_rundll32_suspicious_execution.old-mutant"])
+        self.assertEqual(led["demoted"], {"backlog": 2})
+        # past its date, a deferred finding is ranked again; on the page (no date) it stays deferred
+        later = advise.apply_decisions(self.findings, doc, dt.date(2027, 2, 1))
+        self.assertIn("coverage.breadth", {f.id for f in later["ranked"]})
+        page_view = advise.apply_decisions(self.findings, doc, None)
+        self.assertEqual([f.id for f in page_view["deferred"]], ["coverage.breadth"])
+        page = advise.render_page(page_view, advise.repo_counts(self.repo))
+        self.assertIn("the `backlog` family was rejected 2 times", page)
+        self.assertIn("## Set aside", page)
+        self.assertIn("## Deferred", page)
+
+    def test_decisions_file_is_validated_and_appended_in_place(self):
+        bad = {"decisions": [{"finding": "not an id", "decision": "maybe", "date": "yesterday"},
+                             {"finding": "backlog.T1083", "decision": "rejected", "date": "2026-10-01"},
+                             {"finding": "backlog.T1083", "decision": "deferred", "date": "2026-10-01"},
+                             {"finding": "backlog.T1083", "decision": "accepted", "date": "2026-10-01", "mood": "good"}]}
+        errs = "\n".join(advise.decision_errors(bad))
+        for text in ("is not a finding id", "decision must be one of", "date must be YYYY-MM-DD", "a rejection needs a note",
+                     "a deferral needs `until", "unknown keys ['mood']"):
+            self.assertIn(text, errs)
+        self.assertEqual(advise.decision_errors(advise.load_decisions()), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "decisions.yml"
+            path.write_text("# kept comment\ndecisions: []\n", encoding="utf-8")
+            import datetime as dt
+            advise.record_decision("backlog.T1083", "accepted", "next quarter", "ziyad", None, path=path, today=dt.date(2026, 10, 28))
+            advise.record_decision("backlog.T1606", "deferred", None, None, "2027-03-01", path=path)
+            text = path.read_text(encoding="utf-8")
+            self.assertTrue(text.startswith("# kept comment\n"))
+            doc = advise.load_decisions(path)
+            self.assertEqual([d["finding"] for d in doc["decisions"]], ["backlog.T1083", "backlog.T1606"])
+            self.assertEqual(doc["decisions"][0]["date"], "2026-10-28")
+            with self.assertRaises(SystemExit):
+                advise.record_decision("backlog.T1083", "rejected", "short", None, None, path=path)
+            with self.assertRaises(SystemExit):
+                advise.record_decision("backlog.T1083", "deferred", "no date", None, None, path=path)
+
+    def test_the_counsel_page_is_current(self):
+        view = advise.apply_decisions(self.findings, advise.load_decisions(), None)
+        page = advise.render_page(view, advise.repo_counts(self.repo))
+        self.assertEqual(advise.ADVICE.read_text(encoding="utf-8"), page, "run: rasd advise --write")
+        for f in view["ranked"]:
+            self.assertIn(f"`{f.id}`", page)
+        self.assertNotRegex(page, r"\b20\d\d-\d\d-\d\d\b.*generated", "the page carries no build date, so it is identical on every machine")
+
+    def test_environment_counsel_reads_an_export(self):
+        findings, summary = advise.environment_counsel([ROOT / "samples" / "replay" / "lab-day.jsonl"], None)
+        ids = {f.id for f in findings}
+        self.assertIn("telemetry.T1046_decoy_service_interaction", ids)        # no decoy records in the corpus
+        blind = next(f for f in findings if f.id == "telemetry.T1046_decoy_service_interaction")
+        self.assertEqual((blind.priority, blind.data["verdict"]), (1, "BLIND"))
+        self.assertIn("OpenCanary", blind.action)
+        self.assertIn("replay.storylines", ids)
+        self.assertEqual(summary["events"], 393)
+        self.assertEqual(summary["telemetry"]["blind"], 7)
+        self.assertTrue(all(f.id.startswith(("telemetry.", "noise.", "replay.", "nearmiss.env.", "headroom.env.", "profile."))
+                            for f in findings), ids)
+
+    def test_a_test_proposal_is_engine_verified(self):
+        det = find_detection("T1218.011_rundll32_suspicious_execution")
+        quiet = {"EventID": 1, "Image": "C:\\Windows\\System32\\notepad.exe", "CommandLine": "notepad.exe C:\\notes.txt"}
+        f = advise.Finding(id="nearmiss.T1218.011_rundll32_suspicious_execution.x", priority=2, pillar="detect", roles=("engineer",),
+                           title="t", evidence="e", action="a", proposal="tests",
+                           data={"detection": det.id, "event": quiet, "expect": "true_negative", "reason": "pins x"})
+        files, _checks = advise.draft_tests(f, det)
+        (path, text), = files.items()
+        self.assertEqual(path, f"detect/detections/{det.id}/tests/true_negative.jsonl")
+        self.assertEqual(json.loads(text.splitlines()[-1])["_case"], "counsel: pins x")
+        self.assertEqual(len(text.splitlines()), len(det.tests("true_negative")) + 1)
+        f.data["expect"] = "true_positive"                        # the engine disagrees: nothing is written
+        with self.assertRaisesRegex(advise.ProposalError, "does not read the event as a true positive"):
+            advise.draft_tests(f, det)
+        f.data.update(expect="true_negative", event=det.tests("true_negative")[0])
+        with self.assertRaisesRegex(advise.ProposalError, "identical test event already exists"):
+            advise.draft_tests(f, det)
+
+    def test_a_tuning_proposal_carries_the_tests_the_filter_needs(self):
+        f = self.by_id["tune.proposed.T1218.011_rundll32_suspicious_execution.msi-custom-actions"]
+        det = find_detection(f.data["detection"])
+        files, checks = advise.draft_tuning(f, det)
+        folder = f"detect/detections/{det.id}"
+        self.assertEqual(set(files), {f"{folder}/rule.yml", f"{folder}/tuning.yml", f"{folder}/tests/true_negative.jsonl",
+                                      f"{folder}/tests/true_positive.jsonl"})
+        rule = yaml.safe_load(files[f"{folder}/rule.yml"])
+        self.assertIn("filter_msi_custom_actions", rule["detection"])
+        self.assertTrue(rule["detection"]["condition"].endswith("and not filter_msi_custom_actions"))
+        tunings = {t["id"]: t for t in yaml.safe_load(files[f"{folder}/tuning.yml"])["tunings"]}
+        self.assertEqual(tunings["msi_custom_actions"]["status"], "applied")
+        self.assertEqual(tunings["msi_custom_actions"]["selection"], "filter_msi_custom_actions")
+        new_tns = [json.loads(ln) for ln in files[f"{folder}/tests/true_negative.jsonl"].splitlines()][len(det.tests("true_negative")):]
+        new_tps = [json.loads(ln) for ln in files[f"{folder}/tests/true_positive.jsonl"].splitlines()][len(det.tests("true_positive")):]
+        self.assertEqual((len(new_tns), len(new_tps)), (1, 2))
+        for ev in new_tns:                 # the rule fires on the look-alike, the tuned rule stays quiet
+            self.assertTrue(matches(det.rule, ev) and not matches(rule, ev))
+        for ev in new_tps:                 # a filter condition fails, so the tuned rule still fires
+            self.assertTrue(matches(rule, ev))
+        self.assertEqual(validate.unexercised_filters(rule, det.tests("true_negative") + new_tns), [])
+        self.assertTrue(any("mutation proof stays at 100%" in c for c in checks), checks)
+        # a filter that already falls under `not 1 of filter_*` leaves the condition alone
+        text = advise._rule_text_with_filter((det.folder / "rule.yml").read_text(encoding="utf-8").replace(
+            "condition: selection_img and 1 of susp_*", "condition: selection_img and 1 of susp_* and not 1 of filter_*"),
+            {**det.rule, "detection": {**det.rule["detection"], "condition": "selection_img and 1 of susp_* and not 1 of filter_*"}},
+            "filter_x", {"ParentImage|endswith": "\\x.exe"})
+        self.assertEqual(yaml.safe_load(text)["detection"]["condition"], "selection_img and 1 of susp_* and not 1 of filter_*")
+        # a tuning that contradicts the behaviour spec is refused, whatever the corpus says
+        spec = self.by_id["tune.spec.T1558.003_kerberoasting_rc4_tgs.legacy-rc4-scanner"]
+        with self.assertRaisesRegex(advise.ProposalError, "contradicts the behaviour spec"):
+            advise.draft_tuning(spec, find_detection(spec.data["detection"]))
+
+    def test_a_model_rule_edit_is_gated(self):
+        f = self.by_id["certify.gap.T1053.005_powershell_scheduled_task_creation.register-scheduledjob"]
+        det = find_detection(f.data["detection"])
+        good = copy.deepcopy(det.rule["detection"])
+        good["selection_job"] = {"CommandLine|contains": "Register-ScheduledJob"}
+        good["condition"] = "selection_img and ((selection_register and 1 of susp_*) or selection_job)"
+        files, checks = advise.draft_rule_edit(f, det, FakeModel({"detection": good, "rationale": "jobs are tasks"}))
+        folder = f"detect/detections/{det.id}"
+        self.assertEqual(set(files), {f"{folder}/rule.yml", f"{folder}/behavior.yml", f"{folder}/tests/true_positive.jsonl"})
+        self.assertTrue(any("accepted by the gates" in c and "1 gap variant now proven" in c for c in checks), checks)
+        spec = yaml.safe_load(files[f"{folder}/behavior.yml"])
+        job = next(v for v in spec["variants"] if v["name"] == "Register-ScheduledJob")
+        self.assertEqual(job["expect"], "fires")
+        self.assertNotIn("fix", job)
+        self.assertTrue(matches(yaml.safe_load(files[f"{folder}/rule.yml"]), f.data["event"]))
+        # an edit that catches everything the image selection matches is refused: true negatives change verdict
+        wide = copy.deepcopy(det.rule["detection"])
+        wide["condition"] = "selection_img"
+        files, checks = advise.draft_rule_edit(f, det, FakeModel({"detection": wide, "rationale": "catch all"}))
+        self.assertEqual(set(files), {f"agent/proposals/{advise.slug(f.id)}/pending_true_positive.jsonl"})
+        self.assertTrue(any("refused: TN#" in c and "changes verdict" in c for c in checks), checks)
+        # an edit that does not catch the variant is refused too
+        files, checks = advise.draft_rule_edit(f, det, FakeModel({"detection": det.rule["detection"], "rationale": "none"}))
+        self.assertTrue(any("variant's event still does not match" in c for c in checks), checks)
+        # a model that answers nonsense is refused without an exception
+        files, checks = advise.draft_rule_edit(f, det, FakeModel("I would rather not."))
+        self.assertTrue(any("model edit unavailable" in c and "no JSON object" in c for c in checks), checks)
+
+    def test_a_model_scaffold_is_gated(self):
+        f = self.by_id["backlog.T1083"]
+        rule = {"selection": {"Image|endswith": "/find", "CommandLine|contains|all": ["-perm", "4000"]}, "condition": "selection"}
+        tps = [{"EventID": 1, "Image": "/usr/bin/find", "CommandLine": f"find / -perm -4000 -type f {i}"} for i in range(4)]
+        tns = [{"EventID": 1, "Image": "/usr/bin/find", "CommandLine": f"find /var/log -name '*.gz' {i}"} for i in range(4)]
+        files, checks = advise.draft_scaffold(f, FakeModel({"detection": rule, "title": "SUID search", "true_positives": tps,
+                                                            "true_negatives": tns}))
+        folder = "detect/detections/T1083_file_and_directory_discovery"
+        self.assertEqual(set(files), {f"{folder}/rule.yml", f"{folder}/tests/true_positive.jsonl", f"{folder}/tests/true_negative.jsonl"})
+        drafted = yaml.safe_load(files[f"{folder}/rule.yml"])
+        self.assertEqual(drafted["title"], "SUID search")
+        self.assertEqual(drafted["logsource"], {"product": "linux", "category": "process_creation"})
+        self.assertTrue(any("accepted by the gates" in c for c in checks), checks)
+        bad_tns = [*tns[:3], tps[0]]                                  # a true negative that matches: refused
+        files, checks = advise.draft_scaffold(f, FakeModel({"detection": rule, "title": "x", "true_positives": tps, "true_negatives": bad_tns}))
+        self.assertEqual(set(files), {f"{folder}/rule.yml"})
+        self.assertTrue(any("refused: true negative 4 matches" in c for c in checks), checks)
+        self.assertEqual(yaml.safe_load(files[f"{folder}/rule.yml"])["detection"], {"selection": {"TODO": "TODO"}, "condition": "selection"})
+        self.assertEqual(advise.gate_rule({"logsource": {"product": "linux"}, "detection": {"s": {"a|nonsense": 1}, "condition": "s"}}, tps, tns)[0], False)
+
+    def test_proposals_are_written_under_the_agent_folder(self):
+        f = self.by_id["evidence.wave.windows"]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(advise, "PROPOSALS", Path(tmp)):
+            folder = advise.propose(f, None)
+            self.assertEqual(folder, Path(tmp) / "evidence-wave-windows")
+            text = (folder / "PROPOSAL.md").read_text(encoding="utf-8")
+            self.assertIn("Invoke-RasdLabRun.ps1", text)
+            self.assertIn("Nothing is committed or pushed by the agent", text)
+            decoy = self.by_id["deceive.honey-account-attribute-read"]
+            folder = advise.propose(decoy, None)
+            self.assertFalse(list((folder / "files").iterdir()), "a draft entry is a note, not a file to apply")
+            entry = yaml.safe_load((folder / "decoy_entry.yml").read_text(encoding="utf-8"))
+            self.assertEqual(entry[0]["detection"], "T1087.002_TODO_rule_folder")
+
+    def test_explain_reads_the_contract_and_the_deception_chain(self):
+        det = find_detection("T1552.001_honey_file_access")
+        chain_text = advise.decoy_chain(det.id)
+        self.assertIn("After it, expect T1078.002_honey_account_authentication on `svc_backup_adm`", chain_text)
+        self.assertIn("T1046_decoy_service_interaction on `lab-canary-01`", chain_text)
+        self.assertIsNone(advise.decoy_chain("T1218.011_rundll32_suspicious_execution"))
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            advise.explain_alert(det, det.tests("true_positive")[0], None)
+        text = out.getvalue()
+        for heading in ("What it means", "First checks", "Escalate if", "Containment", "Deception chain", "MATCH"):
+            self.assertIn(heading, text)
+        fake = FakeModel({"summary": "s", "next_checks": ["a", "b"], "when_to_close": "c"})
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            advise.explain_alert(det, det.tests("true_positive")[0], fake, share_events=False)
+        self.assertIn("Model narrative", out.getvalue())
+        shared = json.loads(fake.prompts[0])["event"]
+        self.assertTrue(set(shared) <= {"EventID", "_case"}, "values are not shared without --share-events")
+
+    def test_model_layer_configuration_json_and_redaction(self):
+        self.assertIsNone(agent_model.Model.from_env({}))
+        m = agent_model.Model.from_env({"RASD_MODEL": "x"})
+        self.assertEqual((m.provider, m.url), ("ollama", "http://localhost:11434"))
+        m = agent_model.Model.from_env({"RASD_MODEL": "x", "RASD_MODEL_URL": "https://example.invalid/v1", "RASD_MODEL_KEY": "k"})
+        self.assertEqual((m.provider, m.key), ("chat", "k"))
+        with self.assertRaises(agent_model.ModelError):
+            agent_model.Model.from_env({"RASD_MODEL": "x", "RASD_MODEL_PROVIDER": "chat"})          # no URL
+        with self.assertRaises(agent_model.ModelError):
+            agent_model.Model.from_env({"RASD_MODEL": "x", "RASD_MODEL_URL": "ftp://x"})
+        self.assertEqual(agent_model.extract_json('```json\n{"a": 1}\n```'), {"a": 1})
+        self.assertEqual(agent_model.extract_json('Sure: {"a": {"b": [1, 2]}} done'), {"a": {"b": [1, 2]}})
+        with self.assertRaises(agent_model.ModelError):
+            agent_model.extract_json("[1, 2]")
+        fake = FakeModel({"a": 1})
+        with self.assertRaisesRegex(agent_model.ModelError, "lacks b"):
+            fake.json("s", "u", ("a", "b"))
+        ev = {"EventID": 4625, "Computer": "DC01.corp.lab", "IpAddress": "10.0.0.21", "TargetUserName": "svc_backup_adm",
+              "CommandLine": "net use \\\\FS01\\share 10.0.0.9 and 10.0.0.9 again", "logdata": {"USERNAME": "admin"}}
+        red = agent_model.redact(ev)
+        self.assertEqual(red["EventID"], 4625)
+        self.assertEqual((red["Computer"], red["IpAddress"], red["TargetUserName"]), ("<host-1>", "<host-2>", "<user-1>"))
+        self.assertEqual(red["CommandLine"], "net use \\\\<host-3>\\share <ip-1> and <ip-1> again")
+        self.assertEqual(red["logdata"]["USERNAME"], "<user-2>")
+        self.assertIn("none configured", agent_model.status({}))
+
+    def test_ask_grounds_on_the_counsel_and_the_pages(self):
+        view = advise.apply_decisions(self.findings, {"decisions": []}, None)
+        related = advise.relevant_findings("which decoy should we plant next", view)
+        self.assertTrue(related and related[0].id.startswith("deceive."), [f.id for f in related])
+        hits = advise.retrieve("what does rasd deceive --check prove")
+        self.assertTrue(any(p.startswith(("deceive/", "docs/DECEPTION")) for p, _h, _b in hits), hits)
 
 
 if __name__ == "__main__":

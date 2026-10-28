@@ -38,6 +38,10 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
               chain      the 20-point attack-to-defense map, maturity, matrices, metrics
               links      every relative link in every Markdown file resolves
+  counsel     advise     RASD-Agent: what to do next, computed from what the repository proves, for the analyst, the
+                         engineer, the purple team and the executive; --logs reads your own telemetry, --explain reads an
+                         alert, --propose drafts a verified change, --decide records what you decided (the agent learns),
+                         --ask answers a question; a language model is optional and everything it writes is gated
   all         ci         the full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check)
 
 Install the `rasd` command into a virtual environment with `pip install -e .` and run `rasd <command>`;
@@ -46,6 +50,10 @@ without installing, `python rasd.py <command>` from a clone runs the same comman
 Examples
   rasd ci
   rasd chain
+  rasd advise --for engineer
+  rasd advise --logs my-export.jsonl --profile auto
+  rasd advise --explain T1078.002 --event alert.json
+  rasd advise --propose backlog.T1083
   rasd prove --filter T1218 --suggest
   rasd parity --filter T1558 -v
   rasd certify -v
@@ -86,16 +94,16 @@ COMMANDS = {
     "coverage": ["coverage.py"], "views": ["generate_views.py"], "splunk": ["splunk_app.py"],
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
-    "deceive": ["deceive.py"],
+    "deceive": ["deceive.py"], "advise": ["advise.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["certify.py", "--write"], ["chain.py"]]
+         ["datasets.py", "render"], ["certify.py", "--write"], ["chain.py"], ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
       ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
       ["datasets.py", "check"],
-      *BUILD, ["chain.py", "--check"], ["links.py"]]
+      *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
 
 def run(argv: list[str], cwd: Path = ROOT) -> int:

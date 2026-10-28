@@ -63,6 +63,7 @@ RASD is a cybersecurity validation framework that connects offensive security la
 | [RASD-Intel](intel/) | CTI to detection opportunities |
 | [RASD-Purple](purple/) | Attack-to-defense validation |
 | [RASD-Deceive](deceive/) | Decoys as tested detections: honey accounts, a honey SPN, honey files, a decoy host, one inventory held in step with the rules |
+| [RASD-Agent](agent/) | The counsel: what to do next, computed from what the repository proves, for the analyst, the engineer, the purple team and the executive; learns from your decisions, reads your telemetry, explains alerts, drafts changes the gates verify |
 
 ## Workflow
 
@@ -74,6 +75,7 @@ Detection triggers investigation.
 Investigation produces evidence.
 CTI gives context.
 Purple validation measures the full chain.
+The agent reads every measurement and says what comes next.
 ```
 
 ```text
@@ -103,6 +105,7 @@ RASD keeps legacy ATT&CK v18 aliases for compatibility, while primary mappings f
 | It fires on attack telemetry recorded by others | **Public dataset replay** (`rasd datasets`): files from three public sources (Splunk Attack Data, OTRF Security-Datasets, EVTX-ATTACK-SAMPLES), each pinned to a commit and a SHA-256, replayed through every detection and correlation. Every alert is either the recorded attack or explained in the catalog (the labs' test harness, other benign activity, or false positive); every record is counted once, with repeats inside a file and copies between files found and declared; every documented limit is re-checked on each run; and the applied tunings are measured on the labs' background activity. It showed rules blind to real attacks - Invoke-Mimikatz and PPLdump behind the LSASS rule's System32 filter, a bare `cmd.exe` service binary, three rundll32 proxy exports, a Run value pointing into `C:\Windows\Tasks`, sprays over guessed account names - and each fix is proven on the public events, so those rules' results there are marked in-sample. Public data is not lab evidence: it does not raise a detection's maturity |
 | It can be proven in a real environment | `rasd evidence` joins a lab run, its telemetry export and optional SIEM alerts, and writes evidence only when the rule really fired on an event bound to that run (host or client address, time window, run marker) - with the SHA-256 of every input. No run is committed yet: the status line above says how many detections have one |
 | Nothing is overstated | Maturity levels and both scores are computed; a contract cannot claim more than the repository proves. Without lab evidence a detection stops at **SIEM-Ready** (deployable, not validated), and the Operational Score stays **pending** until a real run is committed |
+| You know what to do next, and why that first | **RASD-Agent** (`rasd advise`): every measurement above turned into ranked findings with the evidence and the exact next step, for the analyst, the engineer, the purple team and the executive: the lab wave that validates the most detections, the known gap with its fix, the boundary no test pins, the tuning that is safe on the corpus but contradicts a behaviour spec, the next rule the tracked groups press on. Each finding has a stable id; what you decide about it is remembered and ranks the counsel, and an accepted finding that disappears counts as resolved. `--logs` reads your own telemetry, `--explain` reads an alert with the contract's guidance and the deception chain, `--propose` drafts the change and verifies it with the same gates before writing it, `--apply` copies it in and runs them. A language model is optional and everything it writes is gated ([AGENT](docs/AGENT.md), [the counsel on this build](agent/ADVICE.md)) |
 
 ## Quick start
 
@@ -118,6 +121,7 @@ rasd correlate -v                 # the correlation proofs, scenario by scenario
 rasd certify -v                   # every rule as exact automata: the shortest event that fires it, the nearest that does not
 rasd certify --equiv HEAD~1       # prove an edit preserved what each rule catches, or see the event that changed
 rasd nearmiss                     # traffic one field edit away from an alert; correlation headroom
+rasd advise                       # the counsel: what to do next and why, per role; --logs reads your own export, --explain an alert
 rasd datasets fetch && rasd datasets run   # about 730 MB of pinned public attack data (in-sample and held out) through every rule; EVTX files need pip install -e .[datasets]
 rasd replay samples/replay/lab-day.jsonl --assets samples/replay/assets.csv --users samples/replay/users.csv --html report.html
 ```
@@ -179,6 +183,7 @@ Logs from Elastic, Sentinel ASIM, Defender advanced hunting or Splunk CIM run th
 | | `evidence` | Turn a real lab run into verifiable evidence (FIRED / MISSED), for rules and correlations; `--run` reads the lab run's zip or folder directly, `--strict` also requires the `.sha256` and a complete manifest |
 | | `datasets` | Public attack datasets: `fetch` them pinned and hashed, `run` every rule and correlation over them and compare with the catalog (the recorded attack, explained alerts, documented limits), `--write` keeps the result; `check` replays the committed extracts in CI |
 | | `chain` · `links` | The completeness map, maturity, matrices and metrics; every Markdown link resolves |
+| Counsel | `advise` | RASD-Agent: what to do next, ranked and evidenced, per role (`--for`); `--logs` your own telemetry; `--explain` an alert; `--propose` and `--apply` verified changes; `--decide` what you decided; `--ask` a question; a model is optional and gated |
 | All | `ci` | The full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check) |
 
 ## Coverage
@@ -207,6 +212,7 @@ RASD
 ├── red/        → Offensive Validation      22 tests: Windows, Active Directory, web, Linux
 ├── detect/     → Detection Engineering     detections, correlations, coverage, quality, evasion baseline
 ├── deceive/    → Cyber Deception           decoy inventory, deployment and health-check scripts, decoy host configuration
+├── agent/      → Counsel                   the ranked counsel page, the decisions taken on it (proposals and your environment stay local)
 ├── dfir/       → Investigation & Response  playbooks, queries, templates, models
 ├── intel/      → CTI to Detection          templates, technique and actor maps, analyses
 ├── purple/     → Attack-to-Defense         scenarios, validation / evidence / latency matrices
@@ -234,13 +240,14 @@ RASD
 | [CERTIFY](docs/CERTIFY.md) · [CERTIFICATES](docs/CERTIFICATES.md) | Rules as exact automata over every Unicode character: the model, the mathematics, why each answer is a proof; behaviour specs and their certificates |
 | [CORRELATIONS](docs/CORRELATIONS.md) | Correlation detections: format, semantics, scenarios, proofs, burst guarantee, SIEM scheduling |
 | [DECEPTION](docs/DECEPTION.md) · [decoy inventory](deceive/) | Decoys as first-class detections: the inventory, the chain of lures, what `rasd deceive --check` proves, adopting your own identities, what waits for the lab |
+| [AGENT](docs/AGENT.md) · [the counsel](agent/ADVICE.md) | RASD-Agent: how a finding is made, what the agent learns and how to check it, explaining alerts, proposals and their gates, the optional model |
 | [PUBLIC_DATA_VALIDATION](docs/PUBLIC_DATA_VALIDATION.md) · [datasets](datasets/README.md) | Every detection replayed on pinned public attack data: what fired, what stays quiet and why, what public data asks for next |
 | [OPERATIONAL_VALIDATION](docs/OPERATIONAL_VALIDATION.md) · [EVIDENCE_PLAN](docs/EVIDENCE_PLAN.md) · [SIEM_VALIDATION_SCORECARD](docs/SIEM_VALIDATION_SCORECARD.md) | Lab runs and evidence; which lab machine and step proves each detection; the live Splunk and Defender scorecard, per detection |
 | [ENTERPRISE_ADOPTION](docs/ENTERPRISE_ADOPTION.md) · [SIEM_DEPLOYMENT_NOTES](docs/SIEM_DEPLOYMENT_NOTES.md) | Taking the detections into an organisation's SIEM; Sentinel and Splunk specifics |
 | [RASD_METRICS](docs/RASD_METRICS.md) · [DATA_SOURCE_COVERAGE](docs/DATA_SOURCE_COVERAGE.md) | Counted metrics; telemetry dependencies |
 | [Detection backlog](intel/outputs/detection_backlog.md) · [actor tradecraft map](intel/mappings/actor_tradecraft_map.md) | The open gaps ranked by telemetry already mapped and by the groups documented using each technique |
 | [CONTROL_EVIDENCE](docs/CONTROL_EVIDENCE.md) · [role views](docs/views/) | Evidence for audit; SOC, IR, GRC and purple-team views |
-| [RELEASE_ROADMAP](docs/RELEASE_ROADMAP.md) | v1.1 (this release), v2.0: Reference on lab evidence, and the new data domains after it |
+| [RELEASE_ROADMAP](docs/RELEASE_ROADMAP.md) | v1.2 (this release: RASD-Agent), v1.1, v2.0: Reference on lab evidence, and the new data domains after it |
 | [CONTRIBUTING](CONTRIBUTING.md) | Branch, pull request and the CI gate every change passes before it reaches main |
 | [GUIDE_AR](docs/GUIDE_AR.md) | الدليل الكامل بالعربي |
 
