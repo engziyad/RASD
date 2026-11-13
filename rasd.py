@@ -30,6 +30,8 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
   operate     red        validate and render every offensive test from its test.yml
               deceive    RASD-Deceive: the decoy inventory against the rules, tests, red tests and the decoy host's
                          configuration; --rename adopts your own decoy identities, --gaps ranks the classes not built
+              trace      RASD-Trace: for every detection, can the evidence an investigation needs be taken away, at what
+                         cost, and does a rule see the attempt; --lost: what can still be proven once logs are gone
               replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines,
                          --case-dir: one case folder per storyline
               benchmark  events/s, memory, slowest rule and regex - on an export or N synthetic events
@@ -59,6 +61,8 @@ Examples
   rasd certify -v
   rasd deceive --check
   rasd deceive --rename svc_backup_adm <your account name>
+  rasd trace
+  rasd trace T1059.001 --lost sysmon_log,siem
   rasd correlate -v
   rasd correlate --logs dc-export.jsonl
   rasd nearmiss my-export.jsonl --profile auto --suggest
@@ -94,14 +98,14 @@ COMMANDS = {
     "coverage": ["coverage.py"], "views": ["generate_views.py"], "splunk": ["splunk_app.py"],
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
-    "deceive": ["deceive.py"], "advise": ["advise.py"],
+    "deceive": ["deceive.py"], "advise": ["advise.py"], "trace": ["survivability.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["certify.py", "--write"], ["chain.py"], ["advise.py", "--write"]]
+         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["chain.py"], ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
-      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
+      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
       ["datasets.py", "check"],
       *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 

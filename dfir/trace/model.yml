@@ -1,0 +1,503 @@
+# RASD-Trace model: where an attack leaves evidence, and what it costs to make that evidence go away.
+#
+# Three things are defined here, once:
+#   stores     the containers evidence lives in (an event log channel, the Prefetch folder, a registry key)
+#   artifacts  the records an investigator reads from a store, and the questions each one answers
+#   erasures   the anti-forensic actions RASD knows: what each destroys or blinds, and what it leaves behind
+#
+# dfir/trace/footprints.yml says which artifacts each detection's technique writes. tools/survivability.py searches
+# every sequence of erasures around the technique and reports, per detection and per question, whether the
+# answer can be taken away, how many actions that needs, and whether a tested rule sees the attempt.
+#
+# Every entry carries its basis: `vendor` is behaviour the vendor documents, `practitioner` is behaviour the
+# DFIR community reports and RASD has not yet reproduced. Nothing here is lab evidence: the lab run that
+# confirms each entry is part of the evidence still pending (docs/EVIDENCE_PLAN.md).
+version: 1
+
+# Where the attacker stands. Every result is relative to this sentence.
+position: An administrator on the host where the technique ran, with no reach to the domain controller, the file server, the decoy host or the SIEM
+
+questions:
+  alert: Does the detection raise its alert
+  ran: Did the behaviour happen on this host
+  when: At what time
+  who: Under which account
+  how: With which command line, value or configuration
+  origin: From which remote host
+
+# The telemetry baseline the results assume: the channels the lab forwarder ships. `rasd trace --check`
+# fails when this list and the generated forwarder inputs disagree.
+baseline:
+  forwarder_inputs: queries/splunk_app/rasd_forwarder/default/inputs.conf
+  forwarded:
+    sysmon_log: Microsoft-Windows-Sysmon/Operational
+    security_log: Security
+    system_log: System
+    powershell_log: Microsoft-Windows-PowerShell/Operational
+
+stores:
+  sysmon_log: {name: Sysmon operational log, reach: host, collect: 3, lifetime: Rolls over by size}
+  security_log: {name: Security log, reach: host, collect: 3, lifetime: Rolls over by size}
+  system_log: {name: System log, reach: host, collect: 3, lifetime: Rolls over by size}
+  powershell_log: {name: PowerShell operational log, reach: host, collect: 3, lifetime: Rolls over by size}
+  powershell_classic_log: {name: Windows PowerShell log, reach: host, collect: 3, lifetime: Rolls over by size}
+  taskscheduler_log: {name: Task Scheduler operational log, reach: host, collect: 3, lifetime: Rolls over by size}
+  winrm_log: {name: WinRM operational log, reach: host, collect: 3, lifetime: Rolls over by size}
+  application_log: {name: Application log, reach: host, collect: 3, lifetime: Rolls over by size}
+  prefetch: {name: Prefetch folder, reach: host, collect: 1, lifetime: 1024 files on Windows 8 and later; the oldest are removed first}
+  bam: {name: Background Activity Moderator key, reach: host, collect: 1, lifetime: Old entries are pruned by the system}
+  usn_journal: {name: NTFS change journal, reach: host, collect: 2, lifetime: Rolls over by size; hours to days on a busy volume}
+  task_store: {name: Task definition (XML file and TaskCache key), reach: host, collect: 4, lifetime: Until the task is deleted}
+  run_key: {name: Run key value, reach: host, collect: 4, lifetime: Until the value is deleted}
+  services_key: {name: Service registry key, reach: host, collect: 4, lifetime: Until the service is deleted}
+  dc_security_log: {name: Security log of the domain controller, reach: remote, collect: 3, lifetime: Rolls over by size}
+  server_security_log: {name: Security log of the file server, reach: remote, collect: 3, lifetime: Rolls over by size}
+  canary_log: {name: Log of the decoy host, reach: remote, collect: 3, lifetime: Kept by the decoy host}
+  siem: {name: SIEM, reach: remote, collect: 5, lifetime: Index retention}
+
+artifacts:
+  sysmon_1:
+    name: Sysmon 1 (ProcessCreate)
+    store: sysmon_log
+    logsource: process_creation
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+  sysmon_4:
+    name: Sysmon 4 (service state changed)
+    store: sysmon_log
+    answers: [ran, when]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+    limits: Written when the service is stopped through the Service Control Manager
+  sysmon_10:
+    name: Sysmon 10 (ProcessAccess)
+    store: sysmon_log
+    logsource: process_access
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+    limits: The account (SourceUser) is recorded from Sysmon 13.30 on
+  sysmon_12:
+    name: Sysmon 12 (registry object created or deleted)
+    store: sysmon_log
+    answers: [ran, when, who]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+    limits: Only for the keys the Sysmon configuration includes
+  sysmon_13:
+    name: Sysmon 13 (registry value set)
+    store: sysmon_log
+    logsource: registry_set
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+  security_1102:
+    name: Security 1102 (audit log cleared)
+    store: security_log
+    logsource: windows/security
+    answers: [ran, when, who]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-1102
+    limits: Written whatever the audit policy says
+  security_4624:
+    name: Security 4624 (logon)
+    store: security_log
+    answers: [when, who, origin]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4624
+  security_4688:
+    name: Security 4688 (process creation)
+    store: security_log
+    answers: [ran, when, who, how]
+    optional: Audit Process Creation with the command line policy; the lab sets the policy and does not require the subcategory
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4688
+  security_4697:
+    name: Security 4697 (service installed)
+    store: security_log
+    answers: [ran, when, who, how]
+    optional: Audit Security System Extension
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4697
+  security_4698:
+    name: Security 4698 (scheduled task created)
+    store: security_log
+    answers: [ran, when, who, how]
+    optional: Audit Other Object Access Events
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4698
+  security_4699:
+    name: Security 4699 (scheduled task deleted)
+    store: security_log
+    answers: [ran, when, who]
+    optional: Audit Other Object Access Events
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4699
+  security_4719:
+    name: Security 4719 (audit policy changed)
+    store: security_log
+    answers: [ran, when, who]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4719
+  system_104:
+    name: System 104 (event log cleared)
+    store: system_log
+    logsource: windows/system
+    answers: [ran, when, who]
+    basis: vendor
+    source: https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.cleared
+    limits: Written to the System log for every channel other than Security, the System log itself included
+  system_7045:
+    name: System 7045 (service installed)
+    store: system_log
+    logsource: windows/system
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.servicecreationcomspec
+    limits: The account is the SID in the event header
+  powershell_4104:
+    name: PowerShell 4104 (script block)
+    store: powershell_log
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows
+    limits: Every block with Script Block Logging on (the lab turns it on); without it, practitioners report only the blocks PowerShell itself flags as suspicious
+  powershell_400:
+    name: Windows PowerShell 400 (engine started)
+    store: powershell_classic_log
+    answers: [ran, when, how]
+    basis: practitioner
+    source: https://trustedsec.com/blog/building-a-detection-foundation-part-3-powershell-and-script-logging
+    limits: HostApplication carries the command line of the PowerShell process; the channel is not in the forwarder baseline
+  taskscheduler_106:
+    name: Task Scheduler 106 (task registered)
+    store: taskscheduler_log
+    answers: [ran, when, who]
+    optional: The Microsoft-Windows-TaskScheduler/Operational channel, which is off on many builds
+    basis: vendor
+    source: https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.scheduledtasks
+  taskscheduler_141:
+    name: Task Scheduler 141 (task deleted)
+    store: taskscheduler_log
+    answers: [ran, when, who]
+    optional: The Microsoft-Windows-TaskScheduler/Operational channel, which is off on many builds
+    basis: vendor
+    source: https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.scheduledtasks
+  winrm_91:
+    name: WinRM 91 (shell created on the server)
+    store: winrm_log
+    answers: [ran, when]
+    basis: practitioner
+    source: https://blog.lexfo.fr/Cobalt%20Strike%20Investigation%20Part%201.html
+    limits: Names the resource the shell was created for, not the account
+  application_3079:
+    name: Application 3079 (change journal deleted)
+    store: application_log
+    answers: [ran, when]
+    basis: practitioner
+    source: https://redlotus.gitbook.io/redlotusguide/advanced-explanation-of-artifacts/file-system-activity/usn-journal-usdusnjrnl
+  prefetch_file:
+    name: Prefetch file of the executable
+    store: prefetch
+    answers: [ran, when]
+    basis: vendor
+    source: https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/microsoft/final/en-us/microsoft-brand/documents/IR-Guidebook-Final.pdf
+    limits: The executable and its last eight run times, never the arguments or the account; on by default on workstations, off on servers
+  bam_entry:
+    name: BAM entry of the executable
+    store: bam
+    answers: [ran, when, who]
+    basis: practitioner
+    source: https://docs.velociraptor.app/artifact_references/pages/windows.forensics.bam
+    limits: The full path and the last run only, per account; Windows 10 1709 and later
+  usn_record:
+    name: Change journal record of the file
+    store: usn_journal
+    answers: [ran, when]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/fsutil-usn
+    limits: A file name and a reason code (created, deleted, renamed), not the content
+  task_definition:
+    name: Task definition
+    store: task_store
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-schema
+    limits: The action, the author and the registration date as the task's creator wrote them
+  run_value:
+    name: Run key value
+    store: run_key
+    answers: [ran, when, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/windows/win32/setupapi/run-and-runonce-registry-keys
+    limits: The time is the key's last write, shared by every value under it
+  service_key:
+    name: Service registry key
+    store: services_key
+    answers: [ran, when, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/windows/win32/services/database-of-installed-services
+    limits: The time is the key's last write
+  dc_4769:
+    name: Security 4769 on the domain controller (service ticket requested)
+    store: dc_security_log
+    logsource: windows/security
+    answers: [ran, when, who, how, origin]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769
+  dc_auth:
+    name: Security 4768, 4771 and 4776 on the domain controller (authentication)
+    store: dc_security_log
+    logsource: windows/security
+    answers: [ran, when, who, origin]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4768
+  server_4663:
+    name: Security 4663 on the file server (object access)
+    store: server_security_log
+    logsource: windows/security
+    answers: [ran, when, who, how]
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4663
+  canary_record:
+    name: OpenCanary record of the decoy host
+    store: canary_log
+    logsource: opencanary/honeypot
+    answers: [ran, when, how, origin]
+    basis: vendor
+    source: https://opencanary.readthedocs.io/en/latest/
+  siem_silence:
+    name: The host's channels go quiet in the SIEM
+    store: siem
+    answers: [ran, when]
+    basis: practitioner
+    source: https://www.splunk.com/en_us/blog/tips-and-tricks/how-to-determine-when-a-host-stops-sending-logs-to-splunk-expeditiously.html
+    limits: Visible only to a search that watches each channel of each host for silence; a forwarder heartbeat alone misses a host whose event log stopped
+
+# Anti-forensic actions. `destroys` empties stores of what they held; `blinds` stops new records from being
+# written to stores; `stops_forwarding` ends shipping to the SIEM. A trace written `at: start` exists before
+# the action takes effect (the process that performs it); a trace `at: effect` is written by the effect
+# itself. A trace with an `event` is replayed through every rule in CI: `detection` names the rule that must
+# fire on it, and a trace without one must fire no rule at all.
+erasures:
+  - id: clear_security_log
+    name: Clear the Security log
+    example: wevtutil cl Security
+    destroys: [security_log]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        detection: T1685.005_event_log_clearing
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\wevtutil.exe', OriginalFileName: wevtutil.exe, CommandLine: wevtutil cl Security, User: 'LAB\admin'}
+      - artifact: security_1102
+        at: effect
+        detection: T1685.005_security_log_cleared
+        event: {EventID: 1102, Channel: Security, Provider_Name: Microsoft-Windows-Eventlog, SubjectUserName: admin}
+      - {artifact: prefetch_file, at: start}
+
+  - id: clear_system_log
+    name: Clear the System log
+    example: wevtutil cl System
+    destroys: [system_log]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        detection: T1685.005_event_log_clearing
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\wevtutil.exe', OriginalFileName: wevtutil.exe, CommandLine: wevtutil cl System, User: 'LAB\admin'}
+      - artifact: system_104
+        at: effect
+        detection: T1685.005_system_log_cleared
+        event: {EventID: 104, Channel: System, Provider_Name: Microsoft-Windows-Eventlog, Channel_Cleared: System, SubjectUserName: admin}
+      - {artifact: prefetch_file, at: start}
+
+  - id: clear_sysmon_log
+    name: Clear the Sysmon log
+    example: wevtutil cl Microsoft-Windows-Sysmon/Operational
+    destroys: [sysmon_log]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        detection: T1685.005_event_log_clearing
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\wevtutil.exe', OriginalFileName: wevtutil.exe, CommandLine: wevtutil cl Microsoft-Windows-Sysmon/Operational, User: 'LAB\admin'}
+      - artifact: system_104
+        at: effect
+        detection: T1685.005_system_log_cleared
+        event: {EventID: 104, Channel: System, Provider_Name: Microsoft-Windows-Eventlog, Channel_Cleared: Microsoft-Windows-Sysmon/Operational, SubjectUserName: admin}
+      - {artifact: prefetch_file, at: start}
+
+  - id: clear_powershell_logs
+    name: Clear the PowerShell logs
+    example: wevtutil cl Microsoft-Windows-PowerShell/Operational, then wevtutil cl "Windows PowerShell"
+    destroys: [powershell_log, powershell_classic_log]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        detection: T1685.005_event_log_clearing
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\wevtutil.exe', OriginalFileName: wevtutil.exe, CommandLine: wevtutil cl Microsoft-Windows-PowerShell/Operational, User: 'LAB\admin'}
+      - artifact: system_104
+        at: effect
+        detection: T1685.005_system_log_cleared
+        event: {EventID: 104, Channel: System, Provider_Name: Microsoft-Windows-Eventlog, Channel_Cleared: Microsoft-Windows-PowerShell/Operational, SubjectUserName: admin}
+      - {artifact: prefetch_file, at: start}
+
+  - id: clear_operational_logs
+    name: Clear the Task Scheduler and WinRM logs
+    example: wevtutil cl Microsoft-Windows-TaskScheduler/Operational, then wevtutil cl Microsoft-Windows-WinRM/Operational
+    destroys: [taskscheduler_log, winrm_log]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        detection: T1685.005_event_log_clearing
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\wevtutil.exe', OriginalFileName: wevtutil.exe, CommandLine: wevtutil cl Microsoft-Windows-WinRM/Operational, User: 'LAB\admin'}
+      - artifact: system_104
+        at: effect
+        detection: T1685.005_system_log_cleared
+        event: {EventID: 104, Channel: System, Provider_Name: Microsoft-Windows-Eventlog, Channel_Cleared: Microsoft-Windows-WinRM/Operational, SubjectUserName: admin}
+      - {artifact: prefetch_file, at: start}
+
+  - id: delete_prefetch
+    name: Delete the Prefetch files
+    example: cmd /c del /q C:\Windows\Prefetch\*.pf
+    destroys: [prefetch]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\cmd.exe', OriginalFileName: Cmd.Exe, CommandLine: 'cmd /c del /q C:\Windows\Prefetch\*.pf', User: 'LAB\admin'}
+      - {artifact: usn_record, at: effect}
+
+  - id: delete_bam_entries
+    name: Delete the BAM entries
+    example: reg delete HKLM\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\<SID> /f (as SYSTEM)
+    destroys: [bam]
+    basis: practitioner
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\reg.exe', OriginalFileName: reg.exe, CommandLine: 'reg delete HKLM\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-1111-2222-3333-1001 /f', User: 'NT AUTHORITY\SYSTEM'}
+      - {artifact: prefetch_file, at: start}
+
+  - id: delete_usn_journal
+    name: Delete the NTFS change journal
+    example: 'fsutil usn deletejournal /d C:'
+    destroys: [usn_journal]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\fsutil.exe', OriginalFileName: fsutil.exe, CommandLine: 'fsutil usn deletejournal /d C:', User: 'LAB\admin'}
+      - {artifact: application_3079, at: effect}
+      - {artifact: prefetch_file, at: start}
+
+  - id: delete_task
+    name: Delete the scheduled task
+    example: schtasks /delete /tn <task> /f
+    destroys: [task_store]
+    basis: vendor
+    note: Removes the persistence together with its evidence
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\schtasks.exe', OriginalFileName: schtasks.exe, CommandLine: schtasks /delete /tn Updater /f, User: 'LAB\admin'}
+      - {artifact: taskscheduler_141, at: effect}
+      - {artifact: security_4699, at: effect}
+      - {artifact: usn_record, at: effect}
+      - {artifact: prefetch_file, at: start}
+
+  - id: delete_run_value
+    name: Delete the Run key value
+    example: reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v <name> /f
+    destroys: [run_key]
+    basis: vendor
+    note: Removes the persistence together with its evidence
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\reg.exe', OriginalFileName: reg.exe, CommandLine: 'reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v Updater /f', User: 'LAB\admin'}
+      - {artifact: sysmon_12, at: effect}
+      - {artifact: prefetch_file, at: start}
+
+  - id: delete_service
+    name: Delete the service
+    example: sc delete <service>
+    destroys: [services_key]
+    basis: vendor
+    note: Removes the service together with its evidence
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\sc.exe', OriginalFileName: sc.exe, CommandLine: sc delete UpdaterSvc, User: 'LAB\admin'}
+      - {artifact: prefetch_file, at: start}
+
+  - id: stop_sysmon
+    name: Stop the Sysmon service
+    example: sc stop Sysmon64
+    blinds: [sysmon_log]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\sc.exe', OriginalFileName: sc.exe, CommandLine: sc stop Sysmon64, User: 'LAB\admin'}
+      - artifact: sysmon_4
+        at: start
+        event: {EventID: 4, Channel: Microsoft-Windows-Sysmon/Operational, State: Stopped}
+      - {artifact: prefetch_file, at: start}
+
+  - id: unload_sysmon_driver
+    name: Unload the Sysmon driver
+    example: fltmc unload SysmonDrv
+    blinds: [sysmon_log]
+    basis: practitioner
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\fltMC.exe', OriginalFileName: fltMC.exe, CommandLine: fltmc unload SysmonDrv, User: 'LAB\admin'}
+      - {artifact: prefetch_file, at: start}
+
+  - id: clear_audit_policy
+    name: Clear the audit policy
+    example: auditpol /clear /y
+    blinds: [security_log]
+    still_written: [security_1102, security_4719]
+    basis: vendor
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\auditpol.exe', OriginalFileName: AUDITPOL.EXE, CommandLine: auditpol /clear /y, User: 'LAB\admin'}
+      - artifact: security_4719
+        at: start
+        event: {EventID: 4719, Channel: Security, SubjectUserName: admin, AuditPolicyChanges: '%%8448'}
+      - {artifact: prefetch_file, at: start}
+
+  - id: stop_event_log_threads
+    name: Suspend the threads of the Event Log service
+    example: Invoke-Phant0m
+    blinds: [sysmon_log, security_log, system_log, powershell_log, powershell_classic_log, taskscheduler_log, winrm_log, application_log]
+    basis: practitioner
+    source: https://github.com/hlldz/Phant0m
+    note: The service keeps its running state and no channel records anything
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', OriginalFileName: PowerShell.EXE, CommandLine: powershell -ep bypass -c "Import-Module .\Invoke-Phant0m.ps1; Invoke-Phant0m", User: 'LAB\admin'}
+      - {artifact: siem_silence, at: effect}
+      - {artifact: prefetch_file, at: start}
+
+  - id: stop_forwarder
+    name: Stop the log forwarder, or block its connection
+    example: sc stop SplunkForwarder
+    stops_forwarding: true
+    basis: vendor
+    note: The forwarder is assumed to stop before it ships the record of its own stop
+    traces:
+      - artifact: sysmon_1
+        at: start
+        event: {EventID: 1, Channel: Microsoft-Windows-Sysmon/Operational, Image: 'C:\Windows\System32\sc.exe', OriginalFileName: sc.exe, CommandLine: sc stop SplunkForwarder, User: 'LAB\admin'}
+      - {artifact: siem_silence, at: effect}
+      - {artifact: prefetch_file, at: start}

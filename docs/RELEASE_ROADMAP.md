@@ -1,6 +1,14 @@
 # Release Roadmap
 
-## v1.2: RASD-Agent (this release)
+## v1.3: RASD-Trace (this release)
+| Area | Delivered |
+|---|---|
+| Trace | RASD-Trace ([TRACE](TRACE.md)): `dfir/trace/model.yml` names the stores evidence lives in, the artifacts read from them with the questions each answers, and the anti-forensic actions RASD knows with what each destroys, blinds and leaves; `dfir/trace/footprints.yml` names the artifacts each detection's technique writes. `rasd trace` searches every sequence of those actions around the technique and gives each detection and question a verdict (out of reach, evident, exposed with the cheapest quiet sequence), ranks the unread traces into the next rules to write, and measures the depth of the evidence a host holds on its own. `rasd trace <detection> --lost STORES` lists what an investigation can still prove |
+| Proof | A trace that names a detection carries a sample event the engine replays in CI: the rule must fire, and a trace said to be unread must fire none. The forwarded channels must be the ones the generated forwarder inputs ship, and every detection has a footprint or a stated reason |
+| Counsel | The ranked unread traces are findings of `rasd advise` (`trace.rule.*`), and the counts are on the metrics pages |
+| Scope | Windows hosts, from the position of an administrator on the host. Entries are documented behaviour with their sources, vendor or practitioner; the lab runs that reproduce each erasure are part of v2.0 |
+
+## v1.2: RASD-Agent
 | Area | Delivered |
 |---|---|
 | Structure | Seven pillars: `red/`, `detect/`, `dfir/`, `intel/`, `purple/`, `deceive/`, `agent/` |
@@ -43,6 +51,8 @@ The aim of v2.0 is that every covered detection reaches the **Reference** maturi
 | Next rules from public data | Rules for the behaviours public data showed and no rule reads yet: cron directory writes, netcat shells, NTLM sprays by workstation, explicit-credential sprays, local logon sprays, service ImagePath registry writes, LSASS dump command lines ([list](PUBLIC_DATA_VALIDATION.md#next-rules-from-public-data)) |
 | Actor map re-checked | `intel/mappings/actors.yml` carries a `last_checked` date (done 2026-10-13) |
 | Correlation evidence | The password spray, API probing and object-ID enumeration lab runs turned into `evidence.md` for each correlation |
+| Trace evidence | Each anti-forensic action of `dfir/trace/model.yml` run in the lab after a red test, its traces exported and compared with the model; the practitioner entries confirmed or corrected; the Linux and web detections given footprints |
+| Tamper rules | The rules RASD-Trace ranks first: a host whose channels go quiet in the SIEM, the Sysmon service stopped (Sysmon 4), the Sysmon driver unloaded |
 | Deception evidence | The three deception red tests run against deployed decoys, their exports turned into `evidence.md` for the four deception detections, and the first operational deception metrics (time to first touch, decoys touched per run) recorded from them rather than estimated |
 | AD reconnaissance | Decoy-account attribute-read rule (4662, a SACL on the honey accounts) validated by the `ldap_enumeration` test: the first planned RASD-Deceive class (`rasd deceive --gaps`) |
 | Rule fixes found in review | Each needs a new public dataset run, because `results.json` records the rules that produced it: the PE name `sctasks.exe` for renamed copies of schtasks.exe; a word boundary before `Register-` / `Set-ScheduledTask` (an `Unregister-ScheduledTask` cleanup that names `$env:TEMP` fires today); mshtml `#135` called by ordinal without a script protocol; loopback shares written as `\\localhost\` or another 127.x address; the `Policies\Explorer\Run` and `RunOnceEx` keys; `Provider_Name` on the 1102 rule; shell options and sudo options before a script in the Linux shell rule; the schtasks action words matched in `/tr` only. Until then each is documented in its detection's README |

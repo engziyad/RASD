@@ -8,6 +8,7 @@ RASD-DFIR turns an alert into an investigation: what to check in the first fifte
 | [`queries/`](queries/) | Pivot queries (KQL and SPL) the playbooks call: process tree, user-host window, persistence sweep, Kerberos client activity |
 | [`templates/`](templates/) | Incident summary, evidence table, timeline, containment plan, closure note |
 | [`models/`](models/) | Investigation flow and the timeline model every investigation follows |
+| [`trace/`](trace/) | RASD-Trace: the artifacts each technique writes, the anti-forensic actions that remove them, and for every detection whether its evidence is out of reach, evident or exposed (`rasd trace`) |
 
 Each playbook starts with a small front matter block (`techniques`, `detections`, `red_tests`) that `tools/chain.py` reads to build the attack-to-defense matrix; CI fails when a playbook has no evidence table or points at a detection or test that does not exist.
 

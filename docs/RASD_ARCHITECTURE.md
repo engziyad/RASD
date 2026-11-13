@@ -55,7 +55,9 @@ flowchart TB
     RES & LOGS --> EV[evidence.py] --> EVD[evidence.md]
     RT & MT & FZ & PV & PA & EVD --> SC[score.py] --> QM[QUALITY.md]
     SC & RG & EVD --> CH[chain.py] --> MX[validation and executive matrices · evidence plan · metrics · status badges · facts blocks]
-    CH & TN & DC --> AG[advise.py] --> ADV[agent/ADVICE.md · proposals · decisions]
+    R & E --> SV[survivability.py] --> TR[dfir/trace results]
+    TRM[trace model.yml · footprints.yml] --> SV
+    CH & TN & DC & SV --> AG[advise.py] --> ADV[agent/ADVICE.md · proposals · decisions]
 ```
 
 ### Engine and conversion
@@ -78,6 +80,7 @@ flowchart TB
 | `overlap.py` | Which detections fire on the same events? |
 | `tune.py` | What does a proposed filter hide, and what noise does it remove? |
 | `doctor.py` | Is a log export ready for the rules (fields present, aliases, truncation)? |
+| `survivability.py` | `rasd trace`: for every detection and question, can a sequence of the anti-forensic actions of `dfir/trace/model.yml` remove the answer, at what cost, and does a rule see it? Exhaustive search over the states those sequences reach; traces that name a rule replayed through the engine; the unread traces ranked into the next rules; `--lost` for what an incident can still prove |
 | `deceive.py` | Do the decoys of `deceive/decoys.yml` agree with everything built on them: each identity a value of its rule and present in a true positive, the red test triggering the detection, the decoy host's rule listing exactly the event codes of the modules the inventory enables and its OpenCanary configuration enabling exactly those, the lures pointing at decoys that exist, the catalogue current? `--rename` adopts your own identities everywhere so the proofs are about your decoys; `--gaps` ranks the decoy classes not built |
 
 ### Operations tools
@@ -108,7 +111,7 @@ flowchart TB
    2. unit tests (engine, converter, every tool; the PowerShell tests run when `pwsh` is installed)
    3. detection tests, mutation tests
    4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), certify `--check` (every rule compiled exactly, both constructed events confirmed by the engine, every behaviour variant as its spec expects, pages current), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
-   5. tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
+   5. tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), trace `--check` (the survivability model against the rules, the forwarder inputs and the engine; results page current), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
    6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, chain (matrices, metrics, intel maps, facts blocks), the counsel page
    7. chain `--check`, advise `--check` (the counsel page current, the decisions file valid) and link check
 3. detection tests as JUnit, the PowerShell and shell parse checks of every red and deception script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests

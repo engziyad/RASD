@@ -1,0 +1,136 @@
+# RASD-Trace footprints: the artifacts each detection's technique writes, as its red test performs it.
+#
+# `reads` is the artifact the detection's rule reads: the alert exists when that record reaches the SIEM.
+# `writes` lists every other artifact of dfir/trace/model.yml the behaviour leaves on the way; an entry may
+# narrow what the artifact answers for this technique (`answers`) and say what it shows here (`shows`).
+# Artifacts marked `optional` in the model count only where their audit setting is on; `rasd trace` reports
+# what each one would add.
+#
+# `rasd trace --check` fails when a detection of detect/ is neither here nor under `not_modelled`, when
+# `reads` does not match the rule's log source, or when an artifact is not in the model.
+version: 1
+
+footprints:
+  T1003.001_lsass_memory_access:
+    reads: sysmon_10
+    writes: []
+    note: The read of LSASS memory has one witness. The tool that performed it leaves its own process record, which this rule does not read
+
+  T1021.006_wsmprovhost_suspicious_child:
+    reads: sysmon_1
+    writes:
+      - {artifact: security_4688}
+      - {artifact: security_4624, shows: The network logon of the remote session and its source address}
+      - {artifact: winrm_91}
+      - {artifact: powershell_4104, shows: The commands of the remote session}
+      - {artifact: prefetch_file, shows: WSMPROVHOST.EXE and the child it started}
+      - {artifact: bam_entry}
+
+  T1053.005_powershell_scheduled_task_creation:
+    reads: sysmon_1
+    writes:
+      - {artifact: security_4688}
+      - {artifact: security_4698}
+      - {artifact: powershell_4104}
+      - {artifact: powershell_400}
+      - {artifact: taskscheduler_106}
+      - {artifact: task_definition}
+      - {artifact: usn_record, shows: The task file created under System32\Tasks}
+      - {artifact: prefetch_file, shows: POWERSHELL.EXE}
+      - {artifact: bam_entry}
+
+  T1053.005_schtasks_suspicious_creation:
+    reads: sysmon_1
+    writes:
+      - {artifact: security_4688}
+      - {artifact: security_4698}
+      - {artifact: taskscheduler_106}
+      - {artifact: task_definition}
+      - {artifact: usn_record, shows: The task file created under System32\Tasks}
+      - {artifact: prefetch_file, shows: SCHTASKS.EXE}
+      - {artifact: bam_entry}
+
+  T1059.001_powershell_encoded_command:
+    reads: sysmon_1
+    writes:
+      - {artifact: security_4688}
+      - {artifact: powershell_4104, shows: The decoded script}
+      - {artifact: powershell_400}
+      - {artifact: prefetch_file, shows: POWERSHELL.EXE}
+      - {artifact: bam_entry}
+
+  T1218.011_rundll32_suspicious_execution:
+    reads: sysmon_1
+    writes:
+      - {artifact: security_4688}
+      - {artifact: prefetch_file, shows: RUNDLL32.EXE and the libraries it loaded in its first seconds}
+      - {artifact: bam_entry}
+
+  T1547.001_registry_run_key_persistence:
+    reads: sysmon_13
+    writes:
+      - {artifact: sysmon_1, shows: The process that wrote the value}
+      - {artifact: security_4688}
+      - {artifact: run_value}
+
+  T1569.002_suspicious_service_installation:
+    reads: system_7045
+    writes:
+      - {artifact: sysmon_1, shows: sc.exe with the create command line}
+      - {artifact: security_4688}
+      - {artifact: security_4697}
+      - {artifact: service_key}
+      - {artifact: prefetch_file, shows: SC.EXE}
+
+  T1685.005_event_log_clearing:
+    reads: sysmon_1
+    writes:
+      - {artifact: security_4688}
+      - {artifact: system_104, shows: The clear record of the channel that was emptied}
+      - {artifact: prefetch_file, shows: WEVTUTIL.EXE or POWERSHELL.EXE}
+
+  T1685.005_security_log_cleared:
+    reads: security_1102
+    writes:
+      - {artifact: sysmon_1, shows: The command that cleared the log}
+      - {artifact: prefetch_file, shows: WEVTUTIL.EXE or POWERSHELL.EXE}
+
+  T1685.005_system_log_cleared:
+    reads: system_104
+    writes:
+      - {artifact: sysmon_1, shows: The command that cleared the log}
+      - {artifact: prefetch_file, shows: WEVTUTIL.EXE or POWERSHELL.EXE}
+
+  T1558.003_kerberoasting_rc4_tgs:
+    reads: dc_4769
+    writes: []
+
+  T1558.003_kerberoasting_volume:
+    reads: dc_4769
+    writes: []
+
+  T1558.003_honey_spn_ticket_request:
+    reads: dc_4769
+    writes: []
+
+  T1078.002_honey_account_authentication:
+    reads: dc_auth
+    writes: []
+
+  T1110.003_password_spray_burst:
+    reads: dc_auth
+    writes: []
+
+  T1552.001_honey_file_access:
+    reads: server_4663
+    writes: []
+
+  T1046_decoy_service_interaction:
+    reads: canary_record
+    writes: []
+
+not_modelled:
+  T1053.003_crontab_noninteractive_install: Linux artifacts (auditd, the journal, shell history, crontab spool files) are not in the model yet
+  T1059.004_linux_suspicious_shell_execution: Linux artifacts are not in the model yet
+  T1190_object_id_enumeration: Web server artifacts (access log rotation, reverse proxy and WAF copies) are not in the model yet
+  T1595.003_api_auth_probing: Web server artifacts are not in the model yet

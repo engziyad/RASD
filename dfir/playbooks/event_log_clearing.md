@@ -28,6 +28,7 @@ An event log was cleared: `wevtutil cl`, `Clear-EventLog`, `.ClearLog()`, WMI `C
 - Other anti-forensics on the host: Sysmon or EDR service stopped, audit policy changed (4719), log size reduced (`Limit-EventLog`)
 - Credential access and persistence in the forwarded logs before the clear
 - The same account clearing logs on other hosts
+- What the clear could not remove: `rasd trace <detection> --lost <the cleared stores>` lists the witnesses that remain for each detection on the host ([RASD-Trace](../trace/README.md))
 
 ## Evidence to Collect
 | Evidence | Source | Purpose |
