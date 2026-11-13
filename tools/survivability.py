@@ -26,6 +26,8 @@ before and after the technique decides one of three things:
                  trace that names a detection fires it, every other trace fires no rule, every
                  detection has a footprint or a stated reason, and the results page is current
   --write        render the results block of dfir/trace/README.md
+  (replay)       rasd replay --case-dir adds evidence_request.md to every case folder: what to collect for
+                 the detections that fired, in order, and what a log clear seen in the same window took
   --json FILE    the results as JSON
 
 The search is exact for the catalogued actions and says nothing about an action the catalogue lacks:
@@ -170,8 +172,10 @@ def build_model(model: dict, prints: dict) -> Model:
         footprints[det] = Footprint(det, str(f.get("reads", "")), tuple(str(w.get("artifact", "")) for w in writes),
                                     {str(w.get("artifact")): w.get("shows") for w in writes if w.get("shows")}, f.get("note"))
     baseline = model.get("baseline") or {}
-    return Model(str(model.get("position", "")), dict(model.get("questions") or {}), dict(model.get("stores") or {}), artifacts,
-                 erasures, dict(baseline.get("forwarded") or {}), str(baseline.get("forwarder_inputs", "")), footprints,
+    stores = dict(model.get("stores") or {})
+    forwarded = {str(s): str((stores.get(s) or {}).get("channel", s)) for s in baseline.get("forwarded") or []}
+    return Model(str(model.get("position", "")), dict(model.get("questions") or {}), stores, artifacts,
+                 erasures, forwarded, str(baseline.get("forwarder_inputs", "")), footprints,
                  dict(prints.get("not_modelled") or {}))
 
 
@@ -472,6 +476,8 @@ def check(m: Model) -> list[str]:
         if sid not in m.stores or m.stores[sid].get("reach") != "host":
             errs.append(f"{model_file}: baseline.forwarded: {sid} is not a store on the host")
     inputs = ROOT / m.forwarder_inputs
+    errs += [f"{model_file}: baseline.forwarded: store {sid} has no channel" for sid in m.forwarded
+             if sid in m.stores and not m.stores[sid].get("channel")]
     if set(m.forwarded.values()) != forwarder_channels(inputs):
         errs.append(f"{model_file}: baseline.forwarded lists {sorted(m.forwarded.values())}, and {m.forwarder_inputs} "
                     f"ships {sorted(forwarder_channels(inputs))}")
@@ -644,6 +650,97 @@ def as_json(data: dict) -> dict:
                 "quiet": res["quiet"] and {"actions": res["quiet"][0], "plan": res["quiet"][1]}}
     return {"counts": data["counts"], "results": {d: {q: slim(r) for q, r in per.items()} for d, per in data["results"].items()},
             "plans": data["plans"], "closure": data["closure"], "depth": data["depth"]}
+
+
+# --------------------------------------------------------------------------- #
+# The evidence request of a case (rasd replay --case-dir)
+# --------------------------------------------------------------------------- #
+CLEAR_RECORDS = {"T1685.005_security_log_cleared": "security_1102", "T1685.005_system_log_cleared": "system_104"}
+
+
+def cleared_stores(m: Model, alerts: list[dict]) -> list[dict]:
+    """The log clears a storyline's own alerts record: which store was emptied, on which host, when. Only the
+    clear records count (Security 1102, System 104 with the channel it names), not a command line that asks for one."""
+    by_channel = {str(s.get("channel", "")).lower(): sid for sid, s in m.stores.items() if s.get("channel")}
+    out = []
+    for a in alerts:
+        if a.get("rule") not in CLEAR_RECORDS:
+            continue
+        ev = a.get("_event") or {}
+        channel = "Security" if a["rule"] == "T1685.005_security_log_cleared" else str(ev.get("Channel_Cleared") or "")
+        store = by_channel.get(channel.lower())
+        if store:
+            out.append({"host": a.get("host"), "store": store, "time": a.get("time"), "rule": a["rule"]})
+    return out
+
+
+def evidence_request(m: Model, title: str, alerts: list[dict]) -> str:
+    """What to collect for one storyline: every witness of every detection that fired, the stores that roll
+    over first at the top, and for each one whether a log clear seen in the same storyline took it."""
+    clears = cleared_stores(m, alerts)
+    rows: dict[tuple, dict] = {}
+    thin: dict[tuple[str, str], list[str]] = {}
+    skipped: dict[str, str] = {}
+    for a in alerts:
+        fp = m.footprints.get(a.get("rule", ""))
+        if fp is None:
+            skipped.setdefault(str(a.get("rule")), m.not_modelled.get(str(a.get("rule")), "no footprint"))
+            continue
+        host, when = a.get("host") or a.get("entity") or "", a.get("time")
+        gone = {c["store"]: c for c in clears if c["host"] == a.get("host") and when and c["time"] and c["time"] > when}
+        left: dict[str, set[str]] = {q: set() for q in questions_of(m, fp) if q != "alert"}
+        safe: set[str] = set()
+        for aid in fp.artifacts:
+            art = m.artifacts[aid]
+            store = m.stores[art.store]
+            if m.remote(aid):
+                state, holder = f"held by the {store['name'][0].lower() + store['name'][1:]}", ""
+            elif art.optional:
+                state, holder = f"only if collected: {art.optional}", host
+            elif art.store in gone:
+                took = f"cleared at {gone[art.store]['time']:%H:%M:%S}"
+                state, holder = (f"{took}; the SIEM copy remains" if m.ships(aid) else f"{took}; not forwarded, so lost"), host
+            else:
+                state, holder = "on the host" + ("; a copy is in the SIEM" if m.ships(aid) else ""), host
+            if m.remote(aid):
+                safe |= art.answers
+            elif not art.optional and (art.store not in gone or m.ships(aid)):
+                for q in art.answers & set(left):
+                    left[q].add(art.name if art.store not in gone else f"the SIEM copy of {art.name}")
+            row = rows.setdefault((store["collect"], holder, art.store, aid, state), {
+                "host": holder, "store": store["name"], "artifact": art.name, "state": state, "for": [],
+                "answers": [q for q in m.questions if q in art.answers],
+                "note": " · ".join(x for x in (fp.shows.get(aid), art.limits) if x)})
+            if a["rule"] not in row["for"]:
+                row["for"].append(a["rule"])
+        for q, names in left.items():
+            if len(names) <= 1 and q not in safe:
+                found = thin.setdefault((a["rule"], next(iter(names), "nothing that is left")), [])
+                if q not in found:
+                    found.append(q)
+    lines = [f"# Evidence request · {title}", "",
+             "What to collect for the detections that fired in this storyline, the stores that roll over first at the top. "
+             "The list comes from the survivability model (`dfir/trace/model.yml`): it says where each technique is documented "
+             "to leave evidence, and the collector confirms what is there.", ""]
+    if clears:
+        lines += ["## Cleared in this storyline", "", "| Time (UTC) | Host | Store | Seen by |", "|---|---|---|---|"]
+        lines += [f"| {c['time']:%H:%M:%S} | {md_text(c['host'])} | {m.stores[c['store']]['name']} | `{c['rule']}` |" for c in clears]
+        lines += ["", "Records written before a clear are gone from that store on the host. Where the store is forwarded, the copy "
+                  "the SIEM holds is the evidence.", ""]
+    lines += ["## Collect, in this order", "", "| # | Where | Store | Artifact | Answers | State | For |", "|---:|---|---|---|---|---|---|"]
+    for n, (_key, r) in enumerate(sorted(rows.items(), key=lambda kv: kv[0]), 1):
+        lines.append(f"| {n} | {md_text(r['host']) or 'off the host'} | {r['store']} | {r['artifact']}"
+                     + (f"<br><sub>{md_text(r['note'])}</sub>" if r["note"] else "")
+                     + f" | {', '.join(r['answers'])} | {md_text(r['state'])} | " + ", ".join(f"`{d}`" for d in r["for"]) + " |")
+    if thin:
+        lines += ["", "## Answers that rest on one artifact", "",
+                  "Nothing else in the baseline answers these questions on the host, so the record and its SIEM copy are all "
+                  "there is. Preserve them first.", ""]
+        lines += [f"- `{rule}`: **{', '.join(qs)}** rest on {name}" for (rule, name), qs in thin.items()]
+    if skipped:
+        lines += ["", "## Not in the model", ""] + [f"- `{d}`: {md_text(why)}" for d, why in skipped.items()]
+    lines += ["", "<sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>", ""]
+    return "\n".join(lines)
 
 
 # --------------------------------------------------------------------------- #

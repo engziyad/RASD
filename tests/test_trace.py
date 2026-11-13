@@ -21,7 +21,7 @@ def world(erasures: list[dict], writes: tuple[str, ...] = (), forwarded: tuple[s
     model = {
         "position": "an administrator on the host",
         "questions": {"alert": "", "ran": "", "when": "", "who": "", "how": ""},
-        "baseline": {"forwarder_inputs": "", "forwarded": {s: s for s in forwarded}},
+        "baseline": {"forwarder_inputs": "", "forwarded": list(forwarded)},
         "stores": {"log": {"name": "Log", "reach": "host", "collect": 1}, "disk": {"name": "Disk", "reach": "host", "collect": 2},
                    "other": {"name": "Other log", "reach": "host", "collect": 1}, "far": {"name": "Far", "reach": "remote", "collect": 3}},
         "artifacts": {
@@ -166,7 +166,7 @@ class Shipped(unittest.TestCase):
 
     def test_forwarded_channels_follow_the_forwarder_inputs(self):
         raw = copy.deepcopy(self.raw)
-        raw["baseline"]["forwarded"]["winrm_log"] = "Microsoft-Windows-WinRM/Operational"
+        raw["baseline"]["forwarded"].append("winrm_log")
         errs = sv.check(sv.build_model(raw, self.prints))
         self.assertTrue(any("baseline.forwarded" in e for e in errs), errs)
 
@@ -207,6 +207,53 @@ class Shipped(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as lsass:
             sv.print_detection(self.m, "T1003.001_lsass_memory_access", {"sysmon_log", "siem"})
         self.assertIn("no witness left", lsass.getvalue())
+
+
+class EvidenceRequest(unittest.TestCase):
+    """The evidence request a replay case carries: what to collect, and what a log clear in the storyline took."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.m = sv.load_model()
+
+    @staticmethod
+    def alert(rule: str, hms: str, host: str = "WS01", **event) -> dict:
+        from datetime import datetime
+        return {"rule": rule, "host": host, "entity": host, "time": datetime.strptime(f"2026-10-01 {hms}", "%Y-%m-%d %H:%M:%S"),
+                "_event": event}
+
+    def test_a_clear_takes_what_was_written_before_it_and_only_on_its_host(self):
+        alerts = [self.alert("T1569.002_suspicious_service_installation", "10:00:00"),
+                  self.alert("T1569.002_suspicious_service_installation", "10:00:00", host="WS02"),
+                  self.alert("T1685.005_system_log_cleared", "10:05:00", Channel_Cleared="System"),
+                  self.alert("T1569.002_suspicious_service_installation", "10:09:00")]
+        text = sv.evidence_request(self.m, "case", alerts)
+        rows = [line for line in text.splitlines() if "System 7045" in line]
+        self.assertEqual(len(rows), 3, rows)
+        self.assertEqual(sum("cleared at 10:05:00; the SIEM copy remains" in r for r in rows), 1)
+        self.assertEqual(sum("WS02" in r and "on the host; a copy is in the SIEM" in r for r in rows), 1)
+        self.assertIn("| 10:05:00 | WS01 | System log | `T1685.005_system_log_cleared` |", text)
+
+    def test_the_clear_record_itself_is_written_after_the_clear(self):
+        text = sv.evidence_request(self.m, "case", [self.alert("T1685.005_security_log_cleared", "10:05:00")])
+        row = next(line for line in text.splitlines() if "Security 1102" in line)
+        self.assertIn("on the host", row)
+
+    def test_a_command_line_that_asks_for_a_clear_is_not_a_clear(self):
+        text = sv.evidence_request(self.m, "case", [self.alert("T1685.005_event_log_clearing", "10:05:00")])
+        self.assertNotIn("## Cleared in this storyline", text)
+
+    def test_answers_on_one_artifact_are_named_and_remote_records_are_not(self):
+        text = sv.evidence_request(self.m, "case", [self.alert("T1003.001_lsass_memory_access", "10:00:00"),
+                                                    self.alert("T1558.003_kerberoasting_rc4_tgs", "10:01:00", host="DC01")])
+        self.assertIn("`T1003.001_lsass_memory_access`: **ran, when, who, how** rest on Sysmon 10", text)
+        self.assertNotIn("`T1558.003_kerberoasting_rc4_tgs`: **", text)
+        self.assertIn("held by the security log of the domain controller", text)
+
+    def test_a_detection_without_a_footprint_is_listed_with_its_reason(self):
+        text = sv.evidence_request(self.m, "case", [self.alert("T1190_object_id_enumeration", "10:00:00")])
+        self.assertIn("## Not in the model", text)
+        self.assertIn("Web server artifacts", text)
 
 
 if __name__ == "__main__":

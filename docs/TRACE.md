@@ -78,6 +78,10 @@ The same search is run on a host that forwards nothing, counting alerts as allow
 
 `rasd trace <detection>` prints the witnesses of each question in collection order, the stores that roll over soonest first, with what each shows for this technique and what it cannot show. `--lost` removes the stores an incident has already lost (`siem` removes the forwarded copies) and prints what is left: the answers that can still be given, and the ones that cannot.
 
+## The evidence request of a case
+
+`rasd replay <export> --case-dir reports/cases` writes `evidence_request.md` into every case folder. It is the hand-over from the analyst who triaged the alerts to whoever collects from the host: every artifact the model says the fired detections leave, the stores that roll over first at the top, each with the questions it answers and what it cannot show. When the storyline itself contains a log clear (a Security 1102, or a System 104 naming its channel), every record written to that store on that host before the clear is marked as cleared, with whether the SIEM copy remains or the record is lost. A command line that asks for a clear is not counted as one; only the clear records are. The file ends with the answers that rest on a single artifact.
+
 ## Limits
 
 - **The attacker's position is fixed.** Results assume an administrator on the host where the technique ran, with no reach to the domain controller, the file server, the decoy host or the SIEM. An intruder who also holds the domain controller turns its records into host records; the model would need that position added.

@@ -25,25 +25,21 @@ questions:
   how: With which command line, value or configuration
   origin: From which remote host
 
-# The telemetry baseline the results assume: the channels the lab forwarder ships. `rasd trace --check`
-# fails when this list and the generated forwarder inputs disagree.
+# The telemetry baseline the results assume: the stores whose channels the lab forwarder ships.
+# `rasd trace --check` fails when this list and the generated forwarder inputs disagree.
 baseline:
   forwarder_inputs: queries/splunk_app/rasd_forwarder/default/inputs.conf
-  forwarded:
-    sysmon_log: Microsoft-Windows-Sysmon/Operational
-    security_log: Security
-    system_log: System
-    powershell_log: Microsoft-Windows-PowerShell/Operational
+  forwarded: [sysmon_log, security_log, system_log, powershell_log]
 
 stores:
-  sysmon_log: {name: Sysmon operational log, reach: host, collect: 3, lifetime: Rolls over by size}
-  security_log: {name: Security log, reach: host, collect: 3, lifetime: Rolls over by size}
-  system_log: {name: System log, reach: host, collect: 3, lifetime: Rolls over by size}
-  powershell_log: {name: PowerShell operational log, reach: host, collect: 3, lifetime: Rolls over by size}
-  powershell_classic_log: {name: Windows PowerShell log, reach: host, collect: 3, lifetime: Rolls over by size}
-  taskscheduler_log: {name: Task Scheduler operational log, reach: host, collect: 3, lifetime: Rolls over by size}
-  winrm_log: {name: WinRM operational log, reach: host, collect: 3, lifetime: Rolls over by size}
-  application_log: {name: Application log, reach: host, collect: 3, lifetime: Rolls over by size}
+  sysmon_log: {name: Sysmon operational log, channel: Microsoft-Windows-Sysmon/Operational, reach: host, collect: 3, lifetime: Rolls over by size}
+  security_log: {name: Security log, channel: Security, reach: host, collect: 3, lifetime: Rolls over by size}
+  system_log: {name: System log, channel: System, reach: host, collect: 3, lifetime: Rolls over by size}
+  powershell_log: {name: PowerShell operational log, channel: Microsoft-Windows-PowerShell/Operational, reach: host, collect: 3, lifetime: Rolls over by size}
+  powershell_classic_log: {name: Windows PowerShell log, channel: Windows PowerShell, reach: host, collect: 3, lifetime: Rolls over by size}
+  taskscheduler_log: {name: Task Scheduler operational log, channel: Microsoft-Windows-TaskScheduler/Operational, reach: host, collect: 3, lifetime: Rolls over by size}
+  winrm_log: {name: WinRM operational log, channel: Microsoft-Windows-WinRM/Operational, reach: host, collect: 3, lifetime: Rolls over by size}
+  application_log: {name: Application log, channel: Application, reach: host, collect: 3, lifetime: Rolls over by size}
   prefetch: {name: Prefetch folder, reach: host, collect: 1, lifetime: 1024 files on Windows 8 and later; the oldest are removed first}
   bam: {name: Background Activity Moderator key, reach: host, collect: 1, lifetime: Old entries are pruned by the system}
   usn_journal: {name: NTFS change journal, reach: host, collect: 2, lifetime: Rolls over by size; hours to days on a busy volume}
