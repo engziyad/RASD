@@ -150,7 +150,7 @@ def counsel(repo) -> list[Finding]:
     """Every finding the repository's own measurements support, unranked."""
     out: list[Finding] = []
     for part in (evidence_findings, proof_findings, certify_findings, nearmiss_findings, tuning_findings,
-                 backlog_findings, deception_findings, public_findings, coverage_findings, source_findings,
+                 backlog_findings, deception_findings, trace_findings, public_findings, coverage_findings, source_findings,
                  red_findings):
         out += part(repo)
     seen: Counter[str] = Counter()
@@ -447,6 +447,29 @@ def deception_findings(repo) -> list[Finding]:
             proposal="decoy", weight=3 - tier,
             data={"class": c.get("id"), "name": c.get("name"), "techniques": c.get("techniques"), "telemetry": c.get("telemetry"),
                   "missing": c.get("missing"), "next": c.get("next"), "d3fend": c.get("d3fend")}))
+    return out
+
+
+def trace_findings(repo) -> list[Finding]:
+    """The anti-forensic traces that reach the SIEM and that no rule reads, in the order RASD-Trace closes them."""
+    import survivability
+    m = survivability.load_model()
+    data = survivability.compute(m)
+    out = []
+    before = data["counts"]["exposed"]
+    for rank, step in enumerate(data["closure"], 1):
+        what = survivability.rule_text(m, step["rule"]).replace("`", "")
+        by = ", ".join(m.erasures[a].name.lower() for a in step["actions"])
+        out.append(Finding(
+            id=f"trace.rule.{slug(step['rule'])}", priority=2 if rank == 1 else 3, pillar="dfir", roles=("engineer", "analyst"),
+            title=f"Anti-forensic trace no rule reads (#{rank}): {what}",
+            evidence=f"Left by: {by}. {before} detection-question pairs can be silenced by a sequence that raises no alert; "
+                     f"{step['exposed_after']} remain once a rule reads this trace and the ones ranked before it.",
+            action="Write the rule, then name it in the trace's `detection` in dfir/trace/model.yml with a sample event; "
+                   "rasd trace --check replays the event through the engine and the verdicts change with it.",
+            weight=len(data["closure"]) - rank,
+            data={"rule": step["rule"], "actions": step["actions"], "exposed_before": before, "exposed_after": step["exposed_after"]}))
+        before = step["exposed_after"]
     return out
 
 

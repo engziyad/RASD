@@ -66,6 +66,7 @@ from convert import logsource_key
 from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
 from deceive import check as deceive_check, load_inventory as load_decoys
+from survivability import closure_summary
 from datasets import load_catalog as load_dataset_catalog, load_results as load_dataset_results, summary as public_summary
 from nearmiss import analyse as near_misses, unpinned
 from evidence import OPERATIONAL_WEIGHTS
@@ -698,6 +699,7 @@ def render_metrics(repo: Repo) -> str:
         *([("Behaviour proofs (certify)", behaviour_line(repo, ""))] if repo.certify["variants"] else []),
         ("Edit equivalence (certify)", equiv_line("")),
         ("Deception (deceive)", deceive_line("../")),
+        ("Evidence survivability (trace)", trace_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -763,6 +765,17 @@ def deceive_line(root: str) -> str:
     return (f"{len(decoys)} decoys ({', '.join(f'{n} {k}' for k, n in kinds.items() if n)}) read by {len(dets)} deception "
             f"detections and touched by {len(reds)} red tests · {agree} · {len(planned)} decoy classes planned "
             f"([DECEPTION]({root}docs/DECEPTION.md), [inventory]({root}deceive/))")
+
+
+def trace_line(root: str) -> str:
+    """RASD-Trace, counted by its own search; `root` is the path to the repository root from the page."""
+    c, rules, left = closure_summary()
+    closing = (f"{rules} rules on anti-forensic traces would leave {left} exposed" if rules
+               else "no unread trace reaches the SIEM")
+    return (f"{c['pairs']} detection-question pairs over {c['detections']} detections: {c['out of reach']} out of reach, "
+            f"{c['evident']} evident, {c['exposed']} exposed to a sequence that raises no alert · {closing} · "
+            f"{c['artifacts']} artifacts, {c['erasures']} anti-forensic actions, documented behaviour pending lab runs "
+            f"([TRACE]({root}docs/TRACE.md), [results]({root}dfir/trace/))")
 
 
 def equiv_line(docs: str) -> str:
@@ -1043,6 +1056,7 @@ def render_readme_metrics(repo: Repo) -> str:
         *([("Behaviour proofs", behaviour_line(repo, "docs/"))] if repo.certify["variants"] else []),
         ("Edit equivalence", equiv_line("docs/")),
         ("Deception", deceive_line("")),
+        ("Evidence survivability", trace_line("")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1138,6 +1152,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         *([("Behaviour proofs", behaviour_line(repo, docs))] if repo.certify["variants"] else []),
         ("Edit equivalence", equiv_line(docs)),
         ("Deception", deceive_line("../")),                 # both executive pages live one level below the root
+        ("Evidence survivability", trace_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "

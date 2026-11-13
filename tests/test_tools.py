@@ -133,11 +133,11 @@ class ReplayCases(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
-    def test_every_storyline_gets_its_four_files(self):
+    def test_every_storyline_gets_its_five_files(self):
         self.assertEqual(len(self.cases), len(self.stories))
         for folder in self.cases:
             self.assertEqual(sorted(p.name for p in folder.iterdir()),
-                             ["analyst_closure.md", "case_summary.md", "observables.csv", "timeline.json"])
+                             ["analyst_closure.md", "case_summary.md", "evidence_request.md", "observables.csv", "timeline.json"])
 
     def test_timeline_keeps_each_alert_with_the_fields_its_rule_read(self):
         story, doc = self.stories[0], json.loads((self.cases[0] / "timeline.json").read_text(encoding="utf-8"))
