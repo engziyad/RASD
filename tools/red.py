@@ -535,7 +535,7 @@ def main() -> int:
                 print(f"{GREEN}[ OK ]{RESET} {label}")
         else:
             for name, body in out.items():
-                (t["_folder"] / name).write_text(body, encoding="utf-8")
+                (t["_folder"] / name).write_text(body, encoding="utf-8", newline="\n")
             print(f"{GREEN}[ OK ]{RESET} {label} {DIM}({len(out)} files){RESET}")
 
     readme = RED_DIR / "README.md"
@@ -549,7 +549,7 @@ def main() -> int:
                     failing += 1
                     print(f"{RED}[STALE]{RESET} red/README.md catalog (run: rasd red)")
                 else:
-                    readme.write_text(new, encoding="utf-8")
+                    readme.write_text(new, encoding="utf-8", newline="\n")
     print(f"\n{BOLD}{len(tests)} offensive tests · {failing} problem(s){RESET}")
     return 1 if failing else 0
 

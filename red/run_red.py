@@ -42,6 +42,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+for _stream in (sys.stdout, sys.stderr):    # UTF-8 on every platform: a Windows pipe takes the ANSI code page
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
 RED = Path(__file__).resolve().parent
 PLATFORMS = ("web", "linux")
 EXIT_MANUAL = 3
@@ -235,7 +239,7 @@ def main() -> int:
         print()
 
     results_path = out_dir / "emulation-results.json"
-    results_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+    results_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8", newline="\n")
     executed = sum(r["status"] == "executed" for r in results)
     print(f"[+] {executed}/{len(results)} step(s) executed · results: {results_path}")
     return 0 if all(r["status"] != "error" for r in results) else 1

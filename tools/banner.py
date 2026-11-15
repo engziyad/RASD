@@ -181,7 +181,7 @@ def main() -> None:
     args = ap.parse_args()
     if args.svg:
         Path(args.svg).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.svg).write_text(svg(), encoding="utf-8")
+        Path(args.svg).write_text(svg(), encoding="utf-8", newline="\n")
         print(f"[+] {args.svg}")
         return
     if not args.force and (os.getenv("NO_BANNER") == "1" or os.getenv("CI") == "true" or not sys.stdout.isatty()):

@@ -39,7 +39,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl
+from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl, write_output
 from convert import logsource_key
 import profiles
 from replay import route
@@ -225,7 +225,7 @@ def main() -> int:
                   f"RASD log source with it, {scores[profiles.NATIVE]} without.{RESET}")
             print(f"  rasd doctor {' '.join(args.logs)} --profile {best}")
     if args.json:
-        Path(args.json).write_text(json.dumps(res, indent=2) + "\n", encoding="utf-8")
+        write_output(args.json, json.dumps(res, indent=2) + "\n")
     return 0
 
 

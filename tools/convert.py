@@ -377,7 +377,7 @@ def main() -> int:
             if args.out:
                 os.makedirs(Path(args.out) / b, exist_ok=True)
                 ext = "spl" if b == "spl" else "kql"
-                (Path(args.out) / b / f"{folder}.{ext}").write_text(q + "\n", encoding="utf-8")
+                (Path(args.out) / b / f"{folder}.{ext}").write_text(q + "\n", encoding="utf-8", newline="\n")
                 written += 1
                 if b == DEFENDER:
                     defender_files.add(f"{folder}.kql")

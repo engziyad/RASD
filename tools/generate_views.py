@@ -262,7 +262,7 @@ Containment options, after the evidence above is preserved:
 
 def write(path: Path, body: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(HEADER + body.rstrip() + "\n" + FOOTER, encoding="utf-8")
+    path.write_text(HEADER + body.rstrip() + "\n" + FOOTER, encoding="utf-8", newline="\n")
 
 
 def main() -> int:

@@ -368,7 +368,7 @@ def main() -> int:
         return 1 if stale else 0
     for p, body in files.items():
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body, encoding="utf-8")
+        p.write_text(body, encoding="utf-8", newline="\n")
     print(f"[+] Splunk app: {len(files)} files in {OUT.relative_to(ROOT)} ({len(files) - len(stale)} unchanged)")
     return 0
 

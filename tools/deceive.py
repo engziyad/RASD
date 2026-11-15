@@ -299,7 +299,7 @@ def write_readme(doc: dict, check: bool) -> bool:
     if new == text:
         return True
     if not check:
-        README.write_text(new, encoding="utf-8")
+        README.write_text(new, encoding="utf-8", newline="\n")
     return False
 
 
@@ -405,7 +405,7 @@ def rename(doc: dict, old: str, new: str) -> list[str]:
                 return _replace_case(m, n)
             text = re.sub(re.escape(old_form), swap, text, flags=re.IGNORECASE)
         if text != before:
-            p.write_text(text, encoding="utf-8")
+            p.write_text(text, encoding="utf-8", newline="\n")
             changed.append(str(p.relative_to(ROOT)))
     return changed
 

@@ -87,7 +87,7 @@ def main() -> int:
     # closed by the with statement below (standard input included)
     handle = sys.stdin if args.input == "-" else open(args.input, encoding="utf-8", errors="replace")  # noqa: SIM115
     count = 0
-    with handle, open(args.out, "w", encoding="utf-8") as out:
+    with handle, open(args.out, "w", encoding="utf-8", newline="\n") as out:
         for ev in read_events(handle, since, args.marker):
             out.write(json.dumps(ev, ensure_ascii=False) + "\n")
             count += 1

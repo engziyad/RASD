@@ -36,7 +36,7 @@ from sigma_engine import SigmaError, matches
 
 def git(*args: str) -> str:
     # git from PATH, on the developer's own clone
-    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout  # noqa: S607
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=True).stdout  # noqa: S607
 
 
 def old_rule(base: str, rel: str) -> dict | None:
