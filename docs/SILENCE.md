@@ -115,7 +115,7 @@ The channel and the event id are read under the names exports give them: `Channe
 
 On Windows, `rasd silence` with no export reads the host's own Sysmon, Security and System channels with `wevtutil`, for the last `--days` (7 by default). It only reads; nothing on the host is changed and nothing leaves it. It waits for Enter before it starts (`--yes` skips the wait), prints the answer, and writes the certificate beside it as `rasd-silence-<host>-<time>.md`, with the page as `.html`.
 
-A channel that cannot be read is said so: the Security and Sysmon channels need an elevated prompt, and a host without Sysmon has no Sysmon channel. The detections that read them are then unattested, with what to turn on.
+A channel that cannot be read is said so: the Security and Sysmon channels need an elevated prompt, and a host without Sysmon has no Sysmon channel. The detections that read them are then unattested. Each says which of the two it is: a channel that is there and closed asks for an elevated prompt, and a channel the host does not have asks for the sensor to be turned on.
 
 A log read from the host is the log an administrator on that host could have altered. The record numbers still show a record removed or a log cleared; they do not show a log rewritten with its numbers made whole again. A copy forwarded as it was written does not have that limit, which is why the same command reads a SIEM export.
 

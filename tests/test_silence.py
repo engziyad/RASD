@@ -1,6 +1,8 @@
 """Tests for RASD-Silence (tools/silence.py): the proof on small hand-built exports, the shipped model, the sample fleet."""
+import contextlib
 import copy
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -347,6 +349,20 @@ class Breaks(unittest.TestCase):
         res = sil.assess(events)
         self.assertEqual((res["breaks"], [(d["what"], round(d["seconds"])) for d in res["down"]]), ([], [("shut down", 27)]))
         self.assertEqual(pair(res, SERVICE)["coverage"], 1.0)
+
+    def test_a_restart_half_a_minute_after_an_unclean_start_is_inside_the_same_break(self):
+        """As a host wrote it: power lost, the start that says so, and twenty seconds later an ordinary restart. The
+        restart's own half minute belongs to the break; it is not a stretch the record covers."""
+        again = [ev(600, SYSTEM, 12, Provider_Name=KERNEL), ev(600.25, SYSTEM, 6008, Provider_Name=EVENTLOG),
+                 ev(600.25, SYSTEM, 6009, Provider_Name=EVENTLOG), ev(600.25, SYSTEM, 6005, Provider_Name=EVENTLOG),
+                 ev(600.03, SYSTEM, 41, Provider_Name=POWER), *[ev(600.3, SYSTEM, 7036) for _ in range(5)],
+                 ev(600.6, SYSTEM, 6006, Provider_Name=EVENTLOG), *[ev(600.6, SYSTEM, 7036) for _ in range(3)],
+                 ev(601.07, SYSTEM, 6009, Provider_Name=EVENTLOG), ev(601.07, SYSTEM, 6005, Provider_Name=EVENTLOG),
+                 ev(600.68, SYSTEM, 13, Provider_Name=KERNEL), ev(600.82, SYSTEM, 12, Provider_Name=KERNEL)]
+        s = sensors(numbered(steady(SYSTEM, 35) + again + steady(SYSTEM, 35, start=603), by_time=False))[("h1", "system")]
+        self.assertEqual([(h.kind, h.severity, round(h.seconds)) for h in s.holes], [("stopped", "medium", 25864)])
+        self.assertIn("and no record of a stop before it", s.holes[0].detail)
+        self.assertEqual(s.runs[1].start, T0 + timedelta(minutes=601.07), "the proof resumes after the second start, not before the restart")
 
     def test_the_event_log_starts_a_while_after_the_kernel_and_only_a_while(self):
         """The kernel stamps its start, and the Event Log service writes its first record later in the boot. Fifty
@@ -925,6 +941,20 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(pair(res, "T1685.005_security_log_cleared", "HOME-PC")["reason"], "no_record")
         text = sil.certificate(res, [], notes)
         self.assertIn("| Security (this host) | 0 | not readable without elevation", text)
+        # told how the records were read, a channel that is there and closed is not a sensor to turn on
+        res = sil.assess(events, notes=notes)
+        closed, absent = pair(res, SECURITY_CLEARED, "HOME-PC"), pair(res, ENCODED, "HOME-PC")
+        self.assertEqual((closed["verdict"], closed["reason"]), ("unattested", "not_read"))
+        self.assertEqual(closed["why"], "the Security channel of this host was not read: it needs an elevated prompt")
+        self.assertEqual((absent["reason"], absent["fix"]), ("no_record", None), "a host without Sysmon is told what to install")
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said), tempfile.TemporaryDirectory() as tmp:
+            sil.print_report(res, notes)
+            sil.write_html(os.path.join(tmp, "page.html"), res, [], notes)
+            page = Path(tmp, "page.html").read_text(encoding="utf-8")
+        for text in (said.getvalue(), page, sil.certificate(res, [], notes)):
+            self.assertIn("Run rasd silence again from an elevated prompt (Run as administrator)", text)
+            self.assertIn("Install Sysmon", text)
 
     def test_reading_this_host_without_wevtutil_is_refused(self):
         with mock.patch.object(sil, "wevtutil", return_value=None), self.assertRaises(sil.SilenceError):

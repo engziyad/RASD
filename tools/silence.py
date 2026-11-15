@@ -950,7 +950,7 @@ def judge(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], t: Target, host:
     row: dict[str, Any] = {"detection": t.id, "host": fleet.hosts.get(host, host), "verdict": "unattested", "grade": None,
                            "coverage": 0.0, "attested_seconds": 0.0, "watched_seconds": (end - start).total_seconds(),
                            "down_seconds": 0.0, "sensors": [], "intervals": [], "holes": [], "caveats": [], "reason": None,
-                           "why": None, "alerts": 0}
+                           "why": None, "fix": None, "alerts": 0}
     if alerts:
         times = sorted(a["at"] for a in alerts if a.get("at"))
         row.update(verdict="fired", alerts=len(alerts), first_alert=stamp(times[0]) if times else "")
@@ -1033,8 +1033,10 @@ def hole_json(h: Hole, s: Sensor) -> dict:
 
 def assess(events: list[dict], sm: Model | None = None, trace: survivability.Model | None = None, *, assets: dict | None = None,
            profile: str = profiles.NATIVE, quiet: timedelta | None = None, start: datetime | None = None,
-           end: datetime | None = None, filter_: str | None = None, only_host: str | None = None) -> dict:
-    """Every detection on every host of an export: fired, attested or unattested, with the breaks in the record."""
+           end: datetime | None = None, filter_: str | None = None, only_host: str | None = None,
+           notes: list[dict] | None = None) -> dict:
+    """Every detection on every host of an export: fired, attested or unattested, with the breaks in the record.
+    `notes` is what reading this host's own channels gave, when the records were read that way (collect)."""
     sm = sm or load_model()
     trace = trace or survivability.load_model()
     fleet = Fleet(events, sm, assets)
@@ -1093,12 +1095,20 @@ def assess(events: list[dict], sm: Model | None = None, trace: survivability.Mod
         if not scope:
             rows.append({"detection": t.id, "host": None, "verdict": "fired" if fired_corr.get(t.id) else "unattested", "grade": None,
                          "coverage": 0.0, "attested_seconds": 0.0, "watched_seconds": 0.0, "down_seconds": 0.0, "sensors": [],
-                         "intervals": [], "holes": [], "caveats": [], "reason": "no_observer",
+                         "intervals": [], "holes": [], "caveats": [], "reason": "no_observer", "fix": None,
                          "alerts": len(fired_corr.get(t.id, [])), "why": f"no host in the export writes what this rule reads: {t.reads}"})
             continue
         for h in scope:
             got = fired_corr.get(t.id, []) if t.kind == "correlation" else fired.get((t.id, h), [])
             rows.append(judge(fleet, sensors, t, h, got, ready.get((h, t.id)), w0, w1))
+    # on a host read directly, a channel that is there and could not be read is not a sensor that is missing: the
+    # rows that wait on it say so, and what to do about it
+    closed = {str(n.get("channel", "")).lower() for n in notes or [] if n.get("denied")}
+    by_id = {t.id: t for t in wanted}
+    for r in rows:
+        if r["reason"] == "no_record" and by_id[r["detection"]].channel in closed:
+            r.update(reason="not_read", fix="Run rasd silence again from an elevated prompt (Run as administrator)",
+                     why=f"the {by_id[r['detection']].channel_name} channel of this host was not read: it needs an elevated prompt")
 
     folders = {d.id: d.folder for d in dets} | {c.id: c.folder for c in corrs}
     detections = {}
@@ -1247,17 +1257,18 @@ def collect(days: float, channels: tuple[str, ...] = LIVE_CHANNELS) -> tuple[lis
             # the newest first, so a channel that holds more than the limit loses the start of the window, not its end
             got, code, err = read(channel, f"*[System[(EventRecordID >= {got[0]['EventRecordID']})]]", LIVE_LIMIT, newest=True)
         events += got
+        denied = not got and bool(code) and ("denied" in err or code == 5)
         if got:
             state = "read" + (f" (the last {LIVE_LIMIT} records: this channel's window begins later)" if len(got) >= LIVE_LIMIT else "")
         elif not code:
             state = "read: no record in the window"
-        elif "denied" in err or code == 5:
+        elif denied:
             state = "not readable without elevation: run from an elevated prompt to include it"
         elif code == 15007 or "could not be found" in err:
             state = "the channel does not exist on this host"
         else:
             state = f"wevtutil ended with code {code}"
-        notes.append({"channel": channel, "records": len(got), "state": state})
+        notes.append({"channel": channel, "records": len(got), "state": state, "denied": denied})
     return events, notes
 
 
@@ -1443,7 +1454,7 @@ def render(res: dict) -> str:
     for r in res["pairs"]:
         if r["verdict"] == "unattested":
             d = res["detections"][r["detection"]]
-            lines.append(f"| `{r['detection']}` | {r['host'] or 'none'} | {md_text(r['why'] or '')} | {md_text(d['enable'])} |")
+            lines.append(f"| `{r['detection']}` | {r['host'] or 'none'} | {md_text(r['why'] or '')} | {md_text(r['fix'] or d['enable'])} |")
     lines += ["", "### Sensors", "",
               "| Host | Channel | Records | Record numbers | Grade | Quiet after | Breaks | Off | Note |", "|---|---|---|---|---|---|---|---|---|",
               *sensor_rows(res), BLOCK_END]
@@ -1488,7 +1499,7 @@ def certificate(res: dict, inputs: list[dict], notes: list[dict] | None = None, 
     for r in res["pairs"]:
         if r["verdict"] == "unattested":
             lines.append(f"| `{r['detection']}` | {r['host'] or 'none'} | {md_text(r['why'] or '')} | "
-                         f"{md_text(res['detections'][r['detection']]['enable'])} |")
+                         f"{md_text(r['fix'] or res['detections'][r['detection']]['enable'])} |")
     if not c["unattested"]:
         lines.append("| none | | | |")
     lines += ["", "## Breaks in the record", ""]
@@ -1574,11 +1585,11 @@ def write_html(path: str, res: dict, inputs: list[dict], notes: list[dict] | Non
                    meter(d["coverage"]) if d["hosts"] else "", e(scope_text(d["behaviour"]))] for i, d in res["detections"].items()]
     breaks = [[f'<b class="{b["severity"]}-text">{e(b["severity"])}</b>', e(b["host"]), e(", ".join(b["channels"])), e(b["start"]),
                e(b["end"]), e(b["detail"]), e(b["life"])] for b in res["breaks"]]
-    groups: dict[tuple[str, str], list[str]] = defaultdict(list)
+    groups: dict[tuple[str, str, str], list[str]] = defaultdict(list)
     for r in res["pairs"]:
         if r["verdict"] == "unattested":
-            groups[(r["detection"], r["why"] or "")].append(r["host"] or "no host")
-    blind = [[f"<b>{e(i)}</b>", e(", ".join(names)), e(why), e(res["detections"][i]["enable"])] for (i, why), names in groups.items()]
+            groups[(r["detection"], r["why"] or "", r["fix"] or res["detections"][r["detection"]]["enable"])].append(r["host"] or "no host")
+    blind = [[f"<b>{e(i)}</b>", e(", ".join(names)), e(why), e(fix)] for (i, why, fix), names in groups.items()]
     fired = [[f"<b>{e(r['detection'])}</b>", e(r["host"] or "the fleet"), str(r["alerts"]), e(r.get("first_alert", ""))]
              for r in res["pairs"] if r["verdict"] == "fired"]
     read = [[e(i["name"]), str(i["records"]), f"<code>{e(i['sha256'])}</code>"] for i in inputs]
@@ -1657,14 +1668,14 @@ def print_report(res: dict, notes: list[dict] | None = None, top: int = 12) -> N
     blind = [r for r in res["pairs"] if r["verdict"] == "unattested"]
     if blind:
         print(f"\n{BOLD}Quiet that proves nothing{RESET}")
-        groups: dict[tuple[str, str], list[str]] = defaultdict(list)
+        groups: dict[tuple[str, str, str], list[str]] = defaultdict(list)
         for r in blind:
-            groups[(r["detection"], r["why"] or "")].append(r["host"] or "")
-        for (ident, why), hosts in groups.items():
+            groups[(r["detection"], r["why"] or "", r["fix"] or res["detections"][r["detection"]]["enable"])].append(r["host"] or "")
+        for (ident, why, fix), hosts in groups.items():
             names = ", ".join(h for h in hosts[:4] if h) + (f" and {len(hosts) - 4} more" if len(hosts) > 4 else "")
             print(f"  {YELLOW}UNATTESTED{RESET} {ident:<46} {names}")
             print(f"             {DIM}{why}{RESET}")
-            print(f"             {GREEN}+ {res['detections'][ident]['enable']}{RESET}")
+            print(f"             {GREEN}+ {fix}{RESET}")
     if res["breaks"]:
         print(f"\n{BOLD}Breaks in the record{RESET}")
         colour = {"high": RED, "medium": YELLOW, "low": DIM}
@@ -1780,7 +1791,7 @@ def main() -> int:
         if value:
             how += [flag, str(value)]
     res = assess(events, sm, trace, assets=assets, profile=used, quiet=timedelta(minutes=args.quiet) if args.quiet else None,
-                 start=when(args.start, "from"), end=when(args.end, "to"), filter_=args.filter, only_host=args.host)
+                 start=when(args.start, "from"), end=when(args.end, "to"), filter_=args.filter, only_host=args.host, notes=notes)
     print_report(res, notes)
     target, page = args.certificate, args.html
     if notes is not None and not (target or page):     # this host, asked with nothing but Enter: its certificate beside the answer
