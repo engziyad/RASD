@@ -91,7 +91,10 @@ witnesses:
 # Records that end the evidence. `record` is how the record is recognised; `cuts` is the channels it ends
 # (a list, `named` for the channel the record names in Channel_Cleared, or `all` for every channel of the host).
 #   edge: stop     the sensor is off after this record
-#   edge: start    the sensor was off before this record
+#   edge: start    the sensor was off before this record. `answers` names the stops it ends: a stop and the start
+#                  that answers it are one outage, and nothing between the two shows the sensor recording. A stop
+#                  with no start to answer it speaks of the pause that follows it; a start that answers none, of
+#                  the pause before it
 #   edge: change   the sensor's settings changed here: an event-proof witness needs a new proof after it
 #   edge: clear    the channel was emptied here: what the records before it prove depends on whether any is missing
 # `erasures` names the anti-forensic actions of dfir/trace/model.yml that leave the record. Every cut carries
@@ -162,6 +165,7 @@ cuts:
     record: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 4, State: Started}
     cuts: [Microsoft-Windows-Sysmon/Operational]
     edge: start
+    answers: [sysmon_state_stopped]
     event: {EventID: 4, Channel: Microsoft-Windows-Sysmon/Operational, State: Started}
     basis: vendor
     source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
@@ -188,6 +192,7 @@ cuts:
     record: {Channel: System, EventID: 6005, Provider_Name: EventLog}
     cuts: all
     edge: start
+    answers: [event_log_stopped, security_logging_stopped]
     event: {EventID: 6005, Channel: System, Provider_Name: EventLog}
     basis: practitioner
 
@@ -209,10 +214,10 @@ cuts:
     basis: vendor
     source: https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/windows-kernel-event-id-41-error
 
-# Pairs of records between which the host was off or asleep. A stretch without records that begins at a
-# `from` record and ends at a `to` record, with no record from the host or naming it in between, is not
-# counted for or against any detection. `lag` is how many seconds inside the stretch the two records may
-# sit (20 when it is not given).
+# Pairs of records between which the host was off or asleep: each `from` record with the next `to` record
+# of its pair. A stretch without records that such pairs cover, with no record from the host or naming it in
+# between, is not counted for or against any detection. `lag` is how many seconds of the stretch may lie
+# outside a pair at each of its ends (20 when it is not given).
 down:
   - id: shutdown
     name: shut down

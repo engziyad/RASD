@@ -112,6 +112,7 @@ BACK = timedelta(minutes=5)                  # a clock this far behind for three
 DOWN_MIN = timedelta(seconds=30)             # a shorter pause after a shutdown or sleep record is not time off
 CLOSE = timedelta(seconds=20)                # how far a shutdown or wake record sits from the pause it belongs to
 BOOT = timedelta(minutes=5)                  # how long after the pause a start writes its own records (the kernel's come first)
+LATE = timedelta(minutes=30)                 # and how long when the kernel recorded a start with no shutdown: a disk check comes first
 HEAD = 20                                    # records at the head of a stream among which a time filter may have left one out
 KIND_ORDER = ("restarted", "cleared", "missing", "stopped", "quiet")
 SEVERITY_ORDER = ("high", "medium", "low")
@@ -153,6 +154,7 @@ class Cut:
     basis: str
     source: str | None
     note: str | None
+    answers: tuple[str, ...] = ()   # a start: the stops it answers, by id
 
     def targets(self, ev: dict, channels: list[str]) -> list[str]:
         """The channels of a host this record ends, as lowercase names."""
@@ -203,7 +205,7 @@ def build_model(doc: dict) -> Model:
         cuts.append(Cut(str(c.get("id", "")), str(c.get("name", "")), dict(c.get("record") or {}),
                         tuple(str(x).lower() for x in scope) if isinstance(scope, list) else scope, str(c.get("edge", "")),
                         c.get("detection"), tuple(c.get("erasures") or ()), c.get("event"), str(c.get("basis", "")),
-                        c.get("source"), c.get("note")))
+                        c.get("source"), c.get("note"), tuple(str(x) for x in c.get("answers") or ())))
     down = [Down(str(d.get("id", "")), str(d.get("name", "")), dict(d.get("from") or {}), dict(d.get("to") or {}),
                  str(d.get("basis", "")), _lag(d.get("lag"))) for d in doc.get("down") or []]
     seq = dict(doc.get("sequence") or {})
@@ -365,6 +367,7 @@ class Fleet:
         self.undated = 0
         self.total = len(events)
         named: dict[str, list[tuple[datetime, str]]] = defaultdict(list)
+        stamps: dict[str, list[datetime]] = defaultdict(list)         # the time of every record of a host, as stamped
         cuts: dict[tuple[str, str], list[tuple[datetime, Cut, dict]]] = defaultdict(list)
         pending: list[tuple[str, datetime, Cut, dict]] = []
         marks: dict[str, list[tuple[datetime, str, str]]] = defaultdict(list)
@@ -400,6 +403,7 @@ class Fleet:
             if "linux" not in key and (raw or key in windows_keys):
                 self.windows.add(host)
             self.streams[(host, key)].append(Rec(t, record_id(ev, sm.fields), ev, src, eid))
+            stamps[host].append(t)
             for rest, which, ident, side in spoken.get((key, eid), ()):
                 if any(str(ev.get(k, "")).strip().lower() != v for k, v in rest):
                     continue
@@ -423,6 +427,30 @@ class Fleet:
                 cuts[(host, key)].append((t, cut, ev))
         self.cuts = {k: sorted(v, key=lambda x: x[0]) for k, v in cuts.items()}
         self.marks = {h: sorted(v) for h, v in marks.items()}
+        # what each host says of its own time off: every shutdown or sleep record with the next start or wake of its
+        # kind (a later shutdown record replaces one no start answered; the last may have no end), and the starts
+        # and wakes that no such record precedes
+        kinds = {d.id: d for d in sm.down}
+        self.answered = {ident for c in sm.cuts for ident in c.answers}       # the stops a start can answer
+        self.offs: dict[str, list[tuple[datetime, datetime | None, Down]]] = {}
+        self.lone: dict[str, list[datetime]] = {}
+        for h, said in self.marks.items():
+            began: dict[str, datetime] = {}
+            offs: list[tuple[datetime, datetime | None, Down]] = []
+            lone = []
+            for t, ident, side in said:
+                if side == "from":
+                    began[ident] = t
+                elif ident in began:
+                    offs.append((began.pop(ident), t, kinds[ident]))
+                else:
+                    lone.append(t)
+            offs += [(t, None, kinds[ident]) for ident, t in began.items()]
+            # a host that went on writing after it said it was going down did not go down: such a pair accounts for nothing
+            when = sorted(stamps[h])
+            offs = [(f, g, d) for f, g, d in offs
+                    if bisect.bisect_left(when, datetime.max if g is None else g - d.lag) <= bisect.bisect_right(when, f + d.lag)]
+            self.offs[h], self.lone[h] = sorted(offs, key=lambda o: o[0]), sorted(lone)
         self.named = {h: sorted((t, by) for t, by in v if short(by) != h) for h, v in named.items()}
         self.ordered = {k: order(v) for k, v in self.streams.items()}
         self.times = {k: sorted(r.time for r in o[0]) for k, o in self.ordered.items()}
@@ -442,26 +470,40 @@ class Fleet:
         return f"{top} recorded {plural(n, 'event')} naming it meanwhile{more}"
 
     def down(self, host: str, start: datetime, end: datetime, edge: str, said: list[tuple[datetime, str]] | None = None) -> str:
-        """The name of the shutdown or sleep whose records bracket a stretch, if one does. A shutdown that a start
-        already answered before the stretch is not this stretch's, and a start that answers a later shutdown is not
-        its end. A stretch before the first record has no shutdown record to show, so it is never time off.
+        """What the host's own records make of a stretch without records: the name of the shutdown or sleep that
+        accounts for it, or nothing.
 
-        The two records sit at the ends of the stretch or a little inside it (`lag`): the log service stops before
-        the kernel does and starts after it. Never past the other end (a start before the stretch and a shutdown
-        after it are not its own), and never across a record of the stretch that says otherwise (`said`, each with
-        its edge): a log service that started again before the shutdown record did not stop for the shutdown."""
-        marks = self.marks.get(host, [])
-        said = said or []
-        for d in self.sm.down:
-            froms = [t for t, k, side in marks if k == d.id and side == "from" and start - MARGIN <= t <= min(start + d.lag, end)
-                     and not any(e == "start" and start <= c < t for c, e in said)]
-            tos = [t for t, k, side in marks if k == d.id and side == "to" and max(end - d.lag, start) <= t <= end + MARGIN
-                   and not any(e == "stop" and t < c <= end for c, e in said)]
-            began = [f for f in froms if not any(side == "to" and f < t <= start for t, _k, side in marks)]
-            ended = [g for g in tos if not any(side == "from" and end <= t < g for t, _k, side in marks)]
-            if began and (edge == "trail" or any(g >= f for f in began for g in ended)):
-                return d.name
-        return ""
+        The host says when it was off (`offs`): each shutdown or sleep record with the next start or wake of its
+        kind. The stretch is time off when those cover it, but for the seconds a kind is given at each of its ends
+        (`lag`: the log service stops before the kernel does and starts after it). So a shutdown that a start
+        already answered, a start with no shutdown before it, a host that came back and went on, and a stretch
+        before a host's first record account for nothing; a shutdown with no start after it accounts only for a
+        stretch the export ends in. In the seconds left over, the stretch's own stop and start records (`said`, each
+        with its edge) must tell the same story: a log service stops before a shutdown and starts after a start,
+        never the other way round."""
+        pieces: list[tuple[datetime, datetime, Down | None]] = [
+            (max(f, start), end if g is None else min(g, end), d) for f, g, d in self.offs.get(host, [])
+            if f <= end and (g is None or g >= start)                           # it touches the stretch
+            and f >= start - MARGIN and (g is None or g <= end + MARGIN)        # and the host did not go on recording around it
+            and (g is not None or edge == "trail")]
+        pieces.append((end, end, None))
+        cuts = sorted((c, e) for c, e in said or [] if e in ("stop", "start"))
+        at = start
+        before: Down | None = None
+        names: list[str] = []
+        for a, b, d in pieces:
+            if a > at:                                 # a piece of the stretch the host's own records do not account for
+                lags = [x.lag for x in (before, d) if x is not None]          # between two of them, no more than at one end
+                if a - at > min(lags, default=timedelta(0)):
+                    return ""
+                order = [e for c, e in cuts if at <= c <= a]
+                stop = order.index("stop") if "stop" in order else len(order)
+                if (before is None and stop > 0) or (d is None and stop < len(order)) or "start" in order[stop:]:
+                    return ""
+            if d is not None:
+                at, before = max(at, b), d
+                names.append(d.name)
+        return " and ".join(dict.fromkeys(names))
 
 
 # --------------------------------------------------------------------------- #
@@ -483,6 +525,7 @@ class Hole:
     detail: str = ""
     life: str = ""
     severity: str = "medium"
+    pause: float | None = None      # the longest wait without a record inside it, in seconds, when records lie inside it
 
     @property
     def seconds(self) -> float:
@@ -621,6 +664,7 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
     """The records of one channel of one host in order, cut into the runs its proof holds for."""
     recs, mode, note, setbacks = fleet.ordered[(host, key)]
     marks = fleet.marks.get(host, [])
+    lone = fleet.lone.get(host, [])
     n = len(recs) - 1                                  # pairs of consecutive records
     times = [r.time for r in recs]
     where = {id(r.ev): i for i, r in enumerate(recs)}
@@ -629,12 +673,10 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
     tail: list[tuple[datetime, Cut]] = []              # cuts after the last
     stops: list[list[datetime]] = [[] for _ in range(n)]
     starts: list[list[datetime]] = [[] for _ in range(n)]
+    spans: list[tuple[int, int]] = []                  # pairs, first to last, that a stop, a start or both leave without proof
 
     def place(i: int, at: datetime, cut: Cut) -> None:
         (found[i] if 0 <= i < n else head if i < 0 else tail).append((at, cut))
-
-    def pause(i: int) -> bool:
-        return times[i + 1] - times[i] > DOWN_MIN
 
     # Windows does not write a stop or a start beside the pause it speaks of: more records follow a stop before the
     # host halts, and the kernel's boot records are written before the Event Log service says it started. Whether
@@ -648,54 +690,97 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
             return float(j)
         return (bisect.bisect_right(times, t) if cut.edge == "stop" else bisect.bisect_left(times, t)) - 0.5
 
-    def between(m: int, a: int) -> int | None:
-        """The pair of records with the widest wait between a stop and the start after it, when the rest of the way
-        from one to the other is short: the two then speak of one outage, however brief. None when they do not."""
-        lo, hi = (t if j is None else times[j] for t, _cut, j in (mine[m], mine[a]))
-        best, wide, rest = None, timedelta(0), timedelta(0)
-        for k in range(math.floor(spot(m)), math.ceil(spot(a))):
-            wait = max(timedelta(0), min(times[k + 1] if k < n else hi, hi) - max(times[k] if k >= 0 else lo, lo))
-            if best is None or wait > wide:
-                best, wide, rest = k, wait, rest + wide
-            else:
-                rest += wait
-            if rest > CLOSE + BOOT:
-                return None
-        return best if hi >= lo else None
+    def span(first: int, last: int, *who: int) -> None:
+        """The records `who` speak of the pairs first to last: the stops stand at the first, the starts at the last.
+        With no pair of this channel among them (all before its first record, or after its last) each stays where it is."""
+        a, b = max(first, 0), min(last, n - 1)
+        if a <= b:
+            spans.append((a, b))
+        for m in who:
+            t, cut, _j = mine[m]
+            i = first if cut.edge == "stop" else last
+            place(min(max(i, a), b) if a <= b else i, t, cut)
 
-    # a stop and the start that answers it are one outage: it sits at the widest wait between the two records, not
-    # at the first pause long enough to notice (a host can restart in less)
+    # a start answers the last stop of each kind the model says it answers. The two are one outage, and nothing
+    # between them shows the sensor recording, whatever was written there
     spoken = sorted((spot(m), m) for m, (_t, cut, _j) in enumerate(mine) if cut.edge in ("stop", "start"))
-    joined: dict[int, int] = {}
-    answer: int | None = None
-    for _spot, m in reversed(spoken):
-        if mine[m][1].edge == "start":
-            answer = m
-        elif answer is not None:
-            at = between(m, answer)
-            if at is not None:
-                joined[m] = joined[answer] = at          # the earliest stop a start answers says where the start goes
-    # with no start to answer it, a stop is tied to the pause close after it; a start with no stop, to the one before
-    for m, (t, cut, j) in enumerate(mine):
-        if cut.edge != "stop":
+    waiting: dict[str, int] = {}
+    alone: list[int] = []                              # stops no start answers, starts that answer no stop
+    for _spot, m in spoken:
+        cut = mine[m][1]
+        if cut.edge == "stop":
+            if cut.id in waiting:
+                alone.append(waiting[cut.id])
+            waiting[cut.id] = m
             continue
-        if m in joined:
-            i = joined[m]
-        elif j is not None:
-            i = k = j
-            while k < n and times[k] <= times[j] + CLOSE:
-                if pause(k):
-                    i = k
-                    break
-                k += 1
+        mates = sorted((waiting.pop(ident) for ident in cut.answers if ident in waiting), key=spot)
+        if mates:
+            span(math.floor(spot(mates[0])), math.ceil(spot(m)) - 1, *mates, m)
         else:
-            i = k = bisect.bisect_right(times, t) - 1
-            while 0 <= k < n and times[k] <= t + CLOSE:
-                if times[k + 1] - max(times[k], t) > DOWN_MIN:
-                    i = k
-                    break
+            alone.append(m)
+    alone += waiting.values()
+
+    def idle(k: int) -> bool:
+        """The host's own records say it was off over this wait."""
+        return bool(fleet.down(host, times[k], times[k + 1], ""))
+
+    def booted(k: int) -> bool:
+        """A start the host recorded with no shutdown before it falls in this wait."""
+        at = bisect.bisect_right(lone, times[k])
+        return at < len(lone) and lone[at] <= times[k + 1]
+
+    for m in alone:
+        t, cut, j = mine[m]
+        here = t if j is None else times[j]
+        if cut.edge == "stop":
+            # with no start to answer it, a stop speaks of what follows it up to the first pause that begins close
+            # after it; with no pause, up to the widest wait there; with no wait worth the name, of the record after
+            # it. A stop that a start would answer (a writer that stopped, not a log that was full) looks as far for
+            # its pause as a start does: a record written after a writer stopped does not show it back
+            first = math.floor(spot(m))
+            reach = BOOT if cut.id in fleet.answered else CLOSE
+            halt, widest = None, (SKEW, first)
+            k = max(first, 0)
+            while k < n and times[k] <= here + reach and halt is None:
+                wait = times[k + 1] - max(times[k], here)
+                if wait > DOWN_MIN:
+                    halt = k
+                elif times[k] <= here + CLOSE and wait > widest[0]:
+                    widest = (wait, k)
                 k += 1
-        place(i, t, cut)
+            span(first, widest[1] if halt is None else halt, m)
+            continue
+        # with no stop before it, a start speaks of the pause it ended and of everything written since, looked for in
+        # the five minutes before it. Where the kernel recorded a start with no shutdown before it, the pause is the
+        # wait that start falls in, or the long one before it when a record stamped earlier was written in between.
+        # With no such record it is the earliest long wait there, never one the host's own records account for; and
+        # when the channel begins that close to the start with no such wait, the pause is before its first record
+        last = math.ceil(spot(m)) - 1
+        seen = bisect.bisect_right(lone, here)
+        far = here - BOOT                              # further back when the kernel recorded its start earlier than that
+        if seen and lone[seen - 1] >= here - LATE:
+            far = min(far, lone[seen - 1])
+        back = []
+        k = min(last, n - 1)
+        while k >= 0 and times[k + 1] >= far:
+            back.append(k)
+            k -= 1
+        waits = [i for i in back if times[i + 1] - times[i] > DOWN_MIN]            # the nearest first
+        boots = [i for i in back if booted(i)]
+        if boots:
+            near = next((i for i in waits if i <= boots[0]), None)
+            pick = boots[0] if near is None or idle(near) else near
+        elif not back or (k < 0 and times[0] >= far and all(idle(i) for i in waits)):
+            place(last if not back and last >= n else -1, t, cut)      # after the channel's last record, or before its first
+            continue
+        else:
+            wide = max(back, key=lambda i: (times[i + 1] - times[i], i))
+            pick = min((i for i in waits if not idle(i)), default=wide if times[wide + 1] - times[wide] > SKEW else back[0])
+        span(pick, back[0], m)
+
+    for t, cut, j in mine:                             # a clear or a change of settings stands before the record it is
+        if cut.edge in ("clear", "change"):
+            place(bisect.bisect_left(times, t) - 1 if j is None else j - 1, t, cut)
     # a shutdown or sleep record opens the pause that follows it, looked for close after it and before the host is next
     # seen waking. A start or wake record opens nothing: it closes the pause its time falls in
     wakes = sorted(t for t, _k, side in marks if side == "to")
@@ -713,85 +798,110 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
             i = bisect.bisect_left(times, t) - 1
             if 0 <= i < n and times[i] < t <= times[i + 1]:
                 starts[i].append(t)
-    for m, (t, cut, j) in enumerate(mine):
-        if cut.edge == "stop":
-            continue
-        if m in joined:
-            place(joined[m], t, cut)
-            continue
-        i = bisect.bisect_left(times, t) - 1 if j is None else j - 1
-        if cut.edge == "start":
-            k, here = (i, t) if j is None else (j - 1, times[j])
-            while 0 <= k < n and times[k + 1] >= here - BOOT:        # back to the pause, or to the stop that explains it
-                if pause(k) or stops[k] or any(c.edge == "stop" for _t, c in found[k]):
-                    i = k
-                    break
-                k -= 1
-            else:
-                if k < 0 and times and times[0] >= here - BOOT:      # the stream begins with the start: the pause is before it
-                    i = -1
-        place(i, t, cut)
-    plain = [times[i + 1] - times[i] for i in range(n)
-             if not stops[i] and not starts[i] and not any(c.edge in ("stop", "start") for _t, c in found[i])]
+
+    inside = {k for a, b in spans for k in range(a, b + 1)}
+    plain = [times[i + 1] - times[i] for i in range(n) if i not in inside and not stops[i] and not starts[i]]
     # without record numbers the rhythm is all there is: a channel too short to have one is held to the floor
     bound = quiet or rhythm(plain) or (QUIET_FLOOR if mode == "rhythm" else None)
 
-    breaks: dict[int, Hole] = {}
+    kinds: dict[int, list[str]] = {}                   # what is wrong in a pair of records
+    gone: dict[int, int] = {}                          # the record numbers missing in it
     splits: set[int] = set()
     for i in range(n):
-        a, b = recs[i], recs[i + 1]
-        gap = b.time - a.time
-        edges = Counter(c.edge for _t, c in found[i])
-        if edges["change"]:
+        edges = {c.edge for _t, c in found[i]}
+        if "change" in edges:
             splits.add(i + 1)
-        missing = max(0, (b.rid or 0) - (a.rid or 0) - 1) if mode == "sequence" else 0
+        missing = max(0, (recs[i + 1].rid or 0) - (recs[i].rid or 0) - 1) if mode == "sequence" else 0
         restarted = (i + 1) in setbacks
-        kinds = ["restarted"] * restarted
-        if edges["clear"] and (mode == "rhythm" or missing or restarted):
-            kinds.append("cleared")
+        got = ["restarted"] * restarted
+        if "clear" in edges and (mode == "rhythm" or missing or restarted):
+            got.append("cleared")
         elif missing:
-            kinds.append("missing")
-        if edges["stop"] or edges["start"] or stops[i]:
-            kinds.append("stopped")
-        if mode == "rhythm" and bound is not None and gap > bound:
-            kinds.append("quiet")              # with whole record numbers a long quiet is not a break: nothing was taken out
-        if not kinds:
-            continue
+            got.append("missing")
+        if i in inside or stops[i]:
+            got.append("stopped")
+        if mode == "rhythm" and bound is not None and times[i + 1] - times[i] > bound:
+            got.append("quiet")              # with whole record numbers a long quiet is not a break: nothing was taken out
+        if got:
+            kinds[i], gone[i] = got, missing
+
+    # the pairs a stop and its start leave without proof are one stretch, with whatever else is wrong inside it. Any
+    # other pair with something wrong in it is a stretch of its own
+    parts: list[tuple[int, int]] = []
+    for a, b in sorted(spans):
+        if parts and a <= parts[-1][1]:
+            parts[-1] = (parts[-1][0], max(parts[-1][1], b))
+        else:
+            parts.append((a, b))
+    parts = sorted(parts + [(i, i) for i in kinds if i not in inside])
+
+    gaps: list[Hole] = []
+    where_: list[tuple[int, int]] = []                 # the pairs each stretch lies in: one pair may hold two stretches
+    for k0, k1 in parts:
+        pairs = range(k0, k1 + 1)
+        cuts = [x for i in pairs for x in found[i]]
+        missing = sum(gone.get(i, 0) for i in pairs)
+        got = [kind for i in pairs for kind in kinds[i]]
         # what the records say, in their order. The sensor is shown up until a stop only when the stop speaks first,
-        # and from a start only when the start speaks last: a start with nothing before it leaves the whole pause
-        # unexplained. A wake before the first stop closes an earlier pause, not this one
-        whole = mode == "sequence" and not missing and not restarted
-        ends = [t for t, c in found[i] if c.edge == "stop"] + stops[i]
-        begins = [t for t, c in found[i] if c.edge == "start"] + [t for t in starts[i] if ends and t > min(ends)]
+        # and from a start only when the start speaks last and answers every stop said: a start with nothing before it
+        # leaves the whole pause unexplained, and a log that was full is not answered by a service that starts. A wake
+        # before the first stop closes an earlier pause, not this one. Where record numbers are missing nothing is
+        # narrowed: the records that are gone were written somewhere in the stretch
+        whole = mode == "sequence" and not missing and "restarted" not in got
+        ends = [t for t, c in cuts if c.edge == "stop"] + [t for i in pairs for t in stops[i]]
+        begins = [t for t, c in cuts if c.edge == "start"] + [t for i in pairs for t in starts[i] if ends and t > min(ends)]
         said = sorted([(t, 0, "stop") for t in ends] + [(t, 1, "start") for t in begins])
-        lo, hi = min(a.time, b.time), max(a.time, b.time)
+        lo, hi = times[k0], times[k1 + 1]
         start, end = lo, hi
-        if said and said[0][2] == "stop" and (whole or (bound is not None and said[0][0] - lo <= bound)):
+        if said and said[0][2] == "stop" and (whole or (mode == "rhythm" and bound is not None and said[0][0] - lo <= bound)):
             start = min(hi, max(lo, said[0][0]))
-        if said and said[-1][2] == "start" and (whole or (bound is not None and hi - said[-1][0] <= bound)):
+        answered = {ident for _t, c in cuts if c.edge == "start" for ident in c.answers}
+        unanswered = any(c.edge == "stop" and c.id not in answered for _t, c in cuts)
+        if said and said[-1][2] == "start" and not unanswered and (
+                whole or (mode == "rhythm" and bound is not None and hi - said[-1][0] <= bound)):
             end = max(start, min(hi, said[-1][0]))
-        numbers = f"between #{a.rid} and #{b.rid}" if a.rid is not None and b.rid is not None else ""
-        breaks[i] = Hole(start, end, min(kinds, key=KIND_ORDER.index), missing, list(found[i]), bool(stops[i]),
-                         said[0][2] if said else "", numbers, index=i)
+        odd = next((i for i in pairs if gone[i] or (i + 1) in setbacks), k0)
+        numbers = f"between #{recs[odd].rid} and #{recs[odd + 1].rid}" if recs[odd].rid is not None and recs[odd + 1].rid is not None else ""
+        if k0 == k1 and whole and not cuts and sum(what == "stop" for _t, _o, what in said) > 1:
+            # the host went down, came back and went down again, and this channel had nothing to say in between: each
+            # time is a stretch of its own, and with whole numbers the quiet between them is not a break
+            began = None
+            for t, _o, what in [*said, (hi, 1, "start")]:
+                if what == "stop" and began is None:
+                    began = min(hi, max(lo, t))
+                elif what == "start" and began is not None:
+                    until = max(began, min(hi, t))
+                    gaps.append(Hole(began, until, "stopped", 0, [], True, "stop", numbers, index=k0, pause=(until - began).total_seconds()))
+                    where_.append((k0, k1))
+                    began = None
+            continue
+        pause = max(min(times[i + 1], end) - max(times[i], start) for i in pairs)
+        gaps.append(Hole(start, end, min(got, key=KIND_ORDER.index), missing, cuts, any(stops[i] for i in pairs),
+                         said[0][2] if said else "", numbers, index=k0, pause=max(0.0, pause.total_seconds())))
+        where_.append((k0, k1))
 
     runs: list[Run] = []
-    gaps: list[Hole] = []
     at = 0
-    for i in sorted(breaks):
-        runs.append(Run(at, i, recs[at].time, breaks[i].start))
-        gaps.append(breaks[i])
-        at = i + 1
+    for (k0, k1), h in zip(where_, gaps, strict=True):
+        runs.append(Run(at, k0, recs[at].time, h.start))
+        at = k1 + 1
     if recs:
         runs.append(Run(at, len(recs) - 1, recs[at].time, recs[-1].time))
     for k in range(1, len(runs)):
         runs[k].start = gaps[k - 1].end
+
+    def off(h: Hole) -> bool:
+        return h.kind in ("quiet", "stopped") and bool(fleet.down(host, h.start, h.end, h.edge, [(t, c.edge) for t, c in h.found]))
+
     k = 1
-    while k < len(runs) - 1:                                       # a restart writes a few records of its own between two breaks
-        if runs[k].end - runs[k].start < MINOR_RUN:
-            a_, b_ = gaps[k - 1], gaps[k]
+    while k < len(runs) - 1:
+        # a restart writes a few records of its own between two breaks: they are one break. Not when the host's own
+        # records account for one of the two: time off stays time off, and the break beside it stays a break
+        a_, b_ = gaps[k - 1], gaps[k]
+        if runs[k].end - runs[k].start < MINOR_RUN and not off(a_) and not off(b_):
             gaps[k - 1] = Hole(a_.start, b_.end, min((a_.kind, b_.kind), key=KIND_ORDER.index), a_.missing + b_.missing,
                                a_.found + b_.found, a_.shutdown or b_.shutdown, a_.opened or b_.opened, a_.numbers or b_.numbers,
-                               index=a_.index)
+                               index=a_.index, pause=max(a_.pause or 0.0, b_.pause or 0.0))
             del gaps[k], runs[k]
         else:
             k += 1
@@ -856,7 +966,7 @@ def settle(fleet: Fleet, sensors: dict[tuple[str, str], Sensor]) -> None:
 
 
 def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
-    took = human(h.seconds)
+    took, bare = human(h.seconds), human(h.seconds if h.pause is None else h.pause)
     spoke = sorted(h.found, key=lambda x: x[0])
     names = list(dict.fromkeys(c.name for _t, c in spoke))
     stops = list(dict.fromkeys(c.name for _t, c in spoke if c.edge == "stop"))
@@ -886,9 +996,9 @@ def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
     elif h.kind == "stopped":
         if h.opened == "stop" or h.edge == "trail":
             said = listed(stops) if stops else "the host recorded that it was shutting down or going to sleep"
-            h.detail = f"{said}; no record for {took}" + (f", then {listed(begins)}" if begins else "")
+            h.detail = f"{said}; no record for {bare}" + (f", then {listed(begins)}" if begins else "")
         else:
-            h.detail = f"no record for {took}, then {listed(begins or names) or 'the host started'}, and no record of a stop before it"
+            h.detail = f"no record for {bare}, then {listed(begins or names) or 'the host started'}, and no record of a stop before it"
         h.severity = "high" if h.life else "medium"
     else:
         limit = f", against gaps of at most {human(s.bound.total_seconds())}" if s.bound else ""
@@ -1328,6 +1438,10 @@ def check(sm: Model, trace: survivability.Model) -> list[str]:
             marks = trace.erasures[e].marks if e in trace.erasures else ()
             if c.detection and not any(m.detection == c.detection for m in marks):
                 errs.append(f"{at}: {e} leaves no trace read by {c.detection} in dfir/trace/model.yml")
+        if c.answers and c.edge != "start":
+            errs.append(f"{at}: only a start answers a stop")
+        errs += [f"{at}: answers {x}, which is not a stop of this file" for x in c.answers
+                 if not any(o.id == x and o.edge == "stop" for o in sm.cuts)]
         if not c.event:
             errs.append(f"{at}: a sample event is needed, so the engine can say which rule reads this record")
             continue
@@ -1687,8 +1801,16 @@ def print_report(res: dict, notes: list[dict] | None = None, top: int = 12) -> N
                 print(f"         {RED}{b['life']}{RESET}")
         if len(res["breaks"]) > top:
             print(f"  {DIM}… {len(res['breaks']) - top} more in the certificate{RESET}")
+    away: dict[str, list[dict]] = defaultdict(list)
     for d in res["down"]:
-        print(f"  {DIM}not counted: {d['host']} {d['what']} for {human(d['seconds'])} ({d['start'][5:16]} → {d['end'][5:16]}){RESET}")
+        away[d["host"]].append(d)
+    for host, off in away.items():
+        if len(off) > 3:                                # a laptop sleeps many times a day: the certificate lists each
+            what = listed([f"{kind} {plural(n, 'time')}" for kind, n in Counter(d["what"] for d in off).items()])
+            print(f"  {DIM}not counted: {host} {what}, {human(sum(d['seconds'] for d in off))} in all (the certificate lists each){RESET}")
+            continue
+        for d in off:
+            print(f"  {DIM}not counted: {host} {d['what']} for {human(d['seconds'])} ({d['start'][5:16]} → {d['end'][5:16]}){RESET}")
     print(f"\n{BOLD}{c['attested']} attested · {c['fired']} fired · {c['unattested']} unattested{RESET} of {c['pairs']} detection-host pairs · "
           f"{pct(c['coverage'])} of the watched time attested · {plural(len(res['breaks']), 'break')} in the record")
     print(f"{DIM}An attested verdict holds for the behaviours each rule is proven to catch and for the anti-forensic actions "

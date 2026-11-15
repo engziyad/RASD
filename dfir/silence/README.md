@@ -90,7 +90,7 @@ Not counted for or against any detection: WS01.corp.lab shut down for 11 h 53 mi
 | SRV-FS01.corp.lab | System | 51 |  | rhythm | 2 h 12 min | 0 |  | the export carries no record numbers |
 | WS01.corp.lab | Microsoft-Windows-Sysmon/Operational | 113 | 42001 to 42113 | sequence | 29 min | 0 | 11 h 53 min |  |
 | WS01.corp.lab | Security | 39 | 302001 to 302039 | sequence | 89 min | 0 | 11 h 53 min |  |
-| WS01.corp.lab | System | 30 | 14001 to 14030 | sequence | too few records to say | 0 | 11 h 52 min |  |
+| WS01.corp.lab | System | 30 | 14001 to 14030 | sequence | too few records to say | 0 | 11 h 53 min |  |
 | WS02.corp.lab | Microsoft-Windows-Sysmon/Operational | 160 | 43001 to 43160 | sequence | 73 min | 0 |  |  |
 | WS02.corp.lab | Security | 72 | 303001 to 303072 | sequence | 89 min | 0 |  |  |
 | WS02.corp.lab | System | 49 | 15001 to 15049 | sequence | 2 h 11 min | 0 |  |  |
