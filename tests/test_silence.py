@@ -309,7 +309,25 @@ class Breaks(unittest.TestCase):
         events = steady(SYSTEM, 30) + steady(SYSTEM, 30, start=-600, first=1030)
         h = sensors(events)[("h1", "system")].holes[0]
         self.assertEqual((h.kind, h.severity), ("restarted", "high"))
-        self.assertIn("the clock runs backwards between #1029 and #1030 and stays there", h.detail)
+        self.assertIn("the record order and the clock disagree between #1029 and #1030", h.detail)
+
+    def test_a_log_whose_numbers_start_again_is_a_break(self):
+        """A log file deleted and recreated numbers its records from the start."""
+        events = steady(SYSTEM, 40) + steady(SYSTEM, 40, start=200, first=1000)
+        s = sensors(events)[("h1", "system")]
+        self.assertEqual(s.mode, "rhythm")
+        self.assertIn("carried by two different records", s.note)
+        h = s.holes[0]
+        self.assertEqual((h.kind, h.severity, len(s.holes)), ("restarted", "high", 1))
+        self.assertIn("the record order and the clock disagree between #1039 and #1000", h.detail)
+
+    def test_a_logger_restarted_within_seconds_is_one_short_stretch(self):
+        """The stop is answered by the start five seconds later: the quiet minutes after it are not part of it."""
+        events = numbered(steady(SYSTEM, 35) + [ev(172, SYSTEM, 6006, Provider_Name=EVENTLOG), ev(172.08, SYSTEM, 6005, Provider_Name=EVENTLOG)]
+                          + steady(SYSTEM, 35, start=176), by_time=False)
+        s = sensors(events)[("h1", "system")]
+        self.assertEqual([(h.kind, h.severity, round(h.seconds)) for h in s.holes], [("stopped", "medium", 5)])
+        self.assertIn("the Event Log service stopped; no record for 5 s, then the Event Log service started", s.holes[0].detail)
 
     def test_the_stop_of_every_channel_is_one_break(self):
         events = self.night(clean=False) + steady(SECURITY, 35, eid=4624, first=3000) + steady(SECURITY, 35, start=602, first=3035, eid=4624)
@@ -392,6 +410,20 @@ class Verdicts(unittest.TestCase):
             sil.assess(events, start=T0 + timedelta(hours=2), end=T0)
         with self.assertRaises(sil.SilenceError):
             sil.assess([{"EventID": 1}])
+        with self.assertRaises(sil.SilenceError) as one:
+            sil.assess([ev(0, SYSTEM, 7036, 1)])
+        self.assertIn("a stretch needs two records at different times", str(one.exception))
+
+    def test_a_window_the_records_do_not_reach_is_not_attested(self):
+        before = sil.assess(steady(SYSTEM, 60), start=T0 - timedelta(hours=20), end=T0 - timedelta(hours=8), filter_="T1569")
+        row = pair(before, SERVICE)
+        self.assertEqual((row["verdict"], row["attested_seconds"]), ("unattested", 0.0))
+        self.assertEqual([(b["detail"], b["seconds"]) for b in before["breaks"]], [("no record of the channel inside the window", 12 * 3600.0)])
+        wider = sil.assess(steady(SYSTEM, 60), start=T0 - timedelta(hours=8), end=T0 + timedelta(hours=16), filter_="T1569")
+        row = pair(wider, SERVICE)
+        self.assertEqual(row["verdict"], "attested")
+        self.assertAlmostEqual(row["coverage"], (59 * 5) / (24 * 60), places=3)
+        self.assertEqual(sorted(b["edge"] for b in wider["breaks"]), ["lead", "trail"])
 
     def test_a_record_without_a_time_is_counted_and_left_out(self):
         res = sil.assess([*steady(SYSTEM, 40), {"Channel": SYSTEM, "EventID": 7036, "Computer": "H1"}])
@@ -534,6 +566,23 @@ class SampleFleet(unittest.TestCase):
         page = sil.README.read_text(encoding="utf-8")
         self.assertEqual(sil.with_block(page, sil.render(self.res)), page, "run: rasd build")
 
+    def test_the_page_draws_every_sensor_inside_the_window_and_escapes_what_it_prints(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        res = copy.deepcopy(self.res)
+        res["breaks"][0]["detail"] = "<script>alert(1)</script>"
+        sil.write_html(str(tmp / "deep" / "page.html"), res, [{"name": "a&b.jsonl", "records": 1, "sha256": "ab" * 32}])
+        page = (tmp / "deep" / "page.html").read_text(encoding="utf-8")
+        self.assertNotIn("<script>", page)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", page)
+        self.assertIn("a&amp;b.jsonl", page)
+        import re
+        lefts = [float(x) for x in re.findall(r'style="left:([0-9.]+)%', page)]
+        widths = [float(x) for x in re.findall(r'%;width:([0-9.]+)%', page)]
+        self.assertTrue(lefts and all(0 <= x <= 100 for x in lefts))
+        self.assertTrue(all(0 <= x <= 100 for x in widths))
+        self.assertEqual(page.count('<section class="card">'), len(self.res["hosts"]))
+
     def test_the_certificate_states_the_claim_the_inputs_and_the_limits(self):
         text = sil.certificate(self.res, [{"name": "fleet.jsonl", "records": self.res["records"], "sha256": "ab" * 32}])
         for part in ("# Certificate of silence", "## The claim", self.res["claim"], "`" + "ab" * 32 + "`", "### The quiet is broken",
@@ -556,7 +605,7 @@ class CommandLine(unittest.TestCase):
         shutil.copy(sil.SAMPLE_EXPORT, tmp / "fleet.jsonl")
         shutil.copy(sil.SAMPLE_ASSETS, tmp / "assets.csv")
         out = self.run_rasd("fleet.jsonl", "--assets", "assets.csv", "--certificate", "out/silence.md", "--json", "out/silence.json",
-                            cwd=tmp)
+                            "--html", "out/silence.html", cwd=tmp)
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
         for part in ("The quiet is broken", "Quiet that is evidence", "Quiet that proves nothing", "Breaks in the record",
                      "not counted: WS01.corp.lab shut down"):
@@ -566,6 +615,12 @@ class CommandLine(unittest.TestCase):
         cert = (tmp / "out" / "silence.md").read_bytes()
         self.assertIn(b"# Certificate of silence", cert)
         self.assertNotIn(b"\r\n", cert)
+        self.assertIn("rasd silence fleet.jsonl --assets assets.csv", cert.decode("utf-8"))
+        self.assertIn("| `assets.csv` | 8 |", cert.decode("utf-8"), "every input is named with its hash")
+        page = (tmp / "out" / "silence.html").read_text(encoding="utf-8")
+        for part in ("<title>RASD-Silence</title>", "The record, sensor by sensor", "WS05.corp.lab", 'class="off"', 'class="high"',
+                     'class="hit"', "no record of a stop before it", "What this does not say"):
+            self.assertIn(part, page)
 
     def test_check_passes_on_the_shipped_model_and_page(self):
         out = self.run_rasd("--check")
@@ -594,16 +649,18 @@ class CommandLine(unittest.TestCase):
                     "<EventData><Data Name='param1'>Windows Update</Data></EventData></Event>")
         asked = []
 
-        def fake(cmd, **_kw):
+        def fake(cmd, stdout, stderr, **_kw):
             channel, query = cmd[2], cmd[-1]
             asked.append((channel, query))
             if channel == "System":
                 # the first record of the window by time, then everything from its number on
                 rows = [record(500, 0)] if "timediff" in query else [record(500 + i, i) for i in range(40)]
-                return SimpleNamespace(returncode=0, stdout=("\ufeff" + "".join(rows)).encode("utf-16-le"), stderr=b"")
+                stdout.write(("\ufeff" + "".join(rows)).encode("utf-16-le"))
+                return SimpleNamespace(returncode=0)
             if channel == "Security":
-                return SimpleNamespace(returncode=5, stdout=b"", stderr="Access is denied.".encode("utf-16-le"))
-            return SimpleNamespace(returncode=15007, stdout=b"", stderr=b"")
+                stderr.write("Access is denied.".encode("utf-16-le"))
+                return SimpleNamespace(returncode=5)
+            return SimpleNamespace(returncode=15007)
         with mock.patch.object(sil, "wevtutil", return_value="wevtutil"), mock.patch.object(sil.subprocess, "run", fake):
             events, notes = sil.collect(7)
         self.assertEqual((len(events), events[0]["EventRecordID"], events[0]["Computer"]), (40, 500, "HOME-PC"))

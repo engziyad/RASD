@@ -269,7 +269,7 @@ artifacts:
     answers: [ran, when]
     basis: practitioner
     source: https://www.splunk.com/en_us/blog/tips-and-tricks/how-to-determine-when-a-host-stops-sending-logs-to-splunk-expeditiously.html
-    limits: Visible only to a search that watches each channel of each host for silence; a forwarder heartbeat alone misses a host whose event log stopped
+    limits: Visible only to a search that watches each channel of each host for silence; a forwarder heartbeat alone misses a host whose event log stopped. `rasd silence` reads it from an export of the records
 
 # Anti-forensic actions. `destroys` empties stores of what they held; `blinds` stops new records from being
 # written to stores; `stops_forwarding` ends shipping to the SIEM. A trace written `at: start` exists before

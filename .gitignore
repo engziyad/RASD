@@ -24,3 +24,4 @@ datasets/cache/
 agent/proposals/
 agent/environment.yml
 rasd-silence-*.md
+rasd-silence-*.html

@@ -12,7 +12,9 @@ The entries of the model are documented behaviour, each with its basis; none is 
 
 ## Results on the sample fleet
 
-`samples/silence/fleet.jsonl` is one invented day of eight hosts as a SIEM would hold it, written by [`samples/silence/generate.py`](../../samples/silence/generate.py). Most of the fleet is quiet and provably so; each of the other hosts shows one way a quiet rule stops being evidence. `rasd silence samples/silence/fleet.jsonl --assets samples/silence/assets.csv` prints what follows.
+`samples/silence/fleet.jsonl` is one invented day of eight hosts as a SIEM would hold it, written by [`samples/silence/generate.py`](../../samples/silence/generate.py). Most of the fleet is quiet and provably so; each of the other hosts shows one way a quiet rule stops being evidence. `rasd silence samples/silence/fleet.jsonl --assets samples/silence/assets.csv` prints what follows, and `--html` draws it:
+
+<img src="../../docs/assets/silence-map.png" alt="RASD-Silence page for the sample fleet: one bar per channel of each host, green where the proof holds, hatched where the host was off, red where the record breaks" width="760">
 
 <!-- rasd:silence:start -->
 **Sample fleet:** `samples/silence/fleet.jsonl`, 2218 records from 8 hosts over 23 h 59 min (2026-11-02 06:00:35 to 2026-11-03 05:59:55 UTC).

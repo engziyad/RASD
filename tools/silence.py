@@ -39,7 +39,9 @@ quiet while another host kept recording the same machine.
   --days N           with no export: how far back to read this host's logs (default 7)
   --certificate FILE the certificate as Markdown: the claim, every verdict with its proof, the breaks,
                      the limits, the SHA-256 of every input (with no export it is written beside the
-                     answer as rasd-silence-<host>-<time>.md)
+                     answer as rasd-silence-<host>-<time>.md, with the page as .html)
+  --html FILE        the same as one page, with the map of every sensor over the window: where its proof
+                     holds, where the host was off, where the record breaks
   --json FILE        the same as JSON
   --check            the model is in step with dfir/trace/model.yml, the rules and the engine, and the
                      results page of the sample fleet is current
@@ -54,13 +56,17 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import codecs
+import functools
 import hashlib
+import html
 import json
 import math
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -327,6 +333,12 @@ class Fleet:
         cuts: dict[tuple[str, str], list[tuple[datetime, Cut, dict]]] = defaultdict(list)
         pending: list[tuple[str, datetime, Cut, dict]] = []
         marks: dict[str, list[tuple[datetime, str, str]]] = defaultdict(list)
+        spoken: dict[tuple[str, str], list[tuple[dict, Cut | None, str, str]]] = defaultdict(list)     # by channel and event id
+        for cut in sm.cuts:
+            spoken[(str(cut.record.get("Channel", "")).lower(), str(cut.record.get("EventID", "")))].append((cut.record, cut, "", ""))
+        for d in sm.down:
+            for values, side in ((d.start, "from"), (d.end, "to")):
+                spoken[(str(values.get("Channel", "")).lower(), str(values.get("EventID", "")))].append((values, None, d.id, side))
         for ev in events:
             t = parse_time(ev)
             if t is None:
@@ -343,14 +355,13 @@ class Fleet:
             if raw and "linux" not in key:
                 self.windows.add(host)
             self.streams[(host, key)].append(Rec(t, record_id(ev, sm.fields), ev, src))
-            for cut in sm.cuts:
-                if holds(ev, cut.record):
-                    pending.append((host, t, cut, ev))
-            for d in sm.down:
-                if holds(ev, d.start):
-                    marks[host].append((t, d.id, "from"))
-                if holds(ev, d.end):
-                    marks[host].append((t, d.id, "to"))
+            for values, which, ident, side in spoken.get((key, str(ev.get("EventID", "")).strip()), ()):
+                if not holds(ev, values):
+                    continue
+                if which is not None:
+                    pending.append((host, t, which, ev))
+                else:
+                    marks[host].append((t, ident, side))
             callers = {short(str(ev[f])) for f in ("WorkstationName", "Workstation") if ev.get(f)}
             ip = str(ev.get("IpAddress") or ev.get("src_host") or "").replace("::ffff:", "")
             if ip in self.assets and self.assets[ip].get("host"):
@@ -493,16 +504,20 @@ def order(recs: list[Rec]) -> tuple[list[Rec], str, str, set[int]]:
     with_id = [r for r in recs if r.rid is not None]
     if len(recs) >= 2 and len(with_id) >= 0.99 * len(recs):
         kept: list[Rec] = []
-        collisions = 0
+        again: list[datetime] = []                                   # the later of two different records under one number
         for r in sorted(with_id, key=lambda r: (r.rid, r.time)):
             if kept and kept[-1].rid == r.rid:
-                collisions += abs(r.time - kept[-1].time) > SKEW
+                if abs(r.time - kept[-1].time) > SKEW:
+                    again.append(max(r.time, kept[-1].time))
                 continue                                            # the same record exported twice
             kept.append(r)
         steps = [(b.rid or 0) - (a.rid or 0) for a, b in pairwise(kept)]
         consecutive = sum(1 for s in steps if s == 1)
-        if collisions:
+        if again:
             note = "one record number is carried by two different records: the log was recreated, or two logs share this host name"
+            by_time = sorted(recs, key=lambda r: (r.time, r.rid or 0))
+            first = bisect.bisect_left([r.time for r in by_time], min(again))
+            return by_time, "rhythm", note, {first} if first else set()      # the numbers start again at that record
         elif steps and consecutive / len(steps) < DENSE:
             note = (f"the export skips records ({consecutive} of {len(steps)} steps between record numbers are consecutive), "
                     "so the numbers cannot show whether one is missing")
@@ -560,6 +575,7 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
     # host halts, and the kernel's boot records are written before the Event Log service says it started. A record of
     # this channel is therefore tied to the pause next to it; a record of another channel is placed by its time
     mine = [(t, cut, where.get(id(ev))) for t, cut, ev in fleet.cuts.get((host, key), [])]
+    answers = {j for _t, cut, j in mine if cut.edge == "start" and j is not None}
     for t, cut, j in mine:
         if cut.edge != "stop":
             continue
@@ -567,7 +583,7 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
         if j is not None:
             k = j
             while k < n and times[k] <= times[j] + CLOSE:
-                if pause(k):
+                if pause(k) or (k + 1) in answers:               # the pause, or the start that answers the stop
                     i = k
                     break
                 k += 1
@@ -677,11 +693,14 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
         opening = [(t, c) for t, c in head if c.edge in ("clear", "start")]
         closing = [(t, c) for t, c in tail if c.edge == "stop"]
         lead, trail = since - fleet.start, fleet.end - until
-        if lead > SKEW and (opening or (bound is not None and lead > bound)):
+        if since >= fleet.end or until <= fleet.start:              # no record of the channel inside the window at all
+            sensor.holes.insert(0, Hole(fleet.start, fleet.end, "quiet", edge="lead"))
+            since, until = fleet.start, fleet.end
+        elif lead > SKEW and (opening or (bound is not None and lead > bound)):
             kind = "cleared" if any(c.edge == "clear" for _t, c in opening) else ("stopped" if opening else "quiet")
             sensor.holes.insert(0, Hole(fleet.start, since, kind, 0, opening, opened="start" if opening else "", edge="lead"))
             since = fleet.start
-        if trail > SKEW and (closing or (bound is not None and trail > bound)):
+        if until < fleet.end and trail > SKEW and (closing or (bound is not None and trail > bound)):
             shut = any(side == "from" and abs(t - until) <= MARGIN for t, _k, side in marks)
             sensor.holes.append(Hole(until, fleet.end, "stopped" if closing or shut else "quiet", 0, closing, shut,
                                      "stop" if closing or shut else "", edge="trail"))
@@ -727,7 +746,7 @@ def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
     if down:
         h.kind, h.detail, h.severity = "down", f"{down} for {took}", "low"
     elif h.kind == "restarted":
-        h.detail = f"the clock runs backwards {h.numbers} and stays there: it was set back, or the log was replaced"
+        h.detail = f"the record order and the clock disagree {h.numbers}: the log was replaced or recreated, or the clock was set back"
         h.severity = "high"
     elif h.kind == "cleared":
         at = clock(next(t for t, c in h.found if c.edge == "clear"))
@@ -754,7 +773,9 @@ def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
         h.severity = "high" if h.life else "medium"
     else:
         limit = f", against gaps of at most {human(s.bound.total_seconds())}" if s.bound else ""
-        if h.edge == "lead":
+        if h.edge == "lead" and fleet.end is not None and h.end >= fleet.end:
+            h.detail, h.severity = "no record of the channel inside the window", "medium"
+        elif h.edge == "lead":
             h.detail, h.severity = f"no record until {clock(h.end)}, {took} into the window{limit}", "low"
         elif h.edge == "trail":
             h.detail = f"no record after {clock(h.start)}, for the last {took} of the window{limit}"
@@ -831,7 +852,7 @@ def judge(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], t: Target, host:
         row.update(reason="blind", why=f"the sensor writes the record and the rule cannot read it: {issue}")
         return row
     intervals: list[Span] = []
-    downs: list[Span] = []
+    downs: list[list[Span]] = []
     for s in mine:
         if t.proof == "channel":
             intervals += [(r.start, r.end) for r in s.runs]
@@ -845,12 +866,15 @@ def judge(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], t: Target, host:
                                          "end": stamp(r.end), "seconds": (r.end - r.start).total_seconds(), "missing": 0, "life": "",
                                          "cuts": [], "edge": "",
                                          "detail": f"no {t.reads} in this stretch: nothing shows the sensor was set to write one"})
-        downs += [(h.start, h.end) for h in s.holes if h.kind == "down"]
+        downs.append([(h.start, h.end) for h in s.holes if h.kind == "down"])
         row["holes"] += [hole_json(h, s) for h in s.holes if h.kind != "down"]
     spans = [s.watched for s in mine if s.watched]
     w0, w1 = (min(a for a, _b in spans), max(b for _a, b in spans)) if spans else (start, end)
     w0, w1 = max(w0, start), min(w1, end)
-    off = clip(union(downs), w0, w1) if len(mine) == 1 else []              # two sensors: a stretch is off only for its own
+    away = union(downs[0])
+    for other in downs[1:]:                                    # two sensors: time off is where both were off
+        away = minus(away, minus(away, union(other)))
+    off = clip(away, w0, w1) if w1 > w0 else []
     watched = length(minus([(w0, w1)], off)) if w1 > w0 else 0.0
     covered = minus(clip(union(intervals), w0, w1), off) if w1 > w0 else []
     attested = length(covered)
@@ -890,7 +914,8 @@ def assess(events: list[dict], sm: Model | None = None, trace: survivability.Mod
         raise SilenceError("no record of the export carries a time this tool can read")
     w0, w1 = start or fleet.start, end or fleet.end
     if w1 <= w0:
-        raise SilenceError("the window is empty: --to must be later than --from")
+        raise SilenceError("the window is empty: --to must be later than --from" if start or end else
+                           "every record of the export carries the same time: a stretch needs two records at different times")
     fleet.start, fleet.end = w0, w1
     hosts = sorted(h for h in fleet.hosts if not only_host or only_host.lower() in (h, short(h)))
     if only_host and not hosts:
@@ -972,6 +997,7 @@ def sensor_json(fleet: Fleet, s: Sensor) -> dict:
             "first": stamp(s.recs[0].time) if s.recs else "", "last": stamp(s.recs[-1].time) if s.recs else "",
             "first_number": min(ids) if ids else None, "last_number": max(ids) if ids else None,
             "quiet_after_seconds": s.bound.total_seconds() if s.bound else None, "runs": len(s.runs),
+            "runs_at": [[stamp(r.start), stamp(r.end)] for r in s.runs], "holes": [hole_json(h, s) for h in s.holes],
             "breaks": sum(1 for h in s.holes if h.kind != "down"), "down_seconds": sum(h.seconds for h in s.holes if h.kind == "down")}
 
 
@@ -1039,11 +1065,29 @@ def collect(days: float, channels: tuple[str, ...] = LIVE_CHANNELS) -> tuple[lis
     notes = []
 
     def read(channel: str, query: str, limit: int) -> tuple[list[dict], int, str]:
+        """wevtutil's answer, parsed a piece at a time from a file: a large log is never held as one text."""
         cmd = [tool, "qe", channel, "/f:xml", "/uni:true", "/rd:false", f"/c:{limit}", f"/q:{query}"]
-        got = subprocess.run(cmd, capture_output=True, check=False)
-        text = got.stdout.decode("utf-16-le", errors="replace").lstrip("\ufeff")
-        err = (got.stderr.decode("utf-16-le", errors="replace") + got.stderr.decode(errors="replace")).lower()
-        return [ev for ev in (xml_event(m.group(0)) for m in EVENT_RE.finditer(text)) if ev], got.returncode, err
+        got: list[dict] = []
+        with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as errors:
+            code = subprocess.run(cmd, stdout=out, stderr=errors, check=False).returncode
+            errors.seek(0)
+            raw = errors.read(65536)
+            err = (raw.decode("utf-16-le", errors="replace") + raw.decode(errors="replace")).lower()
+            out.seek(0)
+            decode, text = codecs.getincrementaldecoder("utf-16-le")(errors="replace"), ""
+            while True:
+                piece = out.read(1 << 20)
+                text += decode.decode(piece, final=not piece)
+                last = 0
+                for m in EVENT_RE.finditer(text):
+                    ev = xml_event(m.group(0))
+                    if ev:
+                        got.append(ev)
+                    last = m.end()
+                text = text[last:]
+                if not piece:
+                    break
+        return got, code, err
 
     for channel in channels:
         # the first record of the window by time, then every record from its number on: a record stamped with an old
@@ -1173,6 +1217,14 @@ def sample_result() -> dict:
     if not SAMPLE_EXPORT.exists():
         raise SilenceError(f"{SAMPLE_EXPORT.relative_to(ROOT)} is missing: python samples/silence/generate.py")
     return assess(load_jsonl(SAMPLE_EXPORT), assets=load_assets(str(SAMPLE_ASSETS)) if SAMPLE_ASSETS.exists() else {})
+
+
+@functools.lru_cache(maxsize=1)
+def sample_summary() -> dict:
+    """For the metrics pages: the size of the model and the verdicts on the sample fleet."""
+    sm, res = load_model(), sample_result()
+    return {"witnesses": len(sm.witnesses), "cuts": len(sm.cuts), "down": len(sm.down), "hosts": len(res["hosts"]),
+            "records": res["records"], "breaks": len(res["breaks"]), **res["counts"]}
 
 
 def summary_line(res: dict) -> str:
@@ -1308,6 +1360,117 @@ def certificate(res: dict, inputs: list[dict], notes: list[dict] | None = None, 
     return "\n".join(lines)
 
 
+def _at(text: str) -> datetime:
+    return datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+
+
+def _ticks(start: datetime, end: datetime) -> list[tuple[datetime, str]]:
+    """Round hours across the window, half a dozen at most, each with the label it needs: the day where it changes."""
+    span = (end - start).total_seconds()
+    step = next((s for s in (3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800) if span / s <= 6), 2592000)
+    day = datetime(start.year, start.month, start.day)
+    first = day + timedelta(seconds=step * math.ceil((start - day).total_seconds() / step))
+    ticks = [first + timedelta(seconds=step * k) for k in range(int(max(0.0, (end - first).total_seconds()) // step) + 1)]
+    return [(t, f"{t:%m-%d}" if step >= 86400 else f"{t:%m-%d %H:%M}" if k == 0 or (t.hour, t.minute) == (0, 0) else f"{t:%H:%M}")
+            for k, t in enumerate(ticks)]
+
+
+def write_html(path: str, res: dict, inputs: list[dict], notes: list[dict] | None = None) -> None:
+    """The answer as one page: the map of every sensor over the window, then the tables of the certificate."""
+    e = lambda x: html.escape(str(x))
+    w, c = res["window"], res["counts"]
+    w0, w1 = _at(w["start"]), _at(w["end"])
+    span = max(1.0, (w1 - w0).total_seconds())
+
+    def left(t: datetime) -> float:
+        return min(100.0, max(0.0, (t - w0).total_seconds() / span * 100))
+
+    def seg(a: str, b: str, kind: str, tip: str) -> str:
+        x0, x1 = left(_at(a)), left(_at(b))
+        return f'<i class="{kind}" style="left:{x0:.3f}%;width:{max(0.0, x1 - x0):.3f}%" title="{e(tip)}"></i>'
+
+    def table(head: list[str], rows: list[list[str]], none: str) -> str:
+        if not rows:
+            return f'<p class="muted">{e(none)}</p>'
+        body = "".join("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>" for row in rows)
+        return f'<div class="table-wrap"><table><tr>{"".join(f"<th>{e(h)}</th>" for h in head)}</tr>{body}</table></div>'
+
+    hits: dict[str, list[dict]] = defaultdict(list)
+    for a in res["alerts"]:
+        if a.get("time") and a.get("host"):
+            hits[str(a["host"])].append(a)
+    axis = "".join(f'<span style="left:{left(t):.3f}%">{label}</span>' for t, label in _ticks(w0, w1))
+    hosts: dict[str, list[str]] = defaultdict(list)
+    for s in res["sensors"]:
+        bars = "".join(seg(a, b, "ok", f"records whole from {a} to {b} ({s['grade']})") for a, b in s["runs_at"])
+        bars += "".join(seg(h["start"], h["end"], "off" if h["kind"] == "down" else h["severity"],
+                            f"{h['start']} to {h['end']}: {h['detail']}" + (f" ({h['life']})" if h["life"] else "")) for h in s["holes"])
+        bars += "".join(seg(a["time"], a["time"], "hit", f"{a['time']} alert: {a['rule']}") for a in hits.get(s["host"], []))
+        hosts[s["host"]].append(f'<div class="row"><span class="ch">{e(s["channel"])}<small>{e(s["grade"])}</small></span>'
+                                f'<div class="bar">{bars}</div></div>')
+    maps = "".join(f'<section class="card"><h3>{e(host)}</h3>{"".join(rows)}</section>' for host, rows in hosts.items())
+
+    def meter(x: float) -> str:
+        return f'<span class="meter"><i style="width:{100 * x:.1f}%"></i></span> {pct(x)}'
+    detections = [[f"<b>{e(i)}</b>", e(d["reads"]), str(d["hosts"]), str(d["attested"]), str(d["fired"]), str(d["unattested"]),
+                   meter(d["coverage"]) if d["hosts"] else "", e(scope_text(d["behaviour"]))] for i, d in res["detections"].items()]
+    breaks = [[f'<b class="{b["severity"]}-text">{e(b["severity"])}</b>', e(b["host"]), e(", ".join(b["channels"])), e(b["start"]),
+               e(b["end"]), e(b["detail"]), e(b["life"])] for b in res["breaks"]]
+    groups: dict[tuple[str, str], list[str]] = defaultdict(list)
+    for r in res["pairs"]:
+        if r["verdict"] == "unattested":
+            groups[(r["detection"], r["why"] or "")].append(r["host"] or "no host")
+    blind = [[f"<b>{e(i)}</b>", e(", ".join(names)), e(why), e(res["detections"][i]["enable"])] for (i, why), names in groups.items()]
+    fired = [[f"<b>{e(r['detection'])}</b>", e(r["host"] or "the fleet"), str(r["alerts"]), e(r.get("first_alert", ""))]
+             for r in res["pairs"] if r["verdict"] == "fired"]
+    read = [[e(i["name"]), str(i["records"]), f"<code>{e(i['sha256'])}</code>"] for i in inputs]
+    read += [[e(n["channel"]) + " (this host)", str(n["records"]), e(n["state"])] for n in notes or []]
+    off = "".join(f"<li>{e(d['host'])} {e(d['what'])} for {e(human(d['seconds']))} ({e(d['start'])} to {e(d['end'])})</li>" for d in res["down"])
+    high = sum(1 for b in res["breaks"] if b["severity"] == "high")
+    doc = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RASD-Silence</title><style>
+:root{{--bg:#fbfaf7;--fg:#1d1c1a;--muted:#6b6862;--card:#fff;--line:#e6e2da;--gold:#9a7a45;--sage:#4f7a4f;--high:#b3412e;--med:#a8741a;--low:#8d8a83}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#111214;--fg:#e9e5dc;--muted:#9a968d;--card:#1a1b1e;--line:#2c2d31;--gold:#d7af87;--sage:#87af87;--high:#ef7b66;--med:#e3b25b;--low:#77736c}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}}
+main{{max-width:1120px;margin:0 auto;padding:32px 16px 64px}}h1{{font-size:26px;margin:0}}h2{{font-size:18px;margin:36px 0 12px;color:var(--gold)}}h3{{margin:0 0 10px;font-size:15px}}
+.muted,small{{color:var(--muted)}}small{{margin-left:8px;font-size:11px}}.claim{{border-left:3px solid var(--gold);padding:4px 0 4px 14px;margin:18px 0;max-width:80ch}}
+.kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:20px}}
+.kpi,.card{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}}.kpi b{{display:block;font-size:24px}}.card{{margin-bottom:12px}}
+.row{{display:grid;grid-template-columns:minmax(150px,300px) 1fr;gap:12px;align-items:center;margin:5px 0;font-size:13px}}.ch{{overflow-wrap:anywhere}}
+.bar,.axis{{position:relative;height:16px;background:var(--line);border-radius:4px;overflow:hidden}}.bar i{{position:absolute;top:0;bottom:0;min-width:2px}}.bar i.high,.bar i.medium,.bar i.low{{min-width:3px;z-index:1}}
+.axisrow{{padding:0 15px}}.axis{{background:none;height:18px;overflow:visible;margin:0 0 4px}}.axis span{{position:absolute;font-size:11px;color:var(--muted);border-left:1px solid var(--line);padding-left:3px;white-space:nowrap}}
+.ok{{background:var(--sage)}}.high{{background:var(--high)}}.medium{{background:var(--med)}}.low{{background:var(--low)}}
+.off{{background:repeating-linear-gradient(135deg,var(--muted) 0 2px,var(--line) 2px 7px)}}.hit{{background:var(--fg);width:2px!important;z-index:2}}
+.legend{{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin:8px 0 14px}}.legend i{{display:inline-block;width:22px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}}
+.meter{{display:inline-block;width:70px;height:8px;background:var(--line);border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:6px}}.meter i{{display:block;height:100%;background:var(--sage)}}
+.high-text{{color:var(--high)}}.medium-text{{color:var(--med)}}.low-text{{color:var(--muted)}}code{{font-size:12px;color:var(--muted);overflow-wrap:anywhere}}
+.table-wrap{{overflow-x:auto}}table{{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}}
+th,td{{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}}th{{color:var(--muted);font-weight:500}}
+li{{margin:4px 0}}footer{{margin-top:40px;color:var(--muted);font-size:13px}}
+</style></head><body><main>
+<h1>RASD-Silence</h1><p class="muted">What the quiet proves · {e(w['start'])} to {e(w['end'])} UTC ({e(human(w['seconds']))}) · {e(plural(res['records'], 'record'))} from {e(plural(len(res['hosts']), 'host'))}</p>
+<p class="claim">{e(res['claim'])}.</p>
+<div class="kpis"><div class="kpi"><span class="muted">Attested</span><b>{c['attested']}</b><span class="muted">{c['sequence']} by record sequence · {c['rhythm']} by rhythm</span></div>
+<div class="kpi"><span class="muted">Fired</span><b>{c['fired']}</b><span class="muted">the quiet is broken</span></div>
+<div class="kpi"><span class="muted">Unattested</span><b>{c['unattested']}</b><span class="muted">quiet that proves nothing</span></div>
+<div class="kpi"><span class="muted">Watched time attested</span><b>{pct(c['coverage'])}</b><span class="muted">of {c['pairs']} detection-host pairs</span></div>
+<div class="kpi"><span class="muted">Breaks in the record</span><b>{len(res['breaks'])}</b><span class="muted">{high} high</span></div></div>
+<h2>The record, sensor by sensor</h2>
+<div class="legend"><span><i class="ok"></i>the proof holds</span><span><i class="off"></i>host off or asleep, not counted</span>
+<span><i class="high"></i>break, high</span><span><i class="medium"></i>break, medium</span><span><i class="low"></i>break, low</span>
+<span><i class="hit" style="width:2px"></i>alert</span><span>no colour: no record to answer for</span></div>
+<div class="row axisrow"><span></span><div class="axis">{axis}</div></div>{maps}
+<h2>The quiet is broken</h2>{table(["Detection", "Host", "Alerts", "First"], fired, "No rule raised an alert in the window.")}
+<h2>Every detection</h2>{table(["Detection", "Reads", "Hosts", "Attested", "Fired", "Unattested", "Watched time attested", "What the quiet covers"], detections, "No detection.")}
+<h2>Breaks in the record</h2>{table(["Severity", "Host", "Channel", "From", "To", "What the records say", "The host meanwhile"], breaks, "None: every sensor's records are bracketed and whole over the window.")}
+{f'<p class="muted">Not counted for or against any detection:</p><ul>{off}</ul>' if off else ''}
+<h2>Quiet that proves nothing</h2>{table(["Detection", "Hosts", "Why", "What would make it evidence"], blind, "None: every quiet rule is attested or fired.")}
+<h2>What was read</h2>{table(["Input", "Records", "SHA-256"], read, "No input.")}
+<h2>What this does not say</h2><ul>{"".join(f"<li>{e(x)}</li>" for x in res['limits'])}</ul>
+<footer>Generated by RASD-Silence {e(res['rasd'])} · Attack-to-Defense Validation Framework · position of the intruder: {e(res['position'])}</footer></main></body></html>"""
+    write_output(path, doc)
+
+
 def print_report(res: dict, notes: list[dict] | None = None, top: int = 12) -> None:
     w, c = res["window"], res["counts"]
     print(f"{BOLD}RASD-Silence · what the quiet proves{RESET}")
@@ -1393,6 +1556,7 @@ def main() -> int:
     ap.add_argument("--days", type=float, default=7.0, help="with no export: how far back to read this host's logs")
     ap.add_argument("--yes", action="store_true", help="with no export: do not wait for Enter before reading this host's logs")
     ap.add_argument("--certificate", help="write the certificate (Markdown) to this file")
+    ap.add_argument("--html", help="write the answer as one page (HTML) to this file")
     ap.add_argument("--json", help="write the result as JSON to this file")
     ap.add_argument("--check", action="store_true", help="the model against RASD-Trace, the rules and the engine; the results page current")
     ap.add_argument("--write", action="store_true", help="render the results block of dfir/silence/README.md from the sample fleet")
@@ -1460,13 +1624,17 @@ def main() -> int:
     res = assess(events, sm, trace, assets=assets, profile=used, quiet=timedelta(minutes=args.quiet) if args.quiet else None,
                  start=when(args.start, "from"), end=when(args.end, "to"), filter_=args.filter, only_host=args.host)
     print_report(res, notes)
-    target = args.certificate
-    if not target and notes is not None:               # this host, asked with nothing but Enter: its certificate beside the answer
+    target, page = args.certificate, args.html
+    if notes is not None and not (target or page):     # this host, asked with nothing but Enter: its certificate beside the answer
         name = "".join(c if c.isalnum() or c in "-_" else "-" for c in (res["hosts"][0] if res["hosts"] else "host"))
         target = f"rasd-silence-{name}-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.md"
+        page = target[:-3] + ".html"
     if target:
         write_output(target, certificate(res, inputs, notes, " ".join(how)))
         print(f"[+] certificate: {target}")
+    if page:
+        write_html(page, res, inputs, notes)
+        print(f"[+] page: {page}")
     if args.json:
         write_output(args.json, json.dumps({**res, "inputs": inputs, "channels_read": notes or []}, indent=2, ensure_ascii=False) + "\n")
         print(f"[+] JSON: {args.json}")

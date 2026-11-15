@@ -67,6 +67,7 @@ from correlate import check as run_correlate, failures as correlation_failures
 from correlation import Correlation, load_correlations
 from deceive import check as deceive_check, load_inventory as load_decoys
 from survivability import closure_summary
+from silence import sample_summary
 from datasets import load_catalog as load_dataset_catalog, load_results as load_dataset_results, summary as public_summary
 from nearmiss import analyse as near_misses, unpinned
 from evidence import OPERATIONAL_WEIGHTS
@@ -700,6 +701,7 @@ def render_metrics(repo: Repo) -> str:
         ("Edit equivalence (certify)", equiv_line("")),
         ("Deception (deceive)", deceive_line("../")),
         ("Evidence survivability (trace)", trace_line("../")),
+        ("Evidence of absence (silence)", silence_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -776,6 +778,16 @@ def trace_line(root: str) -> str:
             f"{c['evident']} evident, {c['exposed']} exposed to a sequence that raises no alert · {closing} · "
             f"{c['artifacts']} artifacts, {c['erasures']} anti-forensic actions, documented behaviour pending lab runs "
             f"([TRACE]({root}docs/TRACE.md), [results]({root}dfir/trace/))")
+
+
+def silence_line(root: str) -> str:
+    """RASD-Silence, counted on its sample fleet; `root` is the path to the repository root from the page."""
+    s = sample_summary()
+    return (f"{s['witnesses']} sensor proofs, {s['cuts']} records that end one and {s['down']} kinds of time off modelled · on the "
+            f"sample fleet ({s['hosts']} hosts, {s['records']} records): {s['pairs']} detection-host pairs, {s['attested']} attested "
+            f"({s['sequence']} by record sequence, {s['rhythm']} by rhythm), {s['fired']} fired, {s['unattested']} unattested · "
+            f"{s['breaks']} breaks in the record found · documented behaviour pending lab runs "
+            f"([SILENCE]({root}docs/SILENCE.md), [results]({root}dfir/silence/))")
 
 
 def equiv_line(docs: str) -> str:
@@ -1057,6 +1069,7 @@ def render_readme_metrics(repo: Repo) -> str:
         ("Edit equivalence", equiv_line("docs/")),
         ("Deception", deceive_line("")),
         ("Evidence survivability", trace_line("")),
+        ("Evidence of absence", silence_line("")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1153,6 +1166,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Edit equivalence", equiv_line(docs)),
         ("Deception", deceive_line("../")),                 # both executive pages live one level below the root
         ("Evidence survivability", trace_line("../")),
+        ("Evidence of absence", silence_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "
