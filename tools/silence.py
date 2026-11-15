@@ -111,12 +111,16 @@ MINOR_RUN = timedelta(seconds=60)            # a shorter run between two breaks 
 BACK = timedelta(minutes=5)                  # a clock this far behind for three records in a row was set back
 DOWN_MIN = timedelta(seconds=30)             # a shorter pause after a shutdown or sleep record is not time off
 CLOSE = timedelta(seconds=20)                # how far a shutdown or wake record sits from the pause it belongs to
-BOOT = timedelta(minutes=2)                  # how long after the pause a start writes its own records (the kernel's come first)
+BOOT = timedelta(minutes=5)                  # how long after the pause a start writes its own records (the kernel's come first)
 HEAD = 20                                    # records at the head of a stream among which a time filter may have left one out
 KIND_ORDER = ("restarted", "cleared", "missing", "stopped", "quiet")
 SEVERITY_ORDER = ("high", "medium", "low")
 LIVE_CHANNELS = ("Microsoft-Windows-Sysmon/Operational", "Security", "System")
 LIVE_LIMIT = 400_000                         # records read per channel from this host
+ID_FIELDS = ("EventID", "EventCode", "event_id", "code")
+# the channel of a record whose export dropped it, from the log source the rules read it as
+CHANNEL_OF_SOURCE = {"process_creation": "Microsoft-Windows-Sysmon/Operational", "process_access": "Microsoft-Windows-Sysmon/Operational",
+                     "registry_set": "Microsoft-Windows-Sysmon/Operational", "windows/security": "Security", "windows/system": "System"}
 Span = tuple[datetime, datetime]
 
 
@@ -155,7 +159,9 @@ class Cut:
         if self.cuts == "all":
             return list(channels)
         if self.cuts == "named":
-            return [str(ev.get("Channel_Cleared") or ev.get("Channel") or "").lower()]
+            name = str(ev.get("Channel_Cleared") or "").strip().lower()
+            # a clear record that does not say which channel was emptied speaks of any but Security, which has its own
+            return [name] if name else [c for c in channels if c != "security"]
         return list(self.cuts)
 
 
@@ -166,6 +172,7 @@ class Down:
     start: dict
     end: dict
     basis: str
+    lag: timedelta = CLOSE          # how far inside the stretch its two records may sit: the log stops before the kernel and starts after it
 
 
 @dataclass
@@ -177,6 +184,13 @@ class Model:
     down: list[Down]
     limits: list[str]
     sequence: dict = field(default_factory=dict)
+
+
+def _lag(value: Any) -> timedelta:
+    """The seconds a model gives a shutdown's records. A value that is no such number is kept negative, for the check."""
+    if value is None:
+        return CLOSE
+    return timedelta(seconds=value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else -1)
 
 
 def build_model(doc: dict) -> Model:
@@ -191,7 +205,7 @@ def build_model(doc: dict) -> Model:
                         c.get("detection"), tuple(c.get("erasures") or ()), c.get("event"), str(c.get("basis", "")),
                         c.get("source"), c.get("note")))
     down = [Down(str(d.get("id", "")), str(d.get("name", "")), dict(d.get("from") or {}), dict(d.get("to") or {}),
-                 str(d.get("basis", ""))) for d in doc.get("down") or []]
+                 str(d.get("basis", "")), _lag(d.get("lag"))) for d in doc.get("down") or []]
     seq = dict(doc.get("sequence") or {})
     return Model(" ".join(str(doc.get("claim", "")).split()), tuple(str(f) for f in seq.get("fields") or ()), witnesses, cuts,
                  down, [str(x) for x in doc.get("limits") or []], seq)
@@ -287,6 +301,28 @@ class Rec:
     rid: int | None
     ev: dict
     src: str | None
+    eid: str = ""                   # the event id as text, however the export writes it
+
+
+def event_id(ev: dict) -> str:
+    """The event id as text: 1100, "1100" and 1100.0 are one id, under any of the names an export gives it."""
+    for f in ID_FIELDS:
+        v = ev.get(f)
+        if v is None or v == "" or isinstance(v, bool):
+            continue
+        try:
+            return str(int(float(str(v).strip())))
+        except ValueError:
+            return str(v).strip()
+    return ""
+
+
+def _key(values: dict) -> tuple[str, str]:
+    return str(values.get("Channel", "")).strip().lower(), event_id(values)
+
+
+def _rest(values: dict) -> tuple[tuple[str, str], ...]:
+    return tuple((k, str(v).strip().lower()) for k, v in values.items() if k not in ("Channel", "EventID"))
 
 
 def record_id(ev: dict, fields: tuple[str, ...]) -> int | None:
@@ -313,7 +349,7 @@ def plural(n: int, word: str) -> str:
 
 
 def listed(names: list[str]) -> str:
-    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+    return "" if not names else names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
 
 
 class Fleet:
@@ -323,7 +359,6 @@ class Fleet:
     def __init__(self, events: list[dict], sm: Model, assets: dict | None = None):
         self.sm = sm
         self.assets = assets or {}
-        self.hosts: dict[str, str] = {}                               # key -> the name as the export writes it
         self.channels: dict[str, str] = {}                            # key -> the channel as the export writes it
         self.streams: dict[tuple[str, str], list[Rec]] = defaultdict(list)
         self.windows: set[str] = set()                                # hosts that write a Windows event channel
@@ -333,30 +368,40 @@ class Fleet:
         cuts: dict[tuple[str, str], list[tuple[datetime, Cut, dict]]] = defaultdict(list)
         pending: list[tuple[str, datetime, Cut, dict]] = []
         marks: dict[str, list[tuple[datetime, str, str]]] = defaultdict(list)
-        spoken: dict[tuple[str, str], list[tuple[dict, Cut | None, str, str]]] = defaultdict(list)     # by channel and event id
+        # the records the model reads, by channel and event id, with the other values that recognise each
+        spoken: dict[tuple[str, str], list[tuple[tuple[tuple[str, str], ...], Cut | None, str, str]]] = defaultdict(list)
         for cut in sm.cuts:
-            spoken[(str(cut.record.get("Channel", "")).lower(), str(cut.record.get("EventID", "")))].append((cut.record, cut, "", ""))
+            spoken[_key(cut.record)].append((_rest(cut.record), cut, "", ""))
         for d in sm.down:
             for values, side in ((d.start, "from"), (d.end, "to")):
-                spoken[(str(values.get("Channel", "")).lower(), str(values.get("EventID", "")))].append((values, None, d.id, side))
+                spoken[_key(values)].append((_rest(values), None, d.id, side))
+        # a host that leaves its domain out of some records (Windows does while it starts) is one host, when one fits
+        names = {first(ev, HOST_FIELDS).strip().lower() for ev in events}
+        fuller = {n: [m for m in names if m.startswith(n + ".")] for n in names if "." not in n and n != "-"}
+        self.alias = {n: full[0] for n, full in fuller.items() if len(full) == 1}
+        shown: dict[str, str] = {}
+        windows_keys = {c.lower() for c in CHANNEL_OF_SOURCE.values()}
         for ev in events:
             t = parse_time(ev)
             if t is None:
                 self.undated += 1
                 continue
             name = first(ev, HOST_FIELDS).strip()
-            host = name.lower()
-            self.hosts.setdefault(host, name)
-            src = route(ev)
+            host = self.alias.get(name.lower(), name.lower())
+            if name.lower() == host:
+                shown.setdefault(host, name)
+            src, eid = route(ev), event_id(ev)
             raw = str(ev.get("Channel") or ev.get("channel") or "").strip()
-            label = raw or (src or "other records")
+            # an export that dropped the channel: the one its log source is written to
+            label = (raw or ("Security" if eid == "4688" and src == "process_creation" else CHANNEL_OF_SOURCE.get(src or ""))
+                     or src or "other records")
             key = label.lower()
             self.channels.setdefault(key, label)
-            if raw and "linux" not in key:
+            if "linux" not in key and (raw or key in windows_keys):
                 self.windows.add(host)
-            self.streams[(host, key)].append(Rec(t, record_id(ev, sm.fields), ev, src))
-            for values, which, ident, side in spoken.get((key, str(ev.get("EventID", "")).strip()), ()):
-                if not holds(ev, values):
+            self.streams[(host, key)].append(Rec(t, record_id(ev, sm.fields), ev, src, eid))
+            for rest, which, ident, side in spoken.get((key, eid), ()):
+                if any(str(ev.get(k, "")).strip().lower() != v for k, v in rest):
                     continue
                 if which is not None:
                     pending.append((host, t, which, ev))
@@ -368,6 +413,7 @@ class Fleet:
                 callers.add(short(str(self.assets[ip]["host"])))
             for who in callers:                                       # one record names a client once, by name or by address
                 named[who].append((t, name))
+        self.hosts: dict[str, str] = {h: shown.get(h, h) for h in sorted({h for h, _k in self.streams})}
         per_host: dict[str, list[str]] = defaultdict(list)
         for host, key in self.streams:
             per_host[host].append(key)
@@ -387,7 +433,7 @@ class Fleet:
     def seen_by_others(self, host: str, lo: datetime, hi: datetime) -> str:
         """Who recorded the host inside a stretch its own channels have no record for."""
         calls = self.named.get(short(host), [])
-        a, b = bisect.bisect_right(calls, (lo, "￿")), bisect.bisect_left(calls, (hi, ""))
+        a, b = bisect.bisect_right(calls, (lo, "\uffff")), bisect.bisect_left(calls, (hi, ""))
         if b <= a:
             return ""
         by = Counter(who for _t, who in calls[a:b])
@@ -395,13 +441,25 @@ class Fleet:
         more = f" (and {plural(len(by) - 1, 'other host')})" if len(by) > 1 else ""
         return f"{top} recorded {plural(n, 'event')} naming it meanwhile{more}"
 
-    def down(self, host: str, start: datetime, end: datetime, edge: str) -> str:
-        """The name of the shutdown or sleep whose records bracket a stretch, if one does."""
+    def down(self, host: str, start: datetime, end: datetime, edge: str, said: list[tuple[datetime, str]] | None = None) -> str:
+        """The name of the shutdown or sleep whose records bracket a stretch, if one does. A shutdown that a start
+        already answered before the stretch is not this stretch's, and a start that answers a later shutdown is not
+        its end. A stretch before the first record has no shutdown record to show, so it is never time off.
+
+        The two records sit at the ends of the stretch or a little inside it (`lag`): the log service stops before
+        the kernel does and starts after it. Never past the other end (a start before the stretch and a shutdown
+        after it are not its own), and never across a record of the stretch that says otherwise (`said`, each with
+        its edge): a log service that started again before the shutdown record did not stop for the shutdown."""
         marks = self.marks.get(host, [])
+        said = said or []
         for d in self.sm.down:
-            began = any(k == d.id and side == "from" and start - MARGIN <= t <= start + CLOSE for t, k, side in marks)
-            ended = any(k == d.id and side == "to" and end - CLOSE <= t <= end + MARGIN for t, k, side in marks)
-            if (began or edge == "lead") and (ended or edge == "trail") and (began or ended):
+            froms = [t for t, k, side in marks if k == d.id and side == "from" and start - MARGIN <= t <= min(start + d.lag, end)
+                     and not any(e == "start" and start <= c < t for c, e in said)]
+            tos = [t for t, k, side in marks if k == d.id and side == "to" and max(end - d.lag, start) <= t <= end + MARGIN
+                   and not any(e == "stop" and t < c <= end for c, e in said)]
+            began = [f for f in froms if not any(side == "to" and f < t <= start for t, _k, side in marks)]
+            ended = [g for g in tos if not any(side == "from" and end <= t < g for t, _k, side in marks)]
+            if began and (edge == "trail" or any(g >= f for f in began for g in ended)):
                 return d.name
         return ""
 
@@ -456,7 +514,7 @@ class Sensor:
     runs: list[Run]
     holes: list[Hole]
     splits: set[int]                # record indexes where the sensor's settings changed
-    carriers: dict[str, list[int]]
+    carriers: dict[str, dict[str, list[int]]]       # detection -> event id it reads ('' for any) -> record indexes
     watched: Span | None = None     # the part of the window this sensor can answer for at all
 
     def spans(self) -> list[Run]:
@@ -518,21 +576,27 @@ def order(recs: list[Rec]) -> tuple[list[Rec], str, str, set[int]]:
             by_time = sorted(recs, key=lambda r: (r.time, r.rid or 0))
             first = bisect.bisect_left([r.time for r in by_time], min(again))
             return by_time, "rhythm", note, {first} if first else set()      # the numbers start again at that record
-        elif steps and consecutive / len(steps) < DENSE:
+        # an export that ships only some event ids skips numbers by design, and it shows: most steps skip, or many do
+        # over a long stream. A skip or two in a short stream is a record that is missing
+        if steps and consecutive / len(steps) < DENSE and (len(steps) >= MIN_GAPS or 2 * consecutive <= len(steps)):
             note = (f"the export skips records ({consecutive} of {len(steps)} steps between record numbers are consecutive), "
                     "so the numbers cannot show whether one is missing")
-        else:
-            out: list[Rec] = []
-            setbacks: set[int] = set()
-            behind, at = 0, kept[0].time
-            for i, r in enumerate(kept):
-                behind = behind + 1 if r.time < at - BACK else 0
-                if behind == 3:
-                    setbacks.add(i - 2)
-                at = max(at, r.time)
-                out.append(Rec(at, r.rid, r.ev, r.src))
-            return out, "sequence", "", setbacks
-        return sorted(recs, key=lambda r: (r.time, r.rid or 0)), "rhythm", note, set()
+            return sorted(recs, key=lambda r: (r.time, r.rid or 0)), "rhythm", note, set()
+        out: list[Rec] = []
+        setbacks: set[int] = set()
+        behind = 0
+        at: datetime | None = None
+        for i, r in enumerate(kept):
+            after = [k.time for k in kept[i + 1:i + 4]]
+            # one record whose clock runs ahead of everything written after it carries a wrong clock, not a later time
+            stray = bool(after) and all(x < r.time - BACK for x in after) and (at is None or r.time > at + BACK)
+            own = (after[0] if at is None else at) if stray else r.time
+            behind = behind + 1 if at is not None and own < at - BACK else 0
+            if behind == 3:
+                setbacks.add(i - 2)
+            at = own if at is None else max(at, own)
+            out.append(Rec(at, r.rid, r.ev, r.src, r.eid))
+        return out, "sequence", "", setbacks
     note = "the export carries no record numbers" if not with_id else "some records carry no record number"
     return sorted(recs, key=lambda r: (r.time, r.rid or 0)), "rhythm", note if len(recs) >= 2 else "", set()
 
@@ -543,12 +607,13 @@ def _quantile(gaps: list[timedelta], q: float) -> timedelta:
 
 def rhythm(gaps: list[timedelta]) -> timedelta | None:
     """The longest gap a channel may have before it counts as quiet: three times the gap it exceeds once in a hundred.
-    A gap that is itself quiet against the others is left out of that count, or one long quiet would hide itself."""
+    A gap that is itself quiet against the others is left out of that count, or one long quiet would hide itself.
+    None when the channel has too few gaps to have a rhythm."""
     kept = sorted(g for g in gaps if g >= timedelta(0))
-    while len(kept) > MIN_GAPS and kept[-1] > max(QUIET_FLOOR, QUIET_FACTOR * _quantile(kept[:-1], 0.99)):
-        kept.pop()
     if len(kept) < MIN_GAPS:
         return None
+    while len(kept) > MIN_GAPS * 2 // 3 and kept[-1] > max(QUIET_FLOOR, QUIET_FACTOR * _quantile(kept[:-1], 0.99)):
+        kept.pop()
     return min(max(QUIET_FLOOR, QUIET_FACTOR * _quantile(kept, 0.99)), QUIET_CEILING)
 
 
@@ -572,18 +637,61 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
         return times[i + 1] - times[i] > DOWN_MIN
 
     # Windows does not write a stop or a start beside the pause it speaks of: more records follow a stop before the
-    # host halts, and the kernel's boot records are written before the Event Log service says it started. A record of
-    # this channel is therefore tied to the pause next to it; a record of another channel is placed by its time
+    # host halts, and the kernel's boot records are written before the Event Log service says it started. Whether
+    # the record is this channel's own (found by the record) or another channel's (found by its time), it has a
+    # place among this channel's records
     mine = [(t, cut, where.get(id(ev))) for t, cut, ev in fleet.cuts.get((host, key), [])]
-    answers = {j for _t, cut, j in mine if cut.edge == "start" and j is not None}
-    for t, cut, j in mine:
+
+    def spot(m: int) -> float:
+        t, cut, j = mine[m]
+        if j is not None:
+            return float(j)
+        return (bisect.bisect_right(times, t) if cut.edge == "stop" else bisect.bisect_left(times, t)) - 0.5
+
+    def between(m: int, a: int) -> int | None:
+        """The pair of records with the widest wait between a stop and the start after it, when the rest of the way
+        from one to the other is short: the two then speak of one outage, however brief. None when they do not."""
+        lo, hi = (t if j is None else times[j] for t, _cut, j in (mine[m], mine[a]))
+        best, wide, rest = None, timedelta(0), timedelta(0)
+        for k in range(math.floor(spot(m)), math.ceil(spot(a))):
+            wait = max(timedelta(0), min(times[k + 1] if k < n else hi, hi) - max(times[k] if k >= 0 else lo, lo))
+            if best is None or wait > wide:
+                best, wide, rest = k, wait, rest + wide
+            else:
+                rest += wait
+            if rest > CLOSE + BOOT:
+                return None
+        return best if hi >= lo else None
+
+    # a stop and the start that answers it are one outage: it sits at the widest wait between the two records, not
+    # at the first pause long enough to notice (a host can restart in less)
+    spoken = sorted((spot(m), m) for m, (_t, cut, _j) in enumerate(mine) if cut.edge in ("stop", "start"))
+    joined: dict[int, int] = {}
+    answer: int | None = None
+    for _spot, m in reversed(spoken):
+        if mine[m][1].edge == "start":
+            answer = m
+        elif answer is not None:
+            at = between(m, answer)
+            if at is not None:
+                joined[m] = joined[answer] = at          # the earliest stop a start answers says where the start goes
+    # with no start to answer it, a stop is tied to the pause close after it; a start with no stop, to the one before
+    for m, (t, cut, j) in enumerate(mine):
         if cut.edge != "stop":
             continue
-        i = bisect.bisect_right(times, t) - 1 if j is None else j
-        if j is not None:
-            k = j
+        if m in joined:
+            i = joined[m]
+        elif j is not None:
+            i = k = j
             while k < n and times[k] <= times[j] + CLOSE:
-                if pause(k) or (k + 1) in answers:               # the pause, or the start that answers the stop
+                if pause(k):
+                    i = k
+                    break
+                k += 1
+        else:
+            i = k = bisect.bisect_right(times, t) - 1
+            while 0 <= k < n and times[k] <= t + CLOSE:
+                if times[k + 1] - max(times[k], t) > DOWN_MIN:
                     i = k
                     break
                 k += 1
@@ -605,21 +713,28 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
             i = bisect.bisect_left(times, t) - 1
             if 0 <= i < n and times[i] < t <= times[i + 1]:
                 starts[i].append(t)
-    for t, cut, j in mine:
+    for m, (t, cut, j) in enumerate(mine):
         if cut.edge == "stop":
             continue
+        if m in joined:
+            place(joined[m], t, cut)
+            continue
         i = bisect.bisect_left(times, t) - 1 if j is None else j - 1
-        if j is not None and cut.edge == "start":
-            k = j - 1
-            while k >= 0 and times[k + 1] >= times[j] - BOOT:         # back to the pause, or to the stop that explains it
+        if cut.edge == "start":
+            k, here = (i, t) if j is None else (j - 1, times[j])
+            while 0 <= k < n and times[k + 1] >= here - BOOT:        # back to the pause, or to the stop that explains it
                 if pause(k) or stops[k] or any(c.edge == "stop" for _t, c in found[k]):
                     i = k
                     break
                 k -= 1
+            else:
+                if k < 0 and times and times[0] >= here - BOOT:      # the stream begins with the start: the pause is before it
+                    i = -1
         place(i, t, cut)
     plain = [times[i + 1] - times[i] for i in range(n)
              if not stops[i] and not starts[i] and not any(c.edge in ("stop", "start") for _t, c in found[i])]
-    bound = quiet or rhythm(plain)
+    # without record numbers the rhythm is all there is: a channel too short to have one is held to the floor
+    bound = quiet or rhythm(plain) or (QUIET_FLOOR if mode == "rhythm" else None)
 
     breaks: dict[int, Hole] = {}
     splits: set[int] = set()
@@ -642,20 +757,19 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
             kinds.append("quiet")              # with whole record numbers a long quiet is not a break: nothing was taken out
         if not kinds:
             continue
-        # the sensor is shown up until the first record of a stop and from the last record of a start, when nothing
-        # is missing in between (by number) or the wait is one the channel ordinarily has (by rhythm)
+        # what the records say, in their order. The sensor is shown up until a stop only when the stop speaks first,
+        # and from a start only when the start speaks last: a start with nothing before it leaves the whole pause
+        # unexplained. A wake before the first stop closes an earlier pause, not this one
         whole = mode == "sequence" and not missing and not restarted
         ends = [t for t, c in found[i] if c.edge == "stop"] + stops[i]
-        begins = [t for t, c in found[i] if c.edge == "start"] + starts[i]
+        begins = [t for t, c in found[i] if c.edge == "start"] + [t for t in starts[i] if ends and t > min(ends)]
+        said = sorted([(t, 0, "stop") for t in ends] + [(t, 1, "start") for t in begins])
         lo, hi = min(a.time, b.time), max(a.time, b.time)
         start, end = lo, hi
-        if ends and (whole or (bound is not None and min(ends) - lo <= bound)):
-            start = min(hi, max(lo, min(ends)))
-        if begins and (whole or (bound is not None and hi - max(begins) <= bound)):
-            end = max(lo, min(hi, max(begins)))
-        if end < start:
-            start, end = lo, hi
-        said = sorted([(t, 0, "stop") for t in ends] + [(t, 1, "start") for t in begins])
+        if said and said[0][2] == "stop" and (whole or (bound is not None and said[0][0] - lo <= bound)):
+            start = min(hi, max(lo, said[0][0]))
+        if said and said[-1][2] == "start" and (whole or (bound is not None and hi - said[-1][0] <= bound)):
+            end = max(start, min(hi, said[-1][0]))
         numbers = f"between #{a.rid} and #{b.rid}" if a.rid is not None and b.rid is not None else ""
         breaks[i] = Hole(start, end, min(kinds, key=KIND_ORDER.index), missing, list(found[i]), bool(stops[i]),
                          said[0][2] if said else "", numbers, index=i)
@@ -682,12 +796,11 @@ def sense(fleet: Fleet, host: str, key: str, by_source: dict[str, list[Target]],
         else:
             k += 1
 
-    sensor = Sensor(host, key, fleet.channels[key], recs, mode, note, bound, runs, gaps, splits, defaultdict(list))
+    sensor = Sensor(host, key, fleet.channels[key], recs, mode, note, bound, runs, gaps, splits, {})
     for i, r in enumerate(recs):
-        eid = str(r.ev.get("EventID", r.ev.get("EventCode", "")))
         for target in by_source.get(r.src or "", []):
-            if not target.ids or eid in target.ids:
-                sensor.carriers[target.id].append(i)
+            if not target.ids or r.eid in target.ids:                  # one list per event id the rule reads
+                sensor.carriers.setdefault(target.id, {}).setdefault(r.eid if target.ids else "", []).append(i)
     if recs and fleet.start is not None and fleet.end is not None:
         since, until = runs[0].start, runs[-1].end
         opening = [(t, c) for t, c in head if c.edge in ("clear", "start")]
@@ -722,14 +835,20 @@ def settle(fleet: Fleet, sensors: dict[tuple[str, str], Sensor]) -> None:
                 lo, hi = h.start + margin, h.end - margin
                 life = []
                 if hi > lo and h.kind in ("quiet", "stopped"):
-                    for other in mine:                      # a channel that kept its own rhythm through the stretch
-                        if other is s or any(o.start < hi and o.end > lo for o in other.holes):
+                    for other in mine:
+                        if other is s:
+                            continue
+                        # a channel that went quiet with this one is no witness; one that only napped inside it is
+                        dark = sum((min(o.end, hi) - max(o.start, lo)).total_seconds() for o in other.holes if o.start < hi and o.end > lo)
+                        if dark > (hi - lo).total_seconds() / 10:
                             continue
                         ts = fleet.times[(host, other.key)]
                         n = bisect.bisect_left(ts, hi) - bisect.bisect_right(ts, lo)
                         if n > 0:
                             life.append(f"the host wrote {plural(n, 'record')} to {other.channel} meanwhile")
-                    seen = fleet.seen_by_others(host, lo, hi)
+                    # another host's sighting is not scaled away with the length of the stretch: minutes after a
+                    # shutdown record, a logon from the machine says it was not off
+                    seen = fleet.seen_by_others(host, h.start + LIFE_MARGIN, h.end - LIFE_MARGIN)
                     if seen:
                         life.append(seen)
                 h.life = "; ".join(life)
@@ -742,7 +861,7 @@ def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
     names = list(dict.fromkeys(c.name for _t, c in spoke))
     stops = list(dict.fromkeys(c.name for _t, c in spoke if c.edge == "stop"))
     begins = list(dict.fromkeys(c.name for _t, c in spoke if c.edge == "start"))
-    down = fleet.down(s.host, h.start, h.end, h.edge) if h.kind in ("quiet", "stopped") and not h.life else ""
+    down = fleet.down(s.host, h.start, h.end, h.edge, [(t, c.edge) for t, c in h.found]) if h.kind in ("quiet", "stopped") and not h.life else ""
     if down:
         h.kind, h.detail, h.severity = "down", f"{down} for {took}", "low"
     elif h.kind == "restarted":
@@ -756,7 +875,7 @@ def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
             h.detail, h.severity = f"{plural(h.missing, 'record')} gone {h.numbers}: the channel was cleared at {at}", "high"
         else:
             h.detail = f"cleared at {at}; without record numbers nothing shows what was lost"
-    elif h.kind == "missing" and h.index < HEAD and h.missing <= 3:
+    elif h.kind == "missing" and h.index < HEAD and h.missing == 1:
         h.detail = (f"{plural(h.missing, 'record')} missing {h.numbers}, at the head of the export: a time filter leaves out a record "
                     "stamped before the window, as the record of a wake is")
         h.severity = "low"
@@ -769,7 +888,7 @@ def describe(fleet: Fleet, s: Sensor, h: Hole) -> None:
             said = listed(stops) if stops else "the host recorded that it was shutting down or going to sleep"
             h.detail = f"{said}; no record for {took}" + (f", then {listed(begins)}" if begins else "")
         else:
-            h.detail = f"no record for {took}, then {listed(begins or names)}, and no record of a stop before it"
+            h.detail = f"no record for {took}, then {listed(begins or names) or 'the host started'}, and no record of a stop before it"
         h.severity = "high" if h.life else "medium"
     else:
         limit = f", against gaps of at most {human(s.bound.total_seconds())}" if s.bound else ""
@@ -821,6 +940,10 @@ def minus(intervals: list[Span], holes: list[Span]) -> list[Span]:
     return out
 
 
+def _within(indexes: list[int], i0: int, i1: int) -> bool:
+    return bisect.bisect_right(indexes, i1) > bisect.bisect_left(indexes, i0)
+
+
 def judge(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], t: Target, host: str, alerts: list[dict],
           ready: dict | None, start: datetime, end: datetime) -> dict:
     """The verdict of one detection on one host over the window."""
@@ -829,10 +952,15 @@ def judge(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], t: Target, host:
                            "down_seconds": 0.0, "sensors": [], "intervals": [], "holes": [], "caveats": [], "reason": None,
                            "why": None, "alerts": 0}
     if alerts:
-        times = sorted(a["time"] for a in alerts if a.get("time"))
+        times = sorted(a["at"] for a in alerts if a.get("at"))
         row.update(verdict="fired", alerts=len(alerts), first_alert=stamp(times[0]) if times else "")
     here = [s for (h, _k), s in sorted(sensors.items()) if h == host]
-    mine = [s for s in here if (s.key == t.channel if t.proof == "channel" else bool(s.carriers.get(t.id)))]
+    # the sensor is the channel the model says the rule's record is written to; another channel that carries records
+    # of the same log source (Security 4688 beside Sysmon 1) is not a second witness
+    if t.channel:
+        mine = [s for s in here if s.key == t.channel and (t.proof == "channel" or s.carriers.get(t.id))]
+    else:
+        mine = [s for s in here if s.carriers.get(t.id)]
     if not mine:
         carrier = next((s for s in here if s.key == t.channel), None) if t.channel else \
             next((s for s in here if any(r.src == t.logsource for r in s.recs)), None)
@@ -847,25 +975,29 @@ def judge(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], t: Target, host:
     row["sensors"] = [s.channel for s in mine]
     blind = ready is not None and ready.get("verdict") == "BLIND" and ready.get("events") and any(
         v == 0 for v in (ready.get("coverage") or {}).values())
-    if blind and ready is not None and t.proof == "event":
+    if blind and ready is not None:                    # the record is written and the rule cannot read it, whatever proves the sensor
         issue = next((i for i in ready["issues"] if "missing" in i), ready["issues"][0] if ready["issues"] else "a field is missing")
         row.update(reason="blind", why=f"the sensor writes the record and the rule cannot read it: {issue}")
         return row
+    kinds = sorted(t.ids) if t.ids else [""]
     intervals: list[Span] = []
     downs: list[list[Span]] = []
     for s in mine:
         if t.proof == "channel":
             intervals += [(r.start, r.end) for r in s.runs]
         else:
-            marks = s.carriers.get(t.id) or []
+            have = s.carriers.get(t.id) or {}
             for r in s.spans():
-                if bisect.bisect_right(marks, r.i1) > bisect.bisect_left(marks, r.i0):
+                # each event id the rule reads is audited by its own setting: one record of each shows them all on
+                lacking = [k for k in kinds if not _within(have.get(k, []), r.i0, r.i1)]
+                if not lacking:
                     intervals.append((r.start, r.end))
                 elif r.end - r.start > SKEW:
+                    what = t.reads if len(lacking) == len(kinds) else f"record of event {listed(lacking)}"
                     row["holes"].append({"kind": "unproven", "severity": "medium", "channel": s.channel, "start": stamp(r.start),
                                          "end": stamp(r.end), "seconds": (r.end - r.start).total_seconds(), "missing": 0, "life": "",
                                          "cuts": [], "edge": "",
-                                         "detail": f"no {t.reads} in this stretch: nothing shows the sensor was set to write one"})
+                                         "detail": f"no {what} in this stretch: nothing shows the sensor was set to write one"})
         downs.append([(h.start, h.end) for h in s.holes if h.kind == "down"])
         row["holes"] += [hole_json(h, s) for h in s.holes if h.kind != "down"]
     spans = [s.watched for s in mine if s.watched]
@@ -926,14 +1058,20 @@ def assess(events: list[dict], sm: Model | None = None, trace: survivability.Mod
 
     dets, corrs = load_detections(), load_correlations()
     alerts, _stats = run_replay(events, dets, assets or {}, corrs=corrs)
-    alerts = [a for a in alerts if a.get("time") is None or w0 <= a["time"] <= w1]
+    # an alert sits where its record was written, not where the record's own clock says: a record stamped a day
+    # early is still a record of this window
+    placed = {id(r.ev): r.time for recs, *_rest_ in fleet.ordered.values() for r in recs}
+    for a in alerts:
+        a["at"] = placed.get(id(a.get("_event")), a.get("time"))
+    alerts = [a for a in alerts if a["at"] is None or w0 <= a["at"] <= w1]
     fired: dict[tuple[str, str], list[dict]] = defaultdict(list)
     fired_corr: dict[str, list[dict]] = defaultdict(list)
     for a in alerts:
         if a.get("correlation"):
             fired_corr[a["rule"]].append(a)
         else:
-            fired[(a["rule"], str(a.get("host", "")).strip().lower())].append(a)
+            low = str(a.get("host", "")).strip().lower()
+            fired[(a["rule"], fleet.alias.get(low, low))].append(a)
 
     likes = [SimpleNamespace(id=t.id, rule=t.rule, contract=t.contract) for t in wanted]
     ready: dict[tuple[str, str], dict] = {}
@@ -945,9 +1083,13 @@ def assess(events: list[dict], sm: Model | None = None, trace: survivability.Mod
     rows: list[dict] = []
     for t in wanted:
         if t.reach == "host":
-            scope = [h for h in hosts if h in fleet.windows]
+            scope = [h for h in hosts if h in fleet.windows or fired.get((t.id, h))]
         else:
-            scope = [h for h in hosts if any(s.carriers.get(t.id) for (hh, _k), s in sensors.items() if hh == h)]
+            # the observers of a record are the hosts that write it: those that carry the most of the event ids the
+            # rule reads (a workstation's own logons do not make it a domain controller)
+            carried = {h: max((len(s.carriers.get(t.id) or {}) for (hh, _k), s in sensors.items() if hh == h), default=0) for h in hosts}
+            most = max(carried.values(), default=0)
+            scope = [h for h in hosts if (most and carried[h] == most) or fired.get((t.id, h))]
         if not scope:
             rows.append({"detection": t.id, "host": None, "verdict": "fired" if fired_corr.get(t.id) else "unattested", "grade": None,
                          "coverage": 0.0, "attested_seconds": 0.0, "watched_seconds": 0.0, "down_seconds": 0.0, "sensors": [],
@@ -986,8 +1128,8 @@ def assess(events: list[dict], sm: Model | None = None, trace: survivability.Mod
                    "rhythm": sum(1 for r in rows if r["grade"] == "rhythm")},
         "detections": detections, "pairs": rows, "breaks": breaks_of(fleet, sensors, w0, w1), "down": downs_of(fleet, sensors, w0, w1),
         "sensors": [sensor_json(fleet, s) for _k, s in sorted(sensors.items())],
-        "alerts": [{"time": stamp(a.get("time")), "rule": a["rule"], "host": a.get("host"), "entity": a.get("entity"),
-                    "summary": a.get("summary", "")} for a in alerts],
+        "alerts": [{"time": stamp(a["at"]), "stamped": stamp(a.get("time")), "rule": a["rule"], "host": a.get("host"),
+                    "entity": a.get("entity"), "summary": a.get("summary", "")} for a in alerts],
     }
 
 
@@ -1001,13 +1143,19 @@ def sensor_json(fleet: Fleet, s: Sensor) -> dict:
             "breaks": sum(1 for h in s.holes if h.kind != "down"), "down_seconds": sum(h.seconds for h in s.holes if h.kind == "down")}
 
 
+def _outside(h: Hole, start: datetime, end: datetime) -> bool:
+    """The stretch lies outside the window. One of no length on the window's edge is inside it: records missing
+    between the last two records leave a hole in the count, not in the clock."""
+    return h.end < start or h.start > end or (h.end > h.start and (h.end <= start or h.start >= end))
+
+
 def breaks_of(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], start: datetime, end: datetime) -> list[dict]:
     """Every stretch a sensor's proof does not cover, one row per stretch: a stop that silences every channel of a
     host is one break, told by the channel whose records say the most about it."""
     rows: list[dict] = []
     for (host, _key), s in sorted(sensors.items()):
         for h in s.holes:
-            if h.kind == "down" or h.end <= start or h.start >= end:
+            if h.kind == "down" or _outside(h, start, end):
                 continue
             same = next((r for r in rows if r["_host"] == host and h.kind in ("stopped", "quiet") and r["kind"] in ("stopped", "quiet")
                          and r["_start"] < h.end and r["_end"] > h.start), None)
@@ -1033,7 +1181,7 @@ def downs_of(fleet: Fleet, sensors: dict[tuple[str, str], Sensor], start: dateti
     out: list[dict] = []
     for (host, _key), s in sorted(sensors.items()):
         for h in s.holes:
-            if h.kind != "down" or h.end <= start or h.start >= end:
+            if h.kind != "down" or _outside(h, start, end):
                 continue
             same = next((d for d in out if d["_host"] == host and d["_start"] < h.end and d["_end"] > h.start), None)
             if same is None:
@@ -1064,9 +1212,9 @@ def collect(days: float, channels: tuple[str, ...] = LIVE_CHANNELS) -> tuple[lis
     events: list[dict] = []
     notes = []
 
-    def read(channel: str, query: str, limit: int) -> tuple[list[dict], int, str]:
+    def read(channel: str, query: str, limit: int, newest: bool = False) -> tuple[list[dict], int, str]:
         """wevtutil's answer, parsed a piece at a time from a file: a large log is never held as one text."""
-        cmd = [tool, "qe", channel, "/f:xml", "/uni:true", "/rd:false", f"/c:{limit}", f"/q:{query}"]
+        cmd = [tool, "qe", channel, "/f:xml", "/uni:true", f"/rd:{'true' if newest else 'false'}", f"/c:{limit}", f"/q:{query}"]
         got: list[dict] = []
         with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as errors:
             code = subprocess.run(cmd, stdout=out, stderr=errors, check=False).returncode
@@ -1087,6 +1235,8 @@ def collect(days: float, channels: tuple[str, ...] = LIVE_CHANNELS) -> tuple[lis
                 text = text[last:]
                 if not piece:
                     break
+        if newest:
+            got.reverse()
         return got, code, err
 
     for channel in channels:
@@ -1094,10 +1244,11 @@ def collect(days: float, channels: tuple[str, ...] = LIVE_CHANNELS) -> tuple[lis
         # clock (the record of a wake) is inside the numbers and outside a time filter
         got, code, err = read(channel, f"*[System[TimeCreated[timediff(@SystemTime) <= {ms}]]]", 1)
         if got and isinstance(got[0].get("EventRecordID"), int):
-            got, code, err = read(channel, f"*[System[(EventRecordID >= {got[0]['EventRecordID']})]]", LIVE_LIMIT)
+            # the newest first, so a channel that holds more than the limit loses the start of the window, not its end
+            got, code, err = read(channel, f"*[System[(EventRecordID >= {got[0]['EventRecordID']})]]", LIVE_LIMIT, newest=True)
         events += got
         if got:
-            state = "read" + (f" (the first {LIVE_LIMIT} records of the window)" if len(got) >= LIVE_LIMIT else "")
+            state = "read" + (f" (the last {LIVE_LIMIT} records: this channel's window begins later)" if len(got) >= LIVE_LIMIT else "")
         elif not code:
             state = "read: no record in the window"
         elif "denied" in err or code == 5:
@@ -1140,9 +1291,12 @@ def check(sm: Model, trace: survivability.Model) -> list[str]:
 
     by_source = survivability.rules_by_source()
     known = {d.id for ds in by_source.values() for d in ds}
+    channels = {str(s.get("channel")).lower() for s in trace.stores.values() if s.get("channel")}
     seen: set[str] = set()
     for c in sm.cuts:
         at = f"{where}: cut {c.id}"
+        named = [str(c.record.get("Channel", "")).lower(), *(c.cuts if isinstance(c.cuts, tuple) else ())]
+        errs += [f"{at}: channel '{x}' is not the channel of a store of dfir/trace/model.yml" for x in named if x and x not in channels]
         if not c.id or c.id in seen:
             errs.append(f"{at}: every cut needs its own id")
         seen.add(c.id)
@@ -1177,8 +1331,12 @@ def check(sm: Model, trace: survivability.Model) -> list[str]:
         at = f"{where}: down {d.id}"
         if d.basis not in BASES:
             errs.append(f"{at}: basis must be one of {', '.join(BASES)}")
-        if not d.start or not d.end:
-            errs.append(f"{at}: both `from` and `to` are needed")
+        if not d.id or not d.name:
+            errs.append(f"{at}: an id and a name are needed")
+        if any("Channel" not in values or "EventID" not in values for values in (d.start, d.end)):
+            errs.append(f"{at}: `from` and `to` must each name at least a Channel and an EventID")
+        if not timedelta(0) <= d.lag <= MARGIN:
+            errs.append(f"{at}: lag must be a whole number of seconds, at most {int(MARGIN.total_seconds())}")
     return errs
 
 

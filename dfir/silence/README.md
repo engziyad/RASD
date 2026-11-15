@@ -17,29 +17,29 @@ The entries of the model are documented behaviour, each with its basis; none is 
 <img src="../../docs/assets/silence-map.png" alt="RASD-Silence page for the sample fleet: one bar per channel of each host, green where the proof holds, hatched where the host was off, red where the record breaks" width="760">
 
 <!-- rasd:silence:start -->
-**Sample fleet:** `samples/silence/fleet.jsonl`, 2218 records from 8 hosts over 23 h 59 min (2026-11-02 06:00:35 to 2026-11-03 05:59:55 UTC).
+**Sample fleet:** `samples/silence/fleet.jsonl`, 2221 records from 8 hosts over 23 h 59 min (2026-11-02 06:00:05 to 2026-11-03 05:59:15 UTC).
 
-106 detection-host pairs: 87 attested (82 by record sequence, 5 by rhythm), 5 fired, 14 unattested · 88.3% of the watched time attested · 3 breaks in the record (3 high).
+99 detection-host pairs: 80 attested (76 by record sequence, 4 by rhythm), 5 fired, 14 unattested · 87.6% of the watched time attested · 3 breaks in the record (3 high).
 
 | Detection | Reads | Hosts | Attested | Fired | Unattested | Watched time attested |
 |---|---|---|---|---|---|---|
-| `T1003.001_lsass_memory_access` | Sysmon 10 (ProcessAccess) | 8 | 5 | 1 | 2 | 70.9% |
-| `T1021.006_wsmprovhost_suspicious_child` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.3% |
+| `T1003.001_lsass_memory_access` | Sysmon 10 (ProcessAccess) | 8 | 5 | 1 | 2 | 70.8% |
+| `T1021.006_wsmprovhost_suspicious_child` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.2% |
 | `T1046_decoy_service_interaction` | OpenCanary record of the decoy host | 0 | 0 | 0 | 1 |  |
 | `T1053.003_crontab_noninteractive_install` | linux/process_creation records | 0 | 0 | 0 | 1 |  |
-| `T1053.005_powershell_scheduled_task_creation` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.3% |
-| `T1053.005_schtasks_suspicious_creation` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.3% |
-| `T1059.001_powershell_encoded_command` | Sysmon 1 (ProcessCreate) | 8 | 6 | 1 | 1 | 84.3% |
+| `T1053.005_powershell_scheduled_task_creation` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.2% |
+| `T1053.005_schtasks_suspicious_creation` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.2% |
+| `T1059.001_powershell_encoded_command` | Sysmon 1 (ProcessCreate) | 8 | 6 | 1 | 1 | 84.2% |
 | `T1059.004_linux_suspicious_shell_execution` | linux/process_creation records | 0 | 0 | 0 | 1 |  |
-| `T1078.002_honey_account_authentication` | Security 4768, 4771 and 4776 on the domain controller (authentication) | 8 | 8 | 0 | 0 | 97.6% |
-| `T1218.011_rundll32_suspicious_execution` | Sysmon 1 (ProcessCreate) | 8 | 6 | 1 | 1 | 84.3% |
-| `T1547.001_registry_run_key_persistence` | Sysmon 13 (registry value set) | 8 | 6 | 1 | 1 | 84.3% |
+| `T1078.002_honey_account_authentication` | Security 4768, 4771 and 4776 on the domain controller (authentication) | 1 | 1 | 0 | 0 | 100% |
+| `T1218.011_rundll32_suspicious_execution` | Sysmon 1 (ProcessCreate) | 8 | 6 | 1 | 1 | 84.2% |
+| `T1547.001_registry_run_key_persistence` | Sysmon 13 (registry value set) | 8 | 6 | 1 | 1 | 84.2% |
 | `T1552.001_honey_file_access` | Security 4663 on the file server (object access) | 1 | 1 | 0 | 0 | 100% |
 | `T1558.003_honey_spn_ticket_request` | Security 4769 on the domain controller (service ticket requested) | 1 | 1 | 0 | 0 | 100% |
 | `T1558.003_kerberoasting_rc4_tgs` | Security 4769 on the domain controller (service ticket requested) | 1 | 1 | 0 | 0 | 100% |
 | `T1569.002_suspicious_service_installation` | System 7045 (service installed) | 8 | 8 | 0 | 0 | 98.0% |
-| `T1685.005_event_log_clearing` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.3% |
-| `T1685.005_security_log_cleared` | Security 1102 (audit log cleared) | 8 | 8 | 0 | 0 | 97.6% |
+| `T1685.005_event_log_clearing` | Sysmon 1 (ProcessCreate) | 8 | 7 | 0 | 1 | 84.2% |
+| `T1685.005_security_log_cleared` | Security 1102 (audit log cleared) | 8 | 8 | 0 | 0 | 97.5% |
 | `T1685.005_system_log_cleared` | System 104 (event log cleared) | 8 | 7 | 1 | 0 | 98.0% |
 | `T1110.003_password_spray_burst` | Security 4768, 4771 and 4776 on the domain controller (authentication) | 1 | 1 | 0 | 0 | 100% |
 | `T1190_object_id_enumeration` | webserver records | 0 | 0 | 0 | 1 |  |
@@ -54,9 +54,9 @@ Every stretch a sensor's proof does not cover, the gravest first.
 
 | Severity | Host | Channel | From | To | What the records say | The host meanwhile |
 |---|---|---|---|---|---|---|
-| high | WS03.corp.lab | Microsoft-Windows-Sysmon/Operational | 2026-11-02 15:05:02 | 2026-11-02 15:40:31 | 9 records gone between #44087 and #44097: the channel was cleared at 11-02 15:40 |  |
-| high | WS05.corp.lab | 3 channels | 2026-11-03 00:57:43 | 2026-11-03 04:40:20 | no record for 3 h 34 min, then the previous shutdown was unexpected, the Event Log service started and the Sysmon service started, and no record of a stop before it | DC01.corp.lab recorded 4 events naming it meanwhile |
-| high | WS04.corp.lab | Security | 2026-11-03 02:05:57 | 2026-11-03 02:42:09 | 21 records missing between #305060 and #305082, and no record says why |  |
+| high | WS03.corp.lab | Microsoft-Windows-Sysmon/Operational | 2026-11-02 15:05:02 | 2026-11-02 15:40:31 | 10 records gone between #44088 and #44099: the channel was cleared at 11-02 15:40 |  |
+| high | WS05.corp.lab | 3 channels | 2026-11-03 00:54:50 | 2026-11-03 04:40:20 | no record for 3 h 42 min, then the previous shutdown was unexpected, the Event Log service started and the Sysmon service started, and no record of a stop before it | DC01.corp.lab recorded 4 events naming it meanwhile |
+| high | WS04.corp.lab | Security | 2026-11-03 02:02:33 | 2026-11-03 02:50:32 | 21 records missing between #305061 and #305083, and no record says why |  |
 
 Not counted for or against any detection: WS01.corp.lab shut down for 11 h 53 min (2026-11-02 18:02:05 to 2026-11-03 05:55:20).
 
@@ -85,23 +85,23 @@ Not counted for or against any detection: WS01.corp.lab shut down for 11 h 53 mi
 |---|---|---|---|---|---|---|---|---|
 | DC01.corp.lab | Microsoft-Windows-Sysmon/Operational | 145 | 40001 to 40145 | sequence | 72 min | 0 |  |  |
 | DC01.corp.lab | Security | 311 | 300001 to 300311 | sequence | 20 min | 0 |  |  |
-| DC01.corp.lab | System | 47 | 12001 to 12047 | sequence | 2 h 13 min | 0 |  |  |
-| SRV-FS01.corp.lab | Security | 118 |  | rhythm | 59 min | 0 |  | the export carries no record numbers |
-| SRV-FS01.corp.lab | System | 50 |  | rhythm | 2 h 12 min | 0 |  | the export carries no record numbers |
-| WS01.corp.lab | Microsoft-Windows-Sysmon/Operational | 114 | 42001 to 42114 | sequence | 29 min | 0 | 11 h 53 min |  |
-| WS01.corp.lab | Security | 40 | 302001 to 302040 | sequence | 87 min | 0 | 11 h 53 min |  |
-| WS01.corp.lab | System | 31 | 14001 to 14031 | sequence | too few records to say | 0 | 11 h 52 min |  |
-| WS02.corp.lab | Microsoft-Windows-Sysmon/Operational | 162 | 43001 to 43162 | sequence | 68 min | 0 |  |  |
-| WS02.corp.lab | Security | 74 | 303001 to 303074 | sequence | 89 min | 0 |  |  |
-| WS02.corp.lab | System | 49 | 15001 to 15049 | sequence | 2 h 12 min | 0 |  |  |
-| WS03.corp.lab | Microsoft-Windows-Sysmon/Operational | 154 | 44001 to 44163 | sequence | 72 min | 1 |  |  |
+| DC01.corp.lab | System | 50 | 12001 to 12050 | sequence | 2 h 13 min | 0 |  |  |
+| SRV-FS01.corp.lab | Security | 117 |  | rhythm | 59 min | 0 |  | the export carries no record numbers |
+| SRV-FS01.corp.lab | System | 51 |  | rhythm | 2 h 12 min | 0 |  | the export carries no record numbers |
+| WS01.corp.lab | Microsoft-Windows-Sysmon/Operational | 113 | 42001 to 42113 | sequence | 29 min | 0 | 11 h 53 min |  |
+| WS01.corp.lab | Security | 39 | 302001 to 302039 | sequence | 89 min | 0 | 11 h 53 min |  |
+| WS01.corp.lab | System | 30 | 14001 to 14030 | sequence | too few records to say | 0 | 11 h 52 min |  |
+| WS02.corp.lab | Microsoft-Windows-Sysmon/Operational | 160 | 43001 to 43160 | sequence | 73 min | 0 |  |  |
+| WS02.corp.lab | Security | 72 | 303001 to 303072 | sequence | 89 min | 0 |  |  |
+| WS02.corp.lab | System | 49 | 15001 to 15049 | sequence | 2 h 11 min | 0 |  |  |
+| WS03.corp.lab | Microsoft-Windows-Sysmon/Operational | 155 | 44001 to 44165 | sequence | 71 min | 1 |  |  |
 | WS03.corp.lab | Security | 73 | 304001 to 304073 | sequence | 89 min | 0 |  |  |
-| WS03.corp.lab | System | 46 | 16001 to 16046 | sequence | 2 h 14 min | 0 |  |  |
-| WS04.corp.lab | Microsoft-Windows-Sysmon/Operational | 159 | 45001 to 45159 | sequence | 68 min | 0 |  |  |
-| WS04.corp.lab | Security | 69 | 305001 to 305090 | sequence | 1 h 48 min | 1 |  |  |
+| WS03.corp.lab | System | 49 | 16001 to 16049 | sequence | 2 h 14 min | 0 |  |  |
+| WS04.corp.lab | Microsoft-Windows-Sysmon/Operational | 157 | 45001 to 45157 | sequence | 68 min | 0 |  |  |
+| WS04.corp.lab | Security | 72 | 305001 to 305093 | sequence | 2 h 23 min | 1 |  |  |
 | WS04.corp.lab | System | 43 | 17001 to 17043 | sequence | 2 h 14 min | 0 |  |  |
-| WS05.corp.lab | Microsoft-Windows-Sysmon/Operational | 143 | 46001 to 46143 | sequence | 72 min | 1 |  |  |
-| WS05.corp.lab | Security | 63 | 306001 to 306063 | sequence | 89 min | 1 |  |  |
+| WS05.corp.lab | Microsoft-Windows-Sysmon/Operational | 143 | 46001 to 46143 | sequence | 73 min | 1 |  |  |
+| WS05.corp.lab | Security | 65 | 306001 to 306065 | sequence | 89 min | 1 |  |  |
 | WS05.corp.lab | System | 47 | 18001 to 18047 | sequence | 2 h 13 min | 1 |  |  |
 | WS06.corp.lab | Microsoft-Windows-Sysmon/Operational | 154 | 47001 to 47154 | sequence | 73 min | 0 |  |  |
 | WS06.corp.lab | Security | 76 | 307001 to 307076 | sequence | 89 min | 0 |  |  |

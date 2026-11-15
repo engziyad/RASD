@@ -211,13 +211,19 @@ cuts:
 
 # Pairs of records between which the host was off or asleep. A stretch without records that begins at a
 # `from` record and ends at a `to` record, with no record from the host or naming it in between, is not
-# counted for or against any detection.
+# counted for or against any detection. `lag` is how many seconds inside the stretch the two records may
+# sit (20 when it is not given).
 down:
   - id: shutdown
     name: shut down
     from: {Channel: System, EventID: 13, Provider_Name: Microsoft-Windows-Kernel-General}
     to: {Channel: System, EventID: 12, Provider_Name: Microsoft-Windows-Kernel-General}
+    lag: 120
     basis: practitioner
+    note: >-
+      The Event Log service stops before the kernel does and starts after it, so the stretch without records is
+      longer than the shutdown at both ends: 5 s and 14 s on the Windows 11 host this was measured on, more on a
+      slower one. The kernel's records of those seconds are kept and written after the start, with their own clock
   - id: sleep
     name: asleep
     from: {Channel: System, EventID: 42, Provider_Name: Microsoft-Windows-Kernel-Power}
@@ -233,5 +239,5 @@ limits:
   - The anti-forensic actions considered are those of dfir/trace/model.yml. Filtering events inside the logging service's memory and kernel tampering leave none of the records this file reads
   - Record numbers show that no record is missing between two others. They do not show that a log rewritten with its numbers made whole again is the log the host wrote. A copy forwarded as it was written is out of an intruder's reach; a log read from the host itself is not
   - A sensor's settings are read from what it wrote. A Sysmon configuration that excludes one program, or a SACL missing from one object, is not visible in the records of the others
-  - A host that recorded a shutdown or a sleep and then the next start or wake, with no record from it or about it in between, is taken as off. A forged shutdown record would hide a stretch that way, and forging records is not among the catalogued actions
+  - A host that recorded a shutdown or a sleep and then the next start or wake, with no record from it or about it in between, is taken as off, with up to two minutes at each end of a shutdown in which the log service was down and the kernel was not. A forged shutdown record would hide a stretch that way, and forging records is not among the catalogued actions
   - With whole record numbers a long quiet is not held against a channel, as nothing was taken out and no record says the sensor stopped. Without record numbers the quiet is judged against the channel's own rhythm in the same export, and a sensor muted for less than the gaps the channel ordinarily has cannot be told from one that had nothing to write

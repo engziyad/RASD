@@ -39,9 +39,11 @@ The model names, for each artifact of [RASD-Trace](TRACE.md) a rule reads, what 
 | `channel` | The record is written whenever the behaviour happens, whatever the configuration says. Any record of the channel shows its writer was up | System 7045 and 104, Security 1102 |
 | `event` | The record is written only while a setting asks for it: a Sysmon configuration, an audit subcategory, a SACL. Only a record of the same kind shows the setting was on | Sysmon 1, 10 and 13, Security 4769, the authentication events, 4663, the decoy host's records |
 
-A record of the kind the rule reads, anywhere in a run, proves the setting for the whole run: a change of setting would have left its own record, and that record is a cut. A detection whose log source RASD-Trace does not model yet (Linux, web) is judged on its own records alone, as an `event` proof.
+A record of the kind the rule reads, anywhere in a run, proves the setting for the whole run: a change of setting would have left its own record, and that record is a cut. A rule that reads several event ids needs one record of each, because each is audited by its own setting: a domain controller that shows only logons does not show that failures or Kerberos requests are audited. A detection whose log source RASD-Trace does not model yet (Linux, web) is judged on its own records alone, as an `event` proof.
 
-For a rule whose record is written on the host where the technique runs, every Windows host of the export gets a verdict. For a rule whose record an observer writes (a domain controller, a file server, the decoy host), the hosts that write it get one.
+The sensor is the channel the model says the rule's record is written to. Another channel that carries records of the same log source (Security 4688 beside Sysmon 1) is not a second witness, and a record the rule cannot read (a field missing, as `rasd doctor` reports it) attests nothing whatever proves the sensor.
+
+For a rule whose record is written on the host where the technique runs, every Windows host of the export gets a verdict. For a rule whose record an observer writes (a domain controller, a file server, the decoy host), the observers get one: the hosts that carry the most of the event ids the rule reads, so a workstation's own logons do not make it a domain controller. A host on which the rule fired always gets its verdict.
 
 ## Where the proof holds
 
@@ -55,15 +57,15 @@ The records of one channel of one host are put in the order they were written an
 | restarted | the record order and the clock disagree: the clock runs backwards and stays there, or one record number is carried by two different records. The log was replaced or recreated, or the clock was set back | any |
 | quiet | no record for longer than the channel's own gaps allow | rhythm only |
 
-A stretch bracketed by a shutdown and the next start, or by a sleep and the next wake, with no record from the host or naming it in between, is **time off**: it counts neither for nor against a detection. A stop without those records, or contradicted by another host that kept recording the machine, stays a break.
+A stretch bracketed by a shutdown and the next start, or by a sleep and the next wake, with no record from the host or naming it in between, is **time off**: it counts neither for nor against a detection. The records must be the stretch's own: a shutdown that a start already answered, or a start that answers a later shutdown, explains nothing. A stretch before a host's first record is never time off, since no shutdown record can show it. The two records sit at the ends of the stretch or a little inside it, because the Event Log service stops before the kernel does and starts after it: the model gives a shutdown two minutes at each end (`lag`), and a sleep, which does not stop that service, the twenty seconds any pair gets. Never past the other end of the stretch, and never across a record of the stretch that says otherwise: a log service that started again before the shutdown record did not stop for the shutdown. A stop without those records, or contradicted by another host that recorded the machine more than two minutes inside the stretch, stays a break.
 
 For an `event` proof, a change record (Sysmon 16, Security 4719) splits a run: each side needs its own record of the kind the rule reads.
 
 ### The two grades
 
-**Sequence.** When the export carries the record number (`EventRecordID`, `RecordNumber`, `winlog.record_id`) and at least nine steps in ten are consecutive, the order is the numbers' and a skipped number is a missing record. With whole numbers a long quiet is not a break: nothing was taken out, and no record says the sensor stopped.
+**Sequence.** When the export carries the record number (`EventRecordID`, `RecordNumber`, `winlog.record_id`) and its steps are consecutive (nine in ten, or more than half in a stream of fewer than thirty records), the order is the numbers' and a skipped number is a missing record. A skip or two in a short stream is therefore a hole, not an export that skips by design. With whole numbers a long quiet is not a break: nothing was taken out, and no record says the sensor stopped. Looking for gaps in record numbers is established practice among investigators; here it is one part of the claim, beside the proof that the sensor was recording, the proof of what the rule catches and the records that end either.
 
-**Rhythm.** When the export carries no numbers, or ships only some event ids so that the numbers skip by design, nothing shows whether a record is missing. The channel is then held to its own rhythm: a gap longer than three times the gap it exceeds once in a hundred (and at least 15 minutes) is a break. A gap that is itself quiet against the others is left out of that count, so one long quiet does not hide itself. This is weaker, and every verdict that rests on it says `rhythm`.
+**Rhythm.** When the export carries no numbers, or ships only some event ids so that the numbers skip by design, nothing shows whether a record is missing. The channel is then held to its own rhythm: a gap longer than three times the gap it exceeds once in a hundred (and at least 15 minutes) is a break. A gap that is itself quiet against the others is left out of that count, so one long quiet does not hide itself. A channel with fewer than thirty gaps has no rhythm of its own and is held to the 15 minutes. This is weaker, and every verdict that rests on it says `rhythm`.
 
 The same bound decides the two ends of the window: a channel whose first record comes later, or whose last record comes earlier, than its rhythm allows is not attested for that stretch. `--quiet MINUTES` sets the bound by hand.
 
@@ -91,13 +93,23 @@ Every stretch a sensor's proof does not cover is listed once, the gravest first.
 
 ## What Windows really writes
 
-Three behaviours of Windows would turn an honest log into a false alarm if the tool trusted each record's own clock. They were measured on a Windows 11 host and each is covered by a test.
+Four behaviours of Windows would turn an honest log into a false alarm if the tool trusted each record's own clock. They were measured on a Windows 11 host and each is covered by a test.
 
 - **The record of a wake carries the clock of the moment the host fell asleep.** Kernel-Power 107 is stamped seconds after the Kernel-Power 42 that announced the sleep, hours before it was written. With record numbers the order is the numbers', and a record takes the latest time written before it. The wake itself is read from the Power-Troubleshooter record, which is written seconds after it with the new clock.
-- **Boot records are not written in the order of their clocks.** The Event Log service writes its own start records (6009, 6005) before the kernel's earlier ones, and a stop (6006) is followed by more records before the host halts. A stop or a start is therefore tied to the pause beside it, not to the record before or after it.
+- **Boot records are not written in the order of their clocks.** The Event Log service writes its own start records (6009, 6005) before the kernel's earlier ones, and a stop (6006) is followed by more records before the host halts. A stop and the start that answers it are therefore one outage, placed at the widest wait between the two records, when the rest of the way from one to the other is short. A stop with no start after it is tied to the pause close after it, and a start with no stop to the pause before it.
 - **A time filter leaves the stale record out.** An export cut by time does not contain a wake record stamped before the window, so one number is missing among the first records. It is reported as low, with that reason. Reading this host's own log avoids it: the first record of the window is found by time, and the log is read from its number on.
+- **A restart can take less than half a minute, and the log is down longer than the host.** On the host measured, 27 s passed between the last record before a restart and the first after it, with nine records after the stop. The kernel's own records of that restart (Kernel-General 13 and 12) are stamped 5 s and 14 s inside those 27 s and were written after the Event Log's start records. A pause is therefore not looked for by its length where a stop and a start bracket it, and the seconds between the two services are part of the shutdown, up to the model's `lag`.
 
-A clock that stays behind for three records in a row is a different thing: it was set back, and that is a break.
+A clock that stays behind for three records in a row is a different thing: it was set back, and that is a break. One record stamped ahead of everything written after it carries a wrong clock, and does not stretch the window.
+
+Two more follow from the same rule, that a record sits where it was written:
+
+- **An alert sits where its record was written.** A rule that fires on a record stamped a day early has fired in this window.
+- **A host that leaves its domain out of some records is one host**, when exactly one full name in the export fits the short one.
+
+## What an export calls its fields
+
+The channel and the event id are read under the names exports give them: `Channel` or `channel`; `EventID`, `EventCode`, `event_id` or `code`; 1100, "1100" and 1100.0 are one id. An export that dropped the channel is read by the log source its records route to. A clear record that does not name the channel it emptied (System 104 without `Channel_Cleared`) is taken to speak of every channel of the host but Security, which has its own record. Other fields are read by their native names; a telemetry profile (`--profile`) gives them to an export that names them differently.
 
 ## This host
 
@@ -138,13 +150,17 @@ A log read from the host is the log an administrator on that host could have alt
 - **The catalogue.** The anti-forensic actions considered are those of `dfir/trace/model.yml`. Filtering events inside the logging service's memory and kernel tampering leave none of the records the model reads.
 - **The numbers.** Record numbers show that no record is missing between two others. They do not show that a log rewritten with its numbers made whole again is the log the host wrote.
 - **The settings.** A sensor's settings are read from what it wrote. A Sysmon configuration that excludes one program, or a SACL missing from one object, is not visible in the records of the others.
-- **Time off.** A host that recorded a shutdown or a sleep and then the next start or wake, with no record from it or about it in between, is taken as off. A forged shutdown record would hide a stretch that way; forging records is not among the catalogued actions, and another host that kept recording the machine overrides it.
+- **Time off.** A host that recorded a shutdown or a sleep and then the next start or wake, with no record from it or about it in between, is taken as off, with up to two minutes at each end of a shutdown in which the log service was down and the kernel was not. A forged shutdown record would hide a stretch that way; forging records is not among the catalogued actions, and another host that kept recording the machine overrides it.
 - **Documented behaviour, not lab evidence.** Each entry of the model carries its basis: `vendor` for behaviour the vendor documents, `practitioner` for behaviour the DFIR community reports or that was observed on one host. No result here raises a detection's maturity.
 - **Windows event logs.** The record number is a Windows event log property. Linux and web records are judged by rhythm, and RASD-Trace does not model their stores yet.
+
+## How it was checked
+
+Beside the unit tests, the tool was run on the event log of a Windows 11 host, on random exports that check its arithmetic (no share above the whole, no stretch outside the window), and against an independent review that built exports to make it say more than the records show. Each case the review reproduced is a test in `tests/test_silence.py` (`Soundness`): an alert on a record with an old clock, a shutdown already answered, a stream too short to have a rhythm, a start record of another channel, one event id standing in for five.
 
 ## Extending the model
 
 1. A rule that reads a new artifact: add the artifact to `dfir/trace/model.yml` and the footprint, then its witness to `dfir/silence/model.yml` with `proof: channel` or `proof: event`, why, and what to enable.
 2. A new record that ends a proof: add a cut with the values that recognise it (`record`), the channels it ends, its edge and a sample event. If a rule reads the record, name it in `detection`; `rasd silence --check` replays the event through the engine either way.
-3. A new way a host is off: add a pair to `down`, with the record that opens it and the record that closes it. Use a closing record that is stamped after the wake.
+3. A new way a host is off: add a pair to `down`, with the record that opens it and the record that closes it. Use a closing record that is stamped after the wake, and give the pair a `lag` only when the log service is down longer than the host at its ends.
 4. Run `rasd silence --check`, then `rasd build`.

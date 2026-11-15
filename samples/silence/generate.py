@@ -114,14 +114,24 @@ def security(host: str, t: datetime) -> dict:
         client = rng.choice([h for h in WS if up(h, t) and not (h == WS[4] and BLIND_FROM <= t <= BLIND_TO)])
         user, ip = USERS[client], f"::ffff:{IPS[client]}"
         pick = rng.random()
-        if pick < 0.45:
+        if pick < 0.40:
             return {"EventID": 4769, "TargetUserName": f"{user}@CORP.LAB", "ServiceName": rng.choice(["svc_sql", "svc_iis", "svc_backup"]),
                     "TicketEncryptionType": "0x12", "TicketOptions": "0x40810000", "Status": "0x0", "IpAddress": ip}
-        if pick < 0.75:
+        if pick < 0.68:
             return {"EventID": 4768, "TargetUserName": user, "ServiceName": "krbtgt", "TicketEncryptionType": "0x12", "Status": "0x0",
                     "IpAddress": ip}
-        return {"EventID": 4624, "TargetUserName": user, "LogonType": "3", "WorkstationName": client.split(".")[0],
-                "IpAddress": IPS[client]}
+        if pick < 0.86:
+            return {"EventID": 4624, "TargetUserName": user, "LogonType": "3", "WorkstationName": client.split(".")[0],
+                    "IpAddress": IPS[client]}
+        # the failures and the NTLM validations every domain has: one user per address, so no spray. They are what
+        # shows the domain controller audits each kind of record the authentication rules read
+        if pick < 0.93:
+            return {"EventID": 4776, "TargetUserName": user, "Workstation": client.split(".")[0], "Status": "0x0"}
+        if pick < 0.97:
+            return {"EventID": 4771, "TargetUserName": user, "ServiceName": "krbtgt/CORP.LAB", "TicketOptions": "0x40810010",
+                    "Status": "0x18", "PreAuthType": "2", "IpAddress": ip}
+        return {"EventID": 4625, "TargetUserName": user, "TargetDomainName": "CORP", "Status": "0xc000006d", "SubStatus": "0xc000006a",
+                "LogonType": "3", "WorkstationName": client.split(".")[0], "IpAddress": IPS[client]}
     if host == FS:
         client = rng.choice([h for h in WS if up(h, t) and not (h == WS[4] and BLIND_FROM <= t <= BLIND_TO)])
         if rng.random() < 0.6:

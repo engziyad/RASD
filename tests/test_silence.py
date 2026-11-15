@@ -29,6 +29,10 @@ LSASS_READ = {"SourceImage": "C:\\ProgramData\\Microsoft\\Windows Defender\\Plat
 PROCESS = {"Image": "C:\\Windows\\System32\\svchost.exe", "CommandLine": "C:\\Windows\\System32\\svchost.exe -k netsvcs -p",
            "ParentImage": "C:\\Windows\\System32\\services.exe", "User": "NT AUTHORITY\\SYSTEM", "OriginalFileName": "svchost.exe"}
 EVENTLOG, KERNEL, POWER = "EventLog", "Microsoft-Windows-Kernel-General", "Microsoft-Windows-Kernel-Power"
+TROUBLE = "Microsoft-Windows-Power-Troubleshooter"
+PSEXEC = {"Provider_Name": "Service Control Manager", "ServiceName": "PSEXESVC", "ImagePath": "%SystemRoot%\\PSEXESVC.exe"}
+SECURITY_CLEARED, ENCODED, HONEY = ("T1685.005_security_log_cleared", "T1059.001_powershell_encoded_command",
+                                    "T1078.002_honey_account_authentication")
 SERVICE, SYSTEM_CLEARED, LSASS = ("T1569.002_suspicious_service_installation", "T1685.005_system_log_cleared",
                                   "T1003.001_lsass_memory_access")
 RASD = (sys.executable, str(ROOT / "rasd.py"), "silence")
@@ -329,6 +333,63 @@ class Breaks(unittest.TestCase):
         self.assertEqual([(h.kind, h.severity, round(h.seconds)) for h in s.holes], [("stopped", "medium", 5)])
         self.assertIn("the Event Log service stopped; no record for 5 s, then the Event Log service started", s.holes[0].detail)
 
+    def test_a_restart_quicker_than_half_a_minute_is_time_off_at_its_widest_wait(self):
+        """As a fast host wrote it: nine records after the stop, 27 s of nothing, the Event Log's own start, and only
+        then the kernel's records of the shutdown and of the start, each with its own earlier clock."""
+        restart = [ev(172, SYSTEM, 6006, Provider_Name=EVENTLOG), *[ev(172, SYSTEM, 7036) for _ in range(9)],
+                   ev(172.45, SYSTEM, 6009, Provider_Name=EVENTLOG), ev(172.45, SYSTEM, 6005, Provider_Name=EVENTLOG),
+                   ev(172.45, SYSTEM, 6013, Provider_Name=EVENTLOG), ev(172.03, SYSTEM, 109, Provider_Name=POWER),
+                   ev(172.08, SYSTEM, 13, Provider_Name=KERNEL), ev(172.22, SYSTEM, 12, Provider_Name=KERNEL),
+                   *[ev(172.22, SYSTEM, n, Provider_Name="Microsoft-Windows-Kernel-Boot") for n in (153, 18, 32, 20, 27, 30)]]
+        events = numbered(steady(SYSTEM, 35) + restart + steady(SYSTEM, 35, start=174), by_time=False)
+        s = sensors(events)[("h1", "system")]
+        self.assertEqual([(h.kind, round(h.seconds)) for h in s.holes], [("down", 27)], "not a break of no length at the stop record")
+        res = sil.assess(events)
+        self.assertEqual((res["breaks"], [(d["what"], round(d["seconds"])) for d in res["down"]]), ([], [("shut down", 27)]))
+        self.assertEqual(pair(res, SERVICE)["coverage"], 1.0)
+
+    def test_the_event_log_starts_a_while_after_the_kernel_and_only_a_while(self):
+        """The kernel stamps its start, and the Event Log service writes its first record later in the boot. Fifty
+        seconds between the two is a boot. Three minutes of a running host with no record is not."""
+        def night(after: float) -> list[dict]:
+            off = [ev(172, SYSTEM, 6006, Provider_Name=EVENTLOG),
+                   ev(600 + after, SYSTEM, 6009, Provider_Name=EVENTLOG), ev(600 + after, SYSTEM, 6005, Provider_Name=EVENTLOG),
+                   ev(172.1, SYSTEM, 13, Provider_Name=KERNEL), ev(600, SYSTEM, 12, Provider_Name=KERNEL)]
+            return numbered(steady(SYSTEM, 35) + off + steady(SYSTEM, 35, start=605), by_time=False)
+        slow = sensors(night(0.83))[("h1", "system")].holes
+        self.assertEqual([(h.kind, h.severity) for h in slow], [("down", "low")])
+        self.assertIn("shut down for 7 h 08 min", slow[0].detail)
+        late = sensors(night(3))[("h1", "system")].holes
+        self.assertEqual([(h.kind, h.severity) for h in late], [("stopped", "medium")])
+        self.assertIn("the Event Log service stopped; no record for 7 h 11 min, then the Event Log service started", late[0].detail)
+
+    def test_a_start_before_and_a_shutdown_after_are_not_the_stretchs_own(self):
+        """The log service stopped for five seconds, a minute after the host started and a minute and a half before it
+        shut down for the night. Each of those records is within reach of one end of the stretch, and neither explains it."""
+        def day(shutdown: float) -> list[dict]:
+            return numbered(steady(SYSTEM, 35) + [ev(171, SYSTEM, 12, Provider_Name=KERNEL), ev(172, SYSTEM, 6006, Provider_Name=EVENTLOG),
+                                                  ev(172.08, SYSTEM, 6005, Provider_Name=EVENTLOG), ev(shutdown, SYSTEM, 13, Provider_Name=KERNEL),
+                                                  ev(600, SYSTEM, 12, Provider_Name=KERNEL), ev(600.2, SYSTEM, 6005, Provider_Name=EVENTLOG)]
+                            + steady(SYSTEM, 35, start=602), by_time=False)
+        s = sensors(day(173.5))[("h1", "system")]
+        self.assertEqual([(h.kind, h.severity, round(h.seconds)) for h in s.holes], [("stopped", "medium", 5), ("down", "low", 25590)])
+        # under a minute apart the two are told as one stretch, and a log service that came back before the shutdown
+        # record did not stop for the shutdown: the whole of it stays a break
+        s = sensors(day(173))[("h1", "system")]
+        self.assertEqual([(h.kind, h.severity, round(h.seconds)) for h in s.holes], [("stopped", "medium", 25680)])
+
+    def test_a_stop_hours_of_records_before_the_next_start_is_not_that_starts(self):
+        """The Security log was full at 09:37 and went on. The host restarted three hours later: two things, not one."""
+        sec = numbered(steady(SECURITY, 20, eid=4624, first=None) + [ev(97, SECURITY, 1104)] + steady(SECURITY, 40, start=100, eid=4624, first=None)
+                       + [ev(297, SECURITY, 1100)] + steady(SECURITY, 20, start=298, eid=4624, first=None), first=3000)
+        system = numbered(steady(SYSTEM, 60, first=None) + [ev(297, SYSTEM, 6006, Provider_Name=EVENTLOG), ev(297.1, SYSTEM, 13, Provider_Name=KERNEL),
+                                                            ev(297.6, SYSTEM, 12, Provider_Name=KERNEL), ev(297.7, SYSTEM, 6005, Provider_Name=EVENTLOG)]
+                          + steady(SYSTEM, 20, start=298, first=None), first=5000)
+        got = sensors(sec + system)
+        self.assertEqual([(h.kind, h.cuts, round(h.seconds)) for h in got[("h1", "security")].holes],
+                         [("stopped", ["security_log_full"], 180), ("down", ["security_logging_stopped", "event_log_stopped", "event_log_started"], 42)])
+        self.assertEqual([(h.kind, round(h.seconds)) for h in got[("h1", "system")].holes], [("down", 30)])
+
     def test_the_stop_of_every_channel_is_one_break(self):
         events = self.night(clean=False) + steady(SECURITY, 35, eid=4624, first=3000) + steady(SECURITY, 35, start=602, first=3035, eid=4624)
         res = sil.assess(events)
@@ -442,6 +503,187 @@ class Verdicts(unittest.TestCase):
                          "1 variant proven on every event · 1 documented variant slips past")
 
 
+class Soundness(unittest.TestCase):
+    """Each case is an export an independent review built to make the tool say more than the records show."""
+
+    def night(self, quick_reboot_first: bool = False) -> list[dict]:
+        """An unclean stop from 10:50 to 18:00: only the records of the start, with the 6008 that says so."""
+        boot = [ev(599.9, SYSTEM, 6008, Provider_Name=EVENTLOG), ev(600, SYSTEM, 12, Provider_Name=KERNEL),
+                ev(600.1, SYSTEM, 6009, Provider_Name=EVENTLOG), ev(600.2, SYSTEM, 6005, Provider_Name=EVENTLOG)]
+        reboot = [ev(166.0, SYSTEM, 13, Provider_Name=KERNEL), ev(166.6, SYSTEM, 12, Provider_Name=KERNEL),
+                  ev(166.7, SYSTEM, 6005, Provider_Name=EVENTLOG), ev(170, SYSTEM, 7036)] if quick_reboot_first else []
+        return numbered(steady(SYSTEM, 34 if quick_reboot_first else 35) + reboot + boot + steady(SYSTEM, 35, start=602), by_time=False)
+
+    def test_a_rule_that_fired_on_a_record_with_an_old_clock_is_fired(self):
+        """The alert sits where its record was written. Stamped a day early, it is still a record of this window."""
+        events = steady(SYSTEM, 40)
+        events.insert(20, ev(-1440, SYSTEM, 7045, None, **PSEXEC))
+        res = sil.assess(numbered(events, by_time=False))
+        self.assertEqual((pair(res, SERVICE)["verdict"], res["counts"]["fired"]), ("fired", 1))
+        self.assertEqual(res["alerts"][0]["stamped"], "2026-01-04 08:00:00")
+        self.assertGreaterEqual(res["alerts"][0]["time"], res["window"]["start"])
+
+    def test_a_clock_set_back_for_good_hides_neither_the_alert_nor_the_break(self):
+        events = steady(SYSTEM, 30) + steady(SYSTEM, 30, start=-600, first=1030)
+        events[45].update(EventID=7045, **PSEXEC)
+        res = sil.assess(events)
+        self.assertEqual(pair(res, SERVICE)["verdict"], "fired")
+        self.assertEqual([(b["severity"], b["kind"]) for b in res["breaks"]], [("high", "restarted")], "a break of no length is a break")
+
+    def test_records_missing_between_the_last_two_records_are_a_break(self):
+        res = sil.assess(steady(SYSTEM, 40) + [ev(195, SYSTEM, 7036, 1540)])
+        self.assertEqual([(b["severity"], b["kind"], b["missing"]) for b in res["breaks"]], [("high", "missing", 500)])
+
+    def test_a_shutdown_already_answered_does_not_turn_a_later_stop_into_time_off(self):
+        """A reboot completed four minutes before an unclean stop: its shutdown record is not that stop's."""
+        res = sil.assess(self.night(quick_reboot_first=True))
+        row = pair(res, SERVICE)
+        self.assertLess(row["coverage"], 0.5)
+        self.assertEqual([(b["severity"], b["kind"]) for b in res["breaks"]], [("medium", "stopped")])
+        self.assertEqual([(d["what"], round(d["seconds"])) for d in res["down"]], [("shut down", 36)], "the reboot itself is time off")
+
+    def test_naps_around_a_stopped_sensor_do_not_make_it_a_sleep(self):
+        sysmon = (steady(SYSMON, 34, eid=10, **LSASS_READ) + [ev(167, SYSMON, 4, 1034, State="Stopped"), ev(300, SYSMON, 4, 1035, State="Started")]
+                  + steady(SYSMON, 34, start=301, first=1036, eid=10, **LSASS_READ))
+        naps = [x for m in (165.0, 230.0, 300.5) for x in (ev(m, SYSTEM, 42, Provider_Name=POWER), ev(m + 0.67, SYSTEM, 1, Provider_Name=TROUBLE))]
+        res = sil.assess(sysmon + numbered(steady(SYSTEM, 95, first=None) + naps, first=5000))
+        self.assertAlmostEqual(pair(res, LSASS)["coverage"], 0.71, places=2)
+        self.assertEqual([(b["severity"], b["kind"]) for b in res["breaks"]], [("high", "stopped")])
+        self.assertRegex(res["breaks"][0]["life"], r"the host wrote \d+ records to System meanwhile", "a nap of 40 s does not silence a witness")
+        self.assertEqual([(d["what"], round(d["seconds"])) for d in res["down"]], [("asleep", 40)] * 3)
+
+    def test_a_sighting_minutes_after_a_shutdown_record_is_not_scaled_away(self):
+        clean = Breaks().night(clean=True)
+        dc = [ev(200, SECURITY, 4624, 9000, host="DC", TargetUserName="amal", LogonType="3", WorkstationName="H1")]
+        h = sensors(clean + dc)[("h1", "system")].holes[0]
+        self.assertEqual((h.kind, h.severity, h.life), ("stopped", "high", "DC recorded 1 event naming it meanwhile"))
+
+    def test_a_short_stream_with_a_hole_in_its_numbers_is_judged_by_its_numbers(self):
+        res = sil.assess(steady(SYSTEM, 5) + steady(SYSTEM, 4, start=320, first=1500))
+        row = pair(res, SERVICE)
+        self.assertEqual((row["grade"], [(b["severity"], b["kind"], b["missing"]) for b in res["breaks"]]),
+                         ("sequence", [("high", "missing", 495)]))
+        self.assertLess(row["coverage"], 0.2)
+        sparse = sil.assess([ev(i * 5, SYSTEM, 7036, 1000 + 7 * i) for i in range(9)])           # every step skips: by design
+        self.assertEqual((pair(sparse, SERVICE)["grade"], sparse["breaks"]), ("rhythm", []))
+
+    def test_a_channel_too_short_to_have_a_rhythm_is_held_to_the_floor(self):
+        res = sil.assess([ev(0, SYSTEM, 7036), ev(43200, SYSTEM, 7036)])                         # two records, thirty days apart
+        row = pair(res, SERVICE)
+        self.assertEqual((row["verdict"], row["reason"]), ("unattested", "no_stretch"))
+        self.assertEqual([(b["severity"], b["kind"]) for b in res["breaks"]], [("medium", "quiet")])
+        res = sil.assess(steady(SYSTEM, 16, first=None, step=10) + steady(SYSTEM, 15, first=None, step=10, start=510))
+        self.assertEqual([b["kind"] for b in res["breaks"]], ["quiet"], "thirty gaps, one of six hours: it does not set its own bound")
+        self.assertLess(pair(res, SERVICE)["coverage"], 0.5)
+
+    def test_a_wake_before_the_sleep_of_the_same_pause_is_not_its_end(self):
+        system = numbered([ev(0, SYSTEM, 7036), ev(60.08, SYSTEM, 1, Provider_Name=TROUBLE), ev(61, SYSTEM, 42, Provider_Name=POWER),
+                           ev(240.08, SYSTEM, 1, Provider_Name=TROUBLE)] + steady(SYSTEM, 5, start=241, first=None), first=5000)
+        sysmon = [ev(60.03, SYSMON, 1, 700, **PROCESS), ev(240.03, SYSMON, 1, 701, **PROCESS), ev(250, SYSMON, 1, 702, **PROCESS)]
+        res = sil.assess(system + sysmon)
+        self.assertEqual([(d["what"], sil.human(d["seconds"])) for d in res["down"]], [("asleep", "2 h 59 min")])
+
+    def test_a_start_record_of_another_channel_is_tied_to_the_pause_not_to_its_own_clock(self):
+        """Security's boot records are stamped twelve seconds before System's 6008: the pause is still Security's too."""
+        def unclean(burst: list[float]) -> list[dict]:
+            return self.night() + numbered(steady(SECURITY, 35, eid=4624) + [ev(m, SECURITY, 4826 if i == 0 else 4624) for i, m in enumerate(burst)]
+                                           + steady(SECURITY, 35, start=602, eid=4624), first=3000, by_time=False)
+        for burst in ([600.3 + 0.05 * i for i in range(15)], [599.7 + 0.05 * i for i in range(15)]):
+            res = sil.assess(unclean(burst))
+            self.assertAlmostEqual(pair(res, SECURITY_CLEARED)["coverage"], 0.44, places=2)
+            self.assertAlmostEqual(pair(res, SERVICE)["coverage"], 0.44, places=2)
+
+    def test_a_stop_record_is_read_whatever_the_export_calls_its_fields(self):
+        sec = numbered(steady(SECURITY, 40, eid=4624, first=None) + [ev(196, SECURITY, 1100)] + steady(SECURITY, 40, start=380, eid=4624, first=None))
+        variants = {"as written": sec,
+                    "channel": [{("channel" if k == "Channel" else k): v for k, v in x.items()} for x in sec],
+                    "EventCode": [{("EventCode" if k == "EventID" else k): v for k, v in x.items()} for x in sec],
+                    "a number with a point": [dict(x, EventID=float(x["EventID"])) for x in sec]}
+        for name, events in variants.items():
+            res = sil.assess(events)
+            self.assertEqual((pair(res, SECURITY_CLEARED)["coverage"], [b["kind"] for b in res["breaks"]]), (0.68, ["stopped"]), name)
+
+    def test_a_clear_that_does_not_name_its_channel_speaks_of_every_channel_but_security(self):
+        sysmon = steady(SYSMON, 30, eid=3, first=None) + steady(SYSMON, 30, start=150, eid=3, first=None)
+        got = sensors(sysmon + steady(SYSTEM, 60, first=None) + steady(SECURITY, 60, first=None, eid=4624)
+                      + [ev(147.5, SYSTEM, 104, Provider_Name="Microsoft-Windows-Eventlog")])
+        self.assertEqual({key[1]: [h.kind for h in sensor.holes] for key, sensor in got.items()},
+                         {SYSMON.lower(): ["cleared"], "system": ["cleared"], "security": []})
+
+    def test_a_record_the_rule_cannot_read_is_blind_whatever_proves_the_sensor(self):
+        events = numbered(steady(SYSTEM, 40) + [ev(m, SYSTEM, 7045, None, Provider_Name="Service Control Manager") for m in (12, 52, 92)])
+        row = pair(sil.assess(events), SERVICE)
+        self.assertEqual((row["verdict"], row["reason"]), ("unattested", "blind"))
+
+    def test_another_channel_with_records_of_the_log_source_is_not_a_second_witness(self):
+        """Three native 4688 in Security do not attest what five hundred missing Sysmon records leave open."""
+        sysmon = steady(SYSMON, 26, eid=1, **PROCESS) + steady(SYSMON, 14, start=320, first=1526, eid=1, **PROCESS)
+        sec = steady(SECURITY, 78, eid=4624, first=3000)
+        for i in (5, 40, 70):
+            sec[i].update(EventID=4688, NewProcessName="C:\\Windows\\System32\\svchost.exe")
+        alone, both = pair(sil.assess(copy.deepcopy(sysmon)), ENCODED), pair(sil.assess(sysmon + sec), ENCODED)
+        self.assertEqual((both["coverage"], both["sensors"]), (alone["coverage"], [SYSMON]))
+        self.assertLess(both["coverage"], 0.5)
+
+    def test_one_event_id_does_not_prove_the_others_the_rule_reads(self):
+        """A domain controller that shows only logons does not show that failures and Kerberos requests are audited."""
+        only = sil.assess(steady(SECURITY, 40, host="DC", eid=4624, TargetUserName="amal", LogonType="3"))
+        row = pair(only, HONEY, "DC")
+        self.assertEqual((row["verdict"], row["reason"]), ("unattested", "no_stretch"))
+        self.assertIn("no record of event 4625, 4768, 4771 and 4776 in this stretch", row["why"])
+        every = [ev(i * 5, SECURITY, eid, 1000 + i, host="DC", TargetUserName="amal") for i, eid in enumerate([4624, 4625, 4768, 4771, 4776] * 8)]
+        self.assertEqual(pair(sil.assess(every), HONEY, "DC")["verdict"], "attested")
+        mixed = every + steady(SECURITY, 40, host="WS1", eid=4624, first=7000, TargetUserName="amal")
+        self.assertEqual([r["host"] for r in sil.assess(mixed)["pairs"] if r["detection"] == HONEY], ["DC"],
+                         "a workstation's own logons do not make it an observer of the domain's authentication")
+
+    def test_a_host_where_the_rule_fired_has_its_verdict_even_without_a_channel_name(self):
+        proc = [{k: v for k, v in x.items() if k != "Channel"} for x in steady(SYSMON, 40, eid=1, **PROCESS)]
+        proc[20].update(Image="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", OriginalFileName="PowerShell.EXE",
+                        CommandLine="powershell.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkA")
+        res = sil.assess(proc)
+        self.assertEqual([(r["host"], r["verdict"]) for r in res["pairs"] if r["detection"] == ENCODED], [("H1", "fired")])
+        quiet = sil.assess([{k: v for k, v in x.items() if k != "Channel"} for x in steady(SYSMON, 40, eid=1, **PROCESS)])
+        self.assertEqual(pair(quiet, ENCODED)["verdict"], "attested", "the channel is read from the log source when the export drops it")
+
+    def test_one_record_stamped_years_ahead_does_not_stretch_the_window(self):
+        events = steady(SYSTEM, 40) + steady(SYSTEM, 40, host="H2", first=7000)
+        events[20]["TimeCreated"] = "2036-01-05T09:40:00.000Z"
+        res = sil.assess(events)
+        self.assertEqual(res["window"]["end"], "2026-01-05 11:15:00")
+        self.assertEqual((pair(res, SERVICE)["coverage"], pair(res, SERVICE, "H2")["coverage"]), (1.0, 1.0))
+
+    def test_a_host_whose_records_begin_with_a_start_was_not_shown_to_be_off_before_it(self):
+        h2 = numbered([ev(600, SYSTEM, 12, host="H2", Provider_Name=KERNEL), ev(600.2, SYSTEM, 6005, host="H2", Provider_Name=EVENTLOG)]
+                      + steady(SYSTEM, 40, start=601, host="H2", first=None), first=7000, by_time=False)
+        res = sil.assess(steady(SYSTEM, 200) + h2)
+        self.assertEqual(res["down"], [], "no shutdown record, so no time off")
+        lead = next(b for b in res["breaks"] if b["edge"] == "lead")
+        self.assertEqual((lead["severity"], lead["kind"]), ("low", "stopped"))
+        self.assertIn("the Event Log service started at 01-05 18:00: nothing before it is in this export", lead["detail"])
+        self.assertLess(pair(res, SERVICE, "H2")["coverage"], 0.25)
+
+    def test_a_host_that_leaves_its_domain_out_of_some_records_is_one_host(self):
+        events = steady(SYSTEM, 20, host="WS9.corp.lab") + steady(SYSTEM, 3, start=100, first=1020, host="WS9") \
+            + steady(SYSTEM, 20, start=115, first=1023, host="WS9.corp.lab")
+        res = sil.assess(events)
+        self.assertEqual((res["hosts"], res["breaks"], pair(res, SERVICE, "WS9.corp.lab")["coverage"]), (["WS9.corp.lab"], [], 1.0))
+        two = sil.assess(events + steady(SYSTEM, 20, host="WS9.other.lab", first=9000))
+        self.assertEqual(len(two["hosts"]), 3, "with two hosts it could be, the short name stays its own")
+
+    def test_the_model_check_names_a_channel_no_store_has_and_a_pair_without_its_records(self):
+        trace, doc = survivability.load_model(), yaml.safe_load(sil.MODEL.read_text(encoding="utf-8"))
+        doc["cuts"][0]["cuts"] = ["Securty"]
+        doc["down"].append({"id": "nap", "from": {"EventID": 42}, "to": {"Channel": "System", "EventID": 1}, "basis": "vendor"})
+        problems = " | ".join(sil.check(sil.build_model(doc), trace))
+        self.assertIn("channel 'securty' is not the channel of a store", problems)
+        self.assertIn("down nap: an id and a name are needed", problems)
+        self.assertIn("down nap: `from` and `to` must each name at least a Channel and an EventID", problems)
+        for bad in (-5, 900, "soon", True):
+            doc["down"][0]["lag"] = bad
+            self.assertIn("down shutdown: lag must be a whole number of seconds, at most 300", " | ".join(sil.check(sil.build_model(doc), trace)))
+
+
 class ShippedModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -497,6 +739,11 @@ class ShippedModel(unittest.TestCase):
     def test_the_wake_is_not_read_from_the_record_stamped_with_the_old_clock(self):
         sleep = next(d for d in sil.load_model().down if d.id == "sleep")
         self.assertEqual((sleep.start["EventID"], sleep.end["Provider_Name"]), (42, "Microsoft-Windows-Power-Troubleshooter"))
+
+    def test_a_shutdown_is_given_the_seconds_the_log_trails_the_kernel_and_a_sleep_is_not(self):
+        """A sleep does not stop the Event Log service: its two records sit at the ends of the stretch."""
+        lag = {d.id: d.lag.total_seconds() for d in sil.load_model().down}
+        self.assertEqual(lag, {"shutdown": 120.0, "sleep": sil.CLOSE.total_seconds()})
 
 
 class SampleFleet(unittest.TestCase):
@@ -655,6 +902,8 @@ class CommandLine(unittest.TestCase):
             if channel == "System":
                 # the first record of the window by time, then everything from its number on
                 rows = [record(500, 0)] if "timediff" in query else [record(500 + i, i) for i in range(40)]
+                if "/rd:true" in cmd:
+                    rows.reverse()
                 stdout.write(("\ufeff" + "".join(rows)).encode("utf-16-le"))
                 return SimpleNamespace(returncode=0)
             if channel == "Security":
@@ -665,6 +914,7 @@ class CommandLine(unittest.TestCase):
             events, notes = sil.collect(7)
         self.assertEqual((len(events), events[0]["EventRecordID"], events[0]["Computer"]), (40, 500, "HOME-PC"))
         self.assertIn(("System", "/q:*[System[(EventRecordID >= 500)]]"), asked, "by number, so a record with an old clock is not left out")
+        self.assertEqual([e["EventRecordID"] for e in events], list(range(500, 540)), "read newest first, kept in the order written")
         states = {n["channel"]: n["state"] for n in notes}
         self.assertEqual(states["System"], "read")
         self.assertIn("not readable without elevation", states["Security"])
