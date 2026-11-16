@@ -1,0 +1,232 @@
+# RASD-Blindpath model: how far an intruder gets through the behaviours this rule set claims to detect
+# without one alert, and the fewest changes that end it.
+#
+# A step is one act with the rules that watch it (its observers). A step is unseen on a host only on
+# proof: no record of the sensor its observers read from that host is in the export (rasd silence), or one
+# sequence of events of the act is replayed through every rule and correlation and raises no alert. The
+# events come from what the repository already proves: a variant a behaviour spec documents and rasd certify
+# shows slipping past the rule, or a correlation's own true positives paced under its threshold.
+#
+# tools/blindpath.py reads an export with it: `rasd blindpath <export>`. `rasd blindpath --check` holds this
+# file against the rules, the behaviour specs, RASD-Trace, the decoy inventory and the engine: a detection
+# or a documented variant this file does not place fails the build (docs/BLINDPATH.md).
+
+claim: >-
+  A route from an origin to a target is unseen when, at every leg, one behaviour this rule set claims to
+  detect can be done there with no alert: either the export holds no record of the sensor its rules read
+  from that host, or one sequence of events of that behaviour, replayed through every rule and
+  correlation, raises none
+
+# Who walks. Printed on every certificate; the variants under `ways` are placed against it.
+position: >-
+  An intruder with administrator rights on every host it acts on, starting on an origin, who chooses how each
+  act is written and at what pace; the telemetry pipeline, the SIEM and what a target answers are not its to change
+
+# The stages of an intrusion, in the order the map shows them.
+stages:
+  - id: entry
+    title: Get in
+  - id: execution
+    title: Run code
+  - id: persistence
+    title: Stay
+  - id: credentials
+    title: Take credentials
+  - id: movement
+    title: Move in
+  - id: cover
+    title: Erase the record
+
+# The legs every route walks, in order. A leg is open on a host when one step of its stage is unseen there.
+# The other stages are shown on the map and do not decide a route.
+route:
+  - stage: execution
+    at: origin
+    title: Run code on the origin
+  - stage: credentials
+    at: origin
+    title: Take credentials from the origin
+  - stage: movement
+    at: target
+    title: Move into the target
+  - stage: execution
+    at: target
+    title: Run code on the target
+
+# Roles of the assets file (ip,host,role) that start and end a route. Without an assets file the hosts
+# that record tickets and logons for others are the targets, and --origin / --target name them directly.
+origins: [workstation]
+targets: [domain-controller, server]
+
+# One act, and every rule that watches it. Two ways to the same end are two steps.
+steps:
+  - id: api_probing
+    stage: entry
+    title: Probe a web API for protected paths
+    technique: T1595.003
+    observers: [T1595.003_api_auth_probing]
+  - id: object_enumeration
+    stage: entry
+    title: Walk the object ids of a web API
+    technique: T1190
+    observers: [T1190_object_id_enumeration]
+  - id: encoded_powershell
+    stage: execution
+    title: Run PowerShell with an encoded command
+    technique: T1059.001
+    observers: [T1059.001_powershell_encoded_command]
+  - id: rundll32_proxy
+    stage: execution
+    title: Run code through rundll32 from a script handler or a user-writable folder
+    technique: T1218.011
+    observers: [T1218.011_rundll32_suspicious_execution]
+  - id: linux_shell
+    stage: execution
+    title: Pipe decoded Base64 into a Linux shell, or run code from a temporary directory
+    technique: T1059.004
+    observers: [T1059.004_linux_suspicious_shell_execution]
+  - id: scheduled_task_schtasks
+    stage: persistence
+    title: Create a scheduled task with schtasks.exe that runs an interpreter or a user-writable file
+    technique: T1053.005
+    observers: [T1053.005_schtasks_suspicious_creation]
+  - id: scheduled_task_powershell
+    stage: persistence
+    title: Register a scheduled task from PowerShell
+    technique: T1053.005
+    observers: [T1053.005_powershell_scheduled_task_creation]
+  - id: run_key
+    stage: persistence
+    title: Write a Run key that points to a user-writable folder
+    technique: T1547.001
+    observers: [T1547.001_registry_run_key_persistence]
+  - id: crontab
+    stage: persistence
+    title: Replace a cron table from standard input or a file
+    technique: T1053.003
+    observers: [T1053.003_crontab_noninteractive_install]
+  - id: lsass_read
+    stage: credentials
+    title: Read the memory of LSASS
+    technique: T1003.001
+    observers: [T1003.001_lsass_memory_access]
+  - id: kerberoast
+    stage: credentials
+    title: Request service tickets to crack (Kerberoasting)
+    technique: T1558.003
+    observers: [T1558.003_kerberoasting_rc4_tgs, T1558.003_kerberoasting_volume]
+  - id: password_spray
+    stage: credentials
+    title: Try one password on many accounts
+    technique: T1110.003
+    observers: [T1110.003_password_spray_burst]
+  - id: remote_service
+    stage: movement
+    title: Install a service on the target that runs a command (PsExec style)
+    technique: T1569.002
+    observers: [T1569.002_suspicious_service_installation]
+  - id: winrm_command
+    stage: movement
+    title: Run a command on the target through WinRM
+    technique: T1021.006
+    observers: [T1021.006_wsmprovhost_suspicious_child]
+  - id: clear_security_log
+    stage: cover
+    title: Clear the Security log
+    technique: T1685.005
+    observers: [T1685.005_event_log_clearing, T1685.005_security_log_cleared]
+  - id: clear_other_log
+    stage: cover
+    title: Clear any other event log
+    technique: T1685.005
+    observers: [T1685.005_event_log_clearing, T1685.005_system_log_cleared]
+
+# Every variant a behaviour spec marks `expect: bypass` for an observer, and who decides it. An intruder
+# in the position above writes `intruder` variants at will, and they are walked. `environment` variants
+# are decided by the pipeline or by the target, never by the intruder's wording: they are listed and not
+# walked. `needs` is what a variant asks for beyond the position; it is printed beside every proof.
+ways:
+  T1003.001_lsass_memory_access:
+    - variant: Memory read access written in decimal
+      by: environment
+      why: The collector writes the access mask; the intruder does not choose the pipeline. rasd doctor answers for an export.
+    - variant: MsMpEng.exe directly in the Platform folder
+      by: intruder
+      needs: Defender's tamper protection off on the host
+  T1053.005_powershell_scheduled_task_creation:
+    - variant: Environment variable in braces
+      by: intruder
+    - variant: Register-ScheduledJob
+      by: intruder
+    - variant: Task Scheduler COM object
+      by: intruder
+    - variant: Quoted part inside the cmdlet name
+      by: intruder
+  T1059.001_powershell_encoded_command:
+    - variant: Quoted parts inside an argument
+      by: intruder
+    - variant: White space inside the Base64 text
+      by: intruder
+    - variant: Base64 text shorter than 16 characters
+      by: intruder
+      needs: A script of five characters or fewer, enough to start a file placed beforehand
+    - variant: Blanks around the switch inside its quotes (pwsh)
+      by: intruder
+      needs: PowerShell 7 (pwsh.exe) on the host
+  T1685.005_event_log_clearing:
+    - variant: wevtutil cl, quoted part inside the command word
+      by: intruder
+    - variant: Quoted part inside the cmdlet name
+      by: intruder
+    - variant: EventLog.Clear on the objects of Get-EventLog -List
+      by: intruder
+    - variant: Cmdlet name built at run time
+      by: intruder
+  T1110.003_password_spray_burst:
+    - variant: NTLM credential validation on the domain controller
+      by: environment
+      why: The sprayed host writes its own 4625 for every failure and the base rule counts it wherever that host's Security log is collected, so what stays out of the count is decided by the fleet's collection.
+  T1190_object_id_enumeration:
+    - variant: HEAD instead of GET
+      by: intruder
+    - variant: The number in the query string
+      by: environment
+      why: The application decides where an object's number travels.
+  T1595.003_api_auth_probing:
+    - variant: Forbidden paths answered with 404
+      by: environment
+      why: The server decides which status hides a forbidden path.
+
+# Decoy detections. A tripwire sees the intruder who touches the decoy and no other, so it is shown beside
+# the stage it guards and is never counted for or against a route.
+tripwires:
+  - detection: T1558.003_honey_spn_ticket_request
+    stage: credentials
+    catches: A roaster that requests a ticket for every account with a service principal name, at any pace and with any encryption type
+    misses: A roaster that names its accounts and leaves the decoy out
+  - detection: T1078.002_honey_account_authentication
+    stage: credentials
+    catches: A spray or a guess that includes a decoy account, at any pace
+    misses: A list of accounts that leaves the decoys out
+  - detection: T1552.001_honey_file_access
+    catches: Reading, changing or deleting a decoy credentials file on a file share
+    misses: An intruder who opens no decoy file
+  - detection: T1046_decoy_service_interaction
+    catches: A scan or a connection that touches the decoy host
+    misses: An intruder who goes straight to the hosts it already knows
+
+# Detections that are neither an observer nor a tripwire, each with the reason. None today.
+apart: {}
+
+limits:
+  - The walk stays on the behaviours this rule set claims to detect. A technique no rule covers is unseen with no proof needed; the measured gaps are in purple/validation_matrix.md.
+  - Held means that no way around is known here, since every documented variant an intruder can choose is caught and the sensor is shown to record. It is not proof that none exists. A rule with no behaviour spec holds on its tests alone and is marked.
+  - A witness proves that the rules stay quiet on those events. That the events are the act is what the behaviour spec and the rule's own true positives state, with their sources; they were not produced on a host here (documented behaviour pending lab runs).
+  - Dark means the export holds no record of that sensor from that host. A sensor that records and is not exported reads the same; rasd silence gives the reason for each.
+  - Every origin is taken to reach every target. The export says nothing of the network between them, so a route the network does not allow is still listed.
+  - A variant the pipeline or the target decides is not walked, and a variant that asks for more than the position is marked with what it needs.
+  - Observers that read different records of one act are passed only when all but one kind of record is dark. Two documented variants of two rules are not taken to be one act.
+  - A threshold is walked under at one less than it counts, in windows two lengths apart, so a sliding window sees no more than a tumbling one. No rule change closes that, and the plan says so.
+  - A tripwire is not counted for or against a route.
+  - The plan counts changes, not their cost, and takes a closed variant to change nothing else in its rule; rasd certify --equiv proves that for the edit itself.
+  - An observer that records for other hosts is judged on the hosts whose records are in the export. A domain controller that sends no ticket or logon record is not known to be one.

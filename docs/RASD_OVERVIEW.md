@@ -25,6 +25,7 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | What catches the attacker who evades every rule? | RASD-Deceive (`rasd deceive`): decoys nobody legitimate touches, read by rules proven like every other, and the inventory that keeps them real |
 | Can the intruder take the evidence away, and would we see the attempt? | RASD-Trace (`rasd trace`): every sequence of anti-forensic actions around each technique searched; each answer out of reach, evident or exposed, and the rules that close the exposure in order |
 | When nothing fires, is that evidence that nothing happened? | RASD-Silence (`rasd silence`): each detection on each host attested only between two proofs that its sensor was recording, with every record between them present; any other quiet named with its reason, and every break in the record listed |
+| Can an intruder cross the covered techniques from one host to another with no alert? | RASD-Blindpath (`rasd blindpath`): every route from an origin to a target walked leg by leg; a behaviour unseen only when its sensor is not in the export or a witness replayed through every rule raises no alert; the routes unseen end to end, and the fewest changes after which every route is seen |
 | What should we do next, and why that first? | RASD-Agent (`rasd advise`): every measurement above turned into ranked findings with the evidence and the exact next step, for the analyst, the engineer, the purple team and the executive; it remembers your decisions, reads your telemetry, explains alerts and drafts changes the gates verify |
 
 ## The seven pillars
@@ -35,7 +36,7 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | RASD-Detect | [`detect/`](../detect/) | Detection engineering: rules, contracts, tests, SIEM queries, quality |
 | RASD-DFIR | [`dfir/`](../dfir/) | Investigation playbooks, evidence, timelines, response, evidence survivability ([RASD-Trace](TRACE.md)) and evidence of absence ([RASD-Silence](SILENCE.md)) |
 | RASD-Intel | [`intel/`](../intel/) | CTI turned into detection opportunities and hunts |
-| RASD-Purple | [`purple/`](../purple/) | Attack-to-defense validation across the whole chain |
+| RASD-Purple | [`purple/`](../purple/) | Attack-to-defense validation across the whole chain, and the unseen route through the covered behaviours ([RASD-Blindpath](BLINDPATH.md)) |
 | RASD-Deceive | [`deceive/`](../deceive/) | Decoys as tested detections: one inventory of honey accounts, a honey SPN, honey files and a decoy host, held in step with the rules that read them ([design](DECEPTION.md)) |
 | RASD-Agent | [`agent/`](../agent/) | The counsel: what to do next, computed from what the repository proves, learning from the decisions people take; an optional language model, gated by the proofs ([design](AGENT.md)) |
 
