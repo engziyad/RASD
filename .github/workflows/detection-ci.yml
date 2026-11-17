@@ -37,7 +37,7 @@ jobs:
           ruff check .
           mypy
 
-      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, deceive, Splunk app, profiles, datasets, build, chain, advise, links)
+      - name: Full pipeline (rasd ci - lint, unit, tests, mutations, fuzz, prove, parity, certify, correlate, nearmiss, tune, red, deceive, trace, Splunk app, profiles, datasets, build, chain, advise, links)
         run: rasd ci
 
       - name: Detection tests as JUnit
@@ -126,6 +126,32 @@ jobs:
       - name: Install the rasd command
         run: pip install -e .
       - name: Lint, unit tests, detection tests, mutations, rule proofs, parity
+        run: |
+          rasd lint
+          python -m unittest discover -s tests
+          rasd test
+          rasd mutate
+          rasd prove
+          rasd parity
+
+  windows:
+    # the tools are used on Windows as much as on Linux: a code page on a pipe, CRLF from text mode and
+    # backslash paths only show there. Reported, not required, until its first green run on this runner
+    name: Windows · unit tests, lint, detection tests, proofs
+    runs-on: windows-latest
+    continue-on-error: true
+    env:
+      NO_BANNER: "1"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the rasd command
+        run: pip install -e .
+      - name: Lint, unit tests, detection tests, mutations, rule proofs, parity
+        shell: bash
         run: |
           rasd lint
           python -m unittest discover -s tests

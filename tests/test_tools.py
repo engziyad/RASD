@@ -4,6 +4,7 @@ import csv
 import dataclasses
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -133,11 +134,11 @@ class ReplayCases(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
-    def test_every_storyline_gets_its_four_files(self):
+    def test_every_storyline_gets_its_five_files(self):
         self.assertEqual(len(self.cases), len(self.stories))
         for folder in self.cases:
             self.assertEqual(sorted(p.name for p in folder.iterdir()),
-                             ["analyst_closure.md", "case_summary.md", "observables.csv", "timeline.json"])
+                             ["analyst_closure.md", "case_summary.md", "evidence_request.md", "observables.csv", "timeline.json"])
 
     def test_timeline_keeps_each_alert_with_the_fields_its_rule_read(self):
         story, doc = self.stories[0], json.loads((self.cases[0] / "timeline.json").read_text(encoding="utf-8"))
@@ -213,7 +214,7 @@ class ReplayCases(unittest.TestCase):
         shutil.copy(ROOT / "samples" / "replay" / "lab-day.jsonl", tmp / "export.jsonl")
         shutil.copy(ROOT / "samples" / "replay" / "assets.csv", tmp / "assets.csv")
         out = subprocess.run([sys.executable, str(ROOT / "rasd.py"), "replay", "export.jsonl", "--assets", "assets.csv",
-                              "--case-dir", "cases"], cwd=tmp, capture_output=True, text=True)
+                              "--case-dir", "cases"], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
         self.assertTrue((tmp / "cases" / "case-01-ws07.corp.lab" / "case_summary.md").exists())
         self.assertFalse((ROOT / "cases").exists())
@@ -399,12 +400,12 @@ class Evidence(unittest.TestCase):
         before = sorted((ROOT / "detect" / "detections").glob("*/evidence.md"))
         cmd = [sys.executable, str(ROOT / "tools" / "evidence.py"), "--results", str(self.results),
                "--logs", str(self.logs), "--dry-run"]
-        ok = subprocess.run(cmd, capture_output=True, text=True)
+        ok = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)
         self.assertIn("FIRED", ok.stdout)
         self.steps[1]["detections"].append("T1685.005_security_log_cleared")          # expected, never logged
         self.results.write_text(json.dumps(self.steps), encoding="utf-8")
-        miss = subprocess.run(cmd, capture_output=True, text=True)
+        miss = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(miss.returncode, 1)
         self.assertIn("MISSED", miss.stdout)
         self.assertEqual(sorted((ROOT / "detect" / "detections").glob("*/evidence.md")), before, "--dry-run must not write")
@@ -683,7 +684,7 @@ class EvidenceRun(unittest.TestCase):
         (self.tmp / "dc-export.jsonl").write_text('{"EventID": 4769, "Channel": "Security"}\n', encoding="utf-16")
         cmd = [sys.executable, str(ROOT / "rasd.py"), "evidence", "--run", self.zip.name, "dc-export.jsonl",
                "siem-alerts.csv", "--dry-run"]
-        out = subprocess.run(cmd, cwd=self.tmp, capture_output=True, text=True)
+        out = subprocess.run(cmd, cwd=self.tmp, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
         self.assertIn("SIEM alert after 40s", out.stdout)
 
@@ -720,11 +721,11 @@ class EvidenceRun(unittest.TestCase):
     def test_cli_reads_the_run_from_the_folder_it_runs_in(self):
         cmd = [sys.executable, str(ROOT / "rasd.py"), "evidence", "--run", self.zip.name, "dc-export.jsonl",
                "siem-alerts.csv", "--dry-run"]
-        out = subprocess.run(cmd, cwd=self.tmp, capture_output=True, text=True)
+        out = subprocess.run(cmd, cwd=self.tmp, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
         self.assertIn("FIRED", out.stdout)
         self.assertIn(f"matches {self.zip.name}.sha256", out.stdout)
-        both = subprocess.run([*cmd, "--results", "x.json"], cwd=self.tmp, capture_output=True, text=True)
+        both = subprocess.run([*cmd, "--results", "x.json"], cwd=self.tmp, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(both.returncode, 2)
         self.assertIn("--run finds", both.stderr)
 
@@ -935,7 +936,7 @@ class AttackV19(unittest.TestCase):
         revoked = attack_aliases()["revoked"]
         self.assertEqual(revoked.get("T1562.008"), "T1685.002")
         git = shutil.which("git")
-        out = subprocess.run([git, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True) if git else None
+        out = subprocess.run([git, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8") if git else None
         if out is None or out.returncode or not out.stdout:
             self.skipTest("needs git and a git checkout")
         retired = re.compile(r"\b(" + "|".join(map(re.escape, sorted(revoked, key=len, reverse=True))) + r")\b")
@@ -1343,12 +1344,12 @@ class PublicDatasets(unittest.TestCase):
         rule = ROOT / "detect" / "detections" / "T1685.005_security_log_cleared" / "rule.yml"
         text = rule.read_text(encoding="utf-8")
         try:
-            rule.write_text(text.replace("falsepositives:", "falsepositives:\n  - prose only", 1), encoding="utf-8")
+            rule.write_text(text.replace("falsepositives:", "falsepositives:\n  - prose only", 1), encoding="utf-8", newline="\n")
             self.assertEqual(datasets.stale_inputs(before, datasets.fingerprints(cat)), [])
-            rule.write_text(text.replace("EventID: 1102", "EventID: 1100"), encoding="utf-8")
+            rule.write_text(text.replace("EventID: 1102", "EventID: 1100"), encoding="utf-8", newline="\n")
             self.assertEqual(datasets.stale_inputs(before, datasets.fingerprints(cat)), ["rule:T1685.005_security_log_cleared"])
         finally:
-            rule.write_text(text, encoding="utf-8")
+            rule.write_text(text, encoding="utf-8", newline="\n")
 
     def test_fingerprints_ignore_windows_line_endings(self):
         """A Windows checkout with CRLF line endings must fingerprint the profiles and labels as the repository does."""
@@ -1942,18 +1943,18 @@ class Packaging(unittest.TestCase):
         rasd = [sys.executable, str(ROOT / "rasd.py")]
         rule = ROOT / "detect" / "detections" / "T1685.005_event_log_clearing" / "rule.yml"
         out = subprocess.run([*rasd, "convert", "--backend", "kql", "--rule", str(rule)], cwd=ROOT / "queries",
-                             capture_output=True, text=True)
+                             capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("wevtutil", out.stdout)
         out = subprocess.run([*rasd, "explain", "T1685.005_event_log_clearing", "--tp", "1"],
-                             cwd=ROOT / "detect" / "detections", capture_output=True, text=True)
+                             cwd=ROOT / "detect" / "detections", capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
 
     def test_command_outside_a_clone_says_how_to_install(self):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         shutil.copy(ROOT / "rasd.py", tmp / "rasd.py")
-        out = subprocess.run([sys.executable, str(tmp / "rasd.py"), "lint"], capture_output=True, text=True)
+        out = subprocess.run([sys.executable, str(tmp / "rasd.py"), "lint"], capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(out.returncode, 2)
         self.assertIn("pip install -e .", out.stderr)
 
@@ -1967,7 +1968,7 @@ class Naming(unittest.TestCase):
 
     def tracked_text(self):
         git = shutil.which("git")
-        out = subprocess.run([git, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True) if git else None
+        out = subprocess.run([git, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8") if git else None
         if out is None or out.returncode or not out.stdout:
             self.skipTest("needs git and a git checkout")
         for name in out.stdout.split("\0"):
@@ -2089,11 +2090,11 @@ class SafetyAndConversion(unittest.TestCase):
     def test_python_runner_dry_run_plans_and_refuses_public_targets(self):
         run = [sys.executable, str(ROOT / "red" / "run_red.py"), "--lab-confirmed", "--dry-run"]
         plan = subprocess.run(run + ["--platform", "web", "linux", "--target", "http://127.0.0.1:3000"],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(plan.returncode, 0, plan.stderr)
         self.assertIn("cron_persistence", plan.stdout)
         self.assertIn("nothing was executed", plan.stdout)
-        refused = subprocess.run(run + ["--test", "idor_testing", "--target", "http://8.8.8.8"], capture_output=True, text=True)
+        refused = subprocess.run(run + ["--test", "idor_testing", "--target", "http://8.8.8.8"], capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(refused.returncode, 2)
         self.assertIn("refused", refused.stdout)
         self.assertFalse((ROOT / "red" / "results").exists() and any(
@@ -2102,7 +2103,7 @@ class SafetyAndConversion(unittest.TestCase):
 
     def test_runner_requires_lab_confirmation(self):
         r = subprocess.run([sys.executable, str(ROOT / "red" / "run_red.py"), "--test", "suspicious_shell_execution"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(r.returncode, 2)
         self.assertIn("--lab-confirmed", r.stderr)
 
@@ -2732,6 +2733,81 @@ class Advise(unittest.TestCase):
         self.assertTrue(related and related[0].id.startswith("deceive."), [f.id for f in related])
         hits = advise.retrieve("what does rasd deceive --check prove")
         self.assertTrue(any(p.startswith(("deceive/", "docs/DECEPTION")) for p, _h, _b in hits), hits)
+
+
+class Portability(unittest.TestCase):
+    """What a Linux runner never meets: a Windows code page on a pipe, CRLF from text mode, and a report
+    asked for in a folder that does not exist yet."""
+    LAB = ROOT / "samples" / "replay" / "lab-day.jsonl"
+
+    def run_tool(self, *argv, cwd=None, codepage=None):
+        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONUTF8", "PYTHONIOENCODING")}
+        env["NO_BANNER"] = "1"
+        if codepage:
+            env["PYTHONIOENCODING"] = codepage
+        return subprocess.run([sys.executable, *map(str, argv)], cwd=cwd or ROOT, env=env, capture_output=True)
+
+    def test_tools_print_under_a_legacy_code_page(self):
+        tools = ROOT / "tools"
+        for codepage in ("cp1252", "cp1256"):
+            for argv in ([tools / "sigma_support.py", "--check"], [tools / "explain.py", "T1218"],
+                         [tools / "replay.py", self.LAB], [tools / "overlap.py"], [ROOT / "red" / "run_red.py", "--list"],
+                         [ROOT / "rasd.py", "explain", "T1059.001"]):
+                out = self.run_tool(*argv, codepage=codepage)
+                label = f"{Path(argv[0]).name} under {codepage}"
+                self.assertEqual(out.returncode, 0, label + ": " + out.stderr.decode("utf-8", "replace")[-400:])
+                out.stdout.decode("utf-8")
+
+    def test_reports_create_the_folder_they_are_asked_for(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        tools = ROOT / "tools"
+        ecs = ROOT / "samples" / "doctor" / "ecs-export.jsonl"
+        runs = {
+            "replay/r.html": [tools / "replay.py", self.LAB, "--html", tmp / "replay" / "r.html"],
+            "replay/r.json": [tools / "replay.py", self.LAB, "--json", tmp / "replay" / "r.json"],
+            "doctor/d.json": [tools / "doctor.py", ecs, "--profile", "auto", "--json", tmp / "doctor" / "d.json"],
+            "nearmiss/n.json": [tools / "nearmiss.py", "--json", tmp / "nearmiss" / "n.json"],
+            "bench/b.json": [tools / "benchmark.py", "--generate", "500", "--repeat", "1", "--json", tmp / "bench" / "b.json"],
+            "bench/s.jsonl": [tools / "benchmark.py", "--generate", "500", "--repeat", "1", "--write-sample", tmp / "bench" / "s.jsonl"],
+            "stream/s.jsonl": [tools / "benchmark.py", "--generate", "500", "--stream", "--repeat", "1",
+                               "--write-sample", tmp / "stream" / "s.jsonl"],
+            "advise/a.json": [tools / "advise.py", "--for", "executive", "--json", tmp / "advise" / "a.json"],
+        }
+        for name, argv in runs.items():
+            out = self.run_tool(*argv)
+            self.assertEqual(out.returncode, 0, name + ": " + out.stderr.decode("utf-8", "replace")[-400:])
+            written = (tmp / name).read_bytes()
+            self.assertTrue(written, name)
+            self.assertNotIn(b"\r\n", written, name + " carries CRLF")
+
+    def test_every_text_write_names_its_line_ending(self):
+        """Text mode writes CRLF on Windows, and git then lists every generated file as modified."""
+        call = re.compile(r"\.write_text\(|(?<![\w.])open\(|\.open\(")
+        missing = []
+        scripts = [*sorted((ROOT / "tools").glob("*.py")), ROOT / "rasd.py", ROOT / "samples" / "replay" / "generate.py",
+                   *sorted((ROOT / "red").rglob("*.py"))]
+        for path in scripts:
+            text = path.read_text(encoding="utf-8")
+            for m in call.finditer(text):
+                depth, end = 0, m.end() - 1
+                for end in range(m.end() - 1, len(text)):
+                    depth += {"(": 1, ")": -1}.get(text[end], 0)
+                    if depth == 0:
+                        break
+                body = text[m.end():end]
+                writes = m.group().endswith("write_text(") or re.search(r"""["'][wax]["']""", body)
+                if writes and "newline=" not in body:
+                    missing.append(f"{path.relative_to(ROOT).as_posix()}:{text.count(chr(10), 0, m.start()) + 1}")
+        self.assertEqual(missing, [], "text writes without newline=")
+
+    def test_git_output_is_read_as_utf8(self):
+        offenders = []
+        for path in sorted((ROOT / "tools").glob("*.py")):
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "subprocess.run(" in line and "text=True" in line and "encoding=" not in line:
+                    offenders.append(f"{path.name}:{n}")
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

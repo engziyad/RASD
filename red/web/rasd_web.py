@@ -238,7 +238,7 @@ def report(test: str, marker: str, findings: list[dict], client: Client) -> int:
         path = Path(out_dir) / f"{test}-findings.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"test": test, "marker": marker, "target": client.base, "findings": findings,
-                                    "requests": client.log}, indent=2) + "\n", encoding="utf-8")
+                                    "requests": client.log}, indent=2) + "\n", encoding="utf-8", newline="\n")
         print(str(path))
     return 0
 

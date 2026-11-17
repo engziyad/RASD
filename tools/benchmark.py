@@ -52,7 +52,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections, load_jsonl
+from common import BOLD, DIM, GREEN, RED, RESET, ROOT, load_detections, load_jsonl, write_output
 from convert import logsource_key
 import profiles
 from replay import route
@@ -65,10 +65,9 @@ NOISE = ("--profile-directory=Default", "/quiet /norestart", "-NoLogo", "--type=
 
 
 def peak_rss_mb() -> float | None:
-    try:
-        import resource
-    except ImportError:                       # Windows
+    if sys.platform == "win32":               # no resource module there; the platform test is what mypy reads on Windows
         return None
+    import resource
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return round(rss / (1024 * 1024 if sys.platform == "darwin" else 1024), 1)
 
@@ -384,7 +383,9 @@ def main() -> int:
         else:
             events, used = iter_files(args.logs, args.profile)
         # closed in the finally block below
-        writer = open(args.write_sample, "w", encoding="utf-8") if args.write_sample and args.generate else None  # noqa: SIM115
+        if args.write_sample and args.generate:
+            Path(args.write_sample).parent.mkdir(parents=True, exist_ok=True)
+        writer = open(args.write_sample, "w", encoding="utf-8", newline="\n") if args.write_sample and args.generate else None  # noqa: SIM115
         try:
             res = stream(events, dets, max(1, args.chunk_size), max(0, args.sample), args.compare, writer)
         finally:
@@ -396,7 +397,7 @@ def main() -> int:
         if args.generate:
             events, used = generate(args.generate, dets), profiles.NATIVE
             if args.write_sample:
-                Path(args.write_sample).write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
+                write_output(args.write_sample, "".join(json.dumps(e) + "\n" for e in events))
         else:
             events, used = profiles.apply([e for p in args.logs for e in load_jsonl(Path(p))], args.profile)
         prepare = time.perf_counter() - t0
@@ -437,7 +438,7 @@ def main() -> int:
     for r in res["regexes"][: args.top]:
         print(f"    {r['detection']:<48} {r['field']:<12} {r['us_per_value']:>7.3f} µs/value  {DIM}{r['pattern'][:60]}{RESET}")
     if args.json:
-        Path(args.json).write_text(json.dumps(res, indent=2) + "\n", encoding="utf-8")
+        write_output(args.json, json.dumps(res, indent=2) + "\n")
     if args.min_eps and (res["events_per_second"] or 0) < args.min_eps:
         print(f"\n{RED}throughput {res['events_per_second']} events/s is below --min-eps {args.min_eps:g}{RESET}")
         return 1

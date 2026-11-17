@@ -660,7 +660,7 @@ def write_queries(corrs: list[Correlation]) -> int:
         for path, text in query_files(corr).items():
             path.parent.mkdir(parents=True, exist_ok=True)
             if not path.exists() or path.read_text(encoding="utf-8") != text:
-                path.write_text(text, encoding="utf-8")
+                path.write_text(text, encoding="utf-8", newline="\n")
             n += 1
     return n
 

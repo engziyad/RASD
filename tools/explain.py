@@ -10,7 +10,7 @@ Usage
   rasd explain T1059.001                       # first true-positive sample
   rasd explain T1059.001 --tn 2                # second true-negative sample
   rasd explain T1218 --event '{"Image": "...", "CommandLine": "..."}'
-  rasd explain T1558 --file logs.jsonl --line 42
+  rasd explain T1558.003_kerberoasting --file logs.jsonl --line 42
 """
 from __future__ import annotations
 

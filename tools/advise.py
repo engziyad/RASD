@@ -63,7 +63,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from agent_model import Model, ModelError, redact, status as model_status
 from common import (ATTACK_TACTICS, BOLD, DIM, GOLD, GREEN, RED, RESET, ROOT, TECHNIQUE_NAMES, TECHNIQUE_TACTICS, YELLOW,
-                    Detection, find_detection, load_detections, load_jsonl, md_text)
+                    Detection, find_detection, load_detections, load_jsonl, md_text, write_output)
 from convert import convert
 from correlation import Correlation, load_correlations
 from deceive import TIERS as DECOY_TIERS, load_inventory, tier as decoy_tier
@@ -150,7 +150,7 @@ def counsel(repo) -> list[Finding]:
     """Every finding the repository's own measurements support, unranked."""
     out: list[Finding] = []
     for part in (evidence_findings, proof_findings, certify_findings, nearmiss_findings, tuning_findings,
-                 backlog_findings, deception_findings, public_findings, coverage_findings, source_findings,
+                 backlog_findings, deception_findings, trace_findings, public_findings, coverage_findings, source_findings,
                  red_findings):
         out += part(repo)
     seen: Counter[str] = Counter()
@@ -450,6 +450,29 @@ def deception_findings(repo) -> list[Finding]:
     return out
 
 
+def trace_findings(repo) -> list[Finding]:
+    """The anti-forensic traces that reach the SIEM and that no rule reads, in the order RASD-Trace closes them."""
+    import survivability
+    m = survivability.load_model()
+    data = survivability.compute(m)
+    out = []
+    before = data["counts"]["exposed"]
+    for rank, step in enumerate(data["closure"], 1):
+        what = survivability.rule_text(m, step["rule"]).replace("`", "")
+        by = ", ".join(m.erasures[a].name.lower() for a in step["actions"])
+        out.append(Finding(
+            id=f"trace.rule.{slug(step['rule'])}", priority=2 if rank == 1 else 3, pillar="dfir", roles=("engineer", "analyst"),
+            title=f"Anti-forensic trace no rule reads (#{rank}): {what}",
+            evidence=f"Left by: {by}. {before} detection-question pairs can be silenced by a sequence that raises no alert; "
+                     f"{step['exposed_after']} remain once a rule reads this trace and the ones ranked before it.",
+            action="Write the rule, then name it in the trace's `detection` in dfir/trace/model.yml with a sample event; "
+                   "rasd trace --check replays the event through the engine and the verdicts change with it.",
+            weight=len(data["closure"]) - rank,
+            data={"rule": step["rule"], "actions": step["actions"], "exposed_before": before, "exposed_after": step["exposed_after"]}))
+        before = step["exposed_after"]
+    return out
+
+
 def public_findings(repo) -> list[Finding]:
     """Detections no public dataset records, with the catalogue's reason; expectations a dataset holds
     but the rule did not meet."""
@@ -700,7 +723,7 @@ def learn_environment(summary: dict, logs: list[Path]) -> Path:
     doc = {"note": "written by rasd advise --learn: counts and verdicts of your own telemetry, no event values; not meant to be committed",
            "exports": [p.name for p in logs], **summary}
     AGENT.mkdir(exist_ok=True)
-    ENVIRONMENT.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    ENVIRONMENT.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8", newline="\n")
     return ENVIRONMENT
 
 
@@ -830,7 +853,7 @@ def record_decision(finding_id: str, decision: str, note: str | None, by: str | 
             text = text.rstrip("\n") + "\ndecisions:\n"
     block = yaml.safe_dump([entry], sort_keys=False, allow_unicode=True, width=1000)
     path.parent.mkdir(exist_ok=True)
-    path.write_text(text.rstrip("\n") + "\n" + block, encoding="utf-8")
+    path.write_text(text.rstrip("\n") + "\n" + block, encoding="utf-8", newline="\n")
     errs = decision_errors(load_decisions(path))
     if errs:
         raise SystemExit("\n".join(errs))
@@ -1461,7 +1484,7 @@ def proof_with(det: Detection, rule: dict, extra_tps: Sequence[dict] = (), extra
             if extra:
                 path = folder / "tests" / f"{kind}.jsonl"
                 text = path.read_text(encoding="utf-8").rstrip("\n") + "\n" if path.exists() else ""
-                path.write_text(text + "".join(json.dumps(ev, ensure_ascii=False) + "\n" for ev in extra), encoding="utf-8")
+                path.write_text(text + "".join(json.dumps(ev, ensure_ascii=False) + "\n" for ev in extra), encoding="utf-8", newline="\n")
         probe = Detection(folder, rule, det.contract)
         tests, accept = suite(probe), accepted(probe)
         total, survivors = 0, []
@@ -1489,7 +1512,7 @@ def spec_closing(det: Detection, variant: str) -> str:
     hit[0].pop("fix", None)
     text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=1000)
     with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / SPEC).write_text(text, encoding="utf-8")
+        (Path(tmp) / SPEC).write_text(text, encoding="utf-8", newline="\n")
         try:
             load_spec(Path(tmp) / SPEC)
         except CertifyError as e:
@@ -1506,7 +1529,7 @@ def certify_with(det: Detection, rule: dict, spec_text: str | None) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         folder = Path(tmp) / det.id
         folder.mkdir()
-        (folder / SPEC).write_text(spec_text, encoding="utf-8")
+        (folder / SPEC).write_text(spec_text, encoding="utf-8", newline="\n")
         return certify_rule(det.id, "rule", rule, folder)
 
 
@@ -1576,7 +1599,7 @@ def write_proposal(f: Finding, files: dict[str, str], checks: list[str], origin:
         own = f"agent/proposals/{slug(f.id)}/"           # a note of the proposal itself, not a file to apply
         target = folder / rel[len(own):] if rel.startswith(own) else folder / "files" / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding="utf-8")
+        target.write_text(text, encoding="utf-8", newline="\n")
     listed = "\n".join(f"- `{rel}`" for rel in sorted(files)) or "- (no file: the next step is a procedure, listed below)"
     body = (f"# Proposal · {f.title}\n\n**Finding** `{f.id}` · priority {PRIORITY[f.priority]} · for {', '.join(f.roles)}\n\n"
             f"**Evidence.** {f.evidence}\n\n**Next step.**\n\n```\n{f.action}\n```\n\n"
@@ -1584,7 +1607,7 @@ def write_proposal(f: Finding, files: dict[str, str], checks: list[str], origin:
             f"**Files this proposal changes** (under `files/`, mirroring the repository):\n\n{listed}\n\n"
             f"**Apply.** `rasd advise --apply {f.id}` copies the files into the working tree and runs the gates that concern them; "
             "review the diff, run `rasd ci`, commit through a pull request. Nothing is committed or pushed by the agent.\n")
-    (folder / "PROPOSAL.md").write_text(body, encoding="utf-8")
+    (folder / "PROPOSAL.md").write_text(body, encoding="utf-8", newline="\n")
     return folder
 
 
@@ -1850,7 +1873,7 @@ def main() -> int:
         return 0
     if args.write:
         AGENT.mkdir(exist_ok=True)
-        ADVICE.write_text(page, encoding="utf-8")
+        ADVICE.write_text(page, encoding="utf-8", newline="\n")
         print(f"[+] {_rel(ADVICE)} · {len(view['ranked'])} open findings")
         return 0
 
@@ -1868,7 +1891,7 @@ def main() -> int:
         if args.json == "-":
             print(text)
         else:
-            Path(args.json).write_text(text, encoding="utf-8")
+            write_output(args.json, text)
             print(f"[+] {args.json}")
         return 0
     counts = repo_counts(repo)

@@ -220,7 +220,7 @@ def main() -> int:
     if args.check and stale:
         errors.append(f"{OUT.relative_to(ROOT)} is stale (run: rasd build)")
     elif not args.check:
-        OUT.write_text(body, encoding="utf-8")
+        OUT.write_text(body, encoding="utf-8", newline="\n")
     for e in errors:
         print(f"  {RED}✗{RESET} {e}")
     print(f"{BOLD}Sigma support · {len(SUPPORTED)} supported constructs on {len(PROBES)} probes · "

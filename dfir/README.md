@@ -8,6 +8,7 @@ RASD-DFIR turns an alert into an investigation: what to check in the first fifte
 | [`queries/`](queries/) | Pivot queries (KQL and SPL) the playbooks call: process tree, user-host window, persistence sweep, Kerberos client activity |
 | [`templates/`](templates/) | Incident summary, evidence table, timeline, containment plan, closure note |
 | [`models/`](models/) | Investigation flow and the timeline model every investigation follows |
+| [`trace/`](trace/) | RASD-Trace: the artifacts each technique writes, the anti-forensic actions that remove them, and for every detection whether its evidence is out of reach, evident or exposed (`rasd trace`) |
 
 Each playbook starts with a small front matter block (`techniques`, `detections`, `red_tests`) that `tools/chain.py` reads to build the attack-to-defense matrix; CI fails when a playbook has no evidence table or points at a detection or test that does not exist.
 
@@ -45,5 +46,6 @@ Each playbook starts with a small front matter block (`techniques`, `detections`
 | `timeline.json` | [Timeline](templates/timeline_template.md) | Every alert in order with the event fields its rule read; correlations with their window, group and counted values; the SHA-256 of each log file |
 | `observables.csv` | [Evidence table](templates/evidence_table.md) | Hosts, accounts, processes, command lines, registry keys, services, addresses and hashes seen in the alerts, first and last seen |
 | `analyst_closure.md` | [Closure note](templates/closure_note.md) | The escalation, benign positive and false positive notes, pre-filled with the observed facts |
+| `evidence_request.md` | [Evidence table](templates/evidence_table.md) | What to collect for the detections that fired, the stores that roll over first at the top; the log clears the storyline's own alerts record, with what each took and whether the SIEM copy remains; the answers that rest on a single artifact ([RASD-Trace](trace/README.md)) |
 
 The replay never sets a disposition: `timeline.json` carries `"disposition": null` and the notes leave every judgement to the analyst. A value that starts with `=`, `+`, `-` or `@` gets a leading apostrophe in `observables.csv`, so a spreadsheet cannot run a logged command line as a formula. `reports/` is ignored by git.

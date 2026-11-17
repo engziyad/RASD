@@ -1,4 +1,4 @@
-.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red chain links score replay new clean
+.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red trace chain links score replay new clean
 
 PY ?= python3
 RASD = $(PY) rasd.py
@@ -50,6 +50,9 @@ tune:            ## Tuning impact analysis
 
 red:             ## Validate and render the offensive tests
 	$(RASD) red
+
+trace:           ## Evidence survivability: what can be erased, at what cost, and whether a rule sees it
+	$(RASD) trace
 
 chain:           ## 20-point attack-to-defense map, maturity, matrices, metrics
 	$(RASD) chain

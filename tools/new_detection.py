@@ -154,15 +154,15 @@ def main() -> int:
     (folder / "tests").mkdir(parents=True)
     (folder / "rule.yml").write_text(RULE.format(
         id=uuid.uuid4(), date=dt.date.today().isoformat(),
-        tech_path=tech.replace(".", "/"), tech_tag=tech.lower()), encoding="utf-8")
-    (folder / "README.md").write_text(README, encoding="utf-8")
-    (folder / "contract.yml").write_text(CONTRACT.format(folder=folder.name, tech_tag=tech.lower()), encoding="utf-8")
-    (folder / "tuning.yml").write_text(TUNING.format(folder=folder.name), encoding="utf-8")
-    (folder / "tests" / "mutations.yml").write_text(MUTATIONS, encoding="utf-8")
+        tech_path=tech.replace(".", "/"), tech_tag=tech.lower()), encoding="utf-8", newline="\n")
+    (folder / "README.md").write_text(README, encoding="utf-8", newline="\n")
+    (folder / "contract.yml").write_text(CONTRACT.format(folder=folder.name, tech_tag=tech.lower()), encoding="utf-8", newline="\n")
+    (folder / "tuning.yml").write_text(TUNING.format(folder=folder.name), encoding="utf-8", newline="\n")
+    (folder / "tests" / "mutations.yml").write_text(MUTATIONS, encoding="utf-8", newline="\n")
     (folder / "tests" / "true_positive.jsonl").write_text(
-        '{"_case": "TODO malicious example", "EventID": 1, "Image": "C:\\\\TODO.exe"}\n', encoding="utf-8")
+        '{"_case": "TODO malicious example", "EventID": 1, "Image": "C:\\\\TODO.exe"}\n', encoding="utf-8", newline="\n")
     (folder / "tests" / "true_negative.jsonl").write_text(
-        '{"_case": "TODO benign example", "EventID": 1, "Image": "C:\\\\Windows\\\\explorer.exe"}\n', encoding="utf-8")
+        '{"_case": "TODO benign example", "EventID": 1, "Image": "C:\\\\Windows\\\\explorer.exe"}\n', encoding="utf-8", newline="\n")
     print(f"[+] scaffolded {folder.relative_to(ROOT)}")
     print("    edit rule.yml, contract.yml, tuning.yml, tests/ and README.md, then run: rasd ci")
     return 0

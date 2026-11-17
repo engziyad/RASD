@@ -53,7 +53,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl
+from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, load_detections, load_jsonl, write_output
 from convert import logsource_key
 from correlation import EPOCH, OPS, epoch, human, load_correlations, value_reader
 from parity import REPLAY_CORPUS
@@ -439,7 +439,7 @@ def main() -> int:
     print(f"\n{BOLD}{sum(len(r.get('boundaries', [])) for r in report['detections'].values())} loaded boundaries · "
           f"{len(gaps)} without a true negative{RESET}")
     if args.json:
-        Path(args.json).write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
+        write_output(args.json, json.dumps(report, indent=2, ensure_ascii=False, default=str) + "\n")
         print(f"[+] JSON: {args.json}")
     if args.check and gaps:
         for g in gaps:

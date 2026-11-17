@@ -167,7 +167,7 @@ def update_detect_readme(rules: list[dict]) -> None:
     a, b = text.index(TABLES_START), text.index(TABLES_END) + len(TABLES_END)
     new = text[:a] + detect_tables(rules) + text[b:]
     if new != text:
-        DETECT_README.write_text(new, encoding="utf-8")
+        DETECT_README.write_text(new, encoding="utf-8", newline="\n")
 
 
 def markdown(rules: list[dict]) -> str:
@@ -227,8 +227,8 @@ def main() -> int:
     rules = collect()
     COVERAGE_DIR.mkdir(parents=True, exist_ok=True)
     (COVERAGE_DIR / "attack_navigator_layer.json").write_text(
-        json.dumps(navigator_layer(rules), indent=2) + "\n", encoding="utf-8")
-    (COVERAGE_DIR / "COVERAGE.md").write_text(markdown(rules), encoding="utf-8")
+        json.dumps(navigator_layer(rules), indent=2) + "\n", encoding="utf-8", newline="\n")
+    (COVERAGE_DIR / "COVERAGE.md").write_text(markdown(rules), encoding="utf-8", newline="\n")
     update_detect_readme(rules)
     corrs = sum(1 for r in rules if r["path"] == "correlations")
     print(f"[+] coverage generated for {len(rules) - corrs} detections and {corrs} correlations")

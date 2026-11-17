@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 ROOT = Path(__file__).resolve().parent.parent
 DETECT = ROOT / "detect"
 DETECTIONS = DETECT / "detections"          # one folder per detection (rule, contract, tests, guides)
@@ -99,6 +99,27 @@ _TTY = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
 def c(code: str) -> str: return f"\033[{code}m" if _TTY else ""
 GREEN, RED, YELLOW, DIM, BOLD, RESET = c("32"), c("31"), c("33"), c("2"), c("1"), c("0")
 GOLD, SAGE, IVORY = c("38;5;180"), c("38;5;108"), c("38;5;188")
+
+
+def utf8_console() -> None:
+    """Print UTF-8 whatever the platform's code page is. On Windows a pipe or a redirected file takes
+    the ANSI code page, which has no check mark or arrow, and the first one printed ends the tool."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+utf8_console()
+
+
+def write_output(path: str | Path, text: str) -> Path:
+    """Write a report where the user asked for it: the folder is created when it is missing, and the
+    file is UTF-8 with LF line ends on every platform."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8", newline="\n")
+    return target
 
 
 def read_text(path: Path) -> str:

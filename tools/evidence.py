@@ -944,11 +944,11 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
         for det, step, hits, al in best.values():
             body = render(det, step, hits, al, files, results_path.name, sha256(results_path), siem_files, profile,
                           manifest, run)
-            (det.folder / "evidence.md").write_text(body, encoding="utf-8")
+            (det.folder / "evidence.md").write_text(body, encoding="utf-8", newline="\n")
         for corr, step, bound, alert, al in best_corr.values():
             body = render_correlation(corr, step, bound, alert, al, files, results_path.name, sha256(results_path),
                                       siem_files, profile, manifest, run)
-            (corr.folder / "evidence.md").write_text(body, encoding="utf-8")
+            (corr.folder / "evidence.md").write_text(body, encoding="utf-8", newline="\n")
         if best or best_corr:
             print(f"\n{GREEN}[+] wrote evidence.md for {len(best) + len(best_corr)} detection(s){RESET}")
 
