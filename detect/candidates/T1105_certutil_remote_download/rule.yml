@@ -1,0 +1,31 @@
+title: Certutil Used to Download a File From a Remote Address
+id: f2bb4a4b-f79e-59e0-a9e7-70015c093b40
+status: experimental
+description: Certutil started with the URL cache or CTL verification verb and a web or FTP address, which makes the certificate tool fetch and save an arbitrary file. Intruders use it to bring tools onto a host with a signed Windows binary. Downloads made with other programs are not covered.
+references:
+- https://attack.mitre.org/techniques/T1105/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.command-and-control
+- attack.t1105
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \certutil.exe
+  - OriginalFileName: CertUtil.exe
+  selection_verb:
+    CommandLine|contains:
+    - urlcache
+    - verifyctl
+  selection_url:
+    CommandLine|contains:
+    - http://
+    - https://
+    - ftp://
+  condition: all of selection_*
+falsepositives:
+- Administration scripts that fetch a certificate revocation list or a package with certutil from an internal server
+level: high

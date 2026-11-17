@@ -1,0 +1,31 @@
+candidate: T1070.003_shell_history_cleared
+technique: T1070.003
+name: 'Indicator Removal: Clear Command History'
+tactics:
+- stealth
+logsource: linux/process_creation
+fields:
+- CommandLine
+- Image
+false_positives:
+- Provisioning and image templating scripts that empty the history before a machine image is taken
+- Users who clear their own history out of habit
+blind_spots:
+- The clearing command typed in an interactive shell, a built-in that starts no process
+- History never written because the shell was started with the history file unset
+- History files of other shells and tools than bash and zsh
+first_checks:
+- 'Identify the session: the user, the parent process and the source address of the logon'
+- Read the other commands of the same session in the process creation log
+- Check authentication logs for the minutes before the history was cleared
+proof:
+  true_positives: 6
+  true_negatives: 8
+  rule_mutants_killed: 14
+  variations_matched: 36
+  parity_events: 112
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

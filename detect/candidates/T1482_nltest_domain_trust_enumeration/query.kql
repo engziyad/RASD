@@ -1,0 +1,4 @@
+// Nltest Enumerating Domain Trusts | fb4c1345-e8d3-5101-88a1-c7eb4464d660
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\nltest.exe" or OriginalFileName =~ @"nltestrk.exe") and (CommandLine contains @"domain_trusts" or CommandLine contains @"trusted_domains"))

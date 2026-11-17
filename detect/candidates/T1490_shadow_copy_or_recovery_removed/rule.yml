@@ -1,0 +1,37 @@
+title: Shadow Copies, Backup Catalog or Boot Recovery Removed
+id: e77734d5-f379-5414-aeb2-2f61354070de
+status: experimental
+description: Vssadmin deleting shadow copies, wbadmin deleting the backup catalog, or bcdedit turning boot recovery off. These three commands remove what a host would be restored from and are a common last step before files are encrypted. Deletion through WMI, PowerShell or by resizing the shadow storage is not covered.
+references:
+- https://attack.mitre.org/techniques/T1490/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.impact
+- attack.t1490
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_vss_img:
+  - Image|endswith: \vssadmin.exe
+  - OriginalFileName: VSSADMIN.EXE
+  selection_vss_cmd:
+    CommandLine|contains: delete
+  selection_wb_img:
+  - Image|endswith: \wbadmin.exe
+  - OriginalFileName: WBADMIN.EXE
+  selection_wb_cmd:
+    CommandLine|contains|all:
+    - delete
+    - catalog
+  selection_bcd_img:
+  - Image|endswith: \bcdedit.exe
+  - OriginalFileName: bcdedit.exe
+  selection_bcd_cmd:
+    CommandLine|re: (?i)recoveryenabled\s+"?no
+  condition: (selection_vss_img and selection_vss_cmd) or (selection_wb_img and selection_wb_cmd) or (selection_bcd_img and selection_bcd_cmd)
+falsepositives:
+- Backup and imaging software that deletes shadow copies after its own job
+- Administrators freeing disk space by deleting old shadow copies
+level: high

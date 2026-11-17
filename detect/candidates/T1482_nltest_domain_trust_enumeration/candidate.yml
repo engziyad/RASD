@@ -1,0 +1,32 @@
+candidate: T1482_nltest_domain_trust_enumeration
+technique: T1482
+name: Domain Trust Discovery
+tactics:
+- discovery
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Directory health checks and monitoring agents that query trusts on a schedule
+- Administrators troubleshooting authentication between domains
+blind_spots:
+- Get-ADTrust, the .NET domain classes and raw LDAP queries start no nltest process
+- Enumeration run from a host that does not forward process creation
+- Process creation events recorded without the command line
+first_checks:
+- Check whether the account is an administrator and the host an administration host
+- Look for other discovery commands from the same session in the minutes around it
+- Identify the parent process
+proof:
+  true_positives: 4
+  true_negatives: 4
+  rule_mutants_killed: 6
+  variations_matched: 28
+  parity_events: 90
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

@@ -1,0 +1,31 @@
+candidate: T1218.005_mshta_inline_script_or_remote
+technique: T1218.005
+name: 'System Binary Proxy Execution: Mshta'
+tactics:
+- stealth
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Old line-of-business applications that open an HTML application from an intranet web server
+blind_spots:
+- An HTML application started from a local file or a file share carries no moniker or address
+- Script run by other hosts such as wscript, cscript or rundll32
+- Process creation events recorded without the command line
+first_checks:
+- Read the script or the address in the command line
+- Look at the children mshta started and the network connections it made
+- 'Identify the parent: an Office program, a browser or a script points at a lure'
+proof:
+  true_positives: 4
+  true_negatives: 4
+  rule_mutants_killed: 8
+  variations_matched: 29
+  parity_events: 91
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

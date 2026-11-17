@@ -1,0 +1,32 @@
+candidate: T1204.002_office_app_starts_script_host
+technique: T1204.002
+name: 'User Execution: Malicious File'
+tactics:
+- execution
+logsource: process_creation
+fields:
+- Image
+- OriginalFileName
+- ParentImage
+false_positives:
+- Signed macros and add-ins of the organisation that start a script on purpose
+- Document management or mail-merge tools that drive Office and start helper scripts
+blind_spots:
+- Code that stays inside the Office process, such as shellcode run from a macro
+- A child started through WMI or a scheduled task, whose parent is not Office
+- Other document readers and Office programs than the four listed
+first_checks:
+- 'Find the document: the Office command line and the recent files of the user'
+- Read the child's command line and what it started or downloaded
+- Ask the user whether they opened an attachment or enabled content
+proof:
+  true_positives: 10
+  true_negatives: 5
+  rule_mutants_killed: 18
+  variations_matched: 93
+  parity_events: 208
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

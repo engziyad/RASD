@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| where (((match('Image', "(?i)\\\\vssadmin\\.exe$") OR lower('OriginalFileName')="vssadmin.exe") AND match('CommandLine', "(?i)delete")) OR ((match('Image', "(?i)\\\\wbadmin\\.exe$") OR lower('OriginalFileName')="wbadmin.exe") AND (match('CommandLine', "(?i)delete") AND match('CommandLine', "(?i)catalog"))) OR ((match('Image', "(?i)\\\\bcdedit\\.exe$") OR lower('OriginalFileName')="bcdedit.exe") AND match('CommandLine', "(?i)recoveryenabled\\s+\"?no")))

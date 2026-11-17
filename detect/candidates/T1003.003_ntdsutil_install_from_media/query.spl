@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| where ((match('Image', "(?i)\\\\ntdsutil\\.exe$") OR lower('OriginalFileName')="ntdsutil.exe") AND match('CommandLine', "(?i)(^|[\\s\"])ifm([\\s\"]|$)"))

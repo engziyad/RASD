@@ -1,0 +1,29 @@
+title: Auto-Elevating Program's Shell Command Hijacked in the User Hive
+id: 410e5a57-4e33-50d2-a763-a03633e093c5
+status: experimental
+description: A value written under the ms-settings or mscfile shell open command of a user's own registry hive. Auto-elevating Windows programs such as fodhelper and eventvwr read that key, so the value written there runs elevated with no consent prompt. Other bypasses of User Account Control use other keys and are not covered.
+references:
+- https://attack.mitre.org/techniques/T1548/002/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.privilege-escalation
+- attack.t1548.002
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection_hive:
+    TargetObject|startswith:
+    - HKU\
+    - HKEY_USERS\
+    - HKCU\
+    - HKEY_CURRENT_USER\
+  selection_key:
+    TargetObject|contains:
+    - \ms-settings\shell\open\command
+    - \mscfile\shell\open\command
+  condition: selection_hive and selection_key
+falsepositives:
+- 'None expected: ordinary software does not write these two keys in a user hive'
+level: high

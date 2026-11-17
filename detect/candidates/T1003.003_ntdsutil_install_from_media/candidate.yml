@@ -1,0 +1,31 @@
+candidate: T1003.003_ntdsutil_install_from_media
+technique: T1003.003
+name: 'OS Credential Dumping: NTDS'
+tactics:
+- credential-access
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Administrators creating install-from-media files to promote a new domain controller
+blind_spots:
+- The database copied from a volume shadow copy or with a raw disk reader
+- Replication of the hashes over the network, which starts no process on the controller
+- Process creation events recorded without the command line
+first_checks:
+- Find the folder named in the command line and whether it left the controller
+- Confirm with the directory team whether a new controller is being promoted
+- Identify the account and how its session reached the controller
+proof:
+  true_positives: 4
+  true_negatives: 4
+  rule_mutants_killed: 4
+  variations_matched: 31
+  parity_events: 93
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

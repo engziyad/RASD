@@ -1,0 +1,31 @@
+candidate: T1036.003_system_utility_renamed
+technique: T1036.003
+name: 'Masquerading: Rename Legitimate Utilities'
+tactics:
+- stealth
+logsource: process_creation
+fields:
+- Image
+- OriginalFileName
+false_positives:
+- Administration bundles and portable tool kits that ship renamed copies of these utilities
+- Installers that copy the command shell under a temporary name
+blind_spots:
+- A utility renamed to the file name of another utility of the list
+- A copy whose version resource was edited or stripped
+- Pipelines that do not record the original file name, such as Security event 4688
+first_checks:
+- 'Read the image path and the command line: what the renamed utility was asked to do'
+- Find when and by what the renamed file was written
+- Compare the file's hash with the system utility it claims to be
+proof:
+  true_positives: 8
+  true_negatives: 9
+  rule_mutants_killed: 18
+  variations_matched: 74
+  parity_events: 175
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

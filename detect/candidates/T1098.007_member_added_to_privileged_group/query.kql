@@ -1,0 +1,4 @@
+// Member Added to a Privileged Windows Group | 9414b9fd-5231-50df-a8e9-0a84ed400dc1
+SecurityEvent
+| extend TargetUserName = coalesce(tostring(column_ifexists("TargetUserName", "")), extract(@'Name="TargetUserName">([^<]*)<', 1, EventData))
+| where ((EventID == 4728 or EventID == 4732 or EventID == 4756) and (TargetUserName =~ @"Domain Admins" or TargetUserName =~ @"Enterprise Admins" or TargetUserName =~ @"Schema Admins" or TargetUserName =~ @"Administrators" or TargetUserName =~ @"Backup Operators" or TargetUserName =~ @"Account Operators" or TargetUserName =~ @"DnsAdmins"))

@@ -1,0 +1,29 @@
+title: Bitsadmin Creating a Transfer Job or a Notification Command
+id: 976f6711-0065-548b-8f4d-fc51ee3af6d5
+status: experimental
+description: Bitsadmin started to create a download job, add a file to one, or set the command a job runs when it completes. Background Intelligent Transfer jobs survive reboots and run under the service, so intruders use them to download tools and to persist. Jobs created from PowerShell or the COM interface are not seen.
+references:
+- https://attack.mitre.org/techniques/T1197/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.execution
+- attack.persistence
+- attack.stealth
+- attack.t1197
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \bitsadmin.exe
+  - OriginalFileName: bitsadmin.exe
+  selection_job:
+    CommandLine|contains:
+    - transfer
+    - addfile
+    - setnotifycmdline
+  condition: selection_img and selection_job
+falsepositives:
+- Legacy software deployment or update scripts that still call bitsadmin to fetch packages
+level: medium

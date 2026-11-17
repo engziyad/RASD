@@ -1,0 +1,4 @@
+// Regsvr32 Loading a Scriptlet or a Remote Object | 461c6c18-0051-5058-a6cd-20646532fb7e
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\regsvr32.exe" or OriginalFileName =~ @"REGSVR32.EXE") and (CommandLine contains @"scrobj" or CommandLine contains @"i:http" or CommandLine contains @"i:ftp"))

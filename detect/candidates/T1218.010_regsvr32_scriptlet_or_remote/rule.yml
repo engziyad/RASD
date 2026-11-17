@@ -1,0 +1,27 @@
+title: Regsvr32 Loading a Scriptlet or a Remote Object
+id: 461c6c18-0051-5058-a6cd-20646532fb7e
+status: experimental
+description: Regsvr32 started with the script component runtime or with a web or FTP address in its install switch, which makes the signed registration tool fetch and run a scriptlet. It proxies execution past application control and writes nothing to the registry. Registering an ordinary library is not matched.
+references:
+- https://attack.mitre.org/techniques/T1218/010/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.stealth
+- attack.t1218.010
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \regsvr32.exe
+  - OriginalFileName: REGSVR32.EXE
+  selection_arg:
+    CommandLine|contains:
+    - scrobj
+    - i:http
+    - i:ftp
+  condition: selection_img and selection_arg
+falsepositives:
+- Rare installers that register a script component with scrobj.dll during setup
+level: high

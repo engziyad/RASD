@@ -1,0 +1,4 @@
+// Auto-Elevating Program's Shell Command Hijacked in the User Hive | 410e5a57-4e33-50d2-a763-a03633e093c5
+Sysmon
+| where EventID == 13
+| where ((TargetObject startswith @"HKU\" or TargetObject startswith @"HKEY_USERS\" or TargetObject startswith @"HKCU\" or TargetObject startswith @"HKEY_CURRENT_USER\") and (TargetObject contains @"\ms-settings\shell\open\command" or TargetObject contains @"\mscfile\shell\open\command"))

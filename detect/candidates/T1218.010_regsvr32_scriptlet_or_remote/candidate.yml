@@ -1,0 +1,31 @@
+candidate: T1218.010_regsvr32_scriptlet_or_remote
+technique: T1218.010
+name: 'System Binary Proxy Execution: Regsvr32'
+tactics:
+- stealth
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Rare installers that register a script component with scrobj.dll during setup
+blind_spots:
+- A scriptlet loaded by another host, such as mshta or a script moniker inside a document
+- A remote address written with quotes between the switch and the address
+- Process creation events recorded without the command line
+first_checks:
+- Read the address or the scriptlet path in the command line and fetch a copy for analysis
+- Look at the children regsvr32 started and the connections it made
+- Identify the parent process and the account
+proof:
+  true_positives: 4
+  true_negatives: 4
+  rule_mutants_killed: 7
+  variations_matched: 31
+  parity_events: 93
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

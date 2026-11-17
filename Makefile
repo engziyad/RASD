@@ -1,4 +1,4 @@
-.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red trace silence blindpath chain links score replay new clean
+.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red trace silence blindpath grow chain links score replay new clean
 
 PY ?= python3
 RASD = $(PY) rasd.py
@@ -59,6 +59,9 @@ silence:         ## Evidence of absence on the sample fleet: is each rule's quie
 
 blindpath:       ## The route through the green cells on the sample fleet: what an intruder walks with no alert, and the plan
 	$(RASD) blindpath samples/silence/fleet.jsonl --assets samples/silence/assets.csv
+
+grow:            ## RASD-Agent's lane: where every ATT&CK technique stands and what is drafted next (rasd grow --run drafts)
+	$(RASD) grow
 
 chain:           ## 20-point attack-to-defense map, maturity, matrices, metrics
 	$(RASD) chain

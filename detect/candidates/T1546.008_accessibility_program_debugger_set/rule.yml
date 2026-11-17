@@ -1,0 +1,29 @@
+title: Debugger Set for an Accessibility Program of the Logon Screen
+id: fb25ccdd-53dd-56d6-81a4-38e168d1f29d
+status: experimental
+description: A Debugger value written under the Image File Execution Options key of one of the accessibility programs that the logon screen can start. Windows then runs the debugger instead of the program, as SYSTEM and before anyone has logged on, which gives a shell from the lock screen. Replacing the program's file on disk has the same effect and is not seen here.
+references:
+- https://attack.mitre.org/techniques/T1546/008/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.persistence
+- attack.privilege-escalation
+- attack.t1546.008
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection:
+    TargetObject|endswith:
+    - \Image File Execution Options\sethc.exe\Debugger
+    - \Image File Execution Options\utilman.exe\Debugger
+    - \Image File Execution Options\osk.exe\Debugger
+    - \Image File Execution Options\magnify.exe\Debugger
+    - \Image File Execution Options\narrator.exe\Debugger
+    - \Image File Execution Options\displayswitch.exe\Debugger
+    - \Image File Execution Options\atbroker.exe\Debugger
+  condition: selection
+falsepositives:
+- 'None expected: no ordinary software sets a debugger for these programs'
+level: high

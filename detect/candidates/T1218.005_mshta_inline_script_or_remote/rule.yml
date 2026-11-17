@@ -1,0 +1,28 @@
+title: Mshta Running Inline Script or a Remote HTML Application
+id: 207889c9-9b44-58df-ae87-61c2d071e96e
+status: experimental
+description: Mshta started with a vbscript or javascript moniker, or with a web address, so the signed HTML application host runs script that is not a file on disk. This is a common way to proxy execution past application control. An HTML application started from a local file is not covered.
+references:
+- https://attack.mitre.org/techniques/T1218/005/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.stealth
+- attack.t1218.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \mshta.exe
+  - OriginalFileName: MSHTA.EXE
+  selection_arg:
+    CommandLine|contains:
+    - 'vbscript:'
+    - 'javascript:'
+    - http://
+    - https://
+  condition: selection_img and selection_arg
+falsepositives:
+- Old line-of-business applications that open an HTML application from an intranet web server
+level: high

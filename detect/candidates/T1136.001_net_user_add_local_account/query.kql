@@ -1,0 +1,4 @@
+// Local Account Created With Net User | 0610e161-ea33-5bc0-b80f-60af631f3b34
+Sysmon
+| where EventID == 1
+| where ((((Image endswith @"\net.exe" or Image endswith @"\net1.exe") or (OriginalFileName =~ @"net.exe" or OriginalFileName =~ @"net1.exe")) and CommandLine matches regex @"(?i)\susers?\s" and CommandLine matches regex @"(?i)\s/add(\s|$)") and not(CommandLine matches regex @"(?i)\s/do[a-z]*(\s|$)"))

@@ -1,0 +1,4 @@
+// Office Application Starting a Shell or Script Host | 1f4df9ed-b75b-5627-8b2a-86a7cc129ebe
+Sysmon
+| where EventID == 1
+| where ((ParentImage endswith @"\winword.exe" or ParentImage endswith @"\excel.exe" or ParentImage endswith @"\powerpnt.exe" or ParentImage endswith @"\outlook.exe") and ((Image endswith @"\cmd.exe" or Image endswith @"\powershell.exe" or Image endswith @"\wscript.exe" or Image endswith @"\cscript.exe" or Image endswith @"\mshta.exe") or (OriginalFileName =~ @"Cmd.Exe" or OriginalFileName =~ @"PowerShell.EXE" or OriginalFileName =~ @"wscript.exe" or OriginalFileName =~ @"cscript.exe" or OriginalFileName =~ @"MSHTA.EXE")))

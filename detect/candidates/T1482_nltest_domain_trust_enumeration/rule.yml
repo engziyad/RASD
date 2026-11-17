@@ -1,0 +1,27 @@
+title: Nltest Enumerating Domain Trusts
+id: fb4c1345-e8d3-5101-88a1-c7eb4464d660
+status: experimental
+description: Nltest started with the domain trusts or trusted domains switch, which lists every domain the current one trusts. Intruders run it early to map where a foothold can reach. Trust enumeration through PowerShell, LDAP queries or other tools starts no nltest process.
+references:
+- https://attack.mitre.org/techniques/T1482/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.discovery
+- attack.t1482
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \nltest.exe
+  - OriginalFileName: nltestrk.exe
+  selection_arg:
+    CommandLine|contains:
+    - domain_trusts
+    - trusted_domains
+  condition: selection_img and selection_arg
+falsepositives:
+- Directory health checks and monitoring agents that query trusts on a schedule
+- Administrators troubleshooting authentication between domains
+level: medium

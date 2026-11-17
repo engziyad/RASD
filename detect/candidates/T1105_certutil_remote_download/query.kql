@@ -1,0 +1,4 @@
+// Certutil Used to Download a File From a Remote Address | f2bb4a4b-f79e-59e0-a9e7-70015c093b40
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\certutil.exe" or OriginalFileName =~ @"CertUtil.exe") and (CommandLine contains @"urlcache" or CommandLine contains @"verifyctl") and (CommandLine contains @"http://" or CommandLine contains @"https://" or CommandLine contains @"ftp://"))

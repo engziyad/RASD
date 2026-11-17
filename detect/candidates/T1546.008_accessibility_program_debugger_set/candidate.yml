@@ -1,0 +1,30 @@
+candidate: T1546.008_accessibility_program_debugger_set
+technique: T1546.008
+name: 'Event Triggered Execution: Accessibility Features'
+tactics:
+- persistence
+- privilege-escalation
+logsource: registry_set
+fields:
+- TargetObject
+false_positives:
+- 'None expected: no ordinary software sets a debugger for these programs'
+blind_spots:
+- The accessibility program's file replaced or renamed on disk, which writes no registry value
+- A registry write made offline, from another operating system or a recovery environment
+- Registry events not collected for the Image File Execution Options key
+first_checks:
+- Read the debugger path written and who wrote it
+- 'Check the logon screen of the host: Remote Desktop connections that did not complete a logon'
+- Remove the value and look for the same write on other hosts
+proof:
+  true_positives: 7
+  true_negatives: 4
+  rule_mutants_killed: 7
+  variations_matched: 35
+  parity_events: 82
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

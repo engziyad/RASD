@@ -1,0 +1,32 @@
+candidate: T1003.002_registry_credential_hive_saved
+technique: T1003.002
+name: 'OS Credential Dumping: Security Account Manager'
+tactics:
+- credential-access
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Backup or forensic collection scripts that save the hives on purpose
+- Administrators preparing an offline repair of a host
+blind_spots:
+- Hive files copied from a volume shadow copy or with a raw disk reader
+- Hives read through the remote registry service or by a tool that calls the API itself
+- Process creation events recorded without the command line
+first_checks:
+- Find the saved files and whether they were copied off the host
+- Identify the account, the parent process and the logon session
+- Check for the other two hives being saved by the same session
+proof:
+  true_positives: 4
+  true_negatives: 5
+  rule_mutants_killed: 5
+  variations_matched: 31
+  parity_events: 99
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

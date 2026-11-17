@@ -1,0 +1,32 @@
+candidate: T1098.004_ssh_authorized_keys_appended
+technique: T1098.004
+name: 'Account Manipulation: SSH Authorized Keys'
+tactics:
+- persistence
+- privilege-escalation
+logsource: linux/process_creation
+fields:
+- CommandLine
+- Image
+false_positives:
+- Administrators and onboarding scripts that add a user's key
+- Configuration management and cloud initialisation that write keys through a shell
+blind_spots:
+- A key written by an editor, by a copy over the file or by a program that opens the file itself
+- A redirection typed in an interactive shell, which is not a process of its own
+- Other key locations set in the SSH server's configuration
+first_checks:
+- Read the key that was added and whose file it is
+- Identify the session and the parent process that ran the command
+- Look for SSH logons with a key for that user afterwards
+proof:
+  true_positives: 5
+  true_negatives: 6
+  rule_mutants_killed: 10
+  variations_matched: 30
+  parity_events: 92
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

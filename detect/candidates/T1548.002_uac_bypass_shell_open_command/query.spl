@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13
+| where ((match('TargetObject', "(?i)^HKU\\\\") OR match('TargetObject', "(?i)^HKEY_USERS\\\\") OR match('TargetObject', "(?i)^HKCU\\\\") OR match('TargetObject', "(?i)^HKEY_CURRENT_USER\\\\")) AND (match('TargetObject', "(?i)\\\\ms\\-settings\\\\shell\\\\open\\\\command") OR match('TargetObject', "(?i)\\\\mscfile\\\\shell\\\\open\\\\command")))

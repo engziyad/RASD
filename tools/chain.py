@@ -69,6 +69,7 @@ from deceive import check as deceive_check, load_inventory as load_decoys
 from survivability import closure_summary
 from silence import sample_summary
 from blindpath import sample_summary as blindpath_summary
+from grow import summary as lane_summary
 from datasets import load_catalog as load_dataset_catalog, load_results as load_dataset_results, summary as public_summary
 from nearmiss import analyse as near_misses, unpinned
 from evidence import OPERATIONAL_WEIGHTS
@@ -704,6 +705,7 @@ def render_metrics(repo: Repo) -> str:
         ("Evidence survivability (trace)", trace_line("../")),
         ("Evidence of absence (silence)", silence_line("../")),
         ("The unseen route (blindpath)", blindpath_line("../")),
+        ("RASD-Agent's lane (grow)", lane_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -802,6 +804,18 @@ def blindpath_line(root: str) -> str:
             f"({s['ways_quiet']} raise no alert) · on the sample fleet ({s['hosts']} hosts): {s['routes']} routes from an origin to a "
             f"target, {s['routes_unseen']} unseen end to end and {s['routes_seen']} seen on the way{tests} · {plan} · documented behaviour "
             f"pending lab runs ([BLINDPATH]({root}docs/BLINDPATH.md), [results]({root}purple/blindpath/))")
+
+
+def lane_line(root: str) -> str:
+    """The lane RASD-Agent grows on its own, stated beside the core and never added to it; `root` is the path to the
+    repository root from the page."""
+    s = lane_summary()
+    return (f"{s['candidates']} candidate detection{'' if s['candidates'] == 1 else 's'} drafted by a language model and kept by the "
+            f"gates of `rasd grow`, reviewed by no person and counted in no number of this page but this one · of the "
+            f"{s['techniques']} techniques and sub-techniques of ATT&CK v{s['attack_version']} that are drafted on their own, "
+            f"{s['core']} have a core detection, {s['queue']} are in the agent's queue and {s['out_of_reach']} are out of reach of "
+            f"the logs RASD reads "
+            f"([GROW]({root}docs/GROW.md), [candidates]({root}detect/candidates/README.md))")
 
 
 def equiv_line(docs: str) -> str:
@@ -1085,6 +1099,7 @@ def render_readme_metrics(repo: Repo) -> str:
         ("Evidence survivability", trace_line("")),
         ("Evidence of absence", silence_line("")),
         ("The unseen route", blindpath_line("")),
+        ("RASD-Agent's lane", lane_line("")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1183,6 +1198,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Evidence survivability", trace_line("../")),
         ("Evidence of absence", silence_line("../")),
         ("The unseen route", blindpath_line("../")),
+        ("RASD-Agent's lane", lane_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "

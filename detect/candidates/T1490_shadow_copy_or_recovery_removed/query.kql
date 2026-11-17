@@ -1,0 +1,4 @@
+// Shadow Copies, Backup Catalog or Boot Recovery Removed | e77734d5-f379-5414-aeb2-2f61354070de
+Sysmon
+| where EventID == 1
+| where (((Image endswith @"\vssadmin.exe" or OriginalFileName =~ @"VSSADMIN.EXE") and CommandLine contains @"delete") or ((Image endswith @"\wbadmin.exe" or OriginalFileName =~ @"WBADMIN.EXE") and (CommandLine contains @"delete" and CommandLine contains @"catalog")) or ((Image endswith @"\bcdedit.exe" or OriginalFileName =~ @"bcdedit.exe") and CommandLine matches regex @"(?i)recoveryenabled\s+""?no"))

@@ -1,6 +1,6 @@
 # Contributing to RASD
 
-Every change reaches `main` through a branch and a pull request. `main` is protected: no direct pushes, and the CI gate must pass before a merge. A change is never published to `main` on a schedule or by hand without the gate.
+Every change a person makes reaches `main` through a branch and a pull request. `main` is protected: no direct pushes, and the CI gate must pass before a merge. A change is never published to `main` on a schedule or by hand without the gate. One lane is published without a person, behind the same gate and held to its own files: [RASD-Agent's lane](#rasd-agents-lane).
 
 ## The flow
 
@@ -26,7 +26,7 @@ Each step of a safe release maps to a check CI already enforces.
 | Release step | Enforced by |
 |---|---|
 | Verify base | the branch is up to date with `main`; the working tree is clean |
-| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, trace, silence, blindpath, Splunk app, profiles, datasets, build, chain, advise, links |
+| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, trace, silence, blindpath, grow, Splunk app, profiles, datasets, build, chain, advise, links |
 | Formal proofs and certificates | `rasd certify --check` (inside `rasd ci`): every rule compiles to exact automata, every behaviour spec gets its expected verdict, and the certificate pages are current |
 | Differential | `rasd parity` (the generated SPL and KQL match the engine) and `rasd diff --base origin/<base>` (the events whose verdict changes in this PR) and `rasd certify --equiv origin/main` (the rule's own meaning across the edit) |
 | No stale output | the "generated files are out of date" check fails the build until `rasd build` is committed |
@@ -52,6 +52,16 @@ gh api --method PUT -H "Accept: application/vnd.github+json" \
   -F "required_pull_request_reviews[required_approving_review_count]=0" \
   -F "restrictions=null"
 ```
+
+## RASD-Agent's lane
+
+[`detect/candidates`](detect/candidates/README.md) is grown by RASD-Agent with no person in the loop ([GROW](docs/GROW.md)). The scheduled workflow [`agent-grow.yml`](.github/workflows/agent-grow.yml) commits to `main` on its own, under three conditions the workflow enforces and a unit test holds in place:
+
+- **The same gate.** It runs `ruff`, `mypy` and the whole of `rasd ci` on the exact tree it is about to commit, and checks that the build leaves that tree as it is. A red gate publishes nothing.
+- **Its own files only.** `rasd grow --guard` fails the run when anything differs from the last commit outside the lane's folder, its ledger (`agent/growth.yml`), the ATT&CK reference (`intel/mappings/attack_enterprise.json`) and the five generated pages that state the lane's numbers or name its candidates. It cannot change a core rule, a test, a tool or a workflow.
+- **Off until configured.** The job is skipped while the repository variable `RASD_MODEL` is unset.
+
+A candidate is promoted into the core by a person, through a branch and a pull request like any detection. With `main` protected as below, the workflow's push needs an exception for GitHub Actions in the rule's bypass list; without one the lane stays where its last run left it and the run says so.
 
 ## Keep out of the repository
 

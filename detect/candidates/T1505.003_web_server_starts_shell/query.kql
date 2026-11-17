@@ -1,0 +1,4 @@
+// Web Server Process Starting a Shell or Script Host | 3f3c7c45-7215-5943-ae01-9001d99558a8
+Sysmon
+| where EventID == 1
+| where ((ParentImage endswith @"\w3wp.exe" or ParentImage endswith @"\httpd.exe" or ParentImage endswith @"\nginx.exe" or ParentImage endswith @"\php-cgi.exe" or ParentImage endswith @"\tomcat9.exe") and ((Image endswith @"\cmd.exe" or Image endswith @"\powershell.exe" or Image endswith @"\pwsh.exe" or Image endswith @"\cscript.exe" or Image endswith @"\wscript.exe") or (OriginalFileName =~ @"Cmd.Exe" or OriginalFileName =~ @"PowerShell.EXE" or OriginalFileName =~ @"pwsh.dll" or OriginalFileName =~ @"cscript.exe" or OriginalFileName =~ @"wscript.exe")))

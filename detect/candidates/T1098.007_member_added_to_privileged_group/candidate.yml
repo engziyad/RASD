@@ -1,0 +1,32 @@
+candidate: T1098.007_member_added_to_privileged_group
+technique: T1098.007
+name: 'Account Manipulation: Additional Local or Domain Groups'
+tactics:
+- persistence
+- privilege-escalation
+logsource: windows/security
+fields:
+- EventID
+- TargetUserName
+false_positives:
+- 'Approved changes: a new administrator joining the team or a service account being set up'
+- Identity management tools that re-apply group membership
+blind_spots:
+- Rights gained through a nested group, a delegated permission or a group not in the list
+- Groups renamed or translated by the operating system's language
+- Domain controllers or servers whose Security log is not collected, or whose audit policy omits group management
+first_checks:
+- Read who added the member and which account was added, in the full record on the host
+- Match the change with a ticket or an owner
+- Review what the added account did after the change
+proof:
+  true_positives: 7
+  true_negatives: 5
+  rule_mutants_killed: 12
+  variations_matched: 7
+  parity_events: 81
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

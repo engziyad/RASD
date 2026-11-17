@@ -1,6 +1,17 @@
 # Release Roadmap
 
-## v1.5: RASD-Blindpath (this release)
+## v1.6: RASD-Agent's lane (this release)
+| Area | Delivered |
+|---|---|
+| Two libraries | The core (`detect/detections`, `detect/correlations`) stays what people write and review. Beside it, [`detect/candidates`](../detect/candidates/README.md) is grown by RASD-Agent with no person in the loop ([GROW](GROW.md)): one folder per technique the core does not cover, stated on its own page and in one row of the metrics, counted in no score, proof or certificate of the core |
+| The whole matrix | `intel/mappings/attack_enterprise.json`: every active technique and sub-technique of ATT&CK Enterprise with its tactics, platforms and documented groups, written by `rasd grow --sync` from MITRE's own release with the bundle's SHA-256, and held to the core's mapping by a unit test. Each technique stands in one place: core, candidate, queued, declined, parked, out of reach of the logs RASD reads |
+| Gates | A model's draft (a rule, its true positives and true negatives, the analyst's notes) is kept only when it passes form, engine, field vocabulary, routing, every attacker variation of the fuzzer, exclusions exercised, the events the repository records as benign, novelty, and KQL and SPL parity. The refusal, in words, is the next draft's feedback |
+| Computed proof | The tests a rule mutant survives are built from the tests at hand or from the exact automata of `rasd certify`, kept as close to a real test event as the proof allows; a part no event can tell apart is removed. A candidate is written only when no mutant survives |
+| A lane that holds | Every run proves each candidate again and retires the one that no longer passes; `rasd grow --check` is part of `rasd ci`, so a change to the core that breaks a candidate shows in its own pull request; the ledger (`agent/growth.yml`) keeps what was accepted, declined and refused |
+| Unattended | `.github/workflows/agent-grow.yml`: on a schedule, the latest ATT&CK release, `rasd grow --run`, the build, ruff, mypy and the whole of `rasd ci`, then `rasd grow --guard` (nothing but the lane's own files changed), then the commit. A run whose candidates break the pipeline sets them aside as refused and goes on without them. Off until the repository has a model configured. The model client follows what a chat-completions server accepts for the token limit and the temperature, and asks a busy server again |
+| Scope | Single-event rules for the seven log sources RASD reads, on Windows and Linux. A candidate is proven consistent with its own tests, not validated: its events were written by a model and no lab run stands behind them, which is why it carries no maturity and no score. The lane writes detections and their tests, never offensive code |
+
+## v1.5: RASD-Blindpath
 | Area | Delivered |
 |---|---|
 | Blindpath | RASD-Blindpath ([BLINDPATH](BLINDPATH.md)): `purple/blindpath/model.yml` names the stages of an intrusion, the legs every route walks, each act with the rules that watch it, who decides every documented variant, and the decoys as tripwires. `rasd blindpath <export>` walks every route from an origin to a target and gives each leg on each host a verdict (open, held, held on rules with no behaviour spec), each route its own (unseen end to end, or seen at its first held leg), and the plan: the fewest changes after which every route is seen by each leg in turn. `--certificate`, `--html`, `--json` and `--strict`; on Windows, with no export, the walk on this host alone |
@@ -72,6 +83,7 @@ The aim of v2.0 is that every covered detection reaches the **Reference** maturi
 | Trace evidence | Each anti-forensic action of `dfir/trace/model.yml` run in the lab after a red test, its traces exported and compared with the model; the practitioner entries confirmed or corrected; the Linux and web detections given footprints |
 | Silence evidence | Each cut of `dfir/silence/model.yml` produced in the lab after a red test (a channel cleared, the logging service stopped and started, a clean and an unclean shutdown, a sleep), the exported records compared with the model, and the practitioner entries confirmed or corrected; a SIEM export of the same run read beside the host's own log |
 | Blindpath evidence | Each witness of `rasd blindpath` run on a lab host after its red test (the variant typed as documented, the paced roast and the paced spray), the export replayed, and the verdict of the walk compared with what the SIEM raised; the rules with no behaviour spec given one, so that no hold rests on tests alone |
+| Candidates promoted | The candidates of [RASD-Agent's lane](GROW.md) that the lab can exercise, each given a red test, a contract, a behaviour spec and a lab run, reviewed by a person and moved into the core; the others stay candidates, stated as such |
 | Tamper rules | The rules RASD-Trace ranks first: a host whose channels go quiet in the SIEM, the Sysmon service stopped (Sysmon 4), the Sysmon driver unloaded |
 | Deception evidence | The three deception red tests run against deployed decoys, their exports turned into `evidence.md` for the four deception detections, and the first operational deception metrics (time to first touch, decoys touched per run) recorded from them rather than estimated |
 | AD reconnaissance | Decoy-account attribute-read rule (4662, a SACL on the honey accounts) validated by the `ldap_enumeration` test: the first planned RASD-Deceive class (`rasd deceive --gaps`) |
@@ -83,7 +95,7 @@ The aim of v2.0 is that every covered detection reaches the **Reference** maturi
 
 ## After v2.0: new data domains
 
-No rule is written for a domain before lab data for it exists in the repository. A rule that never ran against its log source cannot be tested, proven or tuned, so each domain enters in the same order: log source mapping in `tools/mappings.yml`, a recorded lab sample or a red test, then the rule with its tests.
+No rule is written for a domain before lab data for it exists in the repository. A rule that never ran against its log source cannot be tested, proven or tuned, so each domain enters in the same order: log source mapping in `tools/mappings.yml`, a recorded lab sample or a red test, then the rule with its tests. RASD-Agent's lane keeps to the same order: it drafts only for the log sources the core already reads, so the techniques of the domains below stay out of its reach, counted and not drafted, until the domain is in the core.
 
 | Domain | Log source | First detections planned | Lab data to collect first |
 |---|---|---|---|

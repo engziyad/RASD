@@ -150,8 +150,8 @@ def counsel(repo) -> list[Finding]:
     """Every finding the repository's own measurements support, unranked."""
     out: list[Finding] = []
     for part in (evidence_findings, proof_findings, certify_findings, nearmiss_findings, tuning_findings,
-                 backlog_findings, deception_findings, trace_findings, public_findings, coverage_findings, source_findings,
-                 red_findings):
+                 backlog_findings, deception_findings, trace_findings, public_findings, coverage_findings, lane_findings,
+                 source_findings, red_findings):
         out += part(repo)
     seen: Counter[str] = Counter()
     for f in out:                                   # two boundaries may read the same once slugged: number the second
@@ -414,21 +414,53 @@ def backlog_findings(repo) -> list[Finding]:
     """The next rules, in the backlog's order: lab-ready gaps first, then those that need a red step or
     a log source; actor pressure breaks ties."""
     from chain import BACKLOG_TIERS, backlog_ranked, backlog_tier
+    from grow import Lane, load_candidates
+    drafted = {c.technique: c.id for c in load_candidates(Lane())}
     out = []
     for rank, (g, acts) in enumerate(backlog_ranked(repo), 1):
         tier = backlog_tier(g)
         groups = ", ".join(a["group"] for a in acts) or "no tracked group"
         name = f"{g['technique']} {g['name']}"
+        held = drafted.get(g["technique"])
+        start = (f" RASD-Agent's lane holds a candidate for it, proven against its own tests and reviewed by no person: "
+                 f"detect/candidates/{held} (docs/GROW.md, promoting a candidate).") if held else ""
         out.append(Finding(
             id=f"backlog.{g['technique']}", priority=2 if tier == 0 else 3, pillar="intel", roles=("engineer", "executive"),
             title=f"Next rule #{rank}: {name} ({BACKLOG_TIERS[tier]})",
             evidence=f"Tracked groups with a documented procedure: {len(acts)} ({groups}). Telemetry: {_sentence(g['telemetry'])} "
                      f"Missing: {_sentence(g['missing'])} Validation: {_sentence(g['validation'])}",
-            action=f"{_sentence(g['next'])} Scaffold: rasd new {g['technique']} <snake_case_name>; or rasd advise --propose backlog.{g['technique']}",
+            action=f"{_sentence(g['next'])} Scaffold: rasd new {g['technique']} <snake_case_name>; or rasd advise --propose backlog.{g['technique']}"
+                   + start,
             proposal="scaffold", weight=10 - rank + len(acts),
             data={"technique": g["technique"], "name": g["name"], "red_test": g["red_test"], "telemetry": g["telemetry"],
-                  "missing": g["missing"], "next": g["next"], "validation": g["validation"], "groups": [a["group"] for a in acts]}))
+                  "missing": g["missing"], "next": g["next"], "validation": g["validation"], "groups": [a["group"] for a in acts],
+                  "candidate": held}))
     return out
+
+
+def lane_findings(repo) -> list[Finding]:
+    """The lane RASD-Agent grows on its own, as work for people: the candidates no person has reviewed,
+    the ones whose technique the backlog already ranks first."""
+    from chain import backlog_ranked
+    from grow import Lane, load_candidates, summary
+    lane = Lane()
+    cands = load_candidates(lane)
+    if not cands:
+        return []
+    s = summary(lane)
+    ranked = [g["technique"] for g, _acts in backlog_ranked(repo)]
+    near = sorted((c.id for c in cands if c.technique in ranked), key=lambda cid: ranked.index(cid.split("_")[0]))
+    tactics = Counter(t for c in cands for t in c.record.get("tactics") or [])
+    spread = ", ".join(f"{t} {tactics[t]}" for t in ATTACK_TACTICS if tactics[t])
+    return [Finding(
+        id="lane.candidates", priority=3, pillar="coverage", roles=("engineer", "executive"),
+        title=f"RASD-Agent's lane: {_n(len(cands), 'candidate')} no person has reviewed, {_n(s['queue'], 'technique')} in its queue",
+        evidence=f"Drafted by a language model and kept by the gates of rasd grow: each is proven against its own tests, validated by no "
+                 f"lab run and counted in no score. By tactic: {spread}. "
+                 + (f"The backlog already ranks the technique of {', '.join(near)}." if near else "None is for a technique the backlog ranks."),
+        action="Review the candidates the lab can exercise and promote them into the core (docs/GROW.md, promoting a candidate)"
+               + (f", {near[0]} first" if near else "") + ". rasd grow shows what is drafted next; detect/candidates/README.md lists them all.",
+        weight=len(near), data={"candidates": [c.id for c in cands], "backlog": near, "queue": s["queue"]})]
 
 
 def deception_findings(repo) -> list[Finding]:
@@ -559,8 +591,9 @@ def coverage_findings(repo) -> list[Finding]:
         id="coverage.breadth", priority=3, pillar="coverage", roles=("executive",),
         title=f"Breadth: {n} detections over {len(techs)} techniques and {len(covered_tactics)} of {len(ATTACK_TACTICS)} tactics "
               f"on {', '.join(covered_platforms(repo))}",
-        evidence=f"ATT&CK Enterprise lists far more techniques than RASD detects; RASD grows one proven rule at a time, and the backlog "
-                 f"ranks the next {len(repo.backlog)}. Uncovered tactics: {', '.join(uncovered) or 'none'}.",
+        evidence=f"ATT&CK Enterprise lists far more techniques than RASD detects; the core grows one proven rule at a time, and the backlog "
+                 f"ranks the next {len(repo.backlog)}. Uncovered tactics: {', '.join(uncovered) or 'none'}. The candidates of RASD-Agent's "
+                 f"lane are not counted here.",
         action="Fund the lab run first (evidence turns SIEM-Ready into Validated), then the backlog in its order; "
                "docs/WRITING_DETECTIONS.md is the bar every new rule meets.", weight=0,
         data={"detections": n, "techniques": len(techs), "tactics": len(covered_tactics), "uncovered_tactics": uncovered}))

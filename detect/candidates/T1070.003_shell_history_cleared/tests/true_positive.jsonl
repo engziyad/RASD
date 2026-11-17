@@ -1,0 +1,6 @@
+{"_case": "bash history deleted", "EventID": 1, "Image": "/usr/bin/rm", "CommandLine": "rm -f /home/labuser/.bash_history", "ParentImage": "/usr/bin/bash", "User": "labuser", "CurrentDirectory": "/home/labuser"}
+{"_case": "root's bash history shredded", "EventID": 1, "Image": "/usr/bin/shred", "CommandLine": "shred -u /root/.bash_history", "ParentImage": "/usr/bin/bash", "User": "root", "CurrentDirectory": "/root"}
+{"_case": "zsh history truncated to nothing", "EventID": 1, "Image": "/usr/bin/truncate", "CommandLine": "truncate -s 0 /home/labuser/.zsh_history", "ParentImage": "/usr/bin/bash", "User": "labuser", "CurrentDirectory": "/home/labuser"}
+{"_case": "bash history linked to the null device", "EventID": 1, "Image": "/usr/bin/ln", "CommandLine": "ln -sf /dev/null /home/labuser/.bash_history", "ParentImage": "/usr/bin/bash", "User": "labuser", "CurrentDirectory": "/home/labuser"}
+{"_case": "history cleared by a one-line shell", "EventID": 1, "Image": "/usr/bin/bash", "CommandLine": "bash -c \"history -c && exit\"", "ParentImage": "/usr/sbin/sshd", "User": "labuser", "CurrentDirectory": "/home/labuser"}
+{"_case": "zsh history deleted", "EventID": 1, "Image": "/usr/bin/rm", "CommandLine": "rm /home/labuser/.zsh_history", "ParentImage": "/usr/bin/bash", "User": "labuser", "CurrentDirectory": "/home/labuser"}

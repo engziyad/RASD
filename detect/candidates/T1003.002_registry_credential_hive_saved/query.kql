@@ -1,0 +1,4 @@
+// SAM, SYSTEM or SECURITY Registry Hive Saved With Reg | d0959674-3e74-5d5f-ab83-692d74e06159
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\reg.exe" or OriginalFileName =~ @"reg.exe") and CommandLine matches regex @"(?i)\s(save|export)\s" and CommandLine matches regex @"(?i)(hklm|hkey_local_machine)\\(sam|system|security)(\s|""|$)")

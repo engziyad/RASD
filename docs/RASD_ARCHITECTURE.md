@@ -12,9 +12,9 @@
 ```text
 RASD
 ├── red/        Offensive validation: one test.yml per test, runners, telemetry exporter
-├── detect/     Detections, correlations, ATT&CK coverage, Engineering and Operational Scores, evasion baseline, risk conditions
+├── detect/     Detections, correlations, ATT&CK coverage, Engineering and Operational Scores, evasion baseline, risk conditions; candidates, the lane RASD-Agent grows
 ├── deceive/    RASD-Deceive: the decoy inventory, the deployment and health-check scripts, the decoy host's configuration
-├── agent/      RASD-Agent: the counsel page, the decisions people took on it; proposals and your environment's shape stay local
+├── agent/      RASD-Agent: the counsel page, the decisions people took on it, the ledger of the lane; proposals and your environment's shape stay local
 ├── dfir/       Playbooks, investigation queries, templates, models
 ├── intel/      CTI templates, technique and actor maps, worked analysis, outputs
 ├── purple/     Scenarios and the generated validation, evidence and latency matrices
@@ -62,6 +62,8 @@ flowchart TB
     LOGS & R & SL --> BP[blindpath.py] --> BPR[certificate of the unseen route · purple/blindpath results]
     BPM[blindpath model.yml] --> BP
     CH & TN & DC & SV --> AG[advise.py] --> ADV[agent/ADVICE.md · proposals · decisions]
+    ATK[attack_enterprise.json] & E & FZ & PV & PA --> GW[grow.py] --> CAND[detect/candidates · agent/growth.yml]
+    LM[language model] -. drafts .-> GW
 ```
 
 ### Engine and conversion
@@ -105,7 +107,8 @@ flowchart TB
 | `splunk_app.py` | Builds the `rasd` Splunk app (indexes, one scheduled alert per detection and per correlation, the alert export reports) and the forwarder apps |
 | `profiles.py` | Telemetry profiles (ECS, CIM, ASIM, Defender field names to rule field names): `--check` and the profiles README |
 | `advise.py` | RASD-Agent: ranked findings computed from every measurement above (the chain's facts, proofs, certificates, near misses, tunings measured on the corpus and against the behaviour specs, backlog, decoys, public data), for the analyst, the engineer, the purple team and the executive; `--logs` reads your own telemetry, `--explain` an alert, `--propose` drafts a change verified by the gates, `--apply` copies it in and runs them, `--decide` records your decision (the agent ranks accordingly and counts what got resolved), `--ask` answers on the facts; `--write` the page, `--check` its drift ([AGENT](AGENT.md)) |
-| `agent_model.py` | The optional language model behind `rasd advise`: any chat-completions server or a local Ollama, configured by environment variables; JSON answers only, redaction of shared events; everything it writes is gated before it is kept |
+| `grow.py` | `rasd grow`, RASD-Agent's lane: the ATT&CK Enterprise reference (`--sync`, from MITRE's release), the queue over every technique within reach of the logs RASD reads, a model's draft through every gate (form, engine, vocabulary, routing, evasion, exclusions, noise, novelty, parity), the proof computed from the mutants and the exact automata, the candidate folder and its page, the ledger, the retirement of a candidate that no longer passes, `--check` for CI and `--guard` for an unattended run ([GROW](GROW.md)) |
+| `agent_model.py` | The optional language model behind `rasd advise` and `rasd grow`: any chat-completions server or a local Ollama, configured by environment variables; JSON answers only, redaction of shared events; follows what a server accepts for the token limit and the temperature, asks a busy server again; everything it writes is gated before it is kept |
 
 ## CI pipeline
 
@@ -117,10 +120,12 @@ flowchart TB
    2. unit tests (engine, converter, every tool; the PowerShell tests run when `pwsh` is installed)
    3. detection tests, mutation tests
    4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), certify `--check` (every rule compiled exactly, both constructed events confirmed by the engine, every behaviour variant as its spec expects, pages current), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
-   5. tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), trace `--check` (the survivability model against the rules, the forwarder inputs and the engine; results page current), silence `--check` (the witnesses against the trace model, every cut's sample event against the engine; results page current), blindpath `--check` (every detection and every documented variant placed in the model, each witness routed to its rule and replayed through the engine, each pace exactly one under its threshold; results page current), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
-   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, chain (matrices, metrics, intel maps, facts blocks), the counsel page
+   5. tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), trace `--check` (the survivability model against the rules, the forwarder inputs and the engine; results page current), silence `--check` (the witnesses against the trace model, every cut's sample event against the engine; results page current), blindpath `--check` (every detection and every documented variant placed in the model, each witness routed to its rule and replayed through the engine, each pace exactly one under its threshold; results page current), grow `--check` (every candidate of RASD-Agent's lane through every gate again, each proof complete, the ledger and the lane's page current), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
+   6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, the lane's pages, chain (matrices, metrics, intel maps, facts blocks), the counsel page
    7. chain `--check`, advise `--check` (the counsel page current, the decisions file valid) and link check
 3. detection tests as JUnit, the PowerShell and shell parse checks of every red and deception script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
 4. **drift check**: any generated file that differs from what the sources produce fails the build
+
+`.github/workflows/agent-grow.yml` is the lane, unattended: on a schedule it reads the latest ATT&CK release, runs `rasd grow --run` with the configured model, then the build, the code checks and the whole of `rasd ci`, then `rasd grow --guard`, and commits the lane only when all of them pass. It is skipped until the repository variable `RASD_MODEL` is set ([GROW](GROW.md#turning-it-on)).
 
 A second job runs lint, unit tests, detection tests, mutations, rule proofs and parity on Python 3.10 (the oldest supported version) and 3.13. A third runs the same steps on Windows, where a code page on a pipe and CRLF from text mode would show; it reports without blocking a merge until its first green run.

@@ -51,6 +51,11 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
                          engineer, the purple team and the executive; --logs reads your own telemetry, --explain reads an
                          alert, --propose drafts a verified change, --decide records what you decided (the agent learns),
                          --ask answers a question; a language model is optional and everything it writes is gated
+              grow       RASD-Agent's own lane (detect/candidates): the whole ATT&CK matrix as a queue, each technique
+                         drafted by the configured model and kept only when every gate accepts it, with the missing
+                         tests computed; no person in the loop, and never counted with the core; --run drafts,
+                         --check proves every candidate again, --sync reads a new ATT&CK release, --guard holds an
+                         unattended run to the lane's own files
   all         ci         the full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check)
 
 Install the `rasd` command into a virtual environment with `pip install -e .` and run `rasd <command>`;
@@ -63,6 +68,9 @@ Examples
   rasd advise --logs my-export.jsonl --profile auto
   rasd advise --explain T1078.002 --event alert.json
   rasd advise --propose backlog.T1083
+  rasd grow
+  rasd grow --run --max 5
+  rasd grow --run --drafts my-drafts/
   rasd prove --filter T1218 --suggest
   rasd parity --filter T1558 -v
   rasd certify -v
@@ -115,15 +123,15 @@ COMMANDS = {
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
     "deceive": ["deceive.py"], "advise": ["advise.py"], "trace": ["survivability.py"], "silence": ["silence.py"],
-    "blindpath": ["blindpath.py"],
+    "blindpath": ["blindpath.py"], "grow": ["grow.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["chain.py"],
+         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["grow.py", "--write"], ["chain.py"],
          ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
-      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
+      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["grow.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
       ["datasets.py", "check"],
       *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
