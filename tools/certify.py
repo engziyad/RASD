@@ -1152,7 +1152,7 @@ class RulePair:
 
 def _git(args: Sequence[str]) -> tuple[int, str]:
     try:
-        p = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)  # noqa: S607
+        p = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False)  # noqa: S607
     except FileNotFoundError as e:
         raise SystemExit("certify --equiv needs git on PATH") from e
     return p.returncode, p.stdout

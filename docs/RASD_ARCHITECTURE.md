@@ -117,4 +117,4 @@ flowchart TB
 3. detection tests as JUnit, the PowerShell and shell parse checks of every red and deception script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
 4. **drift check**: any generated file that differs from what the sources produce fails the build
 
-A second job runs lint, unit tests, detection tests, mutations, rule proofs and parity on Python 3.10 (the oldest supported version) and 3.13.
+A second job runs lint, unit tests, detection tests, mutations, rule proofs and parity on Python 3.10 (the oldest supported version) and 3.13. A third runs the same steps on Windows, where a code page on a pipe and CRLF from text mode would show; it reports without blocking a merge until its first green run.

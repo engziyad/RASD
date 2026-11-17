@@ -258,7 +258,7 @@ def write_readme(check: bool = False) -> bool:
     if new == text:
         return True
     if not check:
-        path.write_text(new, encoding="utf-8")
+        path.write_text(new, encoding="utf-8", newline="\n")
     return not check
 
 

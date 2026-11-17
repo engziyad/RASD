@@ -37,7 +37,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, EVASION_BASELINE, GREEN, RED, RESET, YELLOW, load_detections
+from common import BOLD, DIM, EVASION_BASELINE, GREEN, RED, RESET, YELLOW, load_detections, write_output
 from sigma_engine import SigmaError, matches
 
 BASELINE = EVASION_BASELINE
@@ -320,13 +320,13 @@ def main() -> int:
           f"overall resistance {overall:.1f}%{RESET}" + (f"  ·  {RED}{new_total} new{RESET}" if new_total else ""))
 
     if args.json:
-        Path(args.json).write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        write_output(args.json, json.dumps(report, indent=2, ensure_ascii=False) + "\n")
     if args.update_baseline:
         BASELINE.parent.mkdir(exist_ok=True)
         data = {d: sorted(b["id"] for b in r["bypasses"]) for d, r in report.items() if r["bypasses"]}
         if args.filter:                       # keep untouched detections when filtering
             data = {**{k: v for k, v in baseline.items() if k not in report}, **data}
-        BASELINE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        BASELINE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
         print(f"[+] baseline updated ({sum(len(v) for v in data.values())} accepted bypasses)")
         return 0
     if args.check and new_total:

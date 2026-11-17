@@ -838,9 +838,9 @@ def main() -> int:
     data = compute(m)
     block = render(m, data)
     if args.json:
-        Path(args.json).write_text(json.dumps(as_json(data), indent=2) + "\n", encoding="utf-8")
+        Path(args.json).write_text(json.dumps(as_json(data), indent=2) + "\n", encoding="utf-8", newline="\n")
     if args.write:
-        README.write_text(with_block(README.read_text(encoding="utf-8"), block), encoding="utf-8")
+        README.write_text(with_block(README.read_text(encoding="utf-8"), block), encoding="utf-8", newline="\n")
         print(f"wrote {README.relative_to(ROOT)}")
         return 0
     if args.check:

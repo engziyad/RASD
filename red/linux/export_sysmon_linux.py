@@ -107,7 +107,7 @@ def main() -> int:
             return 2
         source, handle = str(path), path.open(encoding="utf-8", errors="replace")
     count = 0
-    with handle, open(args.out, "w", encoding="utf-8") as out:
+    with handle, open(args.out, "w", encoding="utf-8", newline="\n") as out:
         for ev in read_events(handle, since, set(args.event_id)):
             out.write(json.dumps(ev, ensure_ascii=False) + "\n")
             count += 1

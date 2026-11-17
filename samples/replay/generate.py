@@ -164,13 +164,13 @@ def main() -> None:
     events += known_false_positives()
     events += ordinary_failures()
     events.sort(key=lambda e: e["UtcTime"])
-    (OUT / "lab-day.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
-    with (OUT / "assets.csv").open("w", encoding="utf-8") as fh:
+    (OUT / "lab-day.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8", newline="\n")
+    with (OUT / "assets.csv").open("w", encoding="utf-8", newline="\n") as fh:
         fh.write("ip,host,role\n")
         for h, ip in IPS.items():
             fh.write(f"{ip},{h},{'server' if h.startswith('SRV') else 'workstation'}\n")
         fh.write(f"10.20.30.2,{DC},domain-controller\n")
-    with (OUT / "users.csv").open("w", encoding="utf-8") as fh:
+    with (OUT / "users.csv").open("w", encoding="utf-8", newline="\n") as fh:
         fh.write("user,privileged\n")
         for u in USERS:
             fh.write(f"{u},false\n")

@@ -1383,7 +1383,7 @@ def main() -> int:
     else:
         for p, body in files.items():
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(body, encoding="utf-8")
+            p.write_text(body, encoding="utf-8", newline="\n")
     if errs:
         print(f"\n{RED}{len(errs)} chain problem(s){RESET}")
         for e in errs:

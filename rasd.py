@@ -85,6 +85,10 @@ import sys
 import time
 from pathlib import Path
 
+for _stream in (sys.stdout, sys.stderr):    # UTF-8 on every platform: a Windows pipe takes the ANSI code page
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
 ROOT = Path(__file__).resolve().parent
 TOOLS = ROOT / "tools"
 PY = sys.executable
@@ -115,7 +119,7 @@ def run(argv: list[str], cwd: Path = ROOT) -> int:
     from the folder it was typed in, so the paths it is given mean what they mean there (the
     tools find the repository's own files from their location)."""
     cmd = [PY, *argv] if argv[0] == "-m" else [PY, str(TOOLS / argv[0]), *argv[1:]]
-    return subprocess.call(cmd, cwd=cwd, env={**os.environ, "NO_BANNER": "1"})
+    return subprocess.call(cmd, cwd=cwd, env={"PYTHONUTF8": "1", **os.environ, "NO_BANNER": "1"})
 
 
 def steps(seq: list[list[str]], title: str) -> int:

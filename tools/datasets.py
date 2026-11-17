@@ -782,12 +782,23 @@ def text_records(fmt: str, text: str) -> Iterator[Record]:
             yield n, _sha(line.strip()), json_event(line)
 
 
+def member_info(zf: zipfile.ZipFile, name: str) -> zipfile.ZipInfo:
+    """The member under the name the catalog gives it. A zip written on Windows can name its members with
+    backslashes: Python keeps such a name as it is on POSIX and reads it with forward slashes on Windows."""
+    for candidate in dict.fromkeys((name, name.replace("\\", "/"))):
+        try:
+            return zf.getinfo(candidate)
+        except KeyError:
+            continue
+    raise KeyError(name)
+
+
 def zip_records(ds: Dataset, path: Path) -> Iterator[Record]:
     """The member's records, read line by line without extracting it; its SHA-256 is checked at the end.
     An EVTX member is checked first, then read from a temporary copy (the EVTX reader needs a file)."""
     with zipfile.ZipFile(path) as zf:
         try:
-            info = zf.getinfo(str(ds.member))
+            info = member_info(zf, str(ds.member))
         except KeyError as e:
             raise RunError(f"{ds.id}: {ds.member} is not in {Path(ds.path).name}") from e
         if info.file_size > MAX_DOWNLOAD * 2:
@@ -918,7 +929,7 @@ def git_fetch(src: Source, wanted: list[Dataset], cache: Path) -> None:
     if not git:
         raise RunError("git is not installed")
     work = cache / "_git" / src.id
-    run = lambda *a: subprocess.run([git, "-C", str(work), *a], check=True, capture_output=True, text=True,
+    run = lambda *a: subprocess.run([git, "-C", str(work), *a], check=True, capture_output=True, text=True, encoding="utf-8",
                                     env={**os.environ, "GIT_LFS_SKIP_SMUDGE": "1", "GIT_TERMINAL_PROMPT": "0"})
     if not (work / ".git").exists():
         work.mkdir(parents=True, exist_ok=True)
@@ -1534,13 +1545,13 @@ def _cases(ds: Dataset, hits: list[Hit], plan: Plan, case_dir: Path) -> None:
 def write_results(cat: Catalog, results: dict[str, dict], extracts: dict[str, list[dict]]) -> None:
     doc = {"format": 1, "rasd": VERSION, "fingerprints": fingerprints(cat),
            "datasets": {ds.id: results[ds.id] for ds in cat.datasets}}
-    RESULTS.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    RESULTS.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     wanted = set()
     for ds_id, rows in extracts.items():
         path = EXTRACTS / f"{ds_id}.jsonl"
         wanted.add(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+        path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8", newline="\n")
     for old in EXTRACTS.rglob("*.jsonl") if EXTRACTS.exists() else []:
         if old not in wanted:
             old.unlink()
@@ -2284,7 +2295,7 @@ def render(cat: Catalog | None = None, res: dict | None = None, check_only: bool
         if not path.exists() or path.read_text(encoding="utf-8") != text:
             n += 1
             if not check_only:
-                path.write_text(text, encoding="utf-8")
+                path.write_text(text, encoding="utf-8", newline="\n")
     return n
 
 

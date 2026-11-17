@@ -101,6 +101,27 @@ GREEN, RED, YELLOW, DIM, BOLD, RESET = c("32"), c("31"), c("33"), c("2"), c("1")
 GOLD, SAGE, IVORY = c("38;5;180"), c("38;5;108"), c("38;5;188")
 
 
+def utf8_console() -> None:
+    """Print UTF-8 whatever the platform's code page is. On Windows a pipe or a redirected file takes
+    the ANSI code page, which has no check mark or arrow, and the first one printed ends the tool."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+utf8_console()
+
+
+def write_output(path: str | Path, text: str) -> Path:
+    """Write a report where the user asked for it: the folder is created when it is missing, and the
+    file is UTF-8 with LF line ends on every platform."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8", newline="\n")
+    return target
+
+
 def read_text(path: Path) -> str:
     """A text file as Windows tools save it: UTF-8 with or without a BOM, or UTF-16 with a BOM."""
     data = path.read_bytes()

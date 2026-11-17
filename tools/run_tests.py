@@ -90,7 +90,7 @@ def write_junit(results: list[dict], path: str) -> None:
             lines.append(f'    <failure message={quoteattr(msg)}>{escape(msg)}</failure>')
         lines.append("  </testcase>")
     lines.append("</testsuite>")
-    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_step_summary(results: list[dict]) -> None:
@@ -109,7 +109,7 @@ def write_step_summary(results: list[dict]) -> None:
         tnt = sum(1 for r in rs if r["kind"] == "true_negative")
         ok = "✅" if all(r["passed"] for r in rs) else "❌"
         rows.append(f"| `{name}` | {tp}/{tpt} | {tn}/{tnt} | {ok} |")
-    with open(target, "a", encoding="utf-8") as fh:
+    with open(target, "a", encoding="utf-8", newline="\n") as fh:
         fh.write("## Detection unit tests\n\n" + "\n".join(rows) + "\n")
 
 
