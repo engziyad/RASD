@@ -1,0 +1,248 @@
+# RASD-Silence model: when an alert that was not raised is evidence that nothing happened.
+#
+# A rule that stays quiet proves nothing by itself: the sensor may have been off, a record may be missing,
+# the log may have been emptied. This file says what has to be seen in an export before RASD treats the
+# quiet of a detection on a host as evidence, and which records end that evidence.
+#
+#   witnesses  for each artifact a rule reads (dfir/trace/model.yml), what proves the sensor was recording it
+#   cuts       the records that say a sensor stopped, started, changed or was emptied
+#   down       the pairs of records between which a host was off or asleep
+#
+# tools/silence.py reads an export with it: `rasd silence <export>`. `rasd silence --check` holds this file
+# in step with dfir/trace/model.yml, the rules and the engine: every artifact a detection reads has a
+# witness, every cut that names a detection carries an event that fires it, and a cut that names none
+# carries an event that fires no rule.
+#
+# Each entry carries its basis: `vendor` is behaviour the vendor documents, `practitioner` is behaviour the
+# DFIR community reports and RASD has not yet reproduced. Nothing here is lab evidence.
+version: 1
+
+# The sentence every certificate prints. The verdicts are relative to it.
+claim: >-
+  Between two records that show a sensor recording, with every record between them present and none saying the
+  sensor stopped, changed or was emptied, an alert that was not raised is a behaviour that did not happen on
+  that host, for the behaviours the rule is proven to catch
+
+# The record number Windows gives every event of a channel. It is what proves that nothing is missing.
+sequence:
+  fields: [EventRecordID, RecordNumber, EventRecordId, RecordId, record_id, record_number]
+  basis: vendor
+  source: https://learn.microsoft.com/en-us/windows/win32/wes/eventschema-eventrecordid-systempropertiestype-element
+  note: One number per record and per channel, in the order the records were written
+
+# What proves a sensor was recording the record a rule reads.
+#   proof: channel   the record is written whenever the behaviour happens, whatever the configuration says:
+#                    any record of the channel shows the writer was up
+#   proof: event     the record is written only while a setting asks for it (a Sysmon configuration, an audit
+#                    subcategory, a SACL): only a record of the same kind shows the setting was on
+# `enable` is what to turn on when the proof is missing.
+witnesses:
+  sysmon_1:
+    proof: event
+    why: Sysmon writes a process creation only for the processes its configuration includes
+    enable: Install Sysmon with a configuration that records process creation, and forward its channel
+    basis: vendor
+  sysmon_10:
+    proof: event
+    why: Sysmon writes a process access only when its configuration asks for it; a default installation writes none
+    enable: Add a ProcessAccess rule for lsass.exe to the Sysmon configuration
+    basis: vendor
+  sysmon_13:
+    proof: event
+    why: Sysmon writes a registry value change only for the keys its configuration includes
+    enable: Add a RegistryEvent rule for the Run keys to the Sysmon configuration
+    basis: vendor
+  system_7045:
+    proof: channel
+    why: The Service Control Manager writes 7045 for every service it installs; no audit setting governs it
+    enable: Forward the System channel
+    basis: practitioner
+  system_104:
+    proof: channel
+    why: The Eventlog provider writes 104 for every channel that is cleared, the System log itself included
+    enable: Forward the System channel
+    basis: vendor
+  security_1102:
+    proof: channel
+    why: Written whenever the Security log is cleared, whatever the audit policy says
+    enable: Forward the Security channel
+    basis: vendor
+  dc_4769:
+    proof: event
+    why: Written only while Audit Kerberos Service Ticket Operations is on
+    enable: Turn on Audit Kerberos Service Ticket Operations (success) on the domain controllers and forward their Security channel
+    basis: vendor
+  dc_auth:
+    proof: event
+    why: Written only while the Kerberos Authentication Service and Credential Validation subcategories are audited
+    enable: Turn on Audit Kerberos Authentication Service and Audit Credential Validation (success and failure) on the domain controllers
+    basis: vendor
+  server_4663:
+    proof: event
+    why: Written only for an object whose SACL asks for it, while Audit File System is on
+    enable: Turn on Audit File System on the file server; the quiet of an untouched decoy is proven only by another audited object that is read on a schedule
+    basis: vendor
+  canary_record:
+    proof: event
+    why: The decoy host writes a record only for what touches it; a record shows the decoy and its shipping were up
+    enable: Ship the decoy host's log, and touch the decoy on a schedule from a known address so its quiet can be told from its absence
+    basis: vendor
+
+# Records that end the evidence. `record` is how the record is recognised; `cuts` is the channels it ends
+# (a list, `named` for the channel the record names in Channel_Cleared, or `all` for every channel of the host).
+#   edge: stop     the sensor is off after this record
+#   edge: start    the sensor was off before this record. `answers` names the stops it ends: a stop and the start
+#                  that answers it are one outage, and nothing between the two shows the sensor recording. A stop
+#                  with no start to answer it speaks of the pause that follows it; a start that answers none, of
+#                  the pause before it
+#   edge: change   the sensor's settings changed here: an event-proof witness needs a new proof after it
+#   edge: clear    the channel was emptied here: what the records before it prove depends on whether any is missing
+# `erasures` names the anti-forensic actions of dfir/trace/model.yml that leave the record. Every cut carries
+# a sample event the engine replays in CI. A name is written to be read inside a sentence.
+cuts:
+  - id: security_cleared
+    name: the Security log was cleared
+    record: {Channel: Security, EventID: 1102}
+    cuts: [Security]
+    edge: clear
+    detection: T1685.005_security_log_cleared
+    erasures: [clear_security_log]
+    event: {EventID: 1102, Channel: Security, Provider_Name: Microsoft-Windows-Eventlog, SubjectUserName: admin}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-1102
+
+  - id: channel_cleared
+    name: an event log was cleared
+    record: {Channel: System, EventID: 104, Provider_Name: Microsoft-Windows-Eventlog}
+    cuts: named
+    edge: clear
+    detection: T1685.005_system_log_cleared
+    erasures: [clear_system_log, clear_sysmon_log, clear_powershell_logs, clear_operational_logs]
+    event: {EventID: 104, Channel: System, Provider_Name: Microsoft-Windows-Eventlog, Channel_Cleared: Microsoft-Windows-Sysmon/Operational, SubjectUserName: admin}
+    basis: vendor
+    source: https://docs.velociraptor.app/artifact_references/pages/windows.eventlogs.cleared
+
+  - id: audit_policy_changed
+    name: the audit policy changed
+    record: {Channel: Security, EventID: 4719}
+    cuts: [Security]
+    edge: change
+    erasures: [clear_audit_policy]
+    event: {EventID: 4719, Channel: Security, SubjectUserName: admin, AuditPolicyChanges: '%%8448'}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4719
+
+  - id: security_logging_stopped
+    name: the event logging service shut down
+    record: {Channel: Security, EventID: 1100}
+    cuts: [Security]
+    edge: stop
+    event: {EventID: 1100, Channel: Security, Provider_Name: Microsoft-Windows-Eventlog}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-1100
+
+  - id: security_log_full
+    name: the Security log was full
+    record: {Channel: Security, EventID: 1104}
+    cuts: [Security]
+    edge: stop
+    event: {EventID: 1104, Channel: Security, Provider_Name: Microsoft-Windows-Eventlog}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-1104
+
+  - id: sysmon_state_stopped
+    name: the Sysmon service stopped
+    record: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 4, State: Stopped}
+    cuts: [Microsoft-Windows-Sysmon/Operational]
+    edge: stop
+    erasures: [stop_sysmon]
+    event: {EventID: 4, Channel: Microsoft-Windows-Sysmon/Operational, State: Stopped}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+
+  - id: sysmon_state_started
+    name: the Sysmon service started
+    record: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 4, State: Started}
+    cuts: [Microsoft-Windows-Sysmon/Operational]
+    edge: start
+    answers: [sysmon_state_stopped]
+    event: {EventID: 4, Channel: Microsoft-Windows-Sysmon/Operational, State: Started}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+
+  - id: sysmon_config_changed
+    name: the Sysmon configuration changed
+    record: {Channel: Microsoft-Windows-Sysmon/Operational, EventID: 16}
+    cuts: [Microsoft-Windows-Sysmon/Operational]
+    edge: change
+    event: {EventID: 16, Channel: Microsoft-Windows-Sysmon/Operational, Configuration: sysmonconfig.xml}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+
+  - id: event_log_stopped
+    name: the Event Log service stopped
+    record: {Channel: System, EventID: 6006, Provider_Name: EventLog}
+    cuts: all
+    edge: stop
+    event: {EventID: 6006, Channel: System, Provider_Name: EventLog}
+    basis: practitioner
+
+  - id: event_log_started
+    name: the Event Log service started
+    record: {Channel: System, EventID: 6005, Provider_Name: EventLog}
+    cuts: all
+    edge: start
+    answers: [event_log_stopped, security_logging_stopped]
+    event: {EventID: 6005, Channel: System, Provider_Name: EventLog}
+    basis: practitioner
+
+  - id: unexpected_shutdown
+    name: the previous shutdown was unexpected
+    record: {Channel: System, EventID: 6008, Provider_Name: EventLog}
+    cuts: all
+    edge: start
+    event: {EventID: 6008, Channel: System, Provider_Name: EventLog}
+    basis: practitioner
+    note: Written at the next start; what the host recorded last before it is where its evidence ends
+
+  - id: unclean_restart
+    name: the system restarted without shutting down cleanly
+    record: {Channel: System, EventID: 41, Provider_Name: Microsoft-Windows-Kernel-Power}
+    cuts: all
+    edge: start
+    event: {EventID: 41, Channel: System, Provider_Name: Microsoft-Windows-Kernel-Power}
+    basis: vendor
+    source: https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/windows-kernel-event-id-41-error
+
+# Pairs of records between which the host was off or asleep: each `from` record with the next `to` record
+# of its pair. A stretch without records that such pairs cover, with no record from the host or naming it in
+# between, is not counted for or against any detection. `lag` is how many seconds of the stretch may lie
+# outside a pair at each of its ends (20 when it is not given).
+down:
+  - id: shutdown
+    name: shut down
+    from: {Channel: System, EventID: 13, Provider_Name: Microsoft-Windows-Kernel-General}
+    to: {Channel: System, EventID: 12, Provider_Name: Microsoft-Windows-Kernel-General}
+    lag: 120
+    basis: practitioner
+    note: >-
+      The Event Log service stops before the kernel does and starts after it, so the stretch without records is
+      longer than the shutdown at both ends: 5 s and 14 s on the Windows 11 host this was measured on, more on a
+      slower one. The kernel's records of those seconds are kept and written after the start, with their own clock
+  - id: sleep
+    name: asleep
+    from: {Channel: System, EventID: 42, Provider_Name: Microsoft-Windows-Kernel-Power}
+    to: {Channel: System, EventID: 1, Provider_Name: Microsoft-Windows-Power-Troubleshooter}
+    basis: practitioner
+    note: >-
+      Kernel-Power 107 (resumed from sleep) is not used: Windows stamps it with the clock of the moment the host fell
+      asleep. The Power-Troubleshooter record is written seconds after the wake, with the new clock
+
+# What a certificate does not say. Printed with every one.
+limits:
+  - A verdict holds for the behaviours the rule is proven to catch (rasd certify). A documented variant the rule misses, and a tool nobody has documented, can pass a quiet rule; the certificate lists the known ones beside each detection
+  - The anti-forensic actions considered are those of dfir/trace/model.yml. Filtering events inside the logging service's memory and kernel tampering leave none of the records this file reads
+  - Record numbers show that no record is missing between two others. They do not show that a log rewritten with its numbers made whole again is the log the host wrote. A copy forwarded as it was written is out of an intruder's reach; a log read from the host itself is not
+  - A sensor's settings are read from what it wrote. A Sysmon configuration that excludes one program, or a SACL missing from one object, is not visible in the records of the others
+  - A host that recorded a shutdown or a sleep and then the next start or wake, with no record from it or about it in between, is taken as off, with up to two minutes at each end of a shutdown in which the log service was down and the kernel was not. A forged shutdown record would hide a stretch that way, and forging records is not among the catalogued actions
+  - With whole record numbers a long quiet is not held against a channel, as nothing was taken out and no record says the sensor stopped. Without record numbers the quiet is judged against the channel's own rhythm in the same export, and a sensor muted for less than the gaps the channel ordinarily has cannot be told from one that had nothing to write

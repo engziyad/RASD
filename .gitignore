@@ -23,3 +23,7 @@ lab-*.zip.sha256
 datasets/cache/
 agent/proposals/
 agent/environment.yml
+rasd-silence-*.md
+rasd-silence-*.html
+rasd-blindpath-*.md
+rasd-blindpath-*.html

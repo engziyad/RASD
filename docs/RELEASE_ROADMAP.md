@@ -1,6 +1,24 @@
 # Release Roadmap
 
-## v1.3: RASD-Trace (this release)
+## v1.5: RASD-Blindpath (this release)
+| Area | Delivered |
+|---|---|
+| Blindpath | RASD-Blindpath ([BLINDPATH](BLINDPATH.md)): `purple/blindpath/model.yml` names the stages of an intrusion, the legs every route walks, each act with the rules that watch it, who decides every documented variant, and the decoys as tripwires. `rasd blindpath <export>` walks every route from an origin to a target and gives each leg on each host a verdict (open, held, held on rules with no behaviour spec), each route its own (unseen end to end, or seen at its first held leg), and the plan: the fewest changes after which every route is seen by each leg in turn. `--certificate`, `--html`, `--json` and `--strict`; on Windows, with no export, the walk on this host alone |
+| Proof | A behaviour is unseen only when no observer has a sensor in the export (the verdict of RASD-Silence) or when a sequence of events is replayed through every rule and correlation and alerts none that records on that host. The events are the bypass variants `rasd certify` already proves and the true positives of the correlations paced one under their thresholds; `--check` holds each pace exact and each witness inside its variant. Observers that read different records of one act are never passed by two separate variants |
+| Completeness | Every detection is the observer of a step or a tripwire, and every documented variant is given to the intruder or to the environment: a rule or a variant added without a place in the model fails the build |
+| Plan | The smallest set of changes is found by exact search, applied to the model and walked again; the tests compare it with every smaller set on the sample fleet and check that a change never makes anything less seen. Each change is also ranked alone by the legs it holds and the routes it lets be seen |
+| Operation | `--baseline` compares an answer with an earlier one and exits 1 when a route or a leg got worse, for a pipeline that changes rules or collectors; `--witnesses` writes the witness events as JSONL to replay through a deployed SIEM |
+| Scope | The behaviours this rule set claims to detect, for an intruder who is an administrator on every host it acts on, on the hosts of one export. The witnesses are documented behaviour; running each on a lab host is part of v2.0 |
+
+## v1.4: RASD-Silence
+| Area | Delivered |
+|---|---|
+| Silence | RASD-Silence ([SILENCE](SILENCE.md)): `dfir/silence/model.yml` names, for each artifact a rule reads, what proves the sensor was recording it, the records that end that proof and the records between which a host was off. `rasd silence <export>` gives every detection on every host one of three verdicts (fired, attested, unattested) with its share of the watched time and its grade (record sequence, or rhythm when the export has no record numbers), lists every break in the record (numbers missing, a channel cleared, a logging service started with no stop before it, a host another host kept recording while its own channels said nothing) and writes a certificate with the SHA-256 of every input and what it does not say. With no export, on Windows, it reads the host's own event logs |
+| Proof | Every cut carries a sample event the engine replays in CI: a cut that names a detection must fire it and any other must fire none. Every artifact a detection reads has a witness, and every cut names anti-forensic actions the trace model knows. The sample fleet (`samples/silence`) holds one host per way a quiet rule stops being evidence, and its results page is drift-checked |
+| Windows | The record order, the wake record and the placing of stop and start records follow what a Windows 11 host writes, each held by a test. Every tool prints UTF-8, writes LF and reads git as UTF-8 on every platform; the pipeline passes on Windows, and a Windows job reports in CI |
+| Scope | Windows event logs, from the position RASD-Trace assumes. Entries are documented behaviour with their basis; the lab runs that reproduce each cut are part of v2.0 |
+
+## v1.3: RASD-Trace
 | Area | Delivered |
 |---|---|
 | Trace | RASD-Trace ([TRACE](TRACE.md)): `dfir/trace/model.yml` names the stores evidence lives in, the artifacts read from them with the questions each answers, and the anti-forensic actions RASD knows with what each destroys, blinds and leaves; `dfir/trace/footprints.yml` names the artifacts each detection's technique writes. `rasd trace` searches every sequence of those actions around the technique and gives each detection and question a verdict (out of reach, evident, exposed with the cheapest quiet sequence), ranks the unread traces into the next rules to write, and measures the depth of the evidence a host holds on its own. `rasd trace <detection> --lost STORES` lists what an investigation can still prove |
@@ -52,6 +70,8 @@ The aim of v2.0 is that every covered detection reaches the **Reference** maturi
 | Actor map re-checked | `intel/mappings/actors.yml` carries a `last_checked` date (done 2026-10-13) |
 | Correlation evidence | The password spray, API probing and object-ID enumeration lab runs turned into `evidence.md` for each correlation |
 | Trace evidence | Each anti-forensic action of `dfir/trace/model.yml` run in the lab after a red test, its traces exported and compared with the model; the practitioner entries confirmed or corrected; the Linux and web detections given footprints |
+| Silence evidence | Each cut of `dfir/silence/model.yml` produced in the lab after a red test (a channel cleared, the logging service stopped and started, a clean and an unclean shutdown, a sleep), the exported records compared with the model, and the practitioner entries confirmed or corrected; a SIEM export of the same run read beside the host's own log |
+| Blindpath evidence | Each witness of `rasd blindpath` run on a lab host after its red test (the variant typed as documented, the paced roast and the paced spray), the export replayed, and the verdict of the walk compared with what the SIEM raised; the rules with no behaviour spec given one, so that no hold rests on tests alone |
 | Tamper rules | The rules RASD-Trace ranks first: a host whose channels go quiet in the SIEM, the Sysmon service stopped (Sysmon 4), the Sysmon driver unloaded |
 | Deception evidence | The three deception red tests run against deployed decoys, their exports turned into `evidence.md` for the four deception detections, and the first operational deception metrics (time to first touch, decoys touched per run) recorded from them rather than estimated |
 | AD reconnaissance | Decoy-account attribute-read rule (4662, a SACL on the honey accounts) validated by the `ldap_enumeration` test: the first planned RASD-Deceive class (`rasd deceive --gaps`) |

@@ -9,6 +9,7 @@ The bridge that connects everything: proof that offensive behaviour produces tel
 | [`attack_to_detection_map.md`](attack_to_detection_map.md) | Technique → red test → telemetry → detections → queries → playbook (generated) |
 | [`evidence_matrix.md`](evidence_matrix.md) | Operational evidence per detection (generated) |
 | [`detection_latency.md`](detection_latency.md) | Measured telemetry and SIEM latency per detection (generated) |
+| [`blindpath/`](blindpath/) | RASD-Blindpath: the stages and legs of a route, each act with the rules that watch it, and for the sample fleet every route an intruder can walk through the covered behaviours with no alert, with the proof of each unseen step and the fewest changes that end it (`rasd blindpath`) |
 
 ## The loop
 

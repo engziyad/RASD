@@ -2752,6 +2752,8 @@ class Portability(unittest.TestCase):
         for codepage in ("cp1252", "cp1256"):
             for argv in ([tools / "sigma_support.py", "--check"], [tools / "explain.py", "T1218"],
                          [tools / "replay.py", self.LAB], [tools / "overlap.py"], [ROOT / "red" / "run_red.py", "--list"],
+                         [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl"],
+                         [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl"],
                          [ROOT / "rasd.py", "explain", "T1059.001"]):
                 out = self.run_tool(*argv, codepage=codepage)
                 label = f"{Path(argv[0]).name} under {codepage}"
@@ -2773,6 +2775,18 @@ class Portability(unittest.TestCase):
             "stream/s.jsonl": [tools / "benchmark.py", "--generate", "500", "--stream", "--repeat", "1",
                                "--write-sample", tmp / "stream" / "s.jsonl"],
             "advise/a.json": [tools / "advise.py", "--for", "executive", "--json", tmp / "advise" / "a.json"],
+            "silence/s.json": [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--json", tmp / "silence" / "s.json"],
+            "silence/c.md": [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--certificate",
+                             tmp / "silence" / "c.md"],
+            "silence/p.html": [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--html", tmp / "silence" / "p.html"],
+            "blindpath/b.json": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--json",
+                                 tmp / "blindpath" / "b.json"],
+            "blindpath/c.md": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--certificate",
+                               tmp / "blindpath" / "c.md"],
+            "blindpath/p.html": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--html",
+                                 tmp / "blindpath" / "p.html"],
+            "blindpath/w.jsonl": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--witnesses",
+                                  tmp / "blindpath" / "w.jsonl"],
         }
         for name, argv in runs.items():
             out = self.run_tool(*argv)
@@ -2786,6 +2800,7 @@ class Portability(unittest.TestCase):
         call = re.compile(r"\.write_text\(|(?<![\w.])open\(|\.open\(")
         missing = []
         scripts = [*sorted((ROOT / "tools").glob("*.py")), ROOT / "rasd.py", ROOT / "samples" / "replay" / "generate.py",
+                   ROOT / "samples" / "silence" / "generate.py",
                    *sorted((ROOT / "red").rglob("*.py"))]
         for path in scripts:
             text = path.read_text(encoding="utf-8")

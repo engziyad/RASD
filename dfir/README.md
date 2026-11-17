@@ -9,6 +9,7 @@ RASD-DFIR turns an alert into an investigation: what to check in the first fifte
 | [`templates/`](templates/) | Incident summary, evidence table, timeline, containment plan, closure note |
 | [`models/`](models/) | Investigation flow and the timeline model every investigation follows |
 | [`trace/`](trace/) | RASD-Trace: the artifacts each technique writes, the anti-forensic actions that remove them, and for every detection whether its evidence is out of reach, evident or exposed (`rasd trace`) |
+| [`silence/`](silence/) | RASD-Silence: what proves each sensor was recording, the records that end that proof, and for every detection on every host of an export whether its quiet is evidence that nothing happened (`rasd silence`) |
 
 Each playbook starts with a small front matter block (`techniques`, `detections`, `red_tests`) that `tools/chain.py` reads to build the attack-to-defense matrix; CI fails when a playbook has no evidence table or points at a detection or test that does not exist.
 
