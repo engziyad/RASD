@@ -68,6 +68,7 @@ from correlation import Correlation, load_correlations
 from deceive import check as deceive_check, load_inventory as load_decoys
 from survivability import closure_summary
 from silence import sample_summary
+from blindpath import sample_summary as blindpath_summary
 from datasets import load_catalog as load_dataset_catalog, load_results as load_dataset_results, summary as public_summary
 from nearmiss import analyse as near_misses, unpinned
 from evidence import OPERATIONAL_WEIGHTS
@@ -702,6 +703,7 @@ def render_metrics(repo: Repo) -> str:
         ("Deception (deceive)", deceive_line("../")),
         ("Evidence survivability (trace)", trace_line("../")),
         ("Evidence of absence (silence)", silence_line("../")),
+        ("The unseen route (blindpath)", blindpath_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
         ("Hunting queries", f"{hunts} (KQL + SPL)"),
@@ -788,6 +790,18 @@ def silence_line(root: str) -> str:
             f"({s['sequence']} by record sequence, {s['rhythm']} by rhythm), {s['fired']} fired, {s['unattested']} unattested · "
             f"{s['breaks']} breaks in the record found · documented behaviour pending lab runs "
             f"([SILENCE]({root}docs/SILENCE.md), [results]({root}dfir/silence/))")
+
+
+def blindpath_line(root: str) -> str:
+    """RASD-Blindpath, counted on the sample fleet; `root` is the path to the repository root from the page."""
+    s = blindpath_summary()
+    plan = (f"{s['plan']} change{'' if s['plan'] == 1 else 's'} {'is' if s['plan'] == 1 else 'are'} the fewest after which every "
+            f"route is seen (by leg {s['plan_leg']})" if s["plan"] is not None else "no change the model knows lets every route be seen")
+    tests = f" ({s['routes_seen_on_tests']} of them on rules with no behaviour spec)" if s["routes_seen_on_tests"] else ""
+    return (f"{s['steps']} behaviours over {s['stages']} stages, {s['ways']} ways around replayed through the engine "
+            f"({s['ways_quiet']} raise no alert) · on the sample fleet ({s['hosts']} hosts): {s['routes']} routes from an origin to a "
+            f"target, {s['routes_unseen']} unseen end to end and {s['routes_seen']} seen on the way{tests} · {plan} · documented behaviour "
+            f"pending lab runs ([BLINDPATH]({root}docs/BLINDPATH.md), [results]({root}purple/blindpath/))")
 
 
 def equiv_line(docs: str) -> str:
@@ -1070,6 +1084,7 @@ def render_readme_metrics(repo: Repo) -> str:
         ("Deception", deceive_line("")),
         ("Evidence survivability", trace_line("")),
         ("Evidence of absence", silence_line("")),
+        ("The unseen route", blindpath_line("")),
         ("Near misses", near_summary(repo)),
         ("Public datasets", public_summary_line(repo, "docs/")),
         ("Engineering Score", f"{eng:.0f}/100"),
@@ -1167,6 +1182,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Deception", deceive_line("../")),                 # both executive pages live one level below the root
         ("Evidence survivability", trace_line("../")),
         ("Evidence of absence", silence_line("../")),
+        ("The unseen route", blindpath_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "

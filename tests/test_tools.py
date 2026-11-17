@@ -2753,6 +2753,7 @@ class Portability(unittest.TestCase):
             for argv in ([tools / "sigma_support.py", "--check"], [tools / "explain.py", "T1218"],
                          [tools / "replay.py", self.LAB], [tools / "overlap.py"], [ROOT / "red" / "run_red.py", "--list"],
                          [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl"],
+                         [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl"],
                          [ROOT / "rasd.py", "explain", "T1059.001"]):
                 out = self.run_tool(*argv, codepage=codepage)
                 label = f"{Path(argv[0]).name} under {codepage}"
@@ -2778,6 +2779,14 @@ class Portability(unittest.TestCase):
             "silence/c.md": [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--certificate",
                              tmp / "silence" / "c.md"],
             "silence/p.html": [tools / "silence.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--html", tmp / "silence" / "p.html"],
+            "blindpath/b.json": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--json",
+                                 tmp / "blindpath" / "b.json"],
+            "blindpath/c.md": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--certificate",
+                               tmp / "blindpath" / "c.md"],
+            "blindpath/p.html": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--html",
+                                 tmp / "blindpath" / "p.html"],
+            "blindpath/w.jsonl": [tools / "blindpath.py", ROOT / "samples" / "silence" / "fleet.jsonl", "--witnesses",
+                                  tmp / "blindpath" / "w.jsonl"],
         }
         for name, argv in runs.items():
             out = self.run_tool(*argv)

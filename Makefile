@@ -1,4 +1,4 @@
-.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red trace silence chain links score replay new clean
+.PHONY: all ci build lint unit codecheck test mutate fuzz prove parity certify correlate nearmiss tune red trace silence blindpath chain links score replay new clean
 
 PY ?= python3
 RASD = $(PY) rasd.py
@@ -56,6 +56,9 @@ trace:           ## Evidence survivability: what can be erased, at what cost, an
 
 silence:         ## Evidence of absence on the sample fleet: is each rule's quiet evidence that nothing happened
 	$(RASD) silence samples/silence/fleet.jsonl --assets samples/silence/assets.csv
+
+blindpath:       ## The route through the green cells on the sample fleet: what an intruder walks with no alert, and the plan
+	$(RASD) blindpath samples/silence/fleet.jsonl --assets samples/silence/assets.csv
 
 chain:           ## 20-point attack-to-defense map, maturity, matrices, metrics
 	$(RASD) chain

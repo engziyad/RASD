@@ -35,6 +35,10 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               silence    RASD-Silence: for every detection and host of an export, is its quiet evidence that nothing
                          happened (fired / attested / unattested), and every break in the record; with no export, on
                          Windows, this host's own logs; --certificate writes the certificate
+              blindpath  RASD-Blindpath: from each origin to each target of an export, can every leg be walked through
+                         behaviours the rules claim to detect with no alert; every unseen step proven by a witness
+                         the engine replays or by a sensor the export does not hold, and the fewest changes that
+                         end it; with no export, on Windows, this host's own logs
               replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines,
                          --case-dir: one case folder per storyline
               benchmark  events/s, memory, slowest rule and regex - on an export or N synthetic events
@@ -68,6 +72,9 @@ Examples
   rasd trace T1059.001 --lost sysmon_log,siem
   rasd silence
   rasd silence my-export.jsonl --profile auto --assets assets.csv --certificate silence.md
+  rasd blindpath
+  rasd blindpath my-export.jsonl --assets assets.csv --certificate blindpath.md --html blindpath.html
+  rasd blindpath my-export.jsonl --baseline last.json --witnesses witnesses.jsonl
   rasd correlate -v
   rasd correlate --logs dc-export.jsonl
   rasd nearmiss my-export.jsonl --profile auto --suggest
@@ -108,14 +115,15 @@ COMMANDS = {
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
     "deceive": ["deceive.py"], "advise": ["advise.py"], "trace": ["survivability.py"], "silence": ["silence.py"],
+    "blindpath": ["blindpath.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["chain.py"],
+         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["chain.py"],
          ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
-      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
+      ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
       ["datasets.py", "check"],
       *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
