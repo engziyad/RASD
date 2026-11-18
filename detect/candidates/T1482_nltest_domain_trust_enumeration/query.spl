@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| where ((match('Image', "(?i)\\\\nltest\\.exe$") OR lower('OriginalFileName')="nltestrk.exe") AND (match('CommandLine', "(?i)domain_trusts") OR match('CommandLine', "(?i)trusted_domains")))

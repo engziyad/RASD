@@ -6,6 +6,7 @@ The heart of RASD: adversary behaviour turned into detection rules that are test
 |---|---|
 | [`detections/`](detections/) | One folder per detection (see below) |
 | [`correlations/`](correlations/) | One folder per Sigma correlation detection: correlation rule, base rule, scenarios ([format and proofs](../docs/CORRELATIONS.md)) |
+| [`candidates/`](candidates/README.md) | RASD-Agent's lane: detections drafted by a language model and kept by the gates of `rasd grow`, reviewed by no person, never counted with the two folders above ([how it works](../docs/GROW.md)) |
 | [`coverage/`](coverage/) | ATT&CK Navigator layer and coverage matrix (generated) |
 | [`quality/`](quality/) | Engineering and Operational Scores (generated) |
 | [`evasion/`](evasion/) | Fuzzer baseline: bypasses accepted with a documented blind spot (empty today) |

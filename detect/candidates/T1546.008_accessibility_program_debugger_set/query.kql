@@ -1,0 +1,4 @@
+// Debugger Set for an Accessibility Program of the Logon Screen | fb25ccdd-53dd-56d6-81a4-38e168d1f29d
+Sysmon
+| where EventID == 13
+| where (TargetObject endswith @"\Image File Execution Options\sethc.exe\Debugger" or TargetObject endswith @"\Image File Execution Options\utilman.exe\Debugger" or TargetObject endswith @"\Image File Execution Options\osk.exe\Debugger" or TargetObject endswith @"\Image File Execution Options\magnify.exe\Debugger" or TargetObject endswith @"\Image File Execution Options\narrator.exe\Debugger" or TargetObject endswith @"\Image File Execution Options\displayswitch.exe\Debugger" or TargetObject endswith @"\Image File Execution Options\atbroker.exe\Debugger")

@@ -1,0 +1,32 @@
+candidate: T1136.001_net_user_add_local_account
+technique: T1136.001
+name: 'Create Account: Local Account'
+tactics:
+- persistence
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Help desk staff and installers that create a local account or a local service account
+- Build scripts that prepare a host image
+blind_spots:
+- Accounts created with New-LocalUser, the management console or the account API start no net process
+- The account created in the domain instead, which the domain switch excludes on purpose
+- Process creation events recorded without the command line
+first_checks:
+- Read the account name and check whether it was then added to a privileged local group
+- Identify who ran the command and from which parent process
+- Check the host's Security log for the account creation record and later logons of the account
+proof:
+  true_positives: 5
+  true_negatives: 6
+  rule_mutants_killed: 11
+  variations_matched: 33
+  parity_events: 115
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

@@ -1,0 +1,82 @@
+# RASD-Agent's ledger of the lane it grows on its own (detect/candidates), written by `rasd grow --run`.
+# accepted: a candidate every gate accepted. declined: no log source RASD reads records the technique.
+# refused: the drafts failed a gate, with the last reason; retried a few times, then parked until the
+# next RASD version.
+format: 1
+techniques:
+  T1003.002:
+    status: accepted
+    candidate: T1003.002_registry_credential_hive_saved
+    date: '2026-11-17'
+  T1003.003:
+    status: accepted
+    candidate: T1003.003_ntdsutil_install_from_media
+    date: '2026-11-17'
+  T1036.003:
+    status: accepted
+    candidate: T1036.003_system_utility_renamed
+    date: '2026-11-17'
+  T1047:
+    status: accepted
+    candidate: T1047_wmic_process_call_create
+    date: '2026-11-17'
+  T1070.003:
+    status: accepted
+    candidate: T1070.003_shell_history_cleared
+    date: '2026-11-17'
+  T1098.004:
+    status: accepted
+    candidate: T1098.004_ssh_authorized_keys_appended
+    date: '2026-11-17'
+  T1098.007:
+    status: accepted
+    candidate: T1098.007_member_added_to_privileged_group
+    date: '2026-11-17'
+  T1105:
+    status: accepted
+    candidate: T1105_certutil_remote_download
+    date: '2026-11-17'
+  T1136.001:
+    status: accepted
+    candidate: T1136.001_net_user_add_local_account
+    date: '2026-11-17'
+  T1140:
+    status: accepted
+    candidate: T1140_certutil_decode_file
+    date: '2026-11-17'
+  T1197:
+    status: accepted
+    candidate: T1197_bitsadmin_transfer_or_notify_job
+    date: '2026-11-17'
+  T1204.002:
+    status: accepted
+    candidate: T1204.002_office_app_starts_script_host
+    date: '2026-11-17'
+  T1218.005:
+    status: accepted
+    candidate: T1218.005_mshta_inline_script_or_remote
+    date: '2026-11-17'
+  T1218.010:
+    status: accepted
+    candidate: T1218.010_regsvr32_scriptlet_or_remote
+    date: '2026-11-17'
+  T1482:
+    status: accepted
+    candidate: T1482_nltest_domain_trust_enumeration
+    date: '2026-11-17'
+  T1490:
+    status: accepted
+    candidate: T1490_shadow_copy_or_recovery_removed
+    date: '2026-11-17'
+  T1505.003:
+    status: accepted
+    candidate: T1505.003_web_server_starts_shell
+    date: '2026-11-17'
+  T1546.008:
+    status: accepted
+    candidate: T1546.008_accessibility_program_debugger_set
+    date: '2026-11-17'
+  T1548.002:
+    status: accepted
+    candidate: T1548.002_uac_bypass_shell_open_command
+    date: '2026-11-17'

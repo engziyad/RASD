@@ -1,0 +1,27 @@
+title: SAM, SYSTEM or SECURITY Registry Hive Saved With Reg
+id: d0959674-3e74-5d5f-ab83-692d74e06159
+status: experimental
+description: Reg started with save or export on the SAM, SYSTEM or SECURITY hive of the local machine. Together these files hold the local account hashes and the secrets needed to decrypt them, so saving them is credential dumping. Copies taken from a shadow copy or through the remote registry are not seen.
+references:
+- https://attack.mitre.org/techniques/T1003/002/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.credential-access
+- attack.t1003.002
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \reg.exe
+  - OriginalFileName: reg.exe
+  selection_verb:
+    CommandLine|re: (?i)\s(save|export)\s
+  selection_hive:
+    CommandLine|re: (?i)(hklm|hkey_local_machine)\\(sam|system|security)(\s|"|$)
+  condition: all of selection_*
+falsepositives:
+- Backup or forensic collection scripts that save the hives on purpose
+- Administrators preparing an offline repair of a host
+level: high

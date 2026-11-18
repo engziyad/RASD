@@ -18,6 +18,12 @@ Configuration, from environment variables only (nothing is read from files):
   RASD_MODEL_PROVIDER  chat | ollama (default: ollama for a URL on port 11434, else chat)
   RASD_MODEL_TIMEOUT   seconds to wait for an answer (default 120)
 
+Chat-completions servers differ on two request fields, and the client follows what the server
+says and remembers it for the calls that follow: one that asks for max_completion_tokens gets
+it, and one that refuses a temperature gets none. An answer cut at the token limit is asked for
+once more with more room. A server that is busy (429, 5xx) is asked again twice before the
+call fails.
+
 What leaves the machine: the prompt holds rule text, test events and counts from the repository,
 which are public, and nothing from your own logs unless `--share-events` is passed; a shared
 event is redacted first (addresses, host names and account names replaced by placeholders).
@@ -28,18 +34,27 @@ import ipaddress
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 PROVIDERS = ("chat", "ollama")
 DEFAULT_TIMEOUT = 120
+BUSY = frozenset({429, 500, 502, 503, 504, 529})
+WAITS = (3, 12)
+REASONING_ROOM = 4
 
 
 class ModelError(Exception):
-    """The model could not be reached, or answered in a form the gate refuses."""
+    """The model could not be reached, or answered in a form the gate refuses. `status` is the HTTP
+    status when the server answered with one."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
 @dataclass
@@ -49,6 +64,8 @@ class Model:
     provider: str
     key: str | None = None
     timeout: int = DEFAULT_TIMEOUT
+    limit: str = field(default="max_tokens", repr=False)
+    temperature: bool = field(default=True, repr=False)
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Model | None:
@@ -82,30 +99,59 @@ class Model:
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if self.key:
             headers["Authorization"] = f"Bearer {self.key}"
-        # the URL is the operator's own setting and from_env admits http and https only
-        req = urllib.request.Request(self.url + path, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")  # noqa: S310
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:   # noqa: S310
-                return json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8", errors="replace")[:300]
-            raise ModelError(f"the model server answered {e.code} for {path}: {detail}") from e
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            raise ModelError(f"the model server at {self.url} could not be reached: {e}") from e
-        except json.JSONDecodeError as e:
-            raise ModelError(f"the model server at {self.url} did not answer with JSON") from e
+        data = json.dumps(body).encode("utf-8")
+        for wait in (*WAITS, None):
+            # the URL is the operator's own setting and from_env admits http and https only
+            req = urllib.request.Request(self.url + path, data=data, headers=headers, method="POST")  # noqa: S310
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:   # noqa: S310
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode("utf-8", errors="replace")[:300]
+                if e.code in BUSY and wait is not None:
+                    time.sleep(wait)
+                    continue
+                raise ModelError(f"the model server answered {e.code} for {path}: {detail}", e.code) from e
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                raise ModelError(f"the model server at {self.url} could not be reached: {e}") from e
+            except json.JSONDecodeError as e:
+                raise ModelError(f"the model server at {self.url} did not answer with JSON") from e
+        raise ModelError(f"the model server at {self.url} stayed busy")
+
+    def _chat(self, messages: list[dict], max_tokens: int) -> dict:
+        """One chat-completions exchange. Servers differ on two fields and say so with a 400: one that asks for
+        max_completion_tokens gets it, with room for the reasoning such a server counts there, and one that
+        refuses a temperature gets none. What a server accepted is kept for the calls that follow."""
+        while True:
+            body: dict[str, Any] = {"model": self.name, "messages": messages,
+                                    self.limit: max_tokens * (REASONING_ROOM if self.limit == "max_completion_tokens" else 1)}
+            if self.temperature:
+                body["temperature"] = 0
+            try:
+                return self._post("/chat/completions", body)
+            except ModelError as e:
+                if e.status != 400:
+                    raise
+                if "max_completion_tokens" in str(e) and self.limit == "max_tokens":
+                    self.limit = "max_completion_tokens"
+                elif "temperature" in str(e) and self.temperature:
+                    self.temperature = False
+                else:
+                    raise
 
     def complete(self, system: str, user: str, max_tokens: int = 1500) -> str:
-        """The model's text for one exchange, at temperature 0."""
+        """The model's text for one exchange, at temperature 0 where the server takes one."""
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         if self.provider == "ollama":
             out = self._post("/api/chat", {"model": self.name, "messages": messages, "stream": False,
                                            "options": {"temperature": 0, "num_predict": max_tokens}})
             text = ((out.get("message") or {}).get("content"))
         else:
-            out = self._post("/chat/completions", {"model": self.name, "messages": messages, "temperature": 0,
-                                                   "max_tokens": max_tokens})
+            out = self._chat(messages, max_tokens)
             choices = out.get("choices") or []
+            if choices and choices[0].get("finish_reason") == "length":
+                out = self._chat(messages, max_tokens * REASONING_ROOM)
+                choices = out.get("choices") or []
             text = ((choices[0].get("message") or {}).get("content")) if choices else None
         if not isinstance(text, str) or not text.strip():
             raise ModelError("the model answered with no text")

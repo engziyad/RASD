@@ -1,0 +1,4 @@
+// Bitsadmin Creating a Transfer Job or a Notification Command | 976f6711-0065-548b-8f4d-fc51ee3af6d5
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\bitsadmin.exe" or OriginalFileName =~ @"bitsadmin.exe") and (CommandLine contains @"transfer" or CommandLine contains @"addfile" or CommandLine contains @"setnotifycmdline"))

@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| where ((match('Image', "(?i)\\\\certutil\\.exe$") OR lower('OriginalFileName')="certutil.exe") AND (match('CommandLine', "(?i)urlcache") OR match('CommandLine', "(?i)verifyctl")) AND (match('CommandLine', "(?i)http://") OR match('CommandLine', "(?i)https://") OR match('CommandLine', "(?i)ftp://")))

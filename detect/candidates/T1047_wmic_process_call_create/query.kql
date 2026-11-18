@@ -1,0 +1,4 @@
+// WMIC Used to Create a Process | 1a4373e1-6d77-573f-949b-a7d61ed6acea
+Sysmon
+| where EventID == 1
+| where ((Image endswith @"\wmic.exe" or OriginalFileName =~ @"wmic.exe") and (CommandLine contains @"process" and CommandLine contains @"call" and CommandLine contains @"create"))

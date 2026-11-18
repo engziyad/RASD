@@ -1,0 +1,40 @@
+title: Windows Utility Running Under Another File Name
+id: 9008ab05-b46c-5c08-bdf0-af02863922ee
+status: experimental
+description: A process whose version resource says it is PowerShell, the command shell, certutil, rundll32, mshta, regsvr32 or a Windows script host, while its image file has another name. Intruders rename these utilities so that rules and reviewers looking for the usual names miss them. A utility renamed to the name of another utility in the list is not caught.
+references:
+- https://attack.mitre.org/techniques/T1036/003/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.stealth
+- attack.t1036.003
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_orig:
+    OriginalFileName:
+    - PowerShell.EXE
+    - Cmd.Exe
+    - CertUtil.exe
+    - RUNDLL32.EXE
+    - MSHTA.EXE
+    - REGSVR32.EXE
+    - wscript.exe
+    - cscript.exe
+  filter_name:
+    Image|endswith:
+    - \powershell.exe
+    - \cmd.exe
+    - \certutil.exe
+    - \rundll32.exe
+    - \mshta.exe
+    - \regsvr32.exe
+    - \wscript.exe
+    - \cscript.exe
+  condition: selection_orig and not filter_name
+falsepositives:
+- Administration bundles and portable tool kits that ship renamed copies of these utilities
+- Installers that copy the command shell under a temporary name
+level: high

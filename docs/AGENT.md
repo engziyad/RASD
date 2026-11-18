@@ -30,6 +30,7 @@ Each finding carries a stable id, a priority, the roles it concerns, a title, th
 | `backlog.*` | `intel/mappings/backlog.yml`, `actors.yml` | the next rule, in the backlog's order (lab-ready first, then a red step away, then a new log source), with the tracked groups documented using the technique | next for lab-ready, planned for the rest | a scaffold; with a model, a candidate rule and tests, gated |
 | `deceive.*` | `deceive/decoys.yml` | a decoy class not built and what it still needs | planned, awareness | the inventory entry to complete |
 | `public.*` `public.holdout.*` `public.missed.*` | `rasd datasets` | a detection no public dataset records (with the catalogue's reason); a held-out expectation missed; an expectation a dataset holds that the rule did not meet | planned / next / now | - |
+| `lane.candidates` | `detect/candidates`, the ledger and the ATT&CK reference of [the lane](GROW.md) | the candidates the agent grew on its own and no person has reviewed, by tactic, with the ones whose technique the backlog already ranks; a `backlog.*` finding names the candidate that exists for its technique | planned | - |
 | `tactic.*` `actor.*` `coverage.breadth` | the ATT&CK reference in `tools/common.py`, `actors.yml` | a tactic with no detection; a tracked group's open procedures; breadth in one sentence | planned | - |
 | `emulate.*` | `actors.yml`, the red tests | an emulation plan per tracked group: the red tests that exercise its procedures, those with a detection to prove and those that are measured gaps, with the runner command for each | planned | - |
 | `source.*` | the data sources per detection | a data source that feeds a quarter or more of the detections, and the techniques that go dark with it | awareness | - |
@@ -77,7 +78,7 @@ A proposal is written only after it is verified in memory; when a check fails, n
 | decoy | `deceive.*` | a draft inventory entry for the planned class with every field a built decoy carries | `rasd deceive --check` refuses it until the rule and the red test exist; the entry says so |
 | commands | `evidence.wave.*` | the lab wave's commands | a procedure, not a file change |
 
-`--apply` copies the proposal's files into the working tree (scaffolding a new detection folder first when needed), runs `rasd lint`, `test`, `prove`, `certify --check`, `tune --check` and `parity` for the detections it touched (`deceive --check` for the inventory), records the decision as `applied` in `decisions.yml`, and stops. You review the diff, run `rasd ci`, and commit through a pull request. The agent never commits and never pushes.
+`--apply` copies the proposal's files into the working tree (scaffolding a new detection folder first when needed), runs `rasd lint`, `test`, `prove`, `certify --check`, `tune --check` and `parity` for the detections it touched (`deceive --check` for the inventory), records the decision as `applied` in `decisions.yml`, and stops. You review the diff, run `rasd ci`, and commit through a pull request. `rasd advise` never commits and never pushes.
 
 ## The model, when you configure one
 
@@ -91,7 +92,9 @@ The counsel never needs a model. One adds what computation cannot: a narrative f
 | `RASD_MODEL_PROVIDER` | `chat` or `ollama` (default: `ollama` for a URL on port 11434, else `chat`) |
 | `RASD_MODEL_TIMEOUT` | seconds to wait (default 120) |
 
-`rasd advise --model-status` says what is configured. The model answers at temperature 0 with one JSON object; an answer that is not JSON or lacks a required key is refused. What leaves the machine is rule text, test events and counts from the repository, which are public, plus a redacted event only with `--share-events`. Where the model is used and what gates it:
+Chat-completions servers differ on two request fields, and the client follows what the server says and remembers it for the calls that follow: one that asks for `max_completion_tokens` gets it, and one that refuses a temperature gets none. An answer cut at the token limit is asked for once more with more room. A busy server (429 or 5xx) is asked again twice before the call fails.
+
+`rasd advise --model-status` says what is configured. The model answers at temperature 0, where the server takes one, with one JSON object; an answer that is not JSON or lacks a required key is refused. What leaves the machine is rule text, test events and counts from the repository, which are public, plus a redacted event only with `--share-events`. Where the model is used and what gates it:
 
 - `--explain`: a narrative with the next checks and when to close, under the computed explanation, marked as not verified.
 - `--propose certify.gap.*`: a rule edit, kept only when the gates above accept it; the proposal records whether the draft was accepted or refused and why.
@@ -100,9 +103,13 @@ The counsel never needs a model. One adds what computation cannot: a narrative f
 
 The gates decide, not the model: a model that writes a rule which hides a true negative, breaks a certificate or lowers the mutation proof gets nothing into the repository, and the refusal is recorded in the proposal.
 
+## The lane it grows on its own
+
+Everything above ends with a person: a finding is decided, a proposal is applied and reviewed. One part of the agent does not. `rasd grow` takes the next ATT&CK technique the core has no rule for, has the model draft a rule with its tests, runs the draft through every gate and keeps it when all of them accept it, in a library of its own: [`detect/candidates`](../detect/candidates/README.md). No person approves a candidate. That is safe because of where it goes and what it is called: a candidate is never counted in a score, a proof, a certificate or the coverage map of the core, its page says that no person reviewed it, and promoting it into the core is a person's work through a pull request. The queue, the gates, the computed proof, the ledger and the scheduled workflow are in [GROW](GROW.md).
+
 ## What the agent will not do
 
-It advises on defence and emulation inside RASD's lab discipline. It does not write or run attacks against hosts, does not build malware or exploits, does not act on a network, and does not touch anything outside the repository. It does not commit, push, or change a rule, a threshold, a maturity level or a score on its own. It does not send your logs anywhere unless you pass `--share-events`, and then only a redacted copy to the server you configured.
+It advises on defence and emulation inside RASD's lab discipline. It does not write or run attacks against hosts, does not build malware or exploits, does not act on a network, and does not touch anything outside the repository. It does not change a rule of the core, a threshold, a maturity level or a score on its own, and `rasd advise` does not commit or push. The lane is the one place where its work is kept with no person in between, and there it writes detections and the events that test them, under `detect/candidates` and in its ledger, and nothing else: the scheduled run is refused when any other file changed ([GROW](GROW.md)). It does not send your logs anywhere unless you pass `--share-events`, and then only a redacted copy to the server you configured.
 
 ## Commands
 
@@ -120,8 +127,9 @@ rasd advise --json [file]
 rasd advise --write                            # agent/ADVICE.md (part of rasd build)
 rasd advise --check                            # CI: the page is current, decisions.yml is valid
 rasd advise --model-status
+rasd grow                                     # the lane: where every ATT&CK technique stands (commands in GROW)
 ```
 
 ## Limits, stated
 
-The counsel is as good as what the tools measure: a gap no tool sees is not a finding. Breadth is stated, not solved, by the agent: it ranks the next rules, it does not write the fifty that ATT&CK would still list. The `--ask` retrieval is keyword based and the model narrative is prose; both are labelled so. The look-alike tests the tuning proposal builds cover filters written with equality, `contains`, `startswith` and `endswith`; a filter written as a regular expression needs its tests written by hand, and the proposal says so instead of guessing. An applied tuning that contradicts a behaviour spec is refused until the exclusion is declared in the spec with its reason, because a certificate that stops holding is worth more than a quieter rule.
+The counsel is as good as what the tools measure: a gap no tool sees is not a finding. Breadth in the core is stated, not solved, by the counsel: it ranks the next rules a person should write. The lane works on breadth beside it, and what it writes stays a candidate until a person and a lab run stand behind it. The `--ask` retrieval is keyword based and the model narrative is prose; both are labelled so. The look-alike tests the tuning proposal builds cover filters written with equality, `contains`, `startswith` and `endswith`; a filter written as a regular expression needs its tests written by hand, and the proposal says so instead of guessing. An applied tuning that contradicts a behaviour spec is refused until the exclusion is declared in the spec with its reason, because a certificate that stops holding is worth more than a quieter rule.

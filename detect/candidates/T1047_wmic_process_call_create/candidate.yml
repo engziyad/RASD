@@ -1,0 +1,32 @@
+candidate: T1047_wmic_process_call_create
+technique: T1047
+name: Windows Management Instrumentation
+tactics:
+- execution
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Software deployment and inventory tools that start installers through wmic
+- Administrators starting a program on a remote server during maintenance
+blind_spots:
+- Invoke-WmiMethod, Invoke-CimMethod and scripts that call the WMI API start no wmic process
+- On the remote host the new process is a child of WmiPrvSE, which this rule does not read
+- Process creation events recorded without the command line
+first_checks:
+- Read the program wmic was asked to start and whether a node switch names another host
+- Check the account and the parent process of wmic
+- On the named host, look for the child of WmiPrvSE at the same time
+proof:
+  true_positives: 4
+  true_negatives: 5
+  rule_mutants_killed: 7
+  variations_matched: 31
+  parity_events: 100
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

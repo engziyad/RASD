@@ -1209,7 +1209,7 @@ def equiv_run(ref: str, filter_: str | None = None) -> list[dict]:
             if diff:
                 row["witness"] = diff
         out.append(row)
-    code, listing = _git(["ls-tree", "-r", "--name-only", ref, "--", "detect/"])
+    code, listing = _git(["ls-tree", "-r", "--name-only", ref, "--", "detect/detections/", "detect/correlations/"])
     if code == 0:
         for p in listing.splitlines():
             if p.endswith(("/rule.yml", "/base.yml")) and p not in seen:

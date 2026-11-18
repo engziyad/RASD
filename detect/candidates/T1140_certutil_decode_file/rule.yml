@@ -1,0 +1,24 @@
+title: Certutil Decoding a Base64 or Hexadecimal File
+id: 78dbf650-087e-5d91-a27c-cb38a5f6fa3c
+status: experimental
+description: Certutil started with the decode or decodehex verb, which turns a text file back into the binary it encodes. Intruders bring a payload in as text to pass content filters and decode it on the host with this signed tool. Decoding done by PowerShell or by the payload itself is not seen.
+references:
+- https://attack.mitre.org/techniques/T1140/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.stealth
+- attack.t1140
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \certutil.exe
+  - OriginalFileName: CertUtil.exe
+  selection_verb:
+    CommandLine|re: (?i)\s[-/]decode(hex)?\s
+  condition: selection_img and selection_verb
+falsepositives:
+- Administrators decoding a certificate or a key file received as base64 text
+level: medium

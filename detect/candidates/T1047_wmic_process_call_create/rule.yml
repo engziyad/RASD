@@ -1,0 +1,28 @@
+title: WMIC Used to Create a Process
+id: 1a4373e1-6d77-573f-949b-a7d61ed6acea
+status: experimental
+description: The WMI command-line tool started with process, call and create, which asks WMI to start a program locally or on another host. Intruders use it to run commands with a signed tool and to move laterally with the node switch. WMI process creation through PowerShell, scripts or the API starts no wmic process and is not seen.
+references:
+- https://attack.mitre.org/techniques/T1047/
+author: RASD-Agent (github.com/engziyad/RASD)
+date: '2026-11-17'
+tags:
+- attack.execution
+- attack.t1047
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+  - Image|endswith: \wmic.exe
+  - OriginalFileName: wmic.exe
+  selection_call:
+    CommandLine|contains|all:
+    - process
+    - call
+    - create
+  condition: selection_img and selection_call
+falsepositives:
+- Software deployment and inventory tools that start installers through wmic
+- Administrators starting a program on a remote server during maintenance
+level: medium

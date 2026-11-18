@@ -1,0 +1,4 @@
+// Shell History File Removed, Emptied or Redirected | 3d44ce33-8348-5a18-9e73-c12331a5093a
+SysmonForLinux
+| where EventID == 1
+| where (((Image endswith @"/rm" or Image endswith @"/shred" or Image endswith @"/truncate") and (CommandLine contains @".bash_history" or CommandLine contains @".zsh_history")) or (Image endswith @"/ln" and (CommandLine contains @"/dev/null" and CommandLine contains @"_history")) or CommandLine matches regex @"(?i)history\s+-c(\s|;|&|""|$)")

@@ -115,7 +115,7 @@ The same search on a host that forwards nothing: how many actions remove every w
 | [Security 4768, 4771 and 4776 on the domain controller (authentication)](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4768) | Security log of the domain controller | ran, when, who, origin | vendor |  |
 | [Security 4663 on the file server (object access)](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4663) | Security log of the file server | ran, when, who, how | vendor |  |
 | [OpenCanary record of the decoy host](https://opencanary.readthedocs.io/en/latest/) | Log of the decoy host | ran, when, how, origin | vendor |  |
-| [The host's channels go quiet in the SIEM](https://www.splunk.com/en_us/blog/tips-and-tricks/how-to-determine-when-a-host-stops-sending-logs-to-splunk-expeditiously.html) | SIEM | ran, when | practitioner | Visible only to a search that watches each channel of each host for silence; a forwarder heartbeat alone misses a host whose event log stopped |
+| [The host's channels go quiet in the SIEM](https://www.splunk.com/en_us/blog/tips-and-tricks/how-to-determine-when-a-host-stops-sending-logs-to-splunk-expeditiously.html) | SIEM | ran, when | practitioner | Visible only to a search that watches each channel of each host for silence; a forwarder heartbeat alone misses a host whose event log stopped. `rasd silence` reads it from an export of the records |
 
 ### Anti-forensic actions
 

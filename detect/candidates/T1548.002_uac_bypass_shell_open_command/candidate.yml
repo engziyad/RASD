@@ -1,0 +1,29 @@
+candidate: T1548.002_uac_bypass_shell_open_command
+technique: T1548.002
+name: 'Abuse Elevation Control Mechanism: Bypass User Account Control'
+tactics:
+- privilege-escalation
+logsource: registry_set
+fields:
+- TargetObject
+false_positives:
+- 'None expected: ordinary software does not write these two keys in a user hive'
+blind_spots:
+- Bypasses that use other auto-elevating programs and other keys, or no registry key at all
+- A registry write made before the registry events were collected on the host
+- A token stolen from an elevated process, which needs no bypass
+first_checks:
+- Read the value written and the process that wrote it
+- Look for fodhelper, computerdefaults or eventvwr starting within the next minute and what they started
+- Check whether the key was deleted again afterwards, which the bypass tools do
+proof:
+  true_positives: 4
+  true_negatives: 4
+  rule_mutants_killed: 8
+  variations_matched: 19
+  parity_events: 51
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

@@ -1,0 +1,2 @@
+index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
+| where ((match('Image', "(?i)\\\\reg\\.exe$") OR lower('OriginalFileName')="reg.exe") AND match('CommandLine', "(?i)\\s(save|export)\\s") AND match('CommandLine', "(?i)(hklm|hkey_local_machine)\\\\(sam|system|security)(\\s|\"|$)"))

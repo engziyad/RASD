@@ -1,0 +1,143 @@
+name: RASD-Agent · grow
+
+# RASD-Agent's lane, unattended: draft the next ATT&CK techniques with the configured language model, keep
+# what every gate of `rasd grow` accepts, run the whole pipeline, and publish the lane. Design and limits:
+# docs/GROW.md. The job is skipped until the repository variable RASD_MODEL is set.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      max:
+        description: Candidates to accept in this run (default 5)
+        required: false
+      tries:
+        description: Drafts to ask the model for in this run (default 20)
+        required: false
+      only:
+        description: One technique to draft, for example T1136.001 (empty follows the queue)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rasd-agent-grow
+  cancel-in-progress: false
+
+jobs:
+  grow:
+    name: Draft, prove and publish candidates
+    if: vars.RASD_MODEL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write          # the lane is committed to the branch the run started from
+      actions: write           # the CI workflow is started on the commit this run publishes
+    env:
+      NO_BANNER: "1"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the rasd command and the code checks
+        run: |
+          pip install -e .
+          pip install -r requirements-dev.txt
+          rasd --version
+
+      - name: Read the latest ATT&CK release
+        id: attack
+        run: |
+          bundle="$RUNNER_TEMP/enterprise-attack.json"
+          if curl --fail --silent --show-error --location --retry 3 --max-time 300 --output "$bundle" \
+               https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json; then
+            echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
+            set +e
+            rasd grow --sync "$bundle"
+            rc=$?
+            set -e
+            if [ "$rc" = "3" ]; then
+              echo "::warning title=ATT&CK release held::The latest release drops, renames or moves a technique the core maps. The lane keeps the release it has until TECHNIQUES in tools/common.py is brought up to it."
+            elif [ "$rc" != "0" ]; then
+              exit "$rc"
+            fi
+          else
+            echo "::warning title=ATT&CK bundle not fetched::The run goes on with the reference in the repository and without technique descriptions."
+          fi
+
+      - name: Draft the next techniques and keep what every gate accepts
+        id: run
+        env:
+          RASD_MODEL: ${{ vars.RASD_MODEL }}
+          RASD_MODEL_URL: ${{ vars.RASD_MODEL_URL }}
+          RASD_MODEL_PROVIDER: ${{ vars.RASD_MODEL_PROVIDER }}
+          RASD_MODEL_KEY: ${{ secrets.RASD_MODEL_KEY }}
+          RASD_MODEL_TIMEOUT: "300"
+          GROW_MAX: ${{ github.event.inputs.max || vars.RASD_GROW_MAX || '5' }}
+          GROW_TRIES: ${{ github.event.inputs.tries || vars.RASD_GROW_TRIES || '20' }}
+          GROW_ONLY: ${{ github.event.inputs.only }}
+          BUNDLE: ${{ steps.attack.outputs.bundle }}
+        run: |
+          args=(--run --max "$GROW_MAX" --tries "$GROW_TRIES" --report "$RUNNER_TEMP/grow.json" --note "$RUNNER_TEMP/note.txt")
+          if [ -n "$BUNDLE" ]; then args+=(--attack "$BUNDLE"); fi
+          if [ -n "$GROW_ONLY" ]; then args+=(--only "$GROW_ONLY"); fi
+          set +e
+          rasd grow "${args[@]}"
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          if [ "$rc" != "0" ] && [ "$rc" != "1" ]; then exit "$rc"; fi
+
+      - name: Regenerate what the build writes
+        run: |
+          rasd build
+          git add --all
+
+      - name: The gate every change passes (ruff, mypy, rasd ci), and a build that stays as it is
+        run: |
+          gate() { ruff check . && mypy && rasd ci && git diff --exit-code; }
+          if gate; then exit 0; fi
+          echo "::warning title=Candidates set aside::The pipeline failed with this run's candidates in the tree. They are recorded as refused and the pipeline runs once more without them."
+          rasd grow --set-aside "$RUNNER_TEMP/grow.json" --note "$RUNNER_TEMP/note.txt"
+          rasd build
+          git add --all
+          gate
+
+      - name: Nothing but the lane's own files changed
+        run: rasd grow --guard
+
+      - name: Publish the lane
+        id: publish
+        run: |
+          {
+            echo '## RASD-Agent · grow'; echo '```'
+            cat "$RUNNER_TEMP/note.txt"; echo
+            NO_COLOR=1 rasd grow
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if git diff --cached --quiet; then
+            echo "Nothing changed: no commit."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet --file "$RUNNER_TEMP/note.txt"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+          echo "pushed=1" >> "$GITHUB_OUTPUT"
+
+      - name: Start the CI workflow on what was published
+        if: steps.publish.outputs.pushed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run detection-ci.yml --ref "$GITHUB_REF_NAME" || echo "::warning::The CI workflow could not be started on the new commit."
+
+      - name: The model stopped answering
+        if: steps.run.outputs.rc == '1'
+        run: |
+          echo "::error::The model did not answer three times in a row. What the gates had accepted before that was published."
+          exit 1

@@ -1,0 +1,32 @@
+candidate: T1490_shadow_copy_or_recovery_removed
+technique: T1490
+name: Inhibit System Recovery
+tactics:
+- impact
+logsource: process_creation
+fields:
+- CommandLine
+- Image
+- OriginalFileName
+false_positives:
+- Backup and imaging software that deletes shadow copies after its own job
+- Administrators freeing disk space by deleting old shadow copies
+blind_spots:
+- Shadow copies deleted through WMI, PowerShell or the volume shadow copy API
+- Shadow copies purged by resizing the shadow storage instead of deleting them
+- Process creation events recorded without the command line
+first_checks:
+- 'Treat it as urgent on a server: check for mass file changes and unusual processes on the host'
+- Identify the account and the parent process, and whether backup software owns it
+- Look for the same command on other hosts in the same hour
+proof:
+  true_positives: 6
+  true_negatives: 7
+  rule_mutants_killed: 17
+  variations_matched: 42
+  parity_events: 136
+computed:
+  tests: 0
+  parts_removed: 0
+drafted: '2026-11-17'
+rasd: 1.6.0

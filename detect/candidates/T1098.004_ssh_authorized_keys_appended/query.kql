@@ -1,0 +1,4 @@
+// SSH Authorized Keys File Appended To | eda161fe-9928-52dd-bba8-d11ef96da909
+SysmonForLinux
+| where EventID == 1
+| where ((Image endswith @"/tee" and CommandLine contains @"authorized_keys") or ((Image endswith @"/bash" or Image endswith @"/sh" or Image endswith @"/dash" or Image endswith @"/zsh") and CommandLine matches regex @"(?i)>>\s*\S*authorized_keys"))

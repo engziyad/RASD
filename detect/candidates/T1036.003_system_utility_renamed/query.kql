@@ -1,0 +1,4 @@
+// Windows Utility Running Under Another File Name | 9008ab05-b46c-5c08-bdf0-af02863922ee
+Sysmon
+| where EventID == 1
+| where ((OriginalFileName =~ @"PowerShell.EXE" or OriginalFileName =~ @"Cmd.Exe" or OriginalFileName =~ @"CertUtil.exe" or OriginalFileName =~ @"RUNDLL32.EXE" or OriginalFileName =~ @"MSHTA.EXE" or OriginalFileName =~ @"REGSVR32.EXE" or OriginalFileName =~ @"wscript.exe" or OriginalFileName =~ @"cscript.exe") and not((Image endswith @"\powershell.exe" or Image endswith @"\cmd.exe" or Image endswith @"\certutil.exe" or Image endswith @"\rundll32.exe" or Image endswith @"\mshta.exe" or Image endswith @"\regsvr32.exe" or Image endswith @"\wscript.exe" or Image endswith @"\cscript.exe")))
