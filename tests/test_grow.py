@@ -380,9 +380,11 @@ class Gates(unittest.TestCase):
         self.assertIn("every true positive is already caught by T9998_wide_rule", refusal(self, draft(), [catches_all]))
 
     def test_an_exclusion_needs_a_true_negative(self):
-        detection = {**draft()["detection"], "filter_monitor": {"User": "LAB\\svc_monitor"}, "condition": "selection_img and selection_arg and not filter_monitor"}
+        detection = {**draft()["detection"], "filter_monitor": {"ParentImage|endswith": "\\monitor-agent.exe"},
+                     "condition": "selection_img and selection_arg and not filter_monitor"}
         self.assertIn("no true negative needs the exclusion 'filter_monitor'", refusal(self, draft(detection=detection)))
-        tns = [*draft()["true_negatives"], proc("the monitoring account's scheduled check", "nltest /domain_trusts", User="LAB\\svc_monitor")]
+        tns = [*draft()["true_negatives"], proc("the monitoring agent's scheduled check", "nltest /domain_trusts",
+                                                ParentImage="C:\\Program Files\\Monitor\\monitor-agent.exe")]
         built = grow.build(NLTEST, draft(detection=detection, true_negatives=tns), CORE, TODAY)
         self.assertIn("filter_monitor", built["rule"]["detection"])
 
@@ -658,7 +660,7 @@ class Run(LaneCase):
         self.assertEqual(drafter.draft(NLTEST, "the variation 'x' is not matched")["name"], "nltest_trust_listing")
         self.assertEqual(seen["required"], ("observable",))
         self.assertEqual(seen["user"]["technique"], {"id": "T1482", "name": "Domain Trust Discovery", "tactics": ["discovery"],
-                                                     "platforms": ["Windows"], "description": "What ATT&CK says."})
+                                                     "platforms": ["Windows"], "reference_text": "What ATT&CK says."})
         self.assertEqual(seen["user"]["previous_draft_refused_because"], "the variation 'x' is not matched")
         self.assertEqual(seen["user"]["accepted_example"], {"technique": "T1482", "draft": grow.EXAMPLE})
         self.assertIn("accepted_example", seen["system"])
@@ -811,7 +813,8 @@ class Guard(unittest.TestCase):
     def test_the_pages_that_state_the_lane_are_the_ones_it_owns(self):
         st = grow.summary()
         row = f"{st['candidates']} candidate detection{'' if st['candidates'] == 1 else 's'} drafted by a language model"
-        counsel = f"RASD-Agent's lane: {st['candidates']} candidate{'' if st['candidates'] == 1 else 's'} no person has reviewed"
+        counsel = (f"RASD-Agent's lane: {st['unreviewed']} of {st['candidates']} candidate{'' if st['candidates'] == 1 else 's'} "
+                   "wait for a person's review")
         stated = sorted(p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*.md") if ".git" not in p.parts and "candidates" not in p.parts
                         and (row in p.read_text(encoding="utf-8") or counsel in p.read_text(encoding="utf-8")))
         self.assertEqual(stated, sorted(grow.PAGES))
@@ -915,7 +918,8 @@ class TheLane(unittest.TestCase):
     def test_the_page_states_what_the_lane_is(self):
         page = (grow.LANE / "README.md").read_text(encoding="utf-8")
         st = grow.state(grow.Lane())
-        self.assertIn("No person reviewed them and no lab run validated them", page)
+        self.assertIn("that is a person's judgement, recorded in the Review column below, and no lab run has validated any of them", page)
+        self.assertIn(f"**Reviewed by a person: {st['reviews']['approved'] + st['reviews']['revise']} of {st['counts']['candidate']}**", page)
         self.assertIn(f"**ATT&CK v{st['attack_version']}**", page)
         self.assertIn(f"| Candidate of this lane | {st['counts']['candidate']} |", page)
         self.assertIn(f"| Core detection, written and reviewed by a person | {st['counts']['core']} |", page)

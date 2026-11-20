@@ -60,6 +60,10 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
                          tests computed; no person in the loop, and never counted with the core; --run drafts,
                          --check proves every candidate again, --sync reads a new ATT&CK release, --guard holds an
                          unattended run to the lane's own files
+              review     the people's side of the lane: the board of candidates, one candidate's dossier, and a verdict
+                         (--approve / --revise / --reject --by NAME) recorded against the exact rule text; --promote
+                         moves an approved text into the core, --withdraw and --rollback undo, --audit reads the
+                         hash-chained trail of every decision
   all         ci         the full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check)
 
 Install the `rasd` command into a virtual environment with `pip install -e .` and run `rasd <command>`;
@@ -128,6 +132,7 @@ COMMANDS = {
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
     "deceive": ["deceive.py"], "advise": ["advise.py"], "trace": ["survivability.py"], "silence": ["silence.py"],
     "blindpath": ["blindpath.py"], "grow": ["grow.py"], "health": ["health.py"],
+    "review": ["review.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
@@ -136,7 +141,7 @@ BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"
          ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
       ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["grow.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
-      ["datasets.py", "check"], ["evidence.py", "--check"], ["health.py", "--check"],
+      ["datasets.py", "check"], ["evidence.py", "--check"], ["health.py", "--check"], ["review.py", "--check"],
       *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
 

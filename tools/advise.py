@@ -475,28 +475,36 @@ def backlog_findings(repo) -> list[Finding]:
 
 
 def lane_findings(repo) -> list[Finding]:
-    """The lane RASD-Agent grows on its own, as work for people: the candidates no person has reviewed,
-    the ones whose technique the backlog already ranks first."""
+    """The lane RASD-Agent grows on its own, as work for people: the candidates that wait for a person's
+    review, the ones whose technique the backlog already ranks first, and the approved ones nobody promoted."""
     from chain import backlog_ranked
-    from grow import Lane, load_candidates, summary
+    from grow import Lane, load_candidates, state, summary
     lane = Lane()
     cands = load_candidates(lane)
     if not cands:
         return []
     s = summary(lane)
+    standing = {row["id"]: row["review"] for row in state(lane)["candidates"]}
+    waiting = [c for c in cands if standing.get(c.id) in ("unreviewed", "stale")]
+    approved = sorted(cid for cid, review in standing.items() if review == "approved")
     ranked = [g["technique"] for g, _acts in backlog_ranked(repo)]
-    near = sorted((c.id for c in cands if c.technique in ranked), key=lambda cid: ranked.index(cid.split("_")[0]))
+    near = sorted((c.id for c in waiting if c.technique in ranked), key=lambda cid: ranked.index(cid.split("_")[0]))
     tactics = Counter(t for c in cands for t in c.record.get("tactics") or [])
     spread = ", ".join(f"{t} {tactics[t]}" for t in ATTACK_TACTICS if tactics[t])
+    first = near[0] if near else (waiting[0].id if waiting else (approved[0] if approved else cands[0].id))
     return [Finding(
         id="lane.candidates", priority=3, pillar="coverage", roles=("engineer", "executive"),
-        title=f"RASD-Agent's lane: {_n(len(cands), 'candidate')} no person has reviewed, {_n(s['queue'], 'technique')} in its queue",
+        title=f"RASD-Agent's lane: {len(waiting)} of {_n(len(cands), 'candidate')} wait for a person's review, "
+              f"{_n(s['queue'], 'technique')} in its queue",
         evidence=f"Drafted by a language model and kept by the gates of rasd grow: each is proven against its own tests, validated by no "
-                 f"lab run and counted in no score. By tactic: {spread}. "
-                 + (f"The backlog already ranks the technique of {', '.join(near)}." if near else "None is for a technique the backlog ranks."),
-        action="Review the candidates the lab can exercise and promote them into the core (docs/GROW.md, promoting a candidate)"
-               + (f", {near[0]} first" if near else "") + ". rasd grow shows what is drafted next; detect/candidates/README.md lists them all.",
-        weight=len(near), data={"candidates": [c.id for c in cands], "backlog": near, "queue": s["queue"]})]
+                 f"lab run and counted in no score. {s['approved']} approved by a person, {s['revise']} sent back to revise. By tactic: {spread}. "
+                 + (f"The backlog already ranks the technique of {', '.join(near)}." if near else "None that waits is for a technique the backlog ranks.")
+                 + (f" Approved and not promoted: {', '.join(approved)}." if approved else ""),
+        action=(f"rasd review {first} shows the rule, what it will never alert on and what only a person can judge; record the verdict with "
+                "--approve, --revise or --reject, and promote an approved one with --promote (docs/GOVERNANCE.md). "
+                "rasd review lists them all; rasd grow shows what is drafted next."),
+        weight=len(near), data={"candidates": [c.id for c in cands], "backlog": near, "queue": s["queue"],
+                                "waiting": [c.id for c in waiting], "approved": approved})]
 
 
 def deception_findings(repo) -> list[Finding]:

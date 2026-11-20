@@ -811,8 +811,12 @@ def lane_line(root: str) -> str:
     """The lane RASD-Agent grows on its own, stated beside the core and never added to it; `root` is the path to the
     repository root from the page."""
     s = lane_summary()
+    reviewed = s["approved"] + s["revise"]
+    people = ("reviewed by no person" if not reviewed else
+              f"{reviewed} reviewed by a person ({s['approved']} approved, {s['revise']} sent back) and {s['unreviewed']} not yet")
     return (f"{s['candidates']} candidate detection{'' if s['candidates'] == 1 else 's'} drafted by a language model and kept by the "
-            f"gates of `rasd grow`, reviewed by no person and counted in no number of this page but this one · of the "
+            f"gates of `rasd grow`, {people}, and counted in no number of this page but this one; none reaches the core without a "
+            f"person's approval of its exact text ([GOVERNANCE]({root}docs/GOVERNANCE.md)) · of the "
             f"{s['techniques']} techniques and sub-techniques of ATT&CK v{s['attack_version']} that are drafted on their own, "
             f"{s['core']} have a core detection, {s['queue']} are in the agent's queue and {s['out_of_reach']} are out of reach of "
             f"the logs RASD reads "
