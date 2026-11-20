@@ -103,7 +103,7 @@ rasd advise              # what to do next, and why that first
 
 ## 📚 Documentation
 
-| | | |
+| | Section | Pages |
 |:-:|---|---|
 | 🧭 | **Start** | [Overview](docs/RASD_OVERVIEW.md) · [Architecture](docs/RASD_ARCHITECTURE.md) · [What RASD proves](docs/PROOFS.md) · [Commands](docs/COMMANDS.md) · [Coverage and layout](docs/COVERAGE.md) · [Executive summary](docs/EXECUTIVE_SUMMARY.md) |
 | 📏 | **Rules of the house** | [Maturity model](docs/RASD_MATURITY_MODEL.md) · [Quality model](docs/QUALITY_MODEL.md) · [Acceptance criteria](docs/DETECTION_ACCEPTANCE_CRITERIA.md) · [Writing detections](docs/WRITING_DETECTIONS.md) · [Sigma support](docs/SIGMA_SUPPORT.md) · [The chain](docs/ATTACK_TO_DEFENSE_CHAIN.md) |
