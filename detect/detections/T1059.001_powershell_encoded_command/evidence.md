@@ -13,7 +13,7 @@ latency_seconds: 0.022
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: D:\a\_temp\lab-windows\powershell_encoded_command\scriptblock-4104.json
+- file: scriptblock-4104.json
   sha256: df7c08d1562d53d227cdc2691c47e676ecbec32f7f2a9d92e510d0c3bbde42a1
 siem: null
 inputs:

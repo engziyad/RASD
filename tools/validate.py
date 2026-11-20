@@ -293,6 +293,10 @@ def evidence_errors(folder: Path) -> list[str]:
     hashes = [inputs.get("results", {}).get("sha256")] + [t.get("sha256") for t in inputs.get("telemetry") or []]
     if len(hashes) < 2 or not all(isinstance(h, str) and SHA256.match(h) for h in hashes):
         errs.append("evidence.md: inputs must carry the SHA-256 of the results file and every telemetry file")
+    for a in front.get("artifacts") or []:
+        name = str(a.get("file", "")) if isinstance(a, dict) else ""
+        if not name or "/" in name or "\\" in name:
+            errs.append(f"evidence.md: an artifact is recorded by its file name, not by a path on the lab machine ('{name}')")
     return errs
 
 

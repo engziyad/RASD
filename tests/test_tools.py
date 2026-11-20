@@ -480,6 +480,7 @@ class EvidenceBinding(unittest.TestCase):
         text = (ROOT / "red" / "run_red.py").read_text(encoding="utf-8")
         self.assertIn('rec["host_ips"] = [*ips, toward]', text)
 
+    @unittest.skipIf(os.name == "nt", "a Linux lab script: `bash` on Windows is not the shell it runs in")
     @unittest.skipUnless(shutil.which("bash"), "bash is not installed")
     def test_decoy_probe_accepts_a_lab_url_and_nothing_else(self):
         script = ROOT / "red" / "linux" / "decoy_service_probe" / "probe_decoy.sh"

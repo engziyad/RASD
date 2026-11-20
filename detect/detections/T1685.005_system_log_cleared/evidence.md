@@ -13,7 +13,7 @@ latency_seconds: 0.079
 matched_events: 2
 cleanup: verified
 artifacts:
-- file: D:\a\_temp\lab-windows\event_log_clearing\log-clear-records.json
+- file: log-clear-records.json
   sha256: fa8e27a1162b6cc682cca3a4e4ee9ce6a9dd536a277026cee160857d8aee7a9b
 siem: null
 inputs:

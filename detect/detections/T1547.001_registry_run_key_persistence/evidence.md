@@ -13,7 +13,7 @@ latency_seconds: 0.033
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: D:\a\_temp\lab-windows\run_key_persistence\run-value-rasd_5cb71965.json
+- file: run-value-rasd_5cb71965.json
   sha256: 1e28d6d65c1cc12d4495dd1db6c5ce460405506a1ba657318cfb111c4c61108b
 siem: null
 inputs:

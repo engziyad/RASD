@@ -13,9 +13,9 @@ latency_seconds: 0.019
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: D:\a\_temp\lab-windows\scheduled_task_creation\rasd_5cb71965.xml
+- file: rasd_5cb71965.xml
   sha256: b042cbbfb71736005f240bf9b550f4213778066739e95ad494c29f4aad9f13ce
-- file: D:\a\_temp\lab-windows\scheduled_task_creation\rasd_5cb71965_ps.xml
+- file: rasd_5cb71965_ps.xml
   sha256: 62b97059242f0d932c3d25a2c3721f861077c705c5e62c96270e315925460b33
 siem: null
 inputs:

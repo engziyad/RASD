@@ -13,7 +13,7 @@ latency_seconds: 0.031
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: D:\a\_temp\lab-windows\service_creation\service-rasd_5cb71965.json
+- file: service-rasd_5cb71965.json
   sha256: 9be53889d890838c97dc09c11e6473f860c12e5574e3f40c355913f9981e0764
 siem: null
 inputs:

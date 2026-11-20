@@ -391,6 +391,14 @@ def latency_points(seconds: float | None) -> int:
     return 15 if seconds <= 60 else 10 if seconds <= 300 else 5 if seconds <= 900 else 0
 
 
+def lab_file_name(path: object) -> str:
+    """The file name of a path the lab machine recorded, whichever machine reads it. A Windows lab's
+    path read on Linux has no separator the reader knows, and taken whole it would put the lab
+    machine's folders into the evidence."""
+    parts = [p for p in re.split(r"[\\/]", str(path or "")) if p]
+    return parts[-1] if parts else ""
+
+
 def operational_score(front: dict) -> dict[str, int]:
     """Operational Score from an evidence.md front matter (see module docstring)."""
     fired = front.get("result") == "fired" and int(front.get("matched_events") or 0) >= 1
@@ -431,7 +439,7 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
     latency = max(0.0, (t0 - start).total_seconds())
     keep = sorted(rule_fields(det.rule["detection"]) | {"EventID", "Channel", "Provider_Name"})
     excerpt = {k: ev[k] for k in ev if k in keep or k in HOST_FIELDS or k in ("UtcTime", "TimeCreated", "User")}
-    artifacts = [{"file": Path(str(a.get("path", ""))).name, "sha256": str(a.get("sha256", "")).lower()}
+    artifacts = [{"file": lab_file_name(a.get("path")), "sha256": str(a.get("sha256", "")).lower()}
                  for a in step.get("artifacts") or [] if isinstance(a, dict)]
     front = {
         "rasd_evidence": FORMAT_VERSION,
@@ -514,7 +522,7 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
         raise ValueError("an executed step always has utc_start")
     crossed = alert["crossed_at"]
     latency = max(0.0, (crossed - start).total_seconds())
-    artifacts = [{"file": Path(str(a.get("path", ""))).name, "sha256": str(a.get("sha256", "")).lower()}
+    artifacts = [{"file": lab_file_name(a.get("path")), "sha256": str(a.get("sha256", "")).lower()}
                  for a in step.get("artifacts") or [] if isinstance(a, dict)]
     front = {
         "rasd_evidence": FORMAT_VERSION,

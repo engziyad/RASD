@@ -13,7 +13,7 @@ latency_seconds: 0.087
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: D:\a\_temp\lab-windows\honey_file_access\decoy-file-audit.txt
+- file: decoy-file-audit.txt
   sha256: 790015c2cef3692ceb69753f1376d0529d095151e92a9e588c3cdb19c526f240
 siem: null
 inputs:

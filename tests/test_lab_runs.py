@@ -1,4 +1,5 @@
 """Lab runs kept in the repository (purple/lab_runs): evidence that is recomputed, not trusted."""
+import hashlib
 import io
 import json
 import shutil
@@ -227,6 +228,24 @@ class KeptRuns(unittest.TestCase):
         self.assertTrue(self.standing().problems)
         self.quiet(evidence.prune, self.store, self.entries)
         self.assertTrue(export.exists())
+
+    def test_an_artifact_is_recorded_by_its_file_name_whichever_machine_reads_the_run(self):
+        body = b'{"decoded": "Write-Output rasd"}'
+        digest = hashlib.sha256(body).hexdigest()
+        on_the_lab = "C:\\Lab\\red\\results\\20261012-060000\\powershell_encoded_command\\decoded.json"
+        paths = self.folder_run(artifacts=[{"path": on_the_lab, "sha256": digest}])
+        (paths[0] / "powershell_encoded_command").mkdir()
+        (paths[0] / "powershell_encoded_command" / "decoded.json").write_bytes(body)
+        self.keep(paths)
+        text = self.write_evidence()
+        self.assertEqual(evidence.front_of(text)["artifacts"], [{"file": "decoded.json", "sha256": digest}])
+        self.assertNotIn("C:\\Lab", text, "the lab machine's folders stay out of the evidence")
+        self.assertEqual(validate.evidence_errors(self.library), [])
+        for lab_path, name in ((on_the_lab, "decoded.json"), ("/home/lab/red/results/run/cron_persistence/crontab.txt", "crontab.txt"),
+                               ("decoded.json", "decoded.json"), ("", ""), (None, "")):
+            self.assertEqual(evidence.lab_file_name(lab_path), name)
+        (self.library / "evidence.md").write_text(text.replace("- file: decoded.json", "- file: C:\\Lab\\decoded.json"), encoding="utf-8")
+        self.assertTrue(any("recorded by its file name" in e for e in validate.evidence_errors(self.library)))
 
     def test_evidence_whose_run_stayed_with_its_lab_is_listed_and_left_alone(self):
         self.keep(self.folder_run())
