@@ -98,7 +98,7 @@ from validate import FIELDS, lint_rule, referenced_selections, rule_fields, unex
 LANE = DETECT / "candidates"
 LEDGER = ROOT / "agent" / "growth.yml"
 UNIVERSE = INTEL / "mappings" / "attack_enterprise.json"
-PAGES = ("README.md", "docs/RASD_METRICS.md", "docs/EXECUTIVE_SUMMARY.md", "purple/executive_matrix.md", "agent/ADVICE.md")
+PAGES = ("docs/RASD_METRICS.md", "docs/EXECUTIVE_SUMMARY.md", "purple/executive_matrix.md", "agent/ADVICE.md")
 FORMAT = 1
 NAMESPACE = uuid.UUID("7d0c6a52-1b7e-5c0f-9a4e-2f6b8d3e1a90")
 AUTHOR = "RASD-Agent (github.com/engziyad/RASD)"

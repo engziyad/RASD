@@ -28,6 +28,7 @@ rasd review --check                           # the records hold together (in CI
 | Put a rule into a generated query or the Splunk app | **no**: they are built from the core only | by promoting it |
 | Change `agent/reviews.yml` | **no**: the run fails | through `rasd review` |
 | Change or remove a line of the audit trail | **no**: the run fails | not without breaking the chain |
+| Change the front page, a core rule, a test, a tool or a workflow | **no**: the run fails | through a pull request, like any change |
 | Take a candidate out | when a gate stops accepting it | `--reject`, `--withdraw`, `--rollback` |
 
 The left column is enforced, not promised. Before an unattended run publishes anything, `rasd grow --guard` fails it if any file outside the lane's own differs from the last commit, and the review ledger is not one of the lane's files. The Splunk app and every generated query are built from `detect/detections` and `detect/correlations`; `rasd review --check` fails the build if a candidate's name or rule id appears in any of them, or if a rule drafted by the agent sits in the core with no promotion on record.

@@ -800,14 +800,15 @@ class Guard(unittest.TestCase):
     """What an unattended run may change, and the workflow that publishes it."""
 
     def test_what_the_lane_owns(self):
-        self.assertEqual(sorted(grow.PAGES), ["README.md", "agent/ADVICE.md", "docs/EXECUTIVE_SUMMARY.md", "docs/RASD_METRICS.md",
+        self.assertEqual(sorted(grow.PAGES), ["agent/ADVICE.md", "docs/EXECUTIVE_SUMMARY.md", "docs/RASD_METRICS.md",
                                               "purple/executive_matrix.md"])
         for path in ("detect/candidates/README.md", "detect/candidates/T1482_x/tests/true_positive.jsonl", "agent/growth.yml",
                      "intel/mappings/attack_enterprise.json", *grow.PAGES):
             self.assertTrue(grow.owned(path), path)
         for path in ("detect/detections/T1059.001_powershell_encoded_command/rule.yml", "detect/candidatesx/rule.yml", "tools/grow.py",
                      "agent/decisions.yml", ".github/workflows/agent-grow.yml", "intel/mappings/backlog.yml", "docs/GROW.md",
-                     "rasd.py", "detect/correlations/T1190_object_id_enumeration/base.yml", "tests/test_grow.py"):
+                     "rasd.py", "detect/correlations/T1190_object_id_enumeration/base.yml", "tests/test_grow.py", "README.md",
+                     "docs/PROOFS.md"):
             self.assertFalse(grow.owned(path), path)
 
     def test_the_pages_that_state_the_lane_are_the_ones_it_owns(self):
@@ -829,24 +830,25 @@ class Guard(unittest.TestCase):
                                          "-c", "commit.gpgsign=false", *a], check=True, capture_output=True)
         write = lambda rel, text: grow._write(repo / rel, text)
         git("init", "--quiet")
-        for rel in ("README.md", "tools/grow.py", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml", "detect/detections/T1059.001_y/rule.yml",
-                    "detect/detections/T1059.001_y/README.md"):
+        for rel in ("README.md", "docs/RASD_METRICS.md", "tools/grow.py", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml",
+                    "detect/detections/T1059.001_y/rule.yml", "detect/detections/T1059.001_y/README.md"):
             write(rel, "first\n")
         git("add", "--all")
         git("commit", "--quiet", "-m", "first")
         self.assertEqual(grow.strays(repo), [])
-        for rel in ("README.md", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml", "detect/candidates/T1105 with a blank/rule.yml",
-                    "intel/mappings/attack_enterprise.json"):
+        for rel in ("docs/RASD_METRICS.md", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml",
+                    "detect/candidates/T1105 with a blank/rule.yml", "intel/mappings/attack_enterprise.json"):
             write(rel, "second\n")
         (repo / "detect/candidates/T1482_x/rule.yml").unlink()
         self.assertEqual(grow.strays(repo), [])
         git("add", "--all")
         self.assertEqual(grow.strays(repo), [])
         write("tools/grow.py", "second\n")
+        write("README.md", "second\n")
         write(".github/workflows/other.yml", "second\n")
         (repo / "detect/detections/T1059.001_y/rule.yml").unlink()
         git("mv", "detect/detections/T1059.001_y/README.md", "detect/candidates/README.md")
-        self.assertEqual(grow.strays(repo), [".github/workflows/other.yml", "detect/detections/T1059.001_y/README.md",
+        self.assertEqual(grow.strays(repo), [".github/workflows/other.yml", "README.md", "detect/detections/T1059.001_y/README.md",
                                              "detect/detections/T1059.001_y/rule.yml", "tools/grow.py"])
 
     def test_the_workflow_publishes_only_behind_the_gates(self):

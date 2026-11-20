@@ -1093,7 +1093,8 @@ def public_summary_line(repo: Repo, docs: str) -> str:
 
 
 def render_readme_metrics(repo: Repo) -> str:
-    tests = len(repo.tests)
+    """The front page's two short tables: what the build proves, and what a lab has proven. Every other number
+    is on the metrics page."""
     fuzz = sum(v["tried"] for v in repo.fuzz.values())
     byp = sum(len(v["bypasses"]) for v in repo.fuzz.values())
     mutants = sum(v["mutants"] for v in repo.proof.values())
@@ -1101,47 +1102,34 @@ def render_readme_metrics(repo: Repo) -> str:
     parity = sum(v["events"] for v in repo.parity.values())
     divergences = sum(len(v["kql"]) + len(v["spl"]) for v in repo.parity.values())
     eng = sum(s["total"] for s in repo.scores.values()) / len(repo.scores)
-    validated = [s for s in repo.scores.values() if s["operational"]]
-    maps = {t: repo.checklist(t) for t in repo.techniques()}
-    done = sum(v == "done" for m in maps.values() for v in m.values())
-    ops = (f"{sum(s['operational_total'] for s in validated) / len(validated):.0f}/100 over {len(validated)} detections"
-           if validated else "pending a real lab run")
-    cf = [repo.det_facts(c) for c in repo.corrs]
-    rows = [
-        ("Detections · techniques", f"{len(repo.items)} detections ({len(repo.dets)} single-event, {len(repo.corrs)} correlations) "
-                                    f"across {len(repo.techniques())} ATT&CK v19.2 techniques "
-                                    "([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml))"),
-        ("Offensive tests", f"{len(repo.red)}: {sum(1 for t in repo.red if covers(t))} mapped to current detections "
-                            f"(only these can raise the Operational Score) · "
-                            f"{sum(1 for t in repo.red if not covers(t))} gap or posture tests reserved for future coverage"),
-        ("Tests", f"{tests} cases · {len(repo.muts)} mutations · {fuzz} fuzzer variants ({byp} bypasses) on the "
-                  f"{len(repo.dets)} single-event rules"
-                  + (f"; the {len(cf)} correlation base rules add {sum(f['tp'] + f['tn'] for f in cf)} cases, "
-                     f"{sum(f['mutations'] for f in cf)} technique mutations and {sum(f['fuzz_variants'] for f in cf)} "
-                     "fuzzer variants" if cf else "")),
-        ("Proof", f"{mutants - survivors}/{mutants} rule mutants killed or accepted · {parity} parity verdicts per backend "
-                  f"({divergences} divergences)" + defender_summary(repo)),
-        *([("Correlations", f"{sum(f['scenarios'] for f in cf)} scenarios · "
-                            f"{sum(f['param_mutants'] - f['param_survivors'] for f in cf)}/{sum(f['param_mutants'] for f in cf)} "
-                            f"parameter mutants killed · {sum(f['aggregation_runs'] for f in cf)} aggregation parity runs "
-                            f"({'0 divergences' if all(f['parity_ok'] for f in cf) else 'NOT proven'}) · burst guarantee "
-                            "verified")] if cf else []),
-        ("Exact automata", certify_line(repo, "docs/")),
-        *([("Behaviour proofs", behaviour_line(repo, "docs/"))] if repo.certify["variants"] else []),
-        ("Edit equivalence", equiv_line("docs/")),
-        ("Deception", deceive_line("")),
-        ("Evidence survivability", trace_line("")),
-        ("Evidence of absence", silence_line("")),
-        ("The unseen route", blindpath_line("")),
-        ("RASD-Agent's lane", lane_line("")),
-        ("Near misses", near_summary(repo)),
-        ("Public datasets", public_summary_line(repo, "docs/")),
+    n = len(repo.items)
+    validated = [d for d in repo.items if repo.evidence[d.id]]
+    ops = ops_average(repo, validated)
+    with_alert = sum(1 for d in validated if repo.evidence[d.id].get("siem"))
+    build = [
+        ("Library", f"{n} detections ({len(repo.dets)} single-event, {len(repo.corrs)} correlations) across "
+                    f"{len(repo.techniques())} ATT&CK techniques"),
+        ("Tests", f"{len(repo.tests)} cases · {len(repo.muts)} mutations · {fuzz} evasion variants, {byp} bypasses"),
+        ("Rule logic", f"{mutants - survivors}/{mutants} rule mutants killed or accepted · {repo.certify['compiled']}/{repo.certify['rules']} rules as exact automata"),
+        ("SIEM queries", f"{parity} parity verdicts per backend, {divergences} divergences (offline model of KQL and SPL)"),
+        ("Public attack data", f"{public_counts(repo)['validated']}/{n} detections fire on pinned public datasets"),
         ("Engineering Score", f"{eng:.0f}/100"),
-        ("Operational Score", ops),
-        ("Chain completeness", f"{done}/{len(CHECKLIST) * len(maps)} items ([validation matrix](purple/validation_matrix.md))"),
     ]
-    return (README_START + "\n| | |\n|---|---|\n" + "\n".join(f"| **{k}** | {v} |" for k, v in rows)
-            + "\n\n<sub>Counted by `tools/chain.py` on every build.</sub>\n" + README_END)
+    lab = [
+        ("Validated", f"{len(validated)} of {n} detections fired on a real attack step in a lab" if validated else
+                      f"0 of {n}: no lab run is committed yet"),
+        ("Evidence", lab_runs_line("")),
+        ("Operational Score", f"{ops:.0f}/100 over {len(validated)} detections" if ops is not None else "pending a lab run"),
+        ("Live SIEM", f"{with_alert} of {len(validated)} evidence files carry an alert raised by a live SIEM" if validated else
+                      "no alert from a live SIEM yet"),
+        ("Waiting", f"{n - len(validated)} detections, each with the lab machine and step it needs ([evidence plan](docs/EVIDENCE_PLAN.md))"
+                    if len(validated) < n else "none"),
+    ]
+    def table(title: str, rows: list[tuple[str, str]]) -> str:
+        return f"| {title} | |\n|---|---|\n" + "\n".join(f"| **{k}** | {v} |" for k, v in rows)
+
+    return (README_START + "\n" + table("✅ Proven by the build", build) + "\n\n" + table("🧪 Proven in a lab", lab)
+            + "\n\n<sub>Counted by `tools/chain.py` on every build · [every number](docs/RASD_METRICS.md)</sub>\n" + README_END)
 
 
 # --------------------------------------------------------------------------- #

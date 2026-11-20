@@ -16,7 +16,7 @@ The watchdogs for the SIEM, and the result on the sample, are in [queries/health
 
 | Tool | When | The question |
 |---|---|---|
-| [`rasd doctor`](../README.md) | once, before deployment | Will the rules work on this telemetry at all? |
+| [`rasd doctor`](COMMANDS.md) | once, before deployment | Will the rules work on this telemetry at all? |
 | **`rasd health`** | every day, while they run | Is each rule fed today the way it was when it was last known to work? |
 | [`rasd silence`](SILENCE.md) | afterwards, host by host | What does a month without an alert prove? |
 

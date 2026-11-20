@@ -25,257 +25,98 @@
 
 </div>
 
-RASD is a cybersecurity validation framework that connects offensive security labs, detection engineering, cyber deception, DFIR playbooks, CTI mapping, and purple-team validation into one measurable workflow.
+## What RASD is
 
-**RASD = Resilient Adversary Signal Detection**, an attack-to-defense validation framework built to transform adversary behavior into tested detections, investigation workflows, CTI mappings, and operational evidence.
+**RASD (Resilient Adversary Signal Detection)** turns an attack technique into a detection that is proven at every step. The attack is run in a lab, its telemetry is captured, the rule is tested and mutated until no part of it is unproven, the SIEM query is shown to be the same rule, and the analyst gets the triage and response notes.
 
-> RASD does not stop at detection logic.
-> Each technique is mapped across offensive validation, telemetry, detection, triage, response and intelligence context, with a place for measurable operational evidence that stays pending until a lab run is committed.
+Nothing on this page is typed by hand that the repository can count: every number below is computed on each build, and a detection is called **Validated** only when it fired on a real attack step.
+
+## 🧭 How it works
+
+```text
+ Attack step ─► Telemetry ─► Detection rule ─► KQL / SPL ─► Triage & response ─► Lab evidence
+```
+
+| | Link of the chain | What makes it more than a claim |
+|:-:|---|---|
+| 🔴 | **Attack** | Offensive tests that run only on a machine its owner marked as a lab, and clean up after themselves |
+| 📡 | **Telemetry** | A contract per detection: the log source, the events and the fields the rule cannot work without |
+| 🎯 | **Detection** | True and false positives, attacker mutations, an evasion fuzzer, and every rule compiled to exact automata |
+| 🔁 | **SIEM query** | The generated KQL and SPL are parsed back and must return the rule's verdict on every event |
+| 🧑‍💻 | **Triage and response** | Cards, closure and escalation notes, and a DFIR playbook for every technique |
+| 🧪 | **Evidence** | Written only when the rule fired on telemetry bound to a real lab run, and recomputed from the raw run on every build |
+
+## ✅ What is proven today
 
 <!-- rasd:readme-metrics:start -->
-| | |
+| ✅ Proven by the build | |
 |---|---|
-| **Detections · techniques** | 22 detections (18 single-event, 4 correlations) across 17 ATT&CK v19.2 techniques ([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml)) |
-| **Offensive tests** | 22: 17 mapped to current detections (only these can raise the Operational Score) · 5 gap or posture tests reserved for future coverage |
-| **Tests** | 403 cases · 640 mutations · 1621 fuzzer variants (0 bypasses) on the 18 single-event rules; the 4 correlation base rules add 51 cases, 24 technique mutations and 53 fuzzer variants |
-| **Proof** | 291/291 rule mutants killed or accepted · 16284 parity verdicts per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
-| **Correlations** | 43 scenarios · 24/24 parameter mutants killed · 4502 aggregation parity runs (0 divergences) · burst guarantee verified |
-| **Exact automata** | 22/22 Sigma rules compiled to exact automata over every Unicode code point (2883 states) · 44 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](docs/CERTIFY.md)) |
-| **Behaviour proofs** | 81 variants of documented attacker behaviour over 16 detections: 37 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 26 exclusions proven quiet ([certificates](docs/CERTIFICATES.md)) |
-| **Edit equivalence** | `rasd certify --equiv REF` compares every rule with its version at a git ref and proves the edit preserves every event's verdict, or shows the event it changes ([CERTIFY](docs/CERTIFY.md#comparing-two-versions-of-a-rule)) |
-| **Deception** | 7 decoys (2 account, 1 spn, 3 file, 1 service) read by 4 deception detections and touched by 3 red tests · inventory, rules, tests, red tests and the decoy host's configuration agree · 5 decoy classes planned ([DECEPTION](docs/DECEPTION.md), [inventory](deceive/)) |
-| **Evidence survivability** | 94 detection-question pairs over 18 detections: 38 out of reach, 0 evident, 56 exposed to a sequence that raises no alert · 3 rules on anti-forensic traces would leave 0 exposed · 31 artifacts, 16 anti-forensic actions, documented behaviour pending lab runs ([TRACE](docs/TRACE.md), [results](dfir/trace/)) |
-| **Evidence of absence** | 10 sensor proofs, 12 records that end one and 2 kinds of time off modelled · on the sample fleet (8 hosts, 2221 records): 99 detection-host pairs, 80 attested (76 by record sequence, 4 by rhythm), 5 fired, 14 unattested · 3 breaks in the record found · documented behaviour pending lab runs ([SILENCE](docs/SILENCE.md), [results](dfir/silence/)) |
-| **The unseen route** | 16 behaviours over 6 stages, 23 ways around replayed through the engine (22 raise no alert) · on the sample fleet (8 hosts): 12 routes from an origin to a target, 6 unseen end to end and 6 seen on the way (6 of them on rules with no behaviour spec) · 1 change is the fewest after which every route is seen (by leg 3) · documented behaviour pending lab runs ([BLINDPATH](docs/BLINDPATH.md), [results](purple/blindpath/)) |
-| **RASD-Agent's lane** | 19 candidate detections drafted by a language model and kept by the gates of `rasd grow`, reviewed by no person, and counted in no number of this page but this one; none reaches the core without a person's approval of its exact text ([GOVERNANCE](docs/GOVERNANCE.md)) · of the 604 techniques and sub-techniques of ATT&CK v20.1 that are drafted on their own, 17 have a core detection, 397 are in the agent's queue and 171 are out of reach of the logs RASD reads ([GROW](docs/GROW.md), [candidates](detect/candidates/README.md)) |
-| **Near misses** | 246 events one field edit away from an alert, on 10 boundaries (10 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1046_decoy_service_interaction, T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
-| **Public datasets** | 16/22 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](docs/PUBLIC_DATA_VALIDATION.md)) |
+| **Library** | 22 detections (18 single-event, 4 correlations) across 17 ATT&CK techniques |
+| **Tests** | 403 cases · 640 mutations · 1621 evasion variants, 0 bypasses |
+| **Rule logic** | 291/291 rule mutants killed or accepted · 22/22 rules as exact automata |
+| **SIEM queries** | 16284 parity verdicts per backend, 0 divergences (offline model of KQL and SPL) |
+| **Public attack data** | 16/22 detections fire on pinned public datasets |
 | **Engineering Score** | 100/100 |
-| **Operational Score** | 56/100 over 15 detections |
-| **Chain completeness** | 318/340 items ([validation matrix](purple/validation_matrix.md)) |
 
-<sub>Counted by `tools/chain.py` on every build.</sub>
+| 🧪 Proven in a lab | |
+|---|---|
+| **Validated** | 15 of 22 detections fired on a real attack step in a lab |
+| **Evidence** | 15 of 15 evidence files are recomputed from the raw lab runs kept in the repository on every build (3 parts of 1 run): a rule edited until it no longer fires on its run loses its evidence ([lab runs](purple/lab_runs/README.md)) |
+| **Operational Score** | 56/100 over 15 detections |
+| **Live SIEM** | 0 of 15 evidence files carry an alert raised by a live SIEM |
+| **Waiting** | 7 detections, each with the lab machine and step it needs ([evidence plan](docs/EVIDENCE_PLAN.md)) |
+
+<sub>Counted by `tools/chain.py` on every build · [every number](docs/RASD_METRICS.md)</sub>
 <!-- rasd:readme-metrics:end -->
 
-## Core Pillars
-
-| Pillar | Purpose |
-|---|---|
-| [RASD-Red](red/) | Controlled offensive validation |
-| [RASD-Detect](detect/) | Detection engineering and SIEM logic |
-| [RASD-DFIR](dfir/) | Investigation, evidence, response, and how far that evidence survives an intruder ([RASD-Trace](dfir/trace/)), and when a rule that stayed quiet is evidence that nothing happened ([RASD-Silence](dfir/silence/)) |
-| [RASD-Intel](intel/) | CTI to detection opportunities |
-| [RASD-Purple](purple/) | Attack-to-defense validation, and the route an intruder walks through the covered behaviours with no alert ([RASD-Blindpath](purple/blindpath/)) |
-| [RASD-Deceive](deceive/) | Decoys as tested detections: honey accounts, a honey SPN, honey files, a decoy host, one inventory held in step with the rules |
-| [RASD-Agent](agent/) | The counsel: what to do next, computed from what the repository proves, for the analyst, the engineer, the purple team and the executive; learns from your decisions, reads your telemetry, explains alerts, drafts changes the gates verify. And a lane it grows with no person in the loop: [candidate detections](detect/candidates/README.md) for the ATT&CK techniques the core does not cover yet, kept only when every gate accepts them and never counted with the core |
-
-## Workflow
-
-```text
-Red behavior generates telemetry.
-Telemetry drives detection logic.
-Decoys turn the first touch into a signal.
-Detection triggers investigation.
-Investigation produces evidence.
-CTI gives context.
-Purple validation measures the full chain.
-The agent reads every measurement and says what comes next.
-```
-
-```text
-Adversary Behavior → Controlled Offensive Validation → Expected Telemetry → Detection Logic → SPL / KQL → Tests
-→ Mutation Testing → Triage → Response / DFIR Playbook → Closure / Escalation → CTI Mapping → Purple Scenario
-→ Operational Evidence → Metrics
-```
-
-RASD keeps legacy ATT&CK v18 aliases for compatibility, while primary mappings follow ATT&CK v19.2 ([aliases](intel/mappings/attack_v18_aliases.yml)). ATT&CK v20, released on 13 October 2026, changes no ID or tactic of the techniques RASD maps (checked against its release notes).
-
-## What RASD proves that a rule repository cannot
-
-| Claim | How RASD proves it |
-|---|---|
-| The rule catches the attack | True-positive tests, hand-written technique mutations, and an **evasion fuzzer** that generates renamed binaries, forward-slash paths, parameter prefixes, hex/decimal encodings and ordinal exports - against a regression baseline |
-| Every part of the rule is needed | **Rule mutation testing** (`rasd prove`): every value, field and branch of every rule is deleted in turn, and a test must fail each time. It found 45% of the original rule logic unproven by any test; today every mutant is killed or accepted as equivalent |
-| The SIEM query is the tested rule | **Query parity** (`rasd parity`): the generated KQL and SPL, and the Defender XDR advanced hunting queries where a Defender table exists, are parsed back and run by RASD's own interpreter of each language (null fields, case rules, regular expressions) on thousands of events. It found that Splunk silently dropped events with a missing field under `NOT`; the converter now reads those fields null-safely. Running the queries in a live SIEM is part of the lab evidence still pending |
-| The rule logic holds for every possible value, not only for samples | **Exact automata** (`rasd certify`): every rule is compiled into finite automata that accept exactly what the engine accepts, over every Unicode code point rather than a sample of them. From the automata certify builds an event that fires the rule and the nearest event that does not, and replays both through the engine; a rule that could never fire, or could never stay quiet, would be proven so and fail the build. Each value test is checked against the engine on its complete W-method conformance suite ([the mathematics](docs/CERTIFY.md)) |
-| The rule catches the attack however it is written | **Behaviour proofs** (`rasd certify`): a detection's `behavior.yml` writes down, from vendor source code and documentation, the ways its technique can appear in the events the rule reads, including how Windows splits a command line into the arguments the program actually receives. Each variant is proven caught for every possible event, or an event that slips past is shown and replayed through the engine. 81 variants over 16 detections are decided this way (counted on every build, in the metrics above); every known gap is listed with its fix, and CI fails on a gap the spec does not list or a listed gap that has quietly closed ([certificates](docs/CERTIFICATES.md)) |
-| An edit did not change what a rule catches | **Edit equivalence** (`rasd certify --equiv REF`): the current rule and its version at a git ref are put over one shared set of automata, and the events on which they disagree are searched exhaustively. Either the search is empty, which proves the two versions classify every possible event alike (a rule can be refactored, split or reordered with proof that nothing it catches moved), or it returns the event that now lands on the other side, replayed through the engine against both versions ([how](docs/CERTIFY.md#comparing-two-versions-of-a-rule)) |
-| Attacks no single event shows are caught | **Sigma correlation detections** (`rasd correlate`): a password spray, Kerberoasting by volume, API authentication probing and object-ID enumeration, as tested rules rather than hunts. Every threshold, window, group-by and normalisation is held in place by an event-sequence scenario (parameter mutation testing); the generated SPL and KQL aggregations are parsed back and must return the engine's exact alerts for the rule and every mutant; and each carries a **proven burst guarantee**: 2T-1 distinct values in one window length always alert, whatever the window alignment (for the spray, 9 accounts in 10 minutes) |
-| You know where false positives will come from | **Near-miss analysis** (`rasd nearmiss`): every event one field edit away from an alert, each proven by a witness the engine confirms, grouped by the condition holding it back; CI fails when a boundary carrying traffic has no true negative pinning it. For correlations, the headroom between the busiest quiet window and the threshold |
-| It stays quiet on normal activity | True-negative tests, a filter-coverage gate, and **tuning impact analysis** (`rasd tune`) that measures every proposed filter: attack variants hidden versus corpus alerts removed |
-| The analyst knows what to do | Triage and response cards, closure notes (benign or false positive) and an escalation note, generated from each detection's contract (L1 / L2 / IR actions, risk model, evidence, containment), and a DFIR playbook for every technique |
-| The offensive test and the rule agree | Every red test's sample event **is** one of its detection's true positives, and CI proves it matches |
-| The first touch of a decoy is an alert, and the decoys stay real | **RASD-Deceive** (`rasd deceive`): seven decoys - honey accounts, a honey SPN account, honey credential files, a decoy host - defined once in an inventory and read by four Sigma rules that pass every proof above (each proven to fire on every documented way of touching a decoy and to stay quiet on everything else). `--check` fails the build when the inventory, a rule, its tests, its red test or the decoy host's configuration drift apart; `--rename` adopts your own identities everywhere so the proofs are about your decoys, not the examples ([DECEPTION](docs/DECEPTION.md)) |
-| It fires on attack telemetry recorded by others | **Public dataset replay** (`rasd datasets`): files from three public sources (Splunk Attack Data, OTRF Security-Datasets, EVTX-ATTACK-SAMPLES), each pinned to a commit and a SHA-256, replayed through every detection and correlation. Every alert is either the recorded attack or explained in the catalog (the labs' test harness, other benign activity, or false positive); every record is counted once, with repeats inside a file and copies between files found and declared; every documented limit is re-checked on each run; and the applied tunings are measured on the labs' background activity. It showed rules blind to real attacks - Invoke-Mimikatz and PPLdump behind the LSASS rule's System32 filter, a bare `cmd.exe` service binary, three rundll32 proxy exports, a Run value pointing into `C:\Windows\Tasks`, sprays over guessed account names - and each fix is proven on the public events, so those rules' results there are marked in-sample. Public data is not lab evidence: it does not raise a detection's maturity |
-| It can be proven in a real environment | `rasd evidence` joins a lab run, its telemetry export and optional SIEM alerts, and writes evidence only when the rule really fired on an event bound to that run (host or client address, time window, run marker) - with the SHA-256 of every input. No run is committed yet: the status line above says how many detections have one |
-| Nothing is overstated | Maturity levels and both scores are computed; a contract cannot claim more than the repository proves. Without lab evidence a detection stops at **SIEM-Ready** (deployable, not validated), and the Operational Score stays **pending** until a real run is committed |
-| The evidence survives the intruder, or the attempt to remove it is seen | **RASD-Trace** (`rasd trace`): the artifacts each technique writes, the questions each one answers (did it run, when, who, how, from where) and the anti-forensic actions that destroy or blind them are written down once, with what every action itself leaves behind. An exhaustive search over every sequence of those actions around the technique gives each detection and question a verdict: out of reach, evident (every sequence that removes the answer raises a RASD alert) or exposed, with the cheapest quiet sequence shown. A trace that names a rule is replayed through the engine in CI, the unread traces are ranked into the next rules to write, and `--lost` tells an investigation what can still be proven once logs are gone. Documented behaviour, pending the same lab runs as everything else ([TRACE](docs/TRACE.md), [results](dfir/trace/README.md)) |
-| A rule that stayed quiet is evidence, or it is said why not | **RASD-Silence** (`rasd silence`): for every detection on every host of an export, the quiet is **attested** only between two records that show the sensor recording, with every record between them present (the channel's record numbers are consecutive) and none saying the sensor stopped, changed or was emptied. Any other quiet is **unattested**, with its reason and what to turn on. Record numbers missing, a channel cleared, a logging service started with no stop before it, and a host that another host kept recording while its own channels said nothing, are listed as breaks in the record. A host that was shut down or asleep is not counted either way. `--certificate` writes the result with the SHA-256 of every input and what it does not say; with no export, on Windows, the host's own event logs are read ([SILENCE](docs/SILENCE.md)) |
-| A green cell is a wall, or the way through it is shown | **RASD-Blindpath** (`rasd blindpath`): a coverage map says which techniques have a rule; this says how far an intruder gets while stepping only on those techniques. From each origin to each target of an export it walks the legs of an intrusion (run code, take credentials, move in, run code on the target) and calls a behaviour **unseen** on a host only on proof: the export holds no record of the sensor its rules read from that host (the verdict of `rasd silence`), or one sequence of events of the behaviour, replayed through every rule and correlation, raises no alert. The events are a variant `rasd certify` shows slipping past the rule, or a correlation's own true positives paced one under its threshold. A route with every leg open is **unseen end to end**; any other names the first leg that sees it and what that hold rests on. The plan is the fewest changes, a variant closed in a rule or a sensor turned on on a host, after which every route is seen by each leg in turn, found by exact search and walked again once applied. Decoys are shown as tripwires and never counted, and a variant the pipeline or the target decides is never walked ([BLINDPATH](docs/BLINDPATH.md)) |
-| You know what to do next, and why that first | **RASD-Agent** (`rasd advise`): every measurement above turned into ranked findings with the evidence and the exact next step, for the analyst, the engineer, the purple team and the executive: the lab wave that validates the most detections, the known gap with its fix, the boundary no test pins, the tuning that is safe on the corpus but contradicts a behaviour spec, the next rule the tracked groups press on. Each finding has a stable id; what you decide about it is remembered and ranks the counsel, and an accepted finding that disappears counts as resolved. `--logs` reads your own telemetry, `--explain` reads an alert with the contract's guidance and the deception chain, `--propose` drafts the change and verifies it with the same gates before writing it, `--apply` copies it in and runs them. A language model is optional and everything it writes is gated ([AGENT](docs/AGENT.md), [the counsel on this build](agent/ADVICE.md)) |
-| The library grows between releases, and what grew alone is never mistaken for what was reviewed | **RASD-Agent's lane** (`rasd grow`): the queue is the whole ATT&CK Enterprise matrix, read from MITRE's own release, minus what the core and the lane already cover, the techniques used by the most documented groups first. For each one a language model drafts a rule with its tests, and the draft is kept only when every gate accepts it: the engine, the field vocabulary of the log source, every attacker variation of the fuzzer, the events the repository records as benign, KQL and SPL parity. The proof is computed, not asked for: the tests a rule mutant survives are built from the exact automata, and a part no event can tell apart is removed, so no mutant survives. Candidates live in [`detect/candidates`](detect/candidates/README.md), beside the core and outside every number above; each run proves them again and retires the one that no longer passes; a scheduled workflow publishes the lane only behind the full pipeline and only its own files. A person promotes a candidate into the core; nothing else needs one ([GROW](docs/GROW.md)) |
-
-## Quick start
+## 🚀 Quick start
 
 Requires Python 3.10+ and PyYAML.
 
 ```bash
 git clone https://github.com/engziyad/RASD.git && cd RASD
 python3 -m venv .venv && . .venv/bin/activate     # Windows: py -m venv .venv, then .venv\Scripts\activate
-pip install -e .                  # installs the rasd command for this clone
-rasd ci                           # the full pipeline CI runs, in order (CI adds code and script checks)
-rasd chain                        # the 20-point attack-to-defense map per technique
-rasd correlate -v                 # the correlation proofs, scenario by scenario and mutant by mutant
-rasd certify -v                   # every rule as exact automata: the shortest event that fires it, the nearest that does not
-rasd certify --equiv HEAD~1       # prove an edit preserved what each rule catches, or see the event that changed
-rasd nearmiss                     # traffic one field edit away from an alert; correlation headroom
-rasd trace                        # can the evidence be erased, at what cost, and does a rule see the attempt
-rasd silence samples/silence/fleet.jsonl --assets samples/silence/assets.csv   # is each rule's quiet evidence? fired / attested / unattested, and every break in the record
-rasd silence                      # on Windows: the same for this host, from its own event logs (read only)
-rasd blindpath samples/silence/fleet.jsonl --assets samples/silence/assets.csv   # can an intruder cross from an origin to a target with no alert? every unseen step with its proof, and the fewest changes that end it
-rasd blindpath                    # on Windows: the same walk on this host alone, from its own event logs (read only)
-rasd advise                       # the counsel: what to do next and why, per role; --logs reads your own export, --explain an alert
-rasd grow                         # RASD-Agent's lane: where every ATT&CK technique stands and what is drafted next; --run drafts with the configured model and keeps what every gate accepts
-rasd datasets fetch && rasd datasets run   # about 730 MB of pinned public attack data (in-sample and held out) through every rule; EVTX files need pip install -e .[datasets]
-rasd replay samples/replay/lab-day.jsonl --assets samples/replay/assets.csv --users samples/replay/users.csv --html report.html
+pip install -e .
+rasd ci                  # everything the CI workflow proves, in order
+rasd health --sample     # a day the log pipeline breaks, and the detections it blinds
+rasd advise              # what to do next, and why that first
 ```
 
-Without installing, every command also runs as `python rasd.py <command>` after `pip install -r requirements.txt`. Offline, or behind a package mirror without build isolation: `python -m pip install -e . --no-build-isolation` (it uses the setuptools already installed, which must be 77 or newer for the SPDX license field). For changes to the tools themselves, `pip install -r requirements-dev.txt` adds ruff (lint and security rules) and mypy, which CI and the pre-commit hooks run. Security linting is currently covered through Ruff S-rules. Bandit may be added later as an optional CI gate. On Debian, Ubuntu or Kali, `sudo apt install python3-venv` provides `venv`, and `sudo apt install python3-yaml` is enough for `python3 rasd.py ...`.
+[Every command](docs/COMMANDS.md) · [run the lab](red/lab/README.md) · [take it into your SIEM](docs/ENTERPRISE_ADOPTION.md) · [الدليل بالعربي](docs/GUIDE_AR.md)
 
-The last command writes the replay report: every rule and correlation run over a synthetic lab day, alerts ranked by risk, and the intrusion rebuilt as one storyline (command lines hidden in this capture).
+## 🗂️ Modules
 
-<img src="docs/assets/replay-report.png" alt="RASD replay report: alerts, rules fired and the attack storyline on WS07" width="760">
+| | Module | The question it answers | Open |
+|:-:|---|---|---|
+| 🔴 | **RASD-Red** | Can the technique be run safely, repeatably, and cleaned up? | [red/](red/) · [lab kit](red/lab/README.md) |
+| 🎯 | **RASD-Detect** | Does the rule catch it in every form, and is the SIEM query the same rule? | [detect/](detect/) · [proofs](docs/PROOFS.md) |
+| 🧮 | **Correlations** | What about attacks no single event shows? | [CORRELATIONS](docs/CORRELATIONS.md) |
+| 🪤 | **RASD-Deceive** | Is the first touch of a decoy an alert? | [deceive/](deceive/) · [DECEPTION](docs/DECEPTION.md) |
+| 🔬 | **RASD-DFIR** | What does the analyst do when it fires? | [dfir/](dfir/) |
+| 🧾 | **RASD-Trace** | Can an intruder erase the evidence, and is the attempt seen? | [TRACE](docs/TRACE.md) |
+| 🤫 | **RASD-Silence** | When a rule stayed quiet, does that prove nothing happened? | [SILENCE](docs/SILENCE.md) |
+| 🕳️ | **RASD-Blindpath** | Can an intruder cross from host to host with no alert? | [BLINDPATH](docs/BLINDPATH.md) |
+| 🩺 | **RASD-Health** | Is every detection still being fed, today? | [HEALTH](docs/HEALTH.md) · [watchdogs](queries/health/README.md) |
+| 🧠 | **RASD-Intel** | Which technique should be covered next, and who uses it? | [intel/](intel/) |
+| 🟣 | **RASD-Purple** | Did the whole chain hold in a lab? | [purple/](purple/) · [lab runs](purple/lab_runs/README.md) |
+| 🤖 | **RASD-Agent** | What comes next, and what did the agent draft that a person still has to decide? | [AGENT](docs/AGENT.md) · [GOVERNANCE](docs/GOVERNANCE.md) |
 
-Real evidence, on an isolated Windows lab VM that forwards to Splunk ([lab kit](red/lab/README.md)):
+## 📚 Documentation
 
-```powershell
-.\red\lab\Test-LabReadiness.ps1 -Fix                 # Sysmon live probe, audit policy, forwarder, connection
+| | | |
+|:-:|---|---|
+| 🧭 | **Start** | [Overview](docs/RASD_OVERVIEW.md) · [Architecture](docs/RASD_ARCHITECTURE.md) · [What RASD proves](docs/PROOFS.md) · [Commands](docs/COMMANDS.md) · [Coverage and layout](docs/COVERAGE.md) · [Executive summary](docs/EXECUTIVE_SUMMARY.md) |
+| 📏 | **Rules of the house** | [Maturity model](docs/RASD_MATURITY_MODEL.md) · [Quality model](docs/QUALITY_MODEL.md) · [Acceptance criteria](docs/DETECTION_ACCEPTANCE_CRITERIA.md) · [Writing detections](docs/WRITING_DETECTIONS.md) · [Sigma support](docs/SIGMA_SUPPORT.md) · [The chain](docs/ATTACK_TO_DEFENSE_CHAIN.md) |
+| 🔐 | **Proofs** | [Certify](docs/CERTIFY.md) · [Certificates](docs/CERTIFICATES.md) · [Correlations](docs/CORRELATIONS.md) · [Public attack data](docs/PUBLIC_DATA_VALIDATION.md) |
+| 🧪 | **Lab** | [Operational validation](docs/OPERATIONAL_VALIDATION.md) · [Evidence plan](docs/EVIDENCE_PLAN.md) · [Lab runs](purple/lab_runs/README.md) · [SIEM scorecard](docs/SIEM_VALIDATION_SCORECARD.md) |
+| 🛰️ | **Operations** | [Health](docs/HEALTH.md) · [Silence](docs/SILENCE.md) · [Trace](docs/TRACE.md) · [Blindpath](docs/BLINDPATH.md) · [Deception](docs/DECEPTION.md) · [Enterprise adoption](docs/ENTERPRISE_ADOPTION.md) · [SIEM deployment](docs/SIEM_DEPLOYMENT_NOTES.md) |
+| 🤖 | **Agent** | [Agent](docs/AGENT.md) · [The lane it grows](docs/GROW.md) · [Governance](docs/GOVERNANCE.md) · [The counsel](agent/ADVICE.md) · [Candidates](detect/candidates/README.md) |
+| 📊 | **Numbers** | [Metrics](docs/RASD_METRICS.md) · [Data sources](docs/DATA_SOURCE_COVERAGE.md) · [Control evidence](docs/CONTROL_EVIDENCE.md) · [Role views](docs/views/) · [Detection backlog](intel/outputs/detection_backlog.md) |
+| 🗺️ | **Project** | [Roadmap](docs/RELEASE_ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [الدليل بالعربي](docs/GUIDE_AR.md) |
 
-# Safe default: skips credential access (LSASS dump) and the Security-log clear
-.\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed
+## 🛡️ Scope and safety
 
-# Full validation attempt for every Windows detection (disposable VM, snapshot first)
-.\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -IncludeCredentialAccess -IncludeSecurityLogClear -Spn <lab SPN> -UserList <lab accounts>
-```
-
-A run produces one workstation zip; Kerberoasting and the password spray also need the DC's export (`dc-export.jsonl`) and the SIEM part needs the Splunk alert export (`siem-alerts.csv`). `rasd evidence --run` reads the zip as it is: it refuses a zip that differs from the `.sha256` beside it, a file that differs from the run's manifest or is not in it, and an artifact that differs from the hash the runner recorded, then finds the results, the telemetry and the alert export by name and content:
-
-```bash
-rasd evidence --run lab-20261012-101500.zip dc-export.jsonl siem-alerts.csv
-```
-
-Linux and web runs use `python3 red/run_red.py` on the lab host, then `red/linux/export_sysmon_linux.py` or `red/web/export_access_log.py` turns the logs into the same JSONL ([operational validation](docs/OPERATIONAL_VALIDATION.md)).
-
-Logs from Elastic, Sentinel ASIM, Defender advanced hunting or Splunk CIM run through the same rules with a [telemetry profile](profiles/README.md): `--profile auto`.
-
-## The `rasd` command
-
-| Stage | Command | What it does |
-|---|---|---|
-| Author | `new` | Scaffold a detection that fails CI until every file is complete |
-| Verify | `lint` | Rules, contracts, tuning guides, evidence files, deep static checks (RE2-safe regex, field names, unused selections) |
-| | `sigma` | The Sigma subset RASD supports, each construct checked to give the same verdict in the engine and the generated SPL and KQL; everything else, including values Sigma reads differently, refused with an error |
-| | `test` · `mutate` | True-positive / true-negative samples; technique and case mutations |
-| | `fuzz` | Automatic evasion variants against a regression baseline |
-| | `prove` | Rule mutation testing: is every value, field and branch proven by a test? |
-| | `parity` | The generated KQL and SPL return exactly what the tested rule returns |
-| | `certify` | Every rule as exact automata over every Unicode character: the shortest event that fires it and the nearest one that does not, built from the automata and replayed through the engine; every behaviour spec proven, or its gaps shown with replayed events. `--equiv REF` proves an edit kept each rule's meaning or shows the event that changed |
-| | `correlate` | Sigma correlations: scenarios, parameter mutants, aggregation parity, burst guarantee; `--logs` finds correlation alerts in an export |
-| | `nearmiss` | Events one field edit away from an alert, the condition holding them back and the true negative pinning it; correlation threshold headroom |
-| | `tune` | Security cost and noise benefit of every tuning |
-| | `diff` · `overlap` | Events that change verdict against a git ref; detections that co-fire |
-| Understand | `explain` | Why a rule matched (or did not) an event, field by field |
-| | `score` | Engineering Score and Operational Score |
-| Deploy | `build` · `convert` | KQL + SPL for rules and correlations, Defender XDR advanced hunting for process and registry rules, cards, views, coverage, scores, banner, chain outputs |
-| | `doctor` | Is a log export ready for the rules: READY / DEGRADED / BLIND per rule; `--profile` reads ECS, CIM, ASIM or Defender exports |
-| | `profiles` | Which telemetry profile fits an export, and which log sources each profile carries |
-| | `splunk` | The detections as a Splunk app: one scheduled alert per rule and per correlation (once per window), indexes, forwarder inputs, the alert export for evidence |
-| Operate | `red` | Validate and render every offensive test from its test.yml |
-| | `deceive` | The decoy inventory against the rules, tests, red tests and the decoy host's configuration; `--rename` adopts your own decoy identities with the proofs intact; `--gaps` ranks the decoy classes not built |
-| | `trace` | Evidence survivability: per detection and question (ran, when, who, how, origin), whether a sequence of anti-forensic actions can remove the answer, how many actions it needs and whether a rule sees it; the rules that would close the exposure, in order; `<detection> --lost STORES` lists what can still be proven once those stores are gone |
-| | `silence` | Evidence of absence: per detection and host of an export, fired, attested or unattested, with the share of the watched time, the grade (record sequence or rhythm) and every break in the record; `--certificate` writes the certificate and `--html` the same as one page with the map of every sensor over the window; with no export, on Windows, this host's own event logs |
-| | `blindpath` | The unseen route: from each origin to each target of an export, every leg open or held, each unseen behaviour proven by a witness the engine replays or by a sensor the export does not hold; the routes unseen end to end, the first leg that sees each other route, and the fewest changes after which every route is seen by each leg; what each change buys alone; `--certificate`, `--html` (the map of every host and stage), `--json`, `--strict`, `--baseline` (what changed since an earlier answer, exit 1 when it got worse), `--witnesses` (the witness events as JSONL, to replay through your own SIEM); with no export, on Windows, this host's own event logs |
-| | `replay` | Run every rule and correlation over logs: risk-ranked alerts, noise forecast, attack storylines; `--case-dir` writes a case folder per storyline (summary, `timeline.json`, observables, closure notes to fill in, the evidence request) |
-| | `benchmark` | Events per second through rules and correlations, peak memory, slowest rule and regex - on an export or on N synthetic events; `--stream` keeps memory flat at any size |
-| | `evidence` | Turn a real lab run into verifiable evidence (FIRED / MISSED), for rules and correlations; `--run` reads the lab run's zip or folder directly, `--strict` also requires the `.sha256` and a complete manifest |
-| | `datasets` | Public attack datasets: `fetch` them pinned and hashed, `run` every rule and correlation over them and compare with the catalog (the recorded attack, explained alerts, documented limits), `--write` keeps the result; `check` replays the committed extracts in CI |
-| | `chain` · `links` | The completeness map, maturity, matrices and metrics; every Markdown link resolves |
-| Counsel | `advise` | RASD-Agent: what to do next, ranked and evidenced, per role (`--for`); `--logs` your own telemetry; `--explain` an alert; `--propose` and `--apply` verified changes; `--decide` what you decided; `--ask` a question; a model is optional and gated |
-| Grow | `grow` | RASD-Agent's lane: where every ATT&CK technique stands (core, candidate, queued, declined, out of reach); `--run` drafts the next ones with the configured model and keeps what every gate accepts, with the proof computed; `--sync` reads a new ATT&CK release; `--check` proves every candidate again; `--guard` holds an unattended run to the lane's own files |
-| All | `ci` | The full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check) |
-
-## Coverage
-
-What the repository detects today, and what it only exercises. Detections are counted from `detect/detections` and `detect/correlations`; red tests without a detection are measured gaps, not coverage. The candidates of [RASD-Agent's lane](detect/candidates/README.md) are not counted here: no person reviewed them and no lab run validated them.
-
-| Area | Status | What exists |
-|---|---|---|
-| Windows process activity (Sysmon 1) | Covered | PowerShell encoded commands, scheduled tasks (schtasks and cmdlets), rundll32 proxy execution, wevtutil log clearing, shells and proxy binaries started by a WinRM session host |
-| Windows process access (Sysmon 10) | Covered | LSASS memory access |
-| Windows registry (Sysmon 13) | Covered | Run / RunOnce persistence |
-| Windows Security log | Covered | Security log cleared (1102), RC4 Kerberos service tickets (4769); authentication failures for many accounts (4771, 4768, 4625) and service tickets of any encryption (4769) counted by the correlations |
-| Windows System log | Covered | Other logs cleared (104), suspicious service installation (7045) |
-| Deception (decoys) | Covered | Honey accounts used (4624, 4625, 4768, 4771, 4776), the honey SPN account requested (4769, any encryption), honey credential files opened (4663), the decoy host probed or logged on to (OpenCanary records); each a first-class detection with a red test, a playbook and a scenario ([RASD-Deceive](deceive/)) |
-| Active Directory | Partial | Kerberoasting (RC4 rule + encryption-agnostic volume correlation); password spray (correlation, tested on its red test's scenario; lab run pending); LDAP enumeration as a red test only |
-| Web applications (access log) | Partial | API authentication probing and object-ID enumeration (correlations); JWT, file upload and security headers as red tests only |
-| Linux (Sysmon for Linux 1) | Partial | Crontab installed from standard input or a file, Base64 decoded into a shell, execution from /tmp, /var/tmp and /dev/shm; privilege-escalation recon as a red test only |
-| Cloud (Entra ID, AWS, Azure) | Not covered | Planned in the [roadmap](docs/RELEASE_ROADMAP.md#after-v20-new-data-domains), after lab data exists |
-| Email | Not covered | Planned, after lab data exists |
-| WAF / NDR | Not covered | Planned, after lab data exists |
-
-## Repository layout
-
-```text
-RASD
-├── red/        → Offensive Validation      22 tests: Windows, Active Directory, web, Linux
-├── detect/     → Detection Engineering     detections, correlations, coverage, quality, evasion baseline; candidates (RASD-Agent's lane)
-├── deceive/    → Cyber Deception           decoy inventory, deployment and health-check scripts, decoy host configuration
-├── agent/      → Counsel and growth        the ranked counsel page, the decisions taken on it, the ledger of the lane (proposals and your environment stay local)
-├── dfir/       → Investigation & Response  playbooks, queries, templates, models
-├── intel/      → CTI to Detection          templates, technique and actor maps, analyses
-├── purple/     → Attack-to-Defense         scenarios, validation / evidence / latency matrices
-├── profiles/   → Telemetry profiles: ECS, CIM, ASIM, Defender → rule field names
-├── datasets/   → Public attack datasets: catalog, results, reduced extracts, licenses
-├── samples/    → Replay corpus, telemetry profile and doctor samples
-├── docs/       → Architecture, metrics, maturity, governance
-├── tools/      → Automation, scoring, validation, generation
-├── schemas/    → Contract, mutation and tuning schemas
-├── queries/    → SPL / KQL / Defender advanced hunting / Hunts / Splunk app
-├── tests/      → Unit and framework tests
-└── .github/    → CI, issue templates, PR template
-```
-
-## Documentation
-
-| | |
-|---|---|
-| [EXECUTIVE_SUMMARY](docs/EXECUTIVE_SUMMARY.md) · [executive matrix](purple/executive_matrix.md) | One page for decision makers: what is detected, how far it is proven, what is open |
-| [RASD_OVERVIEW](docs/RASD_OVERVIEW.md) · [RASD_ARCHITECTURE](docs/RASD_ARCHITECTURE.md) | What RASD is and how it is built |
-| [ATTACK_TO_DEFENSE_CHAIN](docs/ATTACK_TO_DEFENSE_CHAIN.md) | Every link of the chain and the check that enforces it |
-| [RASD_MATURITY_MODEL](docs/RASD_MATURITY_MODEL.md) · [QUALITY_MODEL](docs/QUALITY_MODEL.md) | Maturity levels; Engineering and Operational Scores |
-| [DETECTION_ACCEPTANCE_CRITERIA](docs/DETECTION_ACCEPTANCE_CRITERIA.md) · [WRITING_DETECTIONS](docs/WRITING_DETECTIONS.md) | When a detection is complete; how to write one |
-| [SIGMA_SUPPORT](docs/SIGMA_SUPPORT.md) | The Sigma constructs RASD evaluates and converts, and the ones it refuses |
-| [CERTIFY](docs/CERTIFY.md) · [CERTIFICATES](docs/CERTIFICATES.md) | Rules as exact automata over every Unicode character: the model, the mathematics, why each answer is a proof; behaviour specs and their certificates |
-| [CORRELATIONS](docs/CORRELATIONS.md) | Correlation detections: format, semantics, scenarios, proofs, burst guarantee, SIEM scheduling |
-| [DECEPTION](docs/DECEPTION.md) · [decoy inventory](deceive/) | Decoys as first-class detections: the inventory, the chain of lures, what `rasd deceive --check` proves, adopting your own identities, what waits for the lab |
-| [TRACE](docs/TRACE.md) · [results](dfir/trace/README.md) | Evidence survivability: the model of stores, artifacts and anti-forensic actions, the search, the verdicts, what an incident uses, the limits |
-| [SILENCE](docs/SILENCE.md) · [results](dfir/silence/README.md) | Evidence of absence: the claim, what proves a sensor was recording, the two grades, the verdicts, the breaks in the record, what Windows really writes, the limits |
-| [BLINDPATH](docs/BLINDPATH.md) · [results](purple/blindpath/README.md) | The unseen route: the claim, the model of stages, legs and observers, what makes a behaviour unseen, the map and the routes, the plan, tripwires, the limits |
-| [AGENT](docs/AGENT.md) · [the counsel](agent/ADVICE.md) | RASD-Agent: how a finding is made, what the agent learns and how to check it, explaining alerts, proposals and their gates, the optional model |
-| [GROW](docs/GROW.md) · [candidates](detect/candidates/README.md) | RASD-Agent's lane: the two libraries, the queue over the whole matrix, a draft, the gates, the computed proof, the ledger, turning it on, the limits |
-| [PUBLIC_DATA_VALIDATION](docs/PUBLIC_DATA_VALIDATION.md) · [datasets](datasets/README.md) | Every detection replayed on pinned public attack data: what fired, what stays quiet and why, what public data asks for next |
-| [OPERATIONAL_VALIDATION](docs/OPERATIONAL_VALIDATION.md) · [EVIDENCE_PLAN](docs/EVIDENCE_PLAN.md) · [SIEM_VALIDATION_SCORECARD](docs/SIEM_VALIDATION_SCORECARD.md) | Lab runs and evidence; which lab machine and step proves each detection; the live Splunk and Defender scorecard, per detection |
-| [ENTERPRISE_ADOPTION](docs/ENTERPRISE_ADOPTION.md) · [SIEM_DEPLOYMENT_NOTES](docs/SIEM_DEPLOYMENT_NOTES.md) | Taking the detections into an organisation's SIEM; Sentinel and Splunk specifics |
-| [RASD_METRICS](docs/RASD_METRICS.md) · [DATA_SOURCE_COVERAGE](docs/DATA_SOURCE_COVERAGE.md) | Counted metrics; telemetry dependencies |
-| [Detection backlog](intel/outputs/detection_backlog.md) · [actor tradecraft map](intel/mappings/actor_tradecraft_map.md) | The open gaps ranked by telemetry already mapped and by the groups documented using each technique |
-| [CONTROL_EVIDENCE](docs/CONTROL_EVIDENCE.md) · [role views](docs/views/) | Evidence for audit; SOC, IR, GRC and purple-team views |
-| [RELEASE_ROADMAP](docs/RELEASE_ROADMAP.md) | v1.6 (this release: RASD-Agent's lane), v1.5, v1.4, v1.3, v1.2, v1.1, v2.0: Reference on lab evidence, and the new data domains after it |
-| [CONTRIBUTING](CONTRIBUTING.md) | Branch, pull request and the CI gate every change passes before it reaches main |
-| [GUIDE_AR](docs/GUIDE_AR.md) | الدليل الكامل بالعربي |
-
-## Scope and safety
-
-Offensive tests run only with an explicit lab confirmation, on disposable machines you own, and a [lab guard](red/lab/README.md#lab-guard) checks the machine itself: a test refuses to run on any host its owner has not marked as a lab, so a script started by mistake on a work machine stops before it does anything. Credential access and Security-log clearing are opt-in, every artifact carries a run marker so cleanup can only touch what the test created, web tests refuse public targets, connect only to the address they checked and never follow a redirect, and the password-spray simulation cannot succeed by design and skips any account one more failure could lock. The lab Sysmon configuration is intentionally verbose for validation: do not deploy `red/lab/sysmon-rasd.xml` to production. Samples and replay data are synthetic; `datasets/extracts` holds reduced events from public attack datasets under their own licenses ([notice](datasets/NOTICE.md)); no production logs belong in this repository.
+Offensive tests run only with an explicit lab confirmation, on disposable machines you own or on a hosted runner that exists for one run ([lab workflow](.github/workflows/lab-run.yml)), and a [lab guard](red/lab/README.md#lab-guard) checks the machine itself: a test refuses to run on any host its owner has not marked as a lab, so a script started by mistake on a work machine stops before it does anything. Credential access and Security-log clearing are opt-in and never run on a machine that is not yours, every artifact carries a run marker so cleanup can only touch what the test created, web tests refuse public targets, connect only to the address they checked and never follow a redirect, and the password-spray simulation cannot succeed by design and skips any account one more failure could lock. The lab Sysmon configuration is intentionally verbose for validation: do not deploy `red/lab/sysmon-rasd.xml` to production. Samples and replay data are synthetic; `purple/lab_runs` holds the raw files of lab runs made on machines that existed for the run; `datasets/extracts` holds reduced events from public attack datasets under their own licenses ([notice](datasets/NOTICE.md)); no production logs belong in this repository.
 
 ## License
 

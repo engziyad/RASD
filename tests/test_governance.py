@@ -282,10 +282,10 @@ class UnattendedRun(unittest.TestCase):
     """What a run with no person in the loop may leave behind."""
 
     def test_the_review_ledger_is_never_the_lane_s_to_change(self):
-        for path in ("agent/audit.jsonl", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml", "README.md"):
+        for path in ("agent/audit.jsonl", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml", "docs/RASD_METRICS.md"):
             self.assertTrue(grow.owned(path), path)
         for path in ("agent/reviews.yml", "detect/detections/T1482_x/rule.yml", "queries/splunk_app/rasd/default/savedsearches.conf",
-                     "tools/governance.py", "tools/grow.py", ".github/workflows/agent-grow.yml"):
+                     "tools/governance.py", "tools/grow.py", ".github/workflows/agent-grow.yml", "README.md"):
             self.assertFalse(grow.owned(path), path)
 
     @unittest.skipUnless(shutil.which("git"), "git is not installed")

@@ -1,6 +1,17 @@
 # Release Roadmap
 
-## v1.6: RASD-Agent's lane (this release)
+## v1.7: operational validation (this release)
+| Area | Delivered |
+|---|---|
+| Lab evidence | 15 of 22 detections Validated, each on a real attack step: ten on a Windows host with Sysmon (the WinRM detection through a session on the host itself), three on a Linux host with Sysmon for Linux and an OpenCanary decoy beside it, and two correlations on the lab web application. The lab is [`lab-run.yml`](../.github/workflows/lab-run.yml): hosted runners that exist for one run, each marked as a lab host ([lab kit](../red/lab/README.md#a-lab-you-do-not-have-to-build)) |
+| Evidence that is recomputed | The raw files of those runs are kept in [`purple/lab_runs`](../purple/lab_runs/README.md) (`rasd evidence --keep`), and `rasd evidence --check`, a step of `rasd ci`, fails unless each `evidence.md` is byte for byte what the run gives with today's rules. A rule edited until it no longer fires on its run loses its evidence in the same build |
+| What the first real runs found | Four faults no synthetic test could show, each fixed with a test: the decoy probe refused every target (an escaped bracket inside a bracket expression); the Windows exporter left out the event ids the deception rules read; the readiness check read Sysmon's UTF-16 output as plain text and warned about a correct configuration; the runner recorded an address the decoy never saw as the client |
+| RASD-Health | [HEALTH](HEALTH.md): `rasd health` compares today's telemetry with a baseline and gives every detection a verdict (healthy, degraded, blind, nothing to compare) for a silent host, a fall in volume, a field lost or renamed, command lines cut short, events that arrive after the scheduled search has looked, and searches the scheduler skipped; each break is named once with the detections it takes with it. Five watchdog searches in SPL and KQL are generated from what the rules read and scheduled by the Splunk app |
+| Governance of the lane | [GOVERNANCE](GOVERNANCE.md): `rasd review` records a person's verdict on a candidate against the SHA-256 of its rule text, in a ledger the unattended run may not change; only an approved text can be promoted into the core; every decision of the agent or of a person is one line of a hash-chained audit trail; a rejected candidate and a whole run can be rolled back. New gates find every exclusion from what the condition does and refuse one that names a person, a host or an address; the hostile drafts are tests |
+| A front page that is an index | The README is the chain, two short tables of what is proven (by the build, in a lab), a quick start and an index of modules and documents. The long tables moved to [PROOFS](PROOFS.md), [COMMANDS](COMMANDS.md) and [COVERAGE](COVERAGE.md) |
+| Not in this release | The five detections that need a domain controller and the two whose steps dump LSASS memory or clear the Security log wait for a lab that is ours ([evidence plan](EVIDENCE_PLAN.md)). No evidence file carries an alert raised by a live SIEM, so no Operational Score passes 60. The watchdog searches and the scheduled alerts have not run on a live Splunk or Sentinel. No candidate has been reviewed by a person yet |
+
+## v1.6: RASD-Agent's lane
 | Area | Delivered |
 |---|---|
 | Two libraries | The core (`detect/detections`, `detect/correlations`) stays what people write and review. Beside it, [`detect/candidates`](../detect/candidates/README.md) is grown by RASD-Agent with no person in the loop ([GROW](GROW.md)): one folder per technique the core does not cover, stated on its own page and in one row of the metrics, counted in no score, proof or certificate of the core |
@@ -74,8 +85,14 @@ The aim of v2.0 is that every covered detection reaches the **Reference** maturi
 
 | Item | Done when |
 |---|---|
-| Lab evidence for every covered detection | `evidence.md` committed for all detections; Operational Score ≥ 80 each. Order and commands: [EVIDENCE_PLAN](EVIDENCE_PLAN.md) |
+| Lab evidence for every covered detection | `evidence.md` committed for all detections; Operational Score ≥ 80 each. Order and commands: [EVIDENCE_PLAN](EVIDENCE_PLAN.md). Seven are left after v1.7: five need a domain controller, two need the opt-in steps on a machine that is ours |
+| A live SIEM lab | The lab's telemetry indexed in Splunk Enterprise with the generated app, every scheduled alert and every [health watchdog](../queries/health/README.md) run there, and the alert export passed to `rasd evidence`, so that the SIEM result and the detection latency are measured and not modelled. Then the same in Sentinel. Until then query parity is RASD's own model of each language, which shares its author with the converter |
 | SIEM results in evidence | Alert exports from Splunk and Sentinel passed to `rasd evidence` |
+| False positives on real telemetry | Every rule and candidate run over days of ordinary activity from a real estate or a populated lab (no attack in it), with the alerts per rule and per host counted and each one explained or tuned; today the noise evidence is the repository's own true negatives and public attack captures |
+| Candidates reviewed | Every candidate of the lane reviewed by a person with `rasd review`, the acceptance rate and the ratings published as they are, and the approved ones promoted with a lab run ([GOVERNANCE](GOVERNANCE.md)) |
+| Coverage chosen by risk | The next techniques taken from what intrusions use and the core cannot see, each with lab data first: DCSync, forged tickets, pass-the-hash and pass-the-ticket, DNS tunnelling, command-and-control beaconing, exfiltration, the steps before ransomware. The network ones wait for the network log source below |
+| One coverage view | One page per technique with five states a SOC can act on: covered and validated, covered and not validated, partly covered, not covered, not observable with the logs RASD reads; today the states are spread over the maturity levels, the lane's page and the backlog |
+| Case export | An alert as one JSON document a case system can take: summary, related events, hosts and accounts, ATT&CK mapping, the triage checklist, response and closure. `rasd replay --case-dir` writes the folder today; the single document and its schema are to do |
 | SIEM replay of the public datasets | The Splunk Attack Data files indexed with their sourcetypes and the generated SPL run over them, each count compared with the engine's ([checklist](PUBLIC_DATA_VALIDATION.md#siem-replay-checklist)) |
 | Next rules from public data | Rules for the behaviours public data showed and no rule reads yet: cron directory writes, netcat shells, NTLM sprays by workstation, explicit-credential sprays, local logon sprays, service ImagePath registry writes, LSASS dump command lines ([list](PUBLIC_DATA_VALIDATION.md#next-rules-from-public-data)) |
 | Actor map re-checked | `intel/mappings/actors.yml` carries a `last_checked` date (done 2026-10-13) |
