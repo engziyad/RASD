@@ -49,7 +49,7 @@ param(
 
     [string[]] $LogName = @('Microsoft-Windows-Sysmon/Operational', 'Security', 'System'),
 
-    [int[]] $EventId = @(1, 10, 13, 104, 1102, 4625, 4768, 4769, 4771, 7045),
+    [int[]] $EventId = @(1, 10, 13, 104, 1102, 4624, 4625, 4663, 4768, 4769, 4771, 4776, 7045),
 
     [int] $MaxEvents = 0
 )

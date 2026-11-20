@@ -1,0 +1,200 @@
+name: RASD lab run
+
+# The lab on machines that exist for one run. Each job takes a GitHub-hosted runner, marks it as a RASD lab
+# host (red/lab/README.md, Lab guard), installs Sysmon with the repository's configuration, runs the safe
+# default red steps and uploads the run: results, collected artifacts and the exported telemetry.
+# `rasd evidence --run` turns a downloaded run into evidence.md; nothing here writes to the repository.
+#
+# What a runner is not: joined to a domain, or watched by a SIEM. The Active Directory tests are skipped,
+# and the SIEM part of the Operational Score stays at zero for evidence made from these runs.
+# Credential access and the Security-log clear never run here.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [lab-run]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rasd-lab-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows lab host
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Mark this runner as a RASD lab host
+        shell: powershell
+        run: |
+          [Environment]::SetEnvironmentVariable('RASD_LAB_HOST', $env:COMPUTERNAME, 'Machine')
+          "lab host: $env:COMPUTERNAME"
+
+      - name: Install Sysmon with the repository's configuration
+        shell: powershell
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'Sysmon.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'Sysmon'
+          Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Sysmon.zip' -OutFile $zip -UseBasicParsing
+          Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
+          & (Join-Path $dir 'Sysmon64.exe') -accepteula -i red\lab\sysmon-rasd.xml
+          Get-Service Sysmon64 | Format-Table -AutoSize
+
+      - name: Plant the file decoys
+        shell: powershell
+        run: .\deceive\Deploy-RasdDecoys.ps1 -LabConfirmed -Files
+
+      - name: The plan
+        shell: powershell
+        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -DryRun
+
+      - name: Lab run
+        shell: powershell
+        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -OutDir (Join-Path $env:RUNNER_TEMP 'lab-windows')
+
+      - name: What ran
+        if: always()
+        shell: powershell
+        run: |
+          $results = Join-Path $env:RUNNER_TEMP 'lab-windows\emulation-results.json'
+          if (Test-Path -LiteralPath $results) {
+            (Get-Content -LiteralPath $results -Raw | ConvertFrom-Json) | Format-Table -Property test, step, status, cleanup, error -AutoSize -Wrap | Out-String -Width 220
+          }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-windows
+          path: |
+            ${{ runner.temp }}/lab-windows.zip
+            ${{ runner.temp }}/lab-windows.zip.sha256
+          if-no-files-found: warn
+
+  linux:
+    name: Linux lab host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Mark this runner as a RASD lab host
+        run: |
+          hostname -s | sudo tee /etc/rasd-lab-host >/dev/null
+          echo "lab host: $(cat /etc/rasd-lab-host)"
+
+      - name: Install Sysmon for Linux with the repository's configuration
+        run: |
+          if ! apt-cache show sysmonforlinux >/dev/null 2>&1; then
+            wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" -O "$RUNNER_TEMP/packages-microsoft-prod.deb"
+            sudo dpkg -i "$RUNNER_TEMP/packages-microsoft-prod.deb"
+            sudo apt-get update -qq
+          fi
+          sudo apt-get install -y -qq sysmonforlinux cron
+          sudo sysmon -accepteula -i red/lab/sysmon-rasd-linux.xml
+          probe="rasd-readiness-$(date +%s)"
+          /bin/echo "$probe" >/dev/null
+          sleep 5
+          sudo journalctl -t sysmon -o cat --since "-2min" | grep -c "$probe"
+
+      - name: The plan
+        run: python3 red/run_red.py --platform linux --lab-confirmed --dry-run
+
+      - name: Lab run
+        run: |
+          set -o pipefail
+          python3 red/run_red.py --platform linux --lab-confirmed --out-dir "$RUNNER_TEMP/lab-linux" | tee "$RUNNER_TEMP/linux-run.txt"
+
+      - name: Export the Sysmon events of the run
+        if: always()
+        run: |
+          since=$(awk '/^started:/ {print $2; exit}' "$RUNNER_TEMP/linux-run.txt")
+          sleep 5
+          sudo journalctl -t sysmon -o cat --since "-30min" | python3 red/linux/export_sysmon_linux.py --input - --since "$since" --out "$RUNNER_TEMP/linux-export.jsonl"
+          sha256sum "$RUNNER_TEMP/linux-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/linux-export.jsonl.sha256"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-linux
+          path: |
+            ${{ runner.temp }}/lab-linux
+            ${{ runner.temp }}/linux-export.jsonl
+            ${{ runner.temp }}/linux-export.jsonl.sha256
+            ${{ runner.temp }}/linux-run.txt
+          if-no-files-found: warn
+
+  web:
+    name: Lab web application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      JUICE_SHOP_IMAGE: bkimminich/juice-shop:v17.1.1
+      TARGET: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Mark this runner as a RASD lab host
+        run: |
+          hostname -s | sudo tee /etc/rasd-lab-host >/dev/null
+          echo "lab host: $(cat /etc/rasd-lab-host)"
+
+      - name: Start the lab application on localhost
+        run: |
+          docker run --detach --name rasd-lab-app --network host "$JUICE_SHOP_IMAGE"
+          for _ in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null "$TARGET/rest/admin/application-version"; then break; fi
+            sleep 2
+          done
+          curl --silent --fail "$TARGET/rest/admin/application-version"
+
+      - name: Create the lab test account
+        run: |
+          email="lab.user01@lab.local"
+          password="Lab-$(openssl rand -hex 12)"
+          echo "::add-mask::$password"
+          curl --silent --fail --output /dev/null --request POST "$TARGET/api/Users" \
+            --header 'Content-Type: application/json' \
+            --data "{\"email\":\"$email\",\"password\":\"$password\",\"passwordRepeat\":\"$password\"}"
+          {
+            echo "RASD_LAB_EMAIL=$email"
+            echo "RASD_LAB_PASSWORD=$password"
+          } >> "$GITHUB_ENV"
+
+      - name: The plan
+        run: python3 red/run_red.py --platform web --lab-confirmed --target "$TARGET" --dry-run
+
+      - name: Lab run
+        run: |
+          set -o pipefail
+          python3 red/run_red.py --platform web --lab-confirmed --target "$TARGET" --out-dir "$RUNNER_TEMP/lab-web" | tee "$RUNNER_TEMP/web-run.txt"
+
+      - name: Export the access log of the run
+        if: always()
+        run: |
+          marker=$(awk '/^run marker:/ {print $3; exit}' "$RUNNER_TEMP/web-run.txt")
+          docker cp rasd-lab-app:/juice-shop/logs "$RUNNER_TEMP/app-logs"
+          cat "$RUNNER_TEMP"/app-logs/access.log* > "$RUNNER_TEMP/access.log"
+          python3 red/web/export_access_log.py --input "$RUNNER_TEMP/access.log" --marker "$marker" --out "$RUNNER_TEMP/web-export.jsonl"
+          sha256sum "$RUNNER_TEMP/web-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/web-export.jsonl.sha256"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-web
+          path: |
+            ${{ runner.temp }}/lab-web
+            ${{ runner.temp }}/web-export.jsonl
+            ${{ runner.temp }}/web-export.jsonl.sha256
+            ${{ runner.temp }}/web-run.txt
+          if-no-files-found: warn
