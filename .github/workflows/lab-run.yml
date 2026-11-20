@@ -3,7 +3,8 @@ name: RASD lab run
 # The lab on machines that exist for one run. Each job takes a GitHub-hosted runner, marks it as a RASD lab
 # host (red/lab/README.md, Lab guard), installs Sysmon with the repository's configuration, runs the safe
 # default red steps and uploads the run: results, collected artifacts and the exported telemetry.
-# `rasd evidence --run` turns a downloaded run into evidence.md; nothing here writes to the repository.
+# A last job turns the runs into evidence.md with `rasd evidence`, rebuilds the pages and pushes them as a
+# branch, lab-evidence/run-<id>, for a person to read and open as a pull request. Nothing reaches main from here.
 #
 # What a runner is not: joined to a domain, or watched by a SIEM. The Active Directory tests are skipped,
 # and the SIEM part of the Operational Score stays at zero for evidence made from these runs.
@@ -151,6 +152,7 @@ jobs:
 
       - name: Start the lab application on localhost
         run: |
+          docker pull --quiet "$JUICE_SHOP_IMAGE"
           docker run --detach --name rasd-lab-app --network host "$JUICE_SHOP_IMAGE"
           for _ in $(seq 1 60); do
             if curl --silent --fail --output /dev/null "$TARGET/rest/admin/application-version"; then break; fi
@@ -198,3 +200,73 @@ jobs:
             ${{ runner.temp }}/web-export.jsonl.sha256
             ${{ runner.temp }}/web-run.txt
           if-no-files-found: warn
+
+  evidence:
+    name: Evidence from the runs
+    needs: [windows, linux, web]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write          # the evidence is pushed as a branch of its own, never to the branch it ran from
+      actions: read            # the runs are read from this run's artifacts
+    env:
+      NO_BANNER: "1"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the rasd command
+        run: pip install -e .
+
+      - name: Read the runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --dir "$RUNNER_TEMP/runs"
+          find "$RUNNER_TEMP/runs" -maxdepth 3 -type f | sed "s#$RUNNER_TEMP/##" | sort
+
+      - name: Turn each run into evidence
+        id: evidence
+        run: |
+          runs="$RUNNER_TEMP/runs"
+          missed=0
+          if [ -f "$runs/lab-windows/lab-windows.zip" ]; then
+            rasd evidence --run "$runs/lab-windows/lab-windows.zip" --strict || missed=1
+          fi
+          if [ -d "$runs/lab-linux/lab-linux" ]; then
+            rasd evidence --run "$runs/lab-linux/lab-linux" "$runs/lab-linux/linux-export.jsonl" || missed=1
+          fi
+          if [ -d "$runs/lab-web/lab-web" ]; then
+            rasd evidence --run "$runs/lab-web/lab-web" "$runs/lab-web/web-export.jsonl" || missed=1
+          fi
+          echo "missed=$missed" >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild the pages
+        run: rasd build
+
+      - name: Push the evidence as a branch
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No evidence was written: nothing to push."
+            exit 0
+          fi
+          branch="lab-evidence/run-$GITHUB_RUN_ID"
+          fired=$(git status --porcelain -- detect | grep -c 'evidence.md' || true)
+          git checkout --quiet -b "$branch"
+          git add --all
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "evidence: $fired detections fired in lab run $GITHUB_RUN_ID" \
+            -m "Written by rasd evidence from the runs of workflow run $GITHUB_RUN_ID on GitHub-hosted runners marked as lab hosts. No domain and no SIEM: the Active Directory detections and the SIEM part of the Operational Score are not covered. The raw exports are the artifacts of that run."
+          git push --quiet origin "$branch"
+          echo "pushed $branch" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: A detection whose step ran did not fire
+        if: steps.evidence.outputs.missed == '1'
+        run: |
+          echo "::error::rasd evidence reported a MISSED detection or refused a run: read the step above."
+          exit 1

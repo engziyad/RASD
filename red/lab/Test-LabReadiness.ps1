@@ -95,7 +95,8 @@ if ($sysmon.Count -eq 0) {
 }
 
 if ($sysmonExe -and $admin) {
-    $config = (& $sysmonExe -c 2>&1 | Out-String)
+    # Sysmon writes UTF-16 to a pipe: without the NULs the text is what the console shows
+    $config = ((& $sysmonExe -c 2>&1 | Out-String) -replace "`0", '')
     $missing = @()
     if (-not ($config -match 'ProcessAccess' -and $config -match 'lsass')) { $missing += 'EID 10 for lsass.exe' }
     if (-not ($config -match 'Registry' -and $config -match 'CurrentVersion\\Run')) { $missing += 'EID 13 for Run keys' }
