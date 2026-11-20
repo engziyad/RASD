@@ -128,11 +128,11 @@ COMMANDS = {
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["grow.py", "--write"], ["chain.py"],
+         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["grow.py", "--write"], ["evidence.py", "--page"], ["chain.py"],
          ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
       ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["grow.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
-      ["datasets.py", "check"],
+      ["datasets.py", "check"], ["evidence.py", "--check"],
       *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
 

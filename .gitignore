@@ -27,3 +27,5 @@ rasd-silence-*.md
 rasd-silence-*.html
 rasd-blindpath-*.md
 rasd-blindpath-*.html
+# lab runs kept on purpose (rasd evidence --keep): the raw files are the point
+!/purple/lab_runs/**

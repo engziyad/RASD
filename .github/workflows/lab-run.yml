@@ -3,8 +3,9 @@ name: RASD lab run
 # The lab on machines that exist for one run. Each job takes a GitHub-hosted runner, marks it as a RASD lab
 # host (red/lab/README.md, Lab guard), installs Sysmon with the repository's configuration, runs the safe
 # default red steps and uploads the run: results, collected artifacts and the exported telemetry.
-# A last job turns the runs into evidence.md with `rasd evidence`, rebuilds the pages and pushes them as a
-# branch, lab-evidence/run-<id>, for a person to read and open as a pull request. Nothing reaches main from here.
+# A last job turns the runs into evidence.md with `rasd evidence`, keeps the raw runs beside it in
+# purple/lab_runs (these machines hold nothing private), rebuilds the pages and pushes the result as a branch,
+# lab-evidence/run-<id>, for a person to read and open as a pull request. Nothing reaches main from here.
 #
 # What a runner is not: joined to a domain, or watched by a SIEM. The Active Directory tests are skipped,
 # and the SIEM part of the Operational Score stays at zero for evidence made from these runs.
@@ -274,22 +275,27 @@ jobs:
         id: evidence
         run: |
           runs="$RUNNER_TEMP/runs"
+          keep="hosted-$GITHUB_RUN_ID"
+          note="GitHub-hosted runners (windows-2022 and ubuntu-24.04), each marked as a RASD lab host for one run and discarded after it. No domain and no SIEM. Workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA."
           missed=0
           if [ -f "$runs/lab-windows/lab-windows.zip" ]; then
-            rasd evidence --run "$runs/lab-windows/lab-windows.zip" --strict || missed=1
+            rasd evidence --run "$runs/lab-windows/lab-windows.zip" --strict --keep "$keep" --note "$note" || missed=1
           fi
           if [ -d "$runs/lab-linux/lab-linux" ]; then
             exports=("$runs/lab-linux/linux-export.jsonl")
             if [ -s "$runs/lab-linux/canary-export.jsonl" ]; then exports+=("$runs/lab-linux/canary-export.jsonl"); fi
-            rasd evidence --run "$runs/lab-linux/lab-linux" "${exports[@]}" || missed=1
+            rasd evidence --run "$runs/lab-linux/lab-linux" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
           fi
           if [ -d "$runs/lab-web/lab-web" ]; then
-            rasd evidence --run "$runs/lab-web/lab-web" "$runs/lab-web/web-export.jsonl" || missed=1
+            rasd evidence --run "$runs/lab-web/lab-web" "$runs/lab-web/web-export.jsonl" --keep "$keep" --note "$note" || missed=1
           fi
           echo "missed=$missed" >> "$GITHUB_OUTPUT"
 
       - name: Rebuild the pages
         run: rasd build
+
+      - name: The evidence is what the kept runs give
+        run: rasd evidence --check
 
       - name: Push the evidence as a branch
         run: |

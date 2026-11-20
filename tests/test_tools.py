@@ -471,6 +471,32 @@ class EvidenceBinding(unittest.TestCase):
         self.assertEqual(len(evidence.find_alerts(det, step, [alert], grace=900)), 1)
         self.assertEqual(evidence.find_alerts(det, {**step, "targets": []}, [alert], grace=900), [])
 
+    def test_runner_records_the_address_a_target_sees(self):
+        sys.path.insert(0, str(ROOT / "red"))
+        import run_red
+        self.assertEqual(run_red.address_toward("http://127.0.0.1:3000"), "127.0.0.1")
+        self.assertIsNone(run_red.address_toward("http://no-such-host.invalid"))
+        self.assertIsNone(run_red.address_toward(None))
+        text = (ROOT / "red" / "run_red.py").read_text(encoding="utf-8")
+        self.assertIn('rec["host_ips"] = [*ips, toward]', text)
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is not installed")
+    def test_decoy_probe_accepts_a_lab_url_and_nothing_else(self):
+        script = ROOT / "red" / "linux" / "decoy_service_probe" / "probe_decoy.sh"
+
+        def refusal(target: str) -> str:
+            # --ssh-port is checked right after --target and before anything runs: the probe never starts
+            r = subprocess.run(["bash", str(script), "--marker", "rasd_1a2b3c4d", "--lab-confirmed", "--target", target,  # noqa: S607
+                                "--ssh-port", "x"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2, r.stderr)
+            return r.stderr
+        for good in ("http://10.0.0.40", "http://10.0.0.40/", "http://172.17.0.2", "https://lab-canary-01.lab.local:8443",
+                     "http://[fd00::40]"):
+            self.assertIn("--ssh-port must be", refusal(good), good)
+        for bad in ("http://10.0.0.40/admin", "http://10.0.0.40;id", "http://10.0.0.40 x", "ftp://10.0.0.40",
+                    "http://$(id)", "10.0.0.40"):
+            self.assertIn("--target must be", refusal(bad), bad)
+
     def test_runner_records_the_target_of_a_remote_step(self):
         text = (ROOT / "red" / "Invoke-RasdEmulation.ps1").read_text(encoding="utf-8")
         self.assertRegex(text, r"targets = @\(if \(\(Get-Parameters \$s\) -contains 'Target' -and \$Target\) \{ \$Target \}\)")

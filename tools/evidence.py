@@ -49,6 +49,18 @@ telemetry and alert exports as SIEM alerts, and refuses anything that does not a
 were written: the zip's .sha256, a manifest listing every file of the run, and a .sha256 beside
 every export (see discover()).
 
+A run whose every file may be public - machines that existed for the run, accounts that mean
+nothing - can be kept in the repository: --keep NAME copies what --run read into
+purple/lab_runs/NAME and records how it was read. From then on the evidence made from it is not
+a statement to be trusted but a result to be recomputed:
+
+  --check     reads every kept run again and fails unless each evidence.md that cites one is,
+              byte for byte, what this command writes from it today, with today's rules. A rule
+              edited until it no longer fires on its lab run loses its evidence in the same
+              build. Evidence whose run is not kept is listed, and left alone.
+  --refresh   rewrites the evidence of every kept run (after a rule's title or fields changed)
+  --page      writes purple/lab_runs/README.md: the kept runs, their files and what they carry
+
 Usage
   rasd evidence --run lab-20261012-101500.zip dc-export.jsonl siem-alerts.csv
   rasd evidence --run lab-20261012-101500.zip dc-export.jsonl siem-alerts.csv --strict
@@ -56,13 +68,18 @@ Usage
   rasd evidence --results emulation-results.json --logs lab-export.jsonl
   rasd evidence --results emulation-results.json --logs lab-export.jsonl dc-export.jsonl --siem-alerts siem-alerts.csv
   rasd evidence --results r.json --logs ws.jsonl --dry-run
+  rasd evidence --run lab-windows.zip --strict --keep hosted-1234 --note "where the run was made"
+  rasd evidence --check
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import hashlib
+import io
 import json
+import os
 import re
 import shutil
 import sys
@@ -75,7 +92,8 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DIM, GREEN, RED, RESET, YELLOW, carries_token, expand_token, load_detections, load_jsonl
+from common import (BOLD, DIM, GREEN, PURPLE, RED, RESET, ROOT, YELLOW, carries_token, expand_token, load_detections,
+                    load_jsonl, write_output)
 from common import read_text as common_read_text
 from correlation import (CorrelationError, evaluate as evaluate_correlation, group_label, iso,
                          load_correlations, value_reader)
@@ -881,7 +899,10 @@ def print_run(run: LabRun) -> None:
 
 
 def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], *, grace: int, siem_grace: int,
-             dry_run: bool, profile_name: str | None, manifest: dict | None, run: dict | None = None) -> int:
+             dry_run: bool, profile_name: str | None, manifest: dict | None, run: dict | None = None,
+             collect: dict[str, str] | None = None) -> int:
+    """collect: when given, the evidence of every detection that fired is put there (detection id ->
+    the text of its evidence.md) and nothing is written."""
     steps = load_results(results_path)
     events, files = [], {}
     for p in log_paths:
@@ -940,17 +961,21 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
         else:
             print(f"  {RED}MISSED{RESET}  {det_id:<48} {DIM}expected from: {'; '.join(expected[det_id])}{RESET}")
 
-    if not dry_run:
+    if collect is not None or not dry_run:
+        bodies: dict[str, tuple[Path, str]] = {}
         for det, step, hits, al in best.values():
-            body = render(det, step, hits, al, files, results_path.name, sha256(results_path), siem_files, profile,
-                          manifest, run)
-            (det.folder / "evidence.md").write_text(body, encoding="utf-8", newline="\n")
+            bodies[det.id] = (det.folder, render(det, step, hits, al, files, results_path.name, sha256(results_path),
+                                                 siem_files, profile, manifest, run))
         for corr, step, bound, alert, al in best_corr.values():
-            body = render_correlation(corr, step, bound, alert, al, files, results_path.name, sha256(results_path),
-                                      siem_files, profile, manifest, run)
-            (corr.folder / "evidence.md").write_text(body, encoding="utf-8", newline="\n")
-        if best or best_corr:
-            print(f"\n{GREEN}[+] wrote evidence.md for {len(best) + len(best_corr)} detection(s){RESET}")
+            bodies[corr.id] = (corr.folder, render_correlation(corr, step, bound, alert, al, files, results_path.name,
+                                                               sha256(results_path), siem_files, profile, manifest, run))
+        if collect is not None:
+            collect.update({det_id: body for det_id, (_folder, body) in bodies.items()})
+        else:
+            for folder, body in bodies.values():
+                (folder / "evidence.md").write_text(body, encoding="utf-8", newline="\n")
+            if bodies:
+                print(f"\n{GREEN}[+] wrote evidence.md for {len(bodies)} detection(s){RESET}")
 
     if missed:
         print(f"\n{YELLOW}{len(missed)} detection(s) did not fire on their own emulation step.{RESET}")
@@ -965,6 +990,311 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
     return 0
 
 
+STORE = PURPLE / "lab_runs"            # lab runs whose every file may be public, kept so their evidence is recomputed
+STORE_FORMAT = 1
+RUN_FILE = "run.yml"
+STORE_PAGE = "README.md"
+KEEP_NAME = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+DEFAULT_GRACE, DEFAULT_SIEM_GRACE = 120, 900
+
+
+@dataclass
+class Part:
+    """One call of `rasd evidence --run` that was kept: the paths it read, and how."""
+    run: str
+    name: str
+    paths: list[Path]
+    strict: bool = False
+    options: dict = field(default_factory=dict)        # grace, siem_grace, profile: only when not the defaults
+
+    @property
+    def label(self) -> str:
+        return f"{self.run}/{self.name}"
+
+
+def keep(name: str, paths: list[Path], *, strict: bool, note: str | None, options: dict, store: Path = STORE) -> Path:
+    """Copy the paths a --run call read (with the .sha256 beside each file) into the store, and record
+    in the run's run.yml how to read them again. A part kept twice replaces the first copy."""
+    if not KEEP_NAME.fullmatch(name):
+        raise RunError(f"--keep {name}: a name of lower-case letters, digits, dots, dashes and underscores")
+    first_path = paths[0]
+    part = first_path.name[:-4] if first_path.suffix.lower() == ".zip" else first_path.name
+    folder = store / name
+    dest = folder / part
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.mkdir(parents=True)
+    kept: list[str] = []
+    for p in paths:
+        if (dest / p.name).exists():
+            raise RunError(f"--keep: two inputs are named {p.name}")
+        if p.is_dir():
+            shutil.copytree(p, dest / p.name)
+        else:
+            shutil.copyfile(p, dest / p.name)
+            beside = p.with_name(p.name + ".sha256")
+            if beside.is_file():
+                shutil.copyfile(beside, dest / beside.name)
+        kept.append(p.name)
+    path = folder / RUN_FILE
+    doc = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}) if path.exists() else {}
+    entry: dict = {"name": part, "run": kept}
+    if strict:
+        entry["strict"] = True
+    entry.update({k: v for k, v in options.items() if v is not None})
+    parts = [p for p in doc.get("parts") or [] if isinstance(p, dict) and p.get("name") != part] + [entry]
+    out = {"rasd_lab_run": STORE_FORMAT, "note": note or doc.get("note") or "",
+           "parts": sorted(parts, key=lambda p: str(p["name"]))}
+    path.write_text(yaml.safe_dump(out, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8", newline="\n")
+    return dest
+
+
+def kept_parts(store: Path = STORE) -> tuple[list[Part], dict[str, str], list[str]]:
+    """Every kept part, the note of each run, and what is wrong with the store's own records."""
+    parts: list[Part] = []
+    notes: dict[str, str] = {}
+    problems: list[str] = []
+    for folder in sorted(p for p in store.iterdir() if p.is_dir()) if store.is_dir() else []:
+        path = folder / RUN_FILE
+        try:
+            doc = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else None
+        except yaml.YAMLError as e:
+            problems.append(f"{folder.name}/{RUN_FILE}: not valid YAML ({e})")
+            continue
+        if not isinstance(doc, dict) or doc.get("rasd_lab_run") != STORE_FORMAT or not isinstance(doc.get("parts"), list):
+            problems.append(f"{folder.name}: no {RUN_FILE} written by `rasd evidence --keep` (rasd_lab_run: {STORE_FORMAT}, parts)")
+            continue
+        notes[folder.name] = str(doc.get("note") or "")
+        recorded = set()
+        for entry in doc["parts"]:
+            ok = (isinstance(entry, dict) and KEEP_NAME.fullmatch(str(entry.get("name", "")))
+                  and isinstance(entry.get("run"), list) and entry["run"]
+                  and all(isinstance(r, str) and r and Path(r).name == r for r in entry["run"]))
+            if not ok:
+                problems.append(f"{folder.name}/{RUN_FILE}: a part needs a name and the file names it was read from")
+                continue
+            recorded.add(entry["name"])
+            options = {k: entry[k] for k in ("grace", "siem_grace", "profile") if k in entry}
+            parts.append(Part(folder.name, entry["name"], [folder / entry["name"] / r for r in entry["run"]],
+                              bool(entry.get("strict")), options))
+        for extra in sorted(p.name for p in folder.iterdir() if p.is_dir() and p.name not in recorded):
+            problems.append(f"{folder.name}/{extra}: a folder {RUN_FILE} does not record")
+    return parts, notes, problems
+
+
+def results_digest(part: Part) -> str | None:
+    """SHA-256 of the part's emulation-results.json, which every evidence.md made from it records."""
+    for p in part.paths:
+        if p.is_file() and p.suffix.lower() == ".zip":
+            try:
+                with zipfile.ZipFile(p) as z:
+                    names = [n for n in z.namelist() if n.replace("\\", "/").split("/")[-1].lower() == RESULTS_FILE]
+                    return hashlib.sha256(z.read(names[0])).hexdigest() if len(names) == 1 else None
+            except (OSError, zipfile.BadZipFile):
+                return None
+        if p.is_dir():
+            found = [f for f in p.rglob("*") if f.is_file() and f.name.lower() == RESULTS_FILE]
+            return sha256(found[0]) if len(found) == 1 else None
+    return None
+
+
+def derive(part: Part) -> dict[str, str]:
+    """What `rasd evidence` writes from a kept part today: detection id -> the text of its evidence.md.
+    Raises RunError when the part can no longer be read as the run it was."""
+    missing = [p.name for p in part.paths if not p.exists()]
+    if missing:
+        raise RunError(f"missing from the store: {', '.join(missing)}")
+    bodies: dict[str, str] = {}
+    with tempfile.TemporaryDirectory(prefix="rasd-run-") as tmp, contextlib.redirect_stdout(io.StringIO()):
+        run = discover(part.paths, Path(tmp), strict=part.strict)
+        evaluate(run.results, run.logs, run.siem, grace=int(part.options.get("grace", DEFAULT_GRACE)),
+                 siem_grace=int(part.options.get("siem_grace", DEFAULT_SIEM_GRACE)), dry_run=True,
+                 profile_name=part.options.get("profile"), manifest=run.manifest, run=run.archive, collect=bodies)
+    return bodies
+
+
+def front_of(text: str) -> dict:
+    if not text.startswith("---\n") or "\n---\n" not in text[4:]:
+        return {}
+    try:
+        front = yaml.safe_load(text[4:text.index("\n---\n", 4)])
+    except yaml.YAMLError:
+        return {}
+    return front if isinstance(front, dict) else {}
+
+
+def library() -> list[tuple[str, Path]]:
+    """Every detection and correlation of the library: id and folder."""
+    return [(d.id, d.folder) for d in load_detections()] + [(c.id, c.folder) for c in load_correlations()]
+
+
+@dataclass
+class Standing:
+    """Where the library's evidence stands against the kept runs."""
+    current: dict[str, str] = field(default_factory=dict)        # detection -> the part its evidence is re-derived from
+    stale: dict[str, tuple[str, str]] = field(default_factory=dict)   # detection -> (part, what `rasd evidence` writes today)
+    absent: set[str] = field(default_factory=set)                # the stale ones that have no evidence.md at all
+    broken: dict[str, str] = field(default_factory=dict)         # detection -> the part it cites and no longer fires on
+    unkept: list[str] = field(default_factory=list)              # detections whose run is not in the store
+    unused: list[str] = field(default_factory=list)              # parts no evidence comes from
+    problems: list[str] = field(default_factory=list)
+
+
+def standing(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> Standing:
+    parts, _notes, problems = kept_parts(store)
+    out = Standing(problems=problems)
+    derived: dict[str, list[tuple[str, str, str]]] = {}          # detection -> [(step start, part, text)]
+    by_results: dict[str, str] = {}
+    for part in parts:
+        try:
+            bodies = derive(part)
+        except (RunError, CorrelationError, SigmaError, OSError, ValueError) as e:
+            out.problems.append(f"{part.label}: {e}")
+            continue
+        digest = results_digest(part)
+        if digest:
+            by_results[digest] = part.label
+        for det_id, body in bodies.items():
+            derived.setdefault(det_id, []).append((str(front_of(body).get("run_utc") or ""), part.label, body))
+    used: set[str] = set()
+    for det_id, folder in entries if entries is not None else library():
+        path = folder / "evidence.md"
+        options = sorted(derived.get(det_id, []))
+        written = path.read_text(encoding="utf-8") if path.exists() else None
+        if options:
+            _start, label, newest = options[-1]              # the latest run that fires it is the one that stands
+            used.add(label)
+            if newest == written:
+                out.current[det_id] = label
+            else:
+                out.stale[det_id] = (label, newest)
+                if written is None:
+                    out.absent.add(det_id)
+            continue
+        if written is None:
+            continue
+        cited = by_results.get(str(((front_of(written).get("inputs") or {}).get("results") or {}).get("sha256") or ""))
+        if cited:
+            out.broken[det_id] = cited
+        else:
+            out.unkept.append(det_id)
+    out.unused = [p.label for p in parts if p.label not in used and not any(x.startswith(p.label + ":") for x in out.problems)]
+    return out
+
+
+def check(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> int:
+    st = standing(store, entries)
+    where = store.relative_to(ROOT).as_posix() if store.is_relative_to(ROOT) else str(store)
+    print(f"{BOLD}Lab evidence · re-derived from the runs kept in {where}{RESET}")
+    per_part: dict[str, int] = {}
+    for label in st.current.values():
+        per_part[label] = per_part.get(label, 0) + 1
+    for label, n in sorted(per_part.items()):
+        print(f"  {GREEN}✓{RESET} {label:<44} {n} evidence file(s), byte for byte")
+    for det_id, (label, _text) in sorted(st.stale.items()):
+        what = "fires on the kept run and has no evidence.md" if det_id in st.absent else "evidence.md is not what the kept run gives today"
+        print(f"  {RED}✗{RESET} {det_id}: {what} ({label}) - run: rasd evidence --refresh")
+    for det_id, label in sorted(st.broken.items()):
+        print(f"  {RED}✗{RESET} {det_id}: cites {label}, and the rule no longer fires on that run - "
+              "the evidence no longer holds: fix the rule, or delete evidence.md")
+    for label in st.unused:
+        print(f"  {RED}✗{RESET} {label}: kept, and no evidence.md comes from it - remove it from {where}")
+    for problem in st.problems:
+        print(f"  {RED}✗{RESET} {problem}")
+    if st.unkept:
+        print(f"  {DIM}- {len(st.unkept)} evidence file(s) cite a run that is not kept here, and are taken as written: "
+              f"{', '.join(st.unkept)}{RESET}")
+    failed = bool(st.stale or st.broken or st.unused or st.problems)
+    if page(store, entries) != (common_read_text(store / STORE_PAGE) if (store / STORE_PAGE).exists() else None):
+        print(f"  {RED}✗{RESET} {where}/{STORE_PAGE} is out of date - run: rasd evidence --page")
+        failed = True
+    if failed:
+        return 1
+    if st.current:
+        print(f"{GREEN}✓{RESET} {len(st.current)} evidence file(s) are what `rasd evidence` writes today from "
+              f"{len(per_part)} kept part(s)")
+    else:
+        print(f"{DIM}no lab run is kept in the repository: nothing to re-derive{RESET}")
+    return 0
+
+
+def refresh(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> int:
+    st = standing(store, entries)
+    folders = dict(entries if entries is not None else library())
+    for det_id, (label, text) in sorted(st.stale.items()):
+        (folders[det_id] / "evidence.md").write_text(text, encoding="utf-8", newline="\n")
+        print(f"  {GREEN}{'written' if det_id in st.absent else 'rewritten'}{RESET} {det_id} from {label}")
+    if not st.stale:
+        print(f"{DIM}every evidence.md that comes from a kept run is already what the run gives today{RESET}")
+    write_output(store / STORE_PAGE, page(store, entries))
+    return check(store, entries)
+
+
+def _size(n: int) -> str:
+    return f"{n} B" if n < 1024 else f"{n / 1024:.0f} KB" if n < 1024 * 1024 else f"{n / (1024 * 1024):.1f} MB"
+
+
+def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> str:
+    """purple/lab_runs/README.md: the kept runs, their files, the evidence each carries. Built from the
+    store's records and the evidence files' own front matter: no run is evaluated here."""
+    parts, notes, _problems = kept_parts(store)
+    fronts = {det_id: (folder, front_of((folder / "evidence.md").read_text(encoding="utf-8")))
+              for det_id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()}
+    carried: dict[str, list[str]] = {}
+    digests = {part.label: results_digest(part) for part in parts}
+    kept_ids: set[str] = set()
+    for det_id, (_folder, front) in fronts.items():
+        cited = str(((front.get("inputs") or {}).get("results") or {}).get("sha256") or "")
+        for label, digest in digests.items():
+            if digest and digest == cited:
+                carried.setdefault(label, []).append(det_id)
+                kept_ids.add(det_id)
+    lines = ["<!-- Generated by tools/evidence.py --page - do not edit by hand. -->", "",
+             "# Lab runs kept in the repository", "",
+             "The raw files of the lab runs behind the committed evidence, as the lab wrote them: the runner's results, "
+             "the artifacts it collected and the exported telemetry. `rasd evidence --check`, a step of `rasd ci`, reads "
+             "them again on every build and fails unless each `evidence.md` that cites one is, byte for byte, what "
+             "`rasd evidence` writes from it today, with today's rules. A rule edited until it no longer fires on its "
+             "lab run loses its evidence in the same build.", "",
+             "A run is kept only when everything in it may be public: machines that existed for the run, accounts that "
+             "mean nothing. A run made on your own lab VMs stays with you ([Privacy](../../red/lab/README.md)); its "
+             "evidence is then taken as written, and listed at the end of this page.", ""]
+    if not parts:
+        lines += ["No lab run is kept yet.", ""]
+    for run in sorted({p.run for p in parts}):
+        lines += [f"## {run}", ""]
+        if notes.get(run):
+            lines += [md_note(notes[run]), ""]
+        lines += ["| Part | Read as | Files | Size | Evidence it carries |", "|---|---|---:|---:|---|"]
+        commands = []
+        for part in [p for p in parts if p.run == run]:
+            folder = store / part.run / part.name
+            files = [f for f in folder.rglob("*") if f.is_file()] if folder.is_dir() else []
+            ids = sorted(carried.get(part.label, []))
+            links = ", ".join(f"[{i}]({Path(os.path.relpath(fronts[i][0] / 'evidence.md', store)).as_posix()})"
+                              for i in ids) or "-"
+            lines.append(f"| `{part.name}` | {'strict' if part.strict else 'standard'} | {len(files)} | "
+                         f"{_size(sum(f.stat().st_size for f in files))} | {len(ids)}: {links} |")
+            rel = "purple/lab_runs" if store == STORE else store.name
+            commands.append("rasd evidence --run " + " ".join(f"{rel}/{part.run}/{part.name}/{p.name}" for p in part.paths)
+                            + (" --strict" if part.strict else "") + " --dry-run")
+        lines += ["", "Read it yourself, from the repository root:", "", "```bash", *commands, "```", ""]
+    unkept = sorted(set(fronts) - kept_ids)
+    lines += ["## Evidence whose run is not kept", ""]
+    if unkept:
+        lines += [f"{len(unkept)} evidence file(s) cite a run that stayed with its lab, and are taken as written: "
+                  + ", ".join(f"`{i}`" for i in unkept) + ".", ""]
+    else:
+        lines += ["None: every `evidence.md` in the library comes from a run above." if fronts else
+                  "No detection has lab evidence yet.", ""]
+    lines += ["<sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>", ""]
+    return "\n".join(lines)
+
+
+def md_note(text: str) -> str:
+    return " ".join(str(text).split()).replace("|", "\\|").replace("<", "&lt;")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", nargs="+", metavar="PATH",
@@ -972,8 +1302,8 @@ def main() -> int:
     ap.add_argument("--results", help="emulation-results.json from a RASD-Red runner")
     ap.add_argument("--logs", nargs="+", help="JSONL exports (Export-LabTelemetry.ps1)")
     ap.add_argument("--siem-alerts", nargs="*", default=[], help="alert exports from the SIEM (CSV or JSON)")
-    ap.add_argument("--grace", type=int, default=120, help="seconds after a step for log delivery (default 120)")
-    ap.add_argument("--siem-grace", type=int, default=900,
+    ap.add_argument("--grace", type=int, default=DEFAULT_GRACE, help="seconds after a step for log delivery (default 120)")
+    ap.add_argument("--siem-grace", type=int, default=DEFAULT_SIEM_GRACE,
                     help="seconds after a step for the SIEM's scheduled search to alert (default 900)")
     ap.add_argument("--dry-run", action="store_true", help="report only, do not write evidence.md")
     ap.add_argument("--profile", help="telemetry profile from profiles/ (or 'auto') the telemetry exports are written in")
@@ -981,7 +1311,26 @@ def main() -> int:
     ap.add_argument("--strict", action="store_true",
                     help="with --run, for tamper-evident evidence: refuse a zip without its .sha256, a run without a complete "
                          "manifest, unlisted files in the run folder, missing artifacts, and exports without a .sha256")
+    ap.add_argument("--keep", metavar="NAME",
+                    help="with --run: also copy what was read into purple/lab_runs/NAME, so --check re-derives the evidence "
+                         "from it on every build. Only for a run whose every file may be public")
+    ap.add_argument("--note", help="with --keep: one line on where and how the run was made, shown on the store's page")
+    ap.add_argument("--check", action="store_true",
+                    help="fail unless every evidence.md that cites a kept run is what this command writes from it today (CI)")
+    ap.add_argument("--refresh", action="store_true", help="rewrite the evidence of every kept run, then --check")
+    ap.add_argument("--page", action="store_true", help="write purple/lab_runs/README.md")
     args = ap.parse_args()
+    if args.check or args.refresh or args.page:
+        if args.run or args.results or args.logs or args.keep:
+            ap.error("--check, --refresh and --page read the kept runs: give them alone")
+        if args.page:
+            write_output(STORE / STORE_PAGE, page())
+            return 0
+        return refresh() if args.refresh else check()
+    if (args.keep or args.note) and not args.run:
+        ap.error("--keep copies a lab run into the repository: give the run with --run")
+    if args.keep and args.siem_alerts:
+        ap.error("--keep: give the alert export with --run, so it is kept with the run it belongs to")
     if args.strict and not args.run:
         ap.error("--strict reads a lab run: give it with --run")
     if args.run and (args.results or args.logs or args.manifest):
@@ -999,8 +1348,21 @@ def main() -> int:
                 print(f"\n{RED}The inputs do not add up to one lab run - nothing written.{RESET}")
                 return 1
             print_run(run)
-            return evaluate(run.results, run.logs, [*run.siem, *map(Path, args.siem_alerts)],
+            code = evaluate(run.results, run.logs, [*run.siem, *map(Path, args.siem_alerts)],
                             manifest=run.manifest, run=run.archive, **options)
+            if args.keep and not args.dry_run:
+                kept_options = {"grace": args.grace if args.grace != DEFAULT_GRACE else None,
+                                "siem_grace": args.siem_grace if args.siem_grace != DEFAULT_SIEM_GRACE else None,
+                                "profile": args.profile}
+                try:
+                    dest = keep(args.keep, [Path(p).resolve() for p in args.run], strict=args.strict, note=args.note,
+                                options=kept_options)
+                except RunError as e:
+                    print(f"  {RED}✗{RESET} {e}")
+                    return 1
+                write_output(STORE / STORE_PAGE, page())
+                print(f"{GREEN}[+] kept the run in {dest.relative_to(ROOT).as_posix()}{RESET}")
+            return code
 
     results_path = Path(args.results)
     manifest, manifest_errors = verify_manifest(Path(args.manifest) if args.manifest else results_path.parent / MANIFEST,

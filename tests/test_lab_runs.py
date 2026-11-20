@@ -1,0 +1,264 @@
+"""Lab runs kept in the repository (purple/lab_runs): evidence that is recomputed, not trusted."""
+import io
+import json
+import shutil
+import sys
+import tempfile
+import unittest
+import zipfile
+from contextlib import redirect_stdout
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+import evidence  # noqa: E402
+import validate  # noqa: E402
+from common import find_detection  # noqa: E402
+
+DETECTION = "T1059.001_powershell_encoded_command"
+
+
+class KeptRuns(unittest.TestCase):
+    """One lab run, kept twice over: as the strict zip a Windows lab packs, and as a folder with an export beside it."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.store = self.tmp / "lab_runs"
+        self.library = self.tmp / "library" / DETECTION
+        self.library.mkdir(parents=True)
+        self.entries = [(DETECTION, self.library)]
+        self.event = {**find_detection("T1059.001").tests("true_positive")[0],
+                      "Channel": "Microsoft-Windows-Sysmon/Operational", "Computer": "LAB-WS01.lab.local",
+                      "UtcTime": "2026-10-12 06:00:01.400"}
+
+    def step(self, start="2026-10-12T06:00:00.0000000Z", end="2026-10-12T06:00:01.0000000Z", artifacts=()):
+        return {"technique": "T1059.001", "test": "powershell_encoded_command", "step": "enc", "name": "enc",
+                "detections": [DETECTION], "status": "executed", "host": "LAB-WS01", "marker": "rasd_00000001",
+                "utc_start": start, "utc_end": end, "cleanup": "verified", "artifacts": list(artifacts)}
+
+    def folder_run(self, name="lab-linux", event=None, **step):
+        """A run as red/run_red.py leaves it: a folder with the results, and the export beside it."""
+        base = Path(tempfile.mkdtemp(dir=self.tmp))
+        (base / name).mkdir(parents=True)
+        (base / name / "emulation-results.json").write_text(json.dumps([self.step(**step)]), encoding="utf-8")
+        export = base / "export.jsonl"
+        export.write_text(json.dumps(event or self.event) + "\n", encoding="utf-8")
+        (base / "export.jsonl.sha256").write_text(f"{evidence.sha256(export)}  export.jsonl\n", encoding="utf-8")
+        return [base / name, export]
+
+    def zip_run(self, name="lab-windows"):
+        """A run as Invoke-RasdLabRun.ps1 packs it: manifest inside, .sha256 beside."""
+        base = Path(tempfile.mkdtemp(dir=self.tmp))
+        run_dir = base / "run"
+        run_dir.mkdir(parents=True)
+        (run_dir / "lab-export.jsonl").write_text(json.dumps(self.event) + "\n", encoding="utf-8")
+        (run_dir / "emulation-results.json").write_text(json.dumps([self.step()]), encoding="utf-8")
+        files = [p for p in sorted(run_dir.rglob("*")) if p.is_file()]
+        (run_dir / evidence.MANIFEST).write_text(json.dumps({"files": [
+            {"path": p.name, "sha256": evidence.sha256(p)} for p in files]}), encoding="utf-8")
+        zp = base / f"{name}.zip"
+        with zipfile.ZipFile(zp, "w") as z:
+            for p in sorted(run_dir.rglob("*")):
+                z.write(p, p.name)
+        (base / f"{zp.name}.sha256").write_text(f"{evidence.sha256(zp)}  {zp.name}\n", encoding="utf-8")
+        return [zp]
+
+    def keep(self, paths, run="hosted-1", strict=False, note="made for the test", **options):
+        return evidence.keep(run, paths, strict=strict, note=note, options=options, store=self.store)
+
+    def standing(self):
+        return evidence.standing(self.store, self.entries)
+
+    def write_evidence(self):
+        st = self.standing()
+        _label, text = st.stale[DETECTION]
+        (self.library / "evidence.md").write_text(text, encoding="utf-8", newline="\n")
+        return text
+
+    def quiet(self, fn, *args):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = fn(*args)
+        return code, out.getvalue()
+
+    def test_keep_copies_the_run_with_its_hash_files_and_records_how_it_was_read(self):
+        dest = self.keep(self.zip_run(), strict=True)
+        self.assertEqual(sorted(p.name for p in dest.iterdir()), ["lab-windows.zip", "lab-windows.zip.sha256"])
+        dest = self.keep(self.folder_run(), grace=300)
+        self.assertEqual(sorted(p.name for p in dest.iterdir()), ["export.jsonl", "export.jsonl.sha256", "lab-linux"])
+        doc = yaml.safe_load((self.store / "hosted-1" / "run.yml").read_text(encoding="utf-8"))
+        self.assertEqual(doc, {"rasd_lab_run": 1, "note": "made for the test", "parts": [
+            {"name": "lab-linux", "run": ["lab-linux", "export.jsonl"], "grace": 300},
+            {"name": "lab-windows", "run": ["lab-windows.zip"], "strict": True}]})
+        parts, notes, problems = evidence.kept_parts(self.store)
+        self.assertEqual([(p.label, p.strict, p.options) for p in parts],
+                         [("hosted-1/lab-linux", False, {"grace": 300}), ("hosted-1/lab-windows", True, {})])
+        self.assertEqual((notes, problems), ({"hosted-1": "made for the test"}, []))
+
+    def test_a_part_kept_again_replaces_its_first_copy(self):
+        self.keep(self.folder_run())
+        again = self.folder_run(name="lab-linux")
+        (again[0] / "notes.txt").write_text("second run", encoding="utf-8")
+        dest = self.keep(again, note=None)
+        self.assertTrue((dest / "lab-linux" / "notes.txt").exists())
+        doc = yaml.safe_load((self.store / "hosted-1" / "run.yml").read_text(encoding="utf-8"))
+        self.assertEqual([p["name"] for p in doc["parts"]], ["lab-linux"])
+        self.assertEqual(doc["note"], "made for the test", "a note is kept until another one replaces it")
+
+    def test_a_name_that_could_leave_the_store_is_refused(self):
+        for name in ("../outside", "Hosted", "", "a/b", ".hidden"):
+            with self.assertRaises(evidence.RunError, msg=name):
+                self.keep(self.folder_run(name=f"run-{abs(hash(name))}"), run=name)
+
+    def test_evidence_of_a_kept_run_is_what_the_run_gives_today(self):
+        self.keep(self.zip_run(), strict=True)
+        st = self.standing()
+        self.assertEqual((st.current, list(st.stale), st.absent), ({}, [DETECTION], {DETECTION}),
+                         "a run that fires a detection with no evidence.md is not in step with the library")
+        text = self.write_evidence()
+        self.assertEqual(validate.evidence_errors(self.library), [])
+        self.assertIn("verification: strict", text)
+        st = self.standing()
+        self.assertEqual(st.current, {DETECTION: "hosted-1/lab-windows"})
+        self.assertEqual((st.stale, st.broken, st.unkept, st.unused, st.problems), ({}, {}, [], [], []))
+
+    def test_an_edited_evidence_file_is_stale_and_refresh_restores_it(self):
+        self.keep(self.folder_run())
+        text = self.write_evidence()
+        (self.library / "evidence.md").write_text(text.replace("matched_events: 1", "matched_events: 7"), encoding="utf-8")
+        self.assertEqual(validate.evidence_errors(self.library), [], "the edit is one the validator alone cannot see")
+        st = self.standing()
+        self.assertEqual((list(st.stale), st.absent), ([DETECTION], set()))
+        code, out = self.quiet(evidence.check, self.store, self.entries)
+        self.assertEqual(code, 1)
+        self.assertIn("is not what the kept run gives today", out)
+        code, out = self.quiet(evidence.refresh, self.store, self.entries)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.library / "evidence.md").read_text(encoding="utf-8"), text)
+
+    def test_a_rule_that_no_longer_fires_on_its_run_loses_the_evidence(self):
+        self.keep(self.folder_run())
+        self.write_evidence()
+        export = self.store / "hosted-1" / "lab-linux" / "export.jsonl"
+        quiet = {**self.event, "CommandLine": "powershell.exe -NoProfile -File C:\\lab\\inventory.ps1"}
+        export.write_text(json.dumps(quiet) + "\n", encoding="utf-8")
+        (export.parent / "export.jsonl.sha256").write_text(f"{evidence.sha256(export)}  export.jsonl\n", encoding="utf-8")
+        st = self.standing()
+        self.assertEqual(st.broken, {DETECTION: "hosted-1/lab-linux"})
+        code, out = self.quiet(evidence.check, self.store, self.entries)
+        self.assertEqual(code, 1)
+        self.assertIn("no longer fires on that run", out)
+
+    def test_a_kept_file_changed_after_the_run_is_a_problem_not_evidence(self):
+        self.keep(self.zip_run(), strict=True)
+        self.write_evidence()
+        zp = self.store / "hosted-1" / "lab-windows" / "lab-windows.zip"
+        with zipfile.ZipFile(zp, "a") as z:
+            z.writestr("added-later.txt", "x")
+        st = self.standing()
+        self.assertEqual(st.current, {})
+        self.assertTrue(any("hosted-1/lab-windows" in p and "sha256" in p.lower() for p in st.problems), st.problems)
+        self.assertEqual(st.broken, {}, "a run that cannot be read is reported once, as the run's problem")
+        self.assertEqual(self.quiet(evidence.check, self.store, self.entries)[0], 1)
+
+    def test_an_export_edited_in_the_store_is_refused_by_its_hash_file(self):
+        self.keep(self.folder_run())
+        self.write_evidence()
+        export = self.store / "hosted-1" / "lab-linux" / "export.jsonl"
+        export.write_text(export.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        st = self.standing()
+        self.assertTrue(any("export.jsonl" in p and "differs" in p for p in st.problems), st.problems)
+
+    def test_the_latest_run_that_fires_a_detection_is_the_one_that_stands(self):
+        self.keep(self.folder_run())
+        first = self.write_evidence()
+        later = {**self.event, "UtcTime": "2026-10-13 06:00:01.400"}
+        self.keep(self.folder_run(name="lab-linux", event=later, start="2026-10-13T06:00:00.0000000Z",
+                                  end="2026-10-13T06:00:01.0000000Z"), run="hosted-2")
+        st = self.standing()
+        self.assertEqual(st.stale[DETECTION][0], "hosted-2/lab-linux")
+        self.assertEqual(st.unused, ["hosted-1/lab-linux"], "the run nothing comes from any more is to be removed")
+        second = self.write_evidence()
+        self.assertNotEqual(first, second)
+        shutil.rmtree(self.store / "hosted-1")
+        st = self.standing()
+        self.assertEqual((st.current, st.unused), ({DETECTION: "hosted-2/lab-linux"}, []))
+
+    def test_evidence_whose_run_stayed_with_its_lab_is_listed_and_left_alone(self):
+        self.keep(self.folder_run())
+        text = self.write_evidence()
+        shutil.rmtree(self.store)
+        st = self.standing()
+        self.assertEqual((st.unkept, st.current, st.problems), ([DETECTION], {}, []))
+        evidence.write_output(self.store / evidence.STORE_PAGE, evidence.page(self.store, self.entries))
+        code, out = self.quiet(evidence.check, self.store, self.entries)
+        self.assertEqual(code, 0, out)
+        self.assertIn("taken as written", out)
+        self.assertEqual((self.library / "evidence.md").read_text(encoding="utf-8"), text)
+
+    def test_the_store_refuses_records_it_did_not_write(self):
+        self.keep(self.folder_run())
+        (self.store / "hosted-1" / "stray").mkdir()
+        (self.store / "by-hand").mkdir()
+        (self.store / "broken").mkdir()
+        (self.store / "broken" / "run.yml").write_text("rasd_lab_run: 1\nparts:\n- name: x\n  run: [../../etc]\n", encoding="utf-8")
+        _parts, _notes, problems = evidence.kept_parts(self.store)
+        self.assertEqual(len(problems), 3, problems)
+        self.assertTrue(any("hosted-1/stray" in p for p in problems))
+        self.assertTrue(any(p.startswith("by-hand:") for p in problems))
+        self.assertTrue(any("broken/run.yml" in p for p in problems))
+
+    def test_the_page_lists_each_part_and_the_evidence_it_carries(self):
+        self.keep(self.zip_run(), strict=True)
+        self.keep(self.folder_run(event={**self.event, "CommandLine": "powershell.exe -File x.ps1"}))
+        self.write_evidence()
+        text = evidence.page(self.store, self.entries)
+        self.assertIn("## hosted-1", text)
+        self.assertIn("made for the test", text)
+        row = next(line for line in text.splitlines() if line.startswith("| `lab-windows`"))
+        self.assertIn("| strict | 2 |", row)
+        self.assertIn(f"1: [{DETECTION}](", row)
+        self.assertIn("| `lab-linux` | standard |", text)
+        self.assertIn("/hosted-1/lab-windows/lab-windows.zip --strict --dry-run", text)
+        self.assertIn("None: every `evidence.md` in the library comes from a run above.", text)
+        code, out = self.quiet(evidence.check, self.store, self.entries)
+        self.assertEqual(code, 1)
+        self.assertIn("README.md is out of date", out)
+        self.assertIn("hosted-1/lab-linux: kept, and no evidence.md comes from it", out)
+
+    def test_dry_run_never_renders_and_collect_never_writes(self):
+        run = self.folder_run()
+        results = run[0] / "emulation-results.json"
+        bodies: dict = {}
+        with redirect_stdout(io.StringIO()):
+            code = evidence.evaluate(results, [run[1]], [], grace=120, siem_grace=900, dry_run=True, profile_name=None,
+                                     manifest=None, collect=bodies)
+        self.assertEqual(code, 0)
+        self.assertEqual(list(bodies), [DETECTION])
+        self.assertFalse((find_detection("T1059.001").folder / "evidence.md.tmp").exists())
+
+
+class RepositoryStore(unittest.TestCase):
+    """The store this repository ships."""
+
+    def test_every_evidence_file_of_a_kept_run_is_what_the_run_gives_today(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = evidence.check()
+        self.assertEqual(code, 0, out.getvalue())
+
+    def test_raw_runs_are_never_normalised_and_never_ignored(self):
+        attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+        self.assertIn("purple/lab_runs/** -text", attributes)
+        ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+        self.assertIn("!/purple/lab_runs/**", ignore)
+        self.assertGreater(ignore.index("!/purple/lab_runs/**"), ignore.index("lab-*.zip"),
+                           "the exception has to come after the patterns it lifts")
+
+
+if __name__ == "__main__":
+    unittest.main()

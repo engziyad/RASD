@@ -18,12 +18,14 @@ while [[ $# -gt 0 ]]; do
 done
 [[ "$marker" =~ ^rasd_[0-9a-f]{8}$ ]] || { echo "--marker must look like rasd_1a2b3c4d" >&2; exit 2; }
 [[ $confirmed -eq 1 ]] || { echo "Refusing to run without --lab-confirmed." >&2; exit 2; }
-[[ "$target" =~ ^https?://[A-Za-z0-9._:\[\]-]+/?$ ]] || { echo "--target must be the decoy portal's URL, e.g. http://10.0.0.40" >&2; exit 2; }
+# in a bracket expression "]" comes first and "-" last: a backslash there is a character, not an escape
+[[ "$target" =~ ^https?://[][A-Za-z0-9._:-]+/?$ ]] || { echo "--target must be the decoy portal's URL, e.g. http://10.0.0.40" >&2; exit 2; }
 [[ "$ssh_port" =~ ^[0-9]{1,5}$ ]] || { echo "--ssh-port must be a port number" >&2; exit 2; }
 # shellcheck source=../lab_guard.sh
 source "$(dirname "$0")/../lab_guard.sh"; rasd_assert_lab
 
-host="${target#*://}"; host="${host%%/*}"; host="${host%%:*}"
+host="${target#*://}"; host="${host%%/*}"
+if [[ "$host" == \[* ]]; then host="${host#[}"; host="${host%%]*}"; else host="${host%%:*}"; fi
 command -v curl >/dev/null || { echo "curl is required" >&2; exit 2; }
 
 # 1. the connection a port scan or an SSH client makes: open and close, nothing sent

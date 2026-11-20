@@ -1,3 +1,5 @@
 # LF on every platform, Windows included: some checks hash files byte for byte (datasets check)
 * text=auto eol=lf
 *.png binary
+# raw lab runs are hashed byte for byte by `rasd evidence --check`: never normalised
+purple/lab_runs/** -text
