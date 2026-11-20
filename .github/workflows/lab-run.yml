@@ -8,7 +8,8 @@ name: RASD lab run
 #
 # What a runner is not: joined to a domain, or watched by a SIEM. The Active Directory tests are skipped,
 # and the SIEM part of the Operational Score stays at zero for evidence made from these runs.
-# Credential access and the Security-log clear never run here.
+# Credential access and the Security-log clear never run here. The WinRM test opens its session on the
+# lab host itself, and the decoy host is a container on the Linux lab host's own bridge network.
 
 on:
   workflow_dispatch:
@@ -52,13 +53,22 @@ jobs:
         shell: powershell
         run: .\deceive\Deploy-RasdDecoys.ps1 -LabConfirmed -Files
 
+      - name: Let the lab host accept a WinRM session from itself
+        shell: powershell
+        run: |
+          Enable-PSRemoting -Force -SkipNetworkProfileCheck | Out-Null
+          Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value $env:COMPUTERNAME -Force
+          New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name LocalAccountTokenFilterPolicy -Value 1 -PropertyType DWord -Force | Out-Null
+          try { Invoke-Command -ComputerName $env:COMPUTERNAME -ScriptBlock { "WinRM session on $env:COMPUTERNAME" } -ErrorAction Stop }
+          catch { Write-Warning "no WinRM session to this host: $($_.Exception.Message)" }
+
       - name: The plan
         shell: powershell
-        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -DryRun
+        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -DryRun
 
       - name: Lab run
         shell: powershell
-        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -OutDir (Join-Path $env:RUNNER_TEMP 'lab-windows')
+        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -OutDir (Join-Path $env:RUNNER_TEMP 'lab-windows')
 
       - name: What ran
         if: always()
@@ -82,6 +92,8 @@ jobs:
     name: Linux lab host
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      OPENCANARY_IMAGE: thinkst/opencanary:0.9.10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
         with:
@@ -106,13 +118,29 @@ jobs:
           sleep 5
           sudo journalctl -t sysmon -o cat --since "-2min" | grep -c "$probe"
 
+      - name: Start the decoy host with the repository's OpenCanary configuration
+        continue-on-error: true      # without a decoy the other Linux steps still run; the decoy probe is skipped
+        run: |
+          docker pull --quiet "$OPENCANARY_IMAGE"
+          docker run --detach --name rasd-decoy \
+            --volume "$PWD/deceive/opencanary/settings.json:/etc/opencanaryd/opencanary.conf:ro" "$OPENCANARY_IMAGE"
+          decoy=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rasd-decoy)
+          for _ in $(seq 1 30); do
+            if timeout 2 bash -c "exec 3<>/dev/tcp/$decoy/80" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          docker logs rasd-decoy 2>&1 | tail -n 25
+          timeout 2 bash -c "exec 3<>/dev/tcp/$decoy/80"
+          echo "DECOY=http://$decoy" >> "$GITHUB_ENV"
+          echo "decoy host: $decoy"
+
       - name: The plan
-        run: python3 red/run_red.py --platform linux --lab-confirmed --dry-run
+        run: python3 red/run_red.py --platform linux --lab-confirmed ${DECOY:+--target "$DECOY"} --dry-run
 
       - name: Lab run
         run: |
           set -o pipefail
-          python3 red/run_red.py --platform linux --lab-confirmed --out-dir "$RUNNER_TEMP/lab-linux" | tee "$RUNNER_TEMP/linux-run.txt"
+          python3 red/run_red.py --platform linux --lab-confirmed ${DECOY:+--target "$DECOY"} --out-dir "$RUNNER_TEMP/lab-linux" | tee "$RUNNER_TEMP/linux-run.txt"
 
       - name: Export the Sysmon events of the run
         if: always()
@@ -122,6 +150,16 @@ jobs:
           sudo journalctl -t sysmon -o cat --since "-30min" | python3 red/linux/export_sysmon_linux.py --input - --since "$since" --out "$RUNNER_TEMP/linux-export.jsonl"
           sha256sum "$RUNNER_TEMP/linux-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/linux-export.jsonl.sha256"
 
+      - name: Copy the decoy's records out
+        if: always()
+        run: |
+          if docker cp rasd-decoy:/var/tmp/opencanary.log "$RUNNER_TEMP/canary-export.jsonl"; then
+            sha256sum "$RUNNER_TEMP/canary-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/canary-export.jsonl.sha256"
+            wc -l "$RUNNER_TEMP/canary-export.jsonl"
+          else
+            echo "the decoy kept no records"
+          fi
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
         if: always()
         with:
@@ -130,6 +168,8 @@ jobs:
             ${{ runner.temp }}/lab-linux
             ${{ runner.temp }}/linux-export.jsonl
             ${{ runner.temp }}/linux-export.jsonl.sha256
+            ${{ runner.temp }}/canary-export.jsonl
+            ${{ runner.temp }}/canary-export.jsonl.sha256
             ${{ runner.temp }}/linux-run.txt
           if-no-files-found: warn
 
@@ -239,7 +279,9 @@ jobs:
             rasd evidence --run "$runs/lab-windows/lab-windows.zip" --strict || missed=1
           fi
           if [ -d "$runs/lab-linux/lab-linux" ]; then
-            rasd evidence --run "$runs/lab-linux/lab-linux" "$runs/lab-linux/linux-export.jsonl" || missed=1
+            exports=("$runs/lab-linux/linux-export.jsonl")
+            if [ -s "$runs/lab-linux/canary-export.jsonl" ]; then exports+=("$runs/lab-linux/canary-export.jsonl"); fi
+            rasd evidence --run "$runs/lab-linux/lab-linux" "${exports[@]}" || missed=1
           fi
           if [ -d "$runs/lab-web/lab-web" ]; then
             rasd evidence --run "$runs/lab-web/lab-web" "$runs/lab-web/web-export.jsonl" || missed=1

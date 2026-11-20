@@ -124,6 +124,24 @@ def target_is_loopback(url: str | None) -> bool:
     return bool(addrs) and all(ipaddress.ip_address(a).is_loopback for a in addrs)
 
 
+def address_toward(url: str | None) -> str | None:
+    """The address this host sends from when it talks to the target, which is what the target's own
+    log records as the client (a decoy on another lab network sees the address of the interface
+    that reaches it, not the one the host name resolves to). Nothing is sent: a UDP socket is
+    only connected."""
+    if not url:
+        return None
+    import urllib.parse
+    host = urllib.parse.urlsplit(url).hostname or ""
+    try:
+        family, _kind, _proto, _name, address = socket.getaddrinfo(host, 9, type=socket.SOCK_DGRAM)[0]
+        with socket.socket(family, socket.SOCK_DGRAM) as s:
+            s.connect(address)
+            return str(s.getsockname()[0]).split("%")[0]
+    except (OSError, IndexError):
+        return None
+
+
 def plan_state(step: dict, available: dict, refused: str | None) -> str:
     missing = [p for p in step.get("parameters") or [] if not available.get(p)]
     if "Target" in missing and refused:
@@ -205,6 +223,10 @@ def main() -> int:
                    "utc_start": None, "utc_end": None, "error": None, "cleanup": "not-run", "artifacts": []}
             if t["platform"] == "web" and target_is_loopback(available.get("Target")):
                 rec["host_ips"] = ips + ["127.0.0.1", "::1"]     # the app's log sees this run as loopback
+            elif "Target" in (s.get("parameters") or []):
+                toward = address_toward(available.get("Target"))
+                if toward and toward not in ips:
+                    rec["host_ips"] = [*ips, toward]             # the target's log sees this run as that address
             missing = [p for p in s.get("parameters") or [] if not available.get(p)]
             if missing:
                 rec["reason"] = "missing parameter: " + ", ".join(f"--{p.lower()}" for p in missing)
