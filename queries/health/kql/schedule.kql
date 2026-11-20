@@ -1,0 +1,8 @@
+// RASD-Health · schedule: A scheduled detection search did not run, or was skipped.
+SentinelHealth
+| where TimeGenerated > ago(24h)
+| where SentinelResourceType == "Analytics Rule" and SentinelResourceName startswith "RASD - T"
+| summarize runs = count(), failed = countif(Status != "Success"), last_success = maxif(TimeGenerated, Status == "Success") by SentinelResourceName
+| where isnull(last_success) or failed > 0.05 * runs
+| extend detection = replace_string(SentinelResourceName, "RASD - ", "")
+| project SentinelResourceName, detection, runs, failed, last_success

@@ -1,0 +1,13 @@
+// RASD-Health · silent: A host that reported in most hours of the past week has sent nothing on a channel for four hours.
+union
+  (Event | where Source == "Microsoft-Windows-Sysmon" | where TimeGenerated > ago(7d) | project TimeGenerated, carrier = "Sysmon", host_ = tostring(Computer)),
+  (SecurityEvent | where TimeGenerated > ago(7d) | project TimeGenerated, carrier = "Security log", host_ = tostring(Computer)),
+  (Event | where EventLog == "System" | where TimeGenerated > ago(7d) | project TimeGenerated, carrier = "System log", host_ = tostring(Computer)),
+  (Syslog | where ProcessName == "sysmon" | where TimeGenerated > ago(7d) | project TimeGenerated, carrier = "Sysmon for Linux", host_ = tostring(Computer)),
+  (W3CIISLog | where TimeGenerated > ago(7d) | project TimeGenerated, carrier = "Web access log", host_ = tostring(Computer)),
+  (OpenCanary | where TimeGenerated > ago(7d) | project TimeGenerated, carrier = "Decoy records", host_ = tostring(node_id))
+| summarize active_hours = dcount(bin(TimeGenerated, 1h)), last_seen = max(TimeGenerated), events_7d = count() by carrier, host_
+| extend quiet_hours = datetime_diff("hour", now(), last_seen)
+| where active_hours >= 84 and quiet_hours >= 4
+| extend blinds = case(carrier == "Sysmon", "T1003.001_lsass_memory_access, T1021.006_wsmprovhost_suspicious_child, T1053.005_powershell_scheduled_task_creation, T1053.005_schtasks_suspicious_creation, T1059.001_powershell_encoded_command, T1218.011_rundll32_suspicious_execution, T1547.001_registry_run_key_persistence, T1685.005_event_log_clearing", carrier == "Security log", "T1078.002_honey_account_authentication, T1110.003_password_spray_burst, T1552.001_honey_file_access, T1558.003_honey_spn_ticket_request, T1558.003_kerberoasting_rc4_tgs, T1558.003_kerberoasting_volume, T1685.005_security_log_cleared", carrier == "System log", "T1569.002_suspicious_service_installation, T1685.005_system_log_cleared", carrier == "Sysmon for Linux", "T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution", carrier == "Web access log", "T1190_object_id_enumeration, T1595.003_api_auth_probing", carrier == "Decoy records", "T1046_decoy_service_interaction", "")
+| project carrier, host = host_, quiet_hours, last_seen, active_hours, events_7d, blinds

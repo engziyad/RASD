@@ -42,6 +42,10 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines,
                          --case-dir: one case folder per storyline
               benchmark  events/s, memory, slowest rule and regex - on an export or N synthetic events
+              health     RASD-Health: is every detection still being fed? today's export against a baseline, a verdict
+                         per detection (healthy / degraded / blind / nothing to compare) and each break named once with
+                         the detections it takes with it; --sample runs the bundled day, --write generates the SPL and
+                         KQL watchdogs
               evidence   turn a real lab run into verifiable evidence.md (fired / missed);
                          --run reads the lab run's zip or folder (--strict: hashes and manifest required)
               datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
@@ -123,16 +127,16 @@ COMMANDS = {
     "profiles": ["profiles.py"], "benchmark": ["benchmark.py"], "correlate": ["correlate.py"],
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
     "deceive": ["deceive.py"], "advise": ["advise.py"], "trace": ["survivability.py"], "silence": ["silence.py"],
-    "blindpath": ["blindpath.py"], "grow": ["grow.py"],
+    "blindpath": ["blindpath.py"], "grow": ["grow.py"], "health": ["health.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
-         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["grow.py", "--write"], ["evidence.py", "--page"], ["chain.py"],
+         ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["grow.py", "--write"], ["evidence.py", "--page"], ["health.py", "--write"], ["chain.py"],
          ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
       ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["grow.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
-      ["datasets.py", "check"], ["evidence.py", "--check"],
+      ["datasets.py", "check"], ["evidence.py", "--check"], ["health.py", "--check"],
       *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
 

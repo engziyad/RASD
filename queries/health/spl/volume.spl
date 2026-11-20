@@ -1,0 +1,22 @@
+| multisearch
+    [search index=linux sourcetype="sysmon:linux" EventID=1 earliest=-24h@h latest=@h | eval feed="linux/process_creation", period="now"]
+    [search index=deception sourcetype=opencanary earliest=-24h@h latest=@h | eval feed="opencanary/honeypot", period="now"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 earliest=-24h@h latest=@h | eval feed="process_access", period="now"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 earliest=-24h@h latest=@h | eval feed="process_creation", period="now"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13 earliest=-24h@h latest=@h | eval feed="registry_set", period="now"]
+    [search index=web sourcetype=access_combined earliest=-24h@h latest=@h | eval feed="webserver", period="now"]
+    [search index=wineventlog source="XmlWinEventLog:Security" EventCode IN (1102, 4624, 4625, 4663, 4768, 4769, 4771, 4776) earliest=-24h@h latest=@h | eval feed="windows/security#".EventCode, period="now"]
+    [search index=wineventlog source="XmlWinEventLog:System" EventCode IN (104, 7045) earliest=-24h@h latest=@h | eval feed="windows/system#".EventCode, period="now"]
+    [search index=linux sourcetype="sysmon:linux" EventID=1 earliest=-8d@h latest=-7d@h | eval feed="linux/process_creation", period="week_ago"]
+    [search index=deception sourcetype=opencanary earliest=-8d@h latest=-7d@h | eval feed="opencanary/honeypot", period="week_ago"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 earliest=-8d@h latest=-7d@h | eval feed="process_access", period="week_ago"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 earliest=-8d@h latest=-7d@h | eval feed="process_creation", period="week_ago"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13 earliest=-8d@h latest=-7d@h | eval feed="registry_set", period="week_ago"]
+    [search index=web sourcetype=access_combined earliest=-8d@h latest=-7d@h | eval feed="webserver", period="week_ago"]
+    [search index=wineventlog source="XmlWinEventLog:Security" EventCode IN (1102, 4624, 4625, 4663, 4768, 4769, 4771, 4776) earliest=-8d@h latest=-7d@h | eval feed="windows/security#".EventCode, period="week_ago"]
+    [search index=wineventlog source="XmlWinEventLog:System" EventCode IN (104, 7045) earliest=-8d@h latest=-7d@h | eval feed="windows/system#".EventCode, period="week_ago"]
+| stats count(eval(period=="now")) as last_24h, count(eval(period=="week_ago")) as week_ago by feed, host
+| eval state=case(week_ago >= 20 AND last_24h == 0, "silent", week_ago >= 50 AND last_24h < 0.25 * week_ago, "volume fell")
+| where isnotnull(state)
+| eval blinds=case(feed=="linux/process_creation", "T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution", feed=="opencanary/honeypot", "T1046_decoy_service_interaction", feed=="process_access", "T1003.001_lsass_memory_access", feed=="process_creation", "T1021.006_wsmprovhost_suspicious_child, T1053.005_powershell_scheduled_task_creation, T1053.005_schtasks_suspicious_creation, T1059.001_powershell_encoded_command, T1218.011_rundll32_suspicious_execution, T1685.005_event_log_clearing", feed=="registry_set", "T1547.001_registry_run_key_persistence", feed=="webserver", "T1190_object_id_enumeration, T1595.003_api_auth_probing", feed=="windows/security#1102", "T1685.005_security_log_cleared", feed=="windows/security#4624", "T1078.002_honey_account_authentication", feed=="windows/security#4625", "T1078.002_honey_account_authentication, T1110.003_password_spray_burst", feed=="windows/security#4663", "T1552.001_honey_file_access", feed=="windows/security#4768", "T1078.002_honey_account_authentication, T1110.003_password_spray_burst", feed=="windows/security#4769", "T1558.003_honey_spn_ticket_request, T1558.003_kerberoasting_rc4_tgs, T1558.003_kerberoasting_volume", feed=="windows/security#4771", "T1078.002_honey_account_authentication, T1110.003_password_spray_burst", feed=="windows/security#4776", "T1078.002_honey_account_authentication", feed=="windows/system#104", "T1685.005_system_log_cleared", feed=="windows/system#7045", "T1569.002_suspicious_service_installation")
+| table feed, host, state, last_24h, week_ago, blinds

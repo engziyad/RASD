@@ -705,6 +705,7 @@ def render_metrics(repo: Repo) -> str:
         ("Evidence survivability (trace)", trace_line("../")),
         ("Evidence of absence (silence)", silence_line("../")),
         ("The unseen route (blindpath)", blindpath_line("../")),
+        ("Detection health (health)", health_line("../")),
         ("RASD-Agent's lane (grow)", lane_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
@@ -816,6 +817,21 @@ def lane_line(root: str) -> str:
             f"{s['core']} have a core detection, {s['queue']} are in the agent's queue and {s['out_of_reach']} are out of reach of "
             f"the logs RASD reads "
             f"([GROW]({root}docs/GROW.md), [candidates]({root}detect/candidates/README.md))")
+
+
+def health_line(root: str) -> str:
+    """RASD-Health: the watchdogs that exist, and what the offline judge finds on the bundled sample; `root` is the
+    path to the repository root from the page."""
+    import health
+    wanted = health.needs()
+    text = (f"{len(health.WATCHDOGS)} watchdog searches in SPL and KQL over the {len(health.feed_detections(wanted))} kinds of event "
+            "the rules read, each row naming the detections it blinds; generated, not yet run on a live SIEM")
+    c = health.sample_counts()
+    if c:
+        text += (f" · on the sample ({c['hosts']} hosts, a baseline of {c['baseline_events']} events, then a day of "
+                 f"{c['current_events']}): {c['blind']} detections blind, {c['degraded']} degraded, {c['healthy']} healthy, "
+                 f"{c['unknown']} with nothing to compare")
+    return text + f" ([HEALTH]({root}docs/HEALTH.md), [watchdogs]({root}queries/health/README.md))"
 
 
 def equiv_line(docs: str) -> str:
@@ -1198,6 +1214,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Evidence survivability", trace_line("../")),
         ("Evidence of absence", silence_line("../")),
         ("The unseen route", blindpath_line("../")),
+        ("Detection health", health_line("../")),
         ("RASD-Agent's lane", lane_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
                                                            else " · Operational Score pending")),

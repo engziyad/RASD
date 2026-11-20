@@ -1,0 +1,8 @@
+index=_internal sourcetype=scheduler savedsearch_name="RASD - T*" earliest=-24h@h latest=@h
+| stats count as runs, count(eval(status=="success")) as succeeded, count(eval(status=="skipped")) as skipped, max(eval(if(status=="success", _time, null()))) as last_success by savedsearch_name
+| append [| rest /servicesNS/-/-/saved/searches splunk_server=local | search title="RASD - T*" is_scheduled=1 disabled=0 | rename title as savedsearch_name | fields savedsearch_name | eval listed=1]
+| stats max(runs) as runs, max(succeeded) as succeeded, max(skipped) as skipped, max(last_success) as last_success, max(listed) as listed by savedsearch_name
+| fillnull value=0 runs succeeded skipped listed
+| where listed == 1 AND (succeeded == 0 OR skipped > 0.05 * runs)
+| eval detection=replace(savedsearch_name, "^RASD - ", ""), last_success=if(isnull(last_success), "none in 24 h", strftime(last_success, "%Y-%m-%d %H:%M"))
+| table savedsearch_name, detection, runs, succeeded, skipped, last_success
