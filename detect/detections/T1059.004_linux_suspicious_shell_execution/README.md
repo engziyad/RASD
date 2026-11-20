@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Command and Scripting Interpreter: Unix Shell (execution) · related: [T1027](https://attack.mitre.org/techniques/T1027/) Obfuscated Files or Information (stealth) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 45/100 |
 | **Tests** | 11 true positive · 7 true negative · 6 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 60 variants |
 | **Parity** | KQL and SPL identical to the rule on 185 events (RASD's offline KQL / SPL model, not yet a live SIEM) |

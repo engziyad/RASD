@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) System Services: Service Execution (execution) · related: [T1021.002](https://attack.mitre.org/techniques/T1021/002/) Remote Services: SMB/Windows Admin Shares (lateral-movement) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 60/100 |
 | **Tests** | 24 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 87 variants |
 | **Parity** | KQL and SPL identical to the rule on 459 events (RASD's offline KQL / SPL model, not yet a live SIEM) |

@@ -16,11 +16,11 @@
 <!-- rasd:status:start -->
 ![detections: 22](https://img.shields.io/badge/detections-22-87afaf)
 ![engineering: 100/100](https://img.shields.io/badge/engineering-100%2F100-87af87)
-![operational: pending](https://img.shields.io/badge/operational-pending-d7af87)
+![operational: 56/100](https://img.shields.io/badge/operational-56%2F100-d7af87)
 ![public data: 16/22](https://img.shields.io/badge/public%20data-16%2F22-87afaf)
-![validated: 0/22](https://img.shields.io/badge/validated-0%2F22-bcbcbc)
+![validated: 15/22](https://img.shields.io/badge/validated-15%2F22-bcbcbc)
 
-**Status:** SIEM-Ready, not yet Validated: 22 of 22 detections are SIEM-Ready and 16 fire on public attack datasets, meeting 25 of 26 expectations in 23 of 105 held-out files ([public data](docs/PUBLIC_DATA_VALIDATION.md)); none has lab evidence yet ([evidence plan](docs/EVIDENCE_PLAN.md)).
+**Status:** 15 of 22 detections Validated (lab evidence); the other 7 wait for a lab run ([evidence plan](docs/EVIDENCE_PLAN.md)).
 <!-- rasd:status:end -->
 
 </div>
@@ -51,8 +51,8 @@ RASD is a cybersecurity validation framework that connects offensive security la
 | **Near misses** | 246 events one field edit away from an alert, on 10 boundaries (10 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1046_decoy_service_interaction, T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
 | **Public datasets** | 16/22 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](docs/PUBLIC_DATA_VALIDATION.md)) |
 | **Engineering Score** | 100/100 |
-| **Operational Score** | pending a real lab run |
-| **Chain completeness** | 306/340 items ([validation matrix](purple/validation_matrix.md)) |
+| **Operational Score** | 56/100 over 15 detections |
+| **Chain completeness** | 318/340 items ([validation matrix](purple/validation_matrix.md)) |
 
 <sub>Counted by `tools/chain.py` on every build.</sub>
 <!-- rasd:readme-metrics:end -->

@@ -1,0 +1,48 @@
+{
+  "test": "jwt_testing",
+  "marker": "rasd_65adbbfb",
+  "target": "http://127.0.0.1:3000",
+  "findings": [
+    {
+      "check": "GET /rest/basket/6 with the genuine token (baseline)",
+      "result": "INFO",
+      "detail": "HTTP 200"
+    },
+    {
+      "check": "GET /rest/basket/6 with a token: alg none, no signature",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/basket/6 with a token: payload changed, original signature",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    }
+  ],
+  "requests": [
+    {
+      "time": "2026-11-20T18:00:34Z",
+      "method": "POST",
+      "path": "/rest/user/login",
+      "status": 200
+    },
+    {
+      "time": "2026-11-20T18:00:34Z",
+      "method": "GET",
+      "path": "/rest/basket/6",
+      "status": 200
+    },
+    {
+      "time": "2026-11-20T18:00:34Z",
+      "method": "GET",
+      "path": "/rest/basket/6",
+      "status": 401
+    },
+    {
+      "time": "2026-11-20T18:00:34Z",
+      "method": "GET",
+      "path": "/rest/basket/6",
+      "status": 401
+    }
+  ]
+}

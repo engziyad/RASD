@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32 (stealth) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 45/100 |
 | **Tests** | 21 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 178 variants |
 | **Parity** | KQL and SPL identical to the rule on 1859 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
