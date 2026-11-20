@@ -718,6 +718,7 @@ def render_metrics(repo: Repo) -> str:
         ("Purple scenarios", len(repo.scenarios)),
         ("Public dataset replay", public_summary_line(repo, "")),
         ("Validated detections (lab evidence)", len(validated)),
+        ("Lab evidence recomputed", lab_runs_line("../")),
         ("Average Engineering Score", f"{eng:.0f}/100"),
         ("Operational Score", f"{sum(s['operational_total'] for s in validated) / len(validated):.0f}/100" if validated else "Pending"),
         ("Chain completeness", f"{done}/{len(CHECKLIST) * len(maps)} items"),
@@ -836,6 +837,19 @@ def health_line(root: str) -> str:
                  f"{c['current_events']}): {c['blind']} detections blind, {c['degraded']} degraded, {c['healthy']} healthy, "
                  f"{c['unknown']} with nothing to compare")
     return text + f" ([HEALTH]({root}docs/HEALTH.md), [watchdogs]({root}queries/health/README.md))"
+
+
+def lab_runs_line(root: str) -> str:
+    """How much of the lab evidence is recomputed from raw runs kept in the repository."""
+    import evidence
+    s = evidence.kept_summary()
+    if not s["evidence"]:
+        return "no detection has lab evidence yet"
+    if not s["kept"]:
+        return f"{s['evidence']} evidence files, each taken as written: no raw lab run is kept in the repository"
+    return (f"{s['kept']} of {s['evidence']} evidence files are recomputed from the raw lab runs kept in the repository on every "
+            f"build ({s['parts']} parts of {s['runs']} run{'' if s['runs'] == 1 else 's'}): a rule edited until it no longer fires on "
+            f"its run loses its evidence ([lab runs]({root}purple/lab_runs/README.md))")
 
 
 def equiv_line(docs: str) -> str:
@@ -1221,7 +1235,7 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Detection health", health_line("../")),
         ("RASD-Agent's lane", lane_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
-                                                           else " · Operational Score pending")),
+                                                           else " · Operational Score pending") + " · " + lab_runs_line("../")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "
                              f"{len(repo.playbooks)} DFIR playbooks"),
         ("Measured gaps", " · ".join(
@@ -1277,7 +1291,8 @@ def render_executive_matrix(repo: Repo) -> str:
 
 WAVES = [
     ("windows", "Windows lab VM, default run",
-     "A domain-joined Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml)) and the `rasd_forwarder` app.",
+     "A Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml)) and the `rasd_forwarder` app. The two honey "
+     "account steps also need the VM joined to the lab domain; on a host with no domain they are recorded as not run.",
      ["`.\\red\\lab\\Invoke-RasdLabRun.ps1 -LabConfirmed` runs every step below, waits for Splunk and exports the VM's "
       "events into one zip."]),
     ("opt_in", "Windows lab VM, opt-in steps",
@@ -1290,13 +1305,18 @@ WAVES = [
       "On the DC: `.\\red\\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '<start>' "
       "-OutFile dc-export.jsonl`"]),
     ("target", "WinRM target",
-     "A second Windows VM with WinRM enabled and Sysmon. The target logs what the remote session starts.",
+     "A second Windows VM with WinRM enabled and Sysmon. The target logs what the remote session starts. The lab host can be "
+     "its own target (`Enable-PSRemoting`, then `-Target $env:COMPUTERNAME`): the session host and its child process are the same "
+     "records either way.",
      ["Add `-Target <second VM>` to the lab run.",
       "On the target: `.\\red\\Export-LabTelemetry.ps1 -Since '<start>' -OutFile target-export.jsonl`"]),
     ("linux", "Linux lab VM",
-     "A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app.",
-     ["`python3 red/run_red.py --platform linux --lab-confirmed`",
-      "`python3 red/linux/export_sysmon_linux.py --since '<start>' --out linux-export.jsonl`"]),
+     "A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app, and for the decoy probe an OpenCanary host with "
+     "[`deceive/opencanary/settings.json`](../deceive/opencanary/settings.json) on a private address.",
+     ["`python3 red/run_red.py --platform linux --lab-confirmed --target http://<decoy address>` (without `--target` the decoy "
+      "probe is skipped)",
+      "`python3 red/linux/export_sysmon_linux.py --since '<start>' --out linux-export.jsonl`",
+      "On the decoy: copy `/var/tmp/opencanary.log` out as `canary-export.jsonl` and give it to `rasd evidence` beside the run"]),
     ("web", "Lab web application",
      "A lab copy of a web application (for example OWASP Juice Shop) on localhost, with its access log in combined format.",
      ["`export RASD_LAB_EMAIL=<lab test account> RASD_LAB_PASSWORD=<its password>` (the IDOR test logs in)",
@@ -1340,7 +1360,13 @@ def render_evidence_plan(repo: Repo) -> str:
             "detection's `evidence.md` is committed; nothing here is estimated.\n\n")
     ops = ops_average(repo, validated)
     out += (f"**Progress:** {len(validated)}/{n} detections Validated (lab evidence) · Operational Score "
-            + (f"{ops:.0f}/100" if ops is not None else "pending") + ".\n")
+            + (f"{ops:.0f}/100" if ops is not None else "pending") + ".\n\n")
+    kept = lab_runs_line("../")
+    out += ("**A lab you do not have to build.** The Windows default run with the WinRM step, the Linux host with its decoy and the "
+            "lab web application run on hosted runners that exist for one run: [`lab-run.yml`](../.github/workflows/lab-run.yml) "
+            "([how](../red/lab/README.md#a-lab-you-do-not-have-to-build)). " + kept[:1].upper() + kept[1:] + ". "
+            "The opt-in steps and the domain controller need a lab that is yours: those runners have no domain and no SIEM, and "
+            "the steps that dump LSASS memory or clear the Security log never run on a machine that is not ours.\n")
     rows: dict[str, list[str]] = defaultdict(list)
     reached = set()
     for t in repo.red:
@@ -1375,7 +1401,9 @@ def render_evidence_plan(repo: Repo) -> str:
             "rasd build\n```\n\n"
             "`--run` refuses a zip that differs from the `.sha256` beside it and any file that differs from the run's "
             "manifest before it reads anything. Linux and web runs write their own `emulation-results.json`; run "
-            "`rasd evidence --run` once per run folder with its exports. Commit only the `evidence.md` files; the raw exports stay with you. Details: "
+            "`rasd evidence --run` once per run folder with its exports. Commit the `evidence.md` files; the raw exports stay with you, unless "
+            "everything in the run may be public: then `--keep <name>` stores it in `purple/lab_runs` and every build recomputes its "
+            "evidence. Details: "
             "[OPERATIONAL_VALIDATION](OPERATIONAL_VALIDATION.md) · [lab kit](../red/lab/README.md).\n")
     return out + FOOTER
 

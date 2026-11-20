@@ -47,7 +47,9 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
                          the detections it takes with it; --sample runs the bundled day, --write generates the SPL and
                          KQL watchdogs
               evidence   turn a real lab run into verifiable evidence.md (fired / missed);
-                         --run reads the lab run's zip or folder (--strict: hashes and manifest required)
+                         --run reads the lab run's zip or folder (--strict: hashes and manifest required);
+                         --keep stores a run that may be public in purple/lab_runs, and --check recomputes the
+                         evidence of every kept run (--refresh rewrites it, --prune drops a run a later one replaced)
               datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
               chain      the 20-point attack-to-defense map, maturity, matrices, metrics
               links      every relative link in every Markdown file resolves

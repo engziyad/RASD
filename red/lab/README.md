@@ -16,6 +16,19 @@ Synthetic samples prove the rule logic. Only a real run proves the rest: the tec
 
 Splunk Free cannot run scheduled alerts, so it cannot produce the SIEM part of the evidence; use the Enterprise trial.
 
+## A lab you do not have to build
+
+The workflow [`lab-run.yml`](../../.github/workflows/lab-run.yml) runs the same kit on GitHub-hosted runners: machines that exist for one run and are discarded after it. Start it from the Actions tab (**RASD lab run** → **Run workflow**). Each job marks its runner as a lab host, so the lab guard below is satisfied the same way as on your own VM, and then:
+
+| Job | Lab host | What runs |
+|---|---|---|
+| Windows lab host | Windows Server with Sysmon and [`sysmon-rasd.xml`](sysmon-rasd.xml) | the default Windows steps, the file decoys, and the WinRM step through a session on the host itself |
+| Linux lab host | Ubuntu with Sysmon for Linux and [`sysmon-rasd-linux.xml`](sysmon-rasd-linux.xml), and an OpenCanary decoy in a container beside it, running [`deceive/opencanary/settings.json`](../../deceive/opencanary/settings.json) as committed | the cron and shell steps and the decoy probe |
+| Lab web application | Ubuntu with OWASP Juice Shop on localhost | the web steps, with a lab account made for the run |
+| Evidence from the runs | - | `rasd evidence` on each run, the raw runs kept in [`purple/lab_runs`](../../purple/lab_runs/README.md), `rasd build`, `rasd evidence --check`, and the result pushed as a branch `lab-evidence/run-<id>` for a person to read and merge |
+
+What a hosted runner is not: joined to a domain, or watched by a SIEM. The Active Directory steps are skipped there, and evidence made from these runs carries no SIEM alert, so its Operational Score stops at 60. **The opt-in steps never run there**: dumping LSASS memory and clearing the Security log belong on a machine that is yours. For those, for the domain controller and for Splunk, the rest of this page is the way.
+
 ## Lab guard
 
 `-LabConfirmed` is something you type; it cannot tell a lab VM from a work laptop. Every runner and every emulation script therefore also checks the machine itself and refuses to run unless its owner marked it as a lab:
@@ -112,7 +125,16 @@ Each detection is reported **FIRED** (and gets `evidence.md`) or **MISSED** (and
 
 ## What goes into the repository
 
-Only the `evidence.md` files under `detect/detections/` and `detect/correlations/`. Each records the run, host, user, marker, matching event, latencies, cleanup status and the SHA-256 of every raw file. The raw files - results, exports, the alert CSV, collected artifacts - stay with you (`red/results/` is ignored by git), so anyone you give them to can re-run `rasd evidence --dry-run` and get the same verdict.
+The `evidence.md` files under `detect/detections/` and `detect/correlations/`, always. Each records the run, host, user, marker, matching event, latencies, cleanup status and the SHA-256 of every raw file.
+
+The raw files - results, exports, the alert CSV, collected artifacts - go in only when everything in them may be public:
+
+| The run was made on | Raw files | Its evidence is |
+|---|---|---|
+| machines that existed for the run and accounts that mean nothing (the hosted lab above) | kept: `rasd evidence --run … --keep <name>` copies them into [`purple/lab_runs`](../../purple/lab_runs/README.md) | **recomputed on every build**: `rasd evidence --check` fails unless each `evidence.md` is, byte for byte, what the run gives with today's rules |
+| your own lab VMs | stay with you (`red/results/` is ignored by git) | taken as written; anyone you give the raw files to can re-run `rasd evidence --dry-run` and get the same verdict |
+
+After a rule's title or fields change, `rasd evidence --refresh` rewrites the evidence of the kept runs. When a later run fires the same detections, the latest one stands for each, and `rasd evidence --prune` removes the kept runs nothing comes from any more. A rule edited until it no longer fires on its run fails the check: fix the rule, or delete its `evidence.md` and let the detection return to SIEM-Ready.
 
 > **Privacy.** `evidence.md` carries the lab VM's host name and the Windows account that ran the tests (`DOMAIN\user`), and the run records its IP addresses. Give the VMs and accounts neutral lab names (`LAB-WS01`, `LAB\labuser`) before the run, never your laptop's name or your own account, and read every `evidence.md` before you commit it.
 
@@ -124,4 +146,6 @@ Only the `evidence.md` files under `detect/detections/` and `detect/correlations
 | [`RasdLabGuard.ps1`](RasdLabGuard.ps1) | Refuses to run anywhere but a machine marked as a lab (`RASD_LAB_HOST`, `RASD_LAB_DOMAINS`) |
 | [`Invoke-RasdLabRun.ps1`](Invoke-RasdLabRun.ps1) | Readiness → tests → SIEM wait → export → zip, then the remaining commands |
 | [`sysmon-rasd.xml`](sysmon-rasd.xml) | Sysmon configuration covering what the rules, hunts and playbooks read. **Do not deploy sysmon-rasd.xml to production. It is intentionally verbose for validation.** |
+| [`sysmon-rasd-linux.xml`](sysmon-rasd-linux.xml) | Sysmon for Linux configuration for the Linux lab host: every process creation, nothing else |
+| [`../../.github/workflows/lab-run.yml`](../../.github/workflows/lab-run.yml) | The same kit on hosted runners that exist for one run |
 | [`../../queries/splunk_app`](../../queries/splunk_app/) | The Splunk apps, generated from the rules on every build |

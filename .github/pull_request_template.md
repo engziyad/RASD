@@ -38,4 +38,5 @@ rasd diff --base origin/main --fuzz
 ```
 
 <!-- CI blocks the merge on: failing tests, surviving rule mutants, parity divergences, new evasion bypasses,
-     risky proposed tunings, maturity over-claims, chain gaps, broken links, or stale generated files. -->
+     risky proposed tunings, maturity over-claims, lab evidence a kept run no longer gives, chain gaps, broken links,
+     or stale generated files. -->

@@ -188,6 +188,46 @@ class KeptRuns(unittest.TestCase):
         st = self.standing()
         self.assertEqual((st.current, st.unused), ({DETECTION: "hosted-2/lab-linux"}, []))
 
+    def test_prune_removes_only_what_a_later_run_made_redundant(self):
+        self.keep(self.folder_run())
+        self.keep(self.zip_run(), strict=True, run="hosted-1")
+        later = {**self.event, "UtcTime": "2026-10-13 06:00:01.400"}
+        self.keep(self.folder_run(name="lab-linux", event=later, start="2026-10-13T06:00:00.0000000Z",
+                                  end="2026-10-13T06:00:01.0000000Z"), run="hosted-2")
+        self.write_evidence()
+        self.assertEqual(self.standing().unused, ["hosted-1/lab-linux", "hosted-1/lab-windows"])
+        code, out = self.quiet(evidence.check, self.store, self.entries)
+        self.assertEqual(code, 1)
+        self.assertIn("rasd evidence --prune", out)
+        code, out = self.quiet(evidence.prune, self.store, self.entries)
+        self.assertEqual(code, 0, out)
+        self.assertIn("removed", out)
+        self.assertFalse((self.store / "hosted-1").exists(), "a run with no part left goes with its last part")
+        self.assertTrue((self.store / "hosted-2" / "lab-linux").is_dir())
+        self.assertEqual(self.quiet(evidence.check, self.store, self.entries)[0], 0)
+        code, out = self.quiet(evidence.prune, self.store, self.entries)
+        self.assertIn("nothing to remove", out)
+
+    def test_prune_keeps_the_parts_of_a_run_that_still_carry_evidence(self):
+        self.keep(self.zip_run(), strict=True)
+        self.keep(self.folder_run(event={**self.event, "CommandLine": "powershell.exe -File x.ps1"}))
+        self.write_evidence()
+        self.assertEqual(self.standing().unused, ["hosted-1/lab-linux"])
+        self.quiet(evidence.prune, self.store, self.entries)
+        doc = yaml.safe_load((self.store / "hosted-1" / "run.yml").read_text(encoding="utf-8"))
+        self.assertEqual([p["name"] for p in doc["parts"]], ["lab-windows"])
+        self.assertFalse((self.store / "hosted-1" / "lab-linux").exists())
+        self.assertEqual(self.quiet(evidence.check, self.store, self.entries)[0], 0)
+
+    def test_prune_never_removes_a_run_it_cannot_read(self):
+        self.keep(self.folder_run())
+        self.write_evidence()
+        export = self.store / "hosted-1" / "lab-linux" / "export.jsonl"
+        export.write_text(export.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        self.assertTrue(self.standing().problems)
+        self.quiet(evidence.prune, self.store, self.entries)
+        self.assertTrue(export.exists())
+
     def test_evidence_whose_run_stayed_with_its_lab_is_listed_and_left_alone(self):
         self.keep(self.folder_run())
         text = self.write_evidence()

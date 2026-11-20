@@ -11,6 +11,8 @@ RASD tracks four validation levels, and only the lab run moves the maturity leve
 | SIEM replay | The generated query run in your Splunk or Sentinel over replayed data, counts compared with the engine | [checklist](PUBLIC_DATA_VALIDATION.md#siem-replay-checklist), SIEM alerts in `rasd evidence` |
 | Production | The detection tuned and running on an estate's own telemetry | [ENTERPRISE_ADOPTION](ENTERPRISE_ADOPTION.md) |
 
+**No lab of your own:** the workflow [`lab-run.yml`](../.github/workflows/lab-run.yml) runs the Windows, Linux and web steps on hosted runners that exist for one run, turns them into evidence and keeps the raw runs in [`purple/lab_runs`](../purple/lab_runs/README.md), where every build recomputes that evidence ([how](../red/lab/README.md#a-lab-you-do-not-have-to-build)). It has no domain controller and no SIEM, and it never runs the opt-in steps; the steps below cover those.
+
 **Fast path with Splunk:** the [lab kit](../red/lab/README.md) does steps 1-3 in two commands (`Test-LabReadiness.ps1 -Fix`, `Invoke-RasdLabRun.ps1 -LabConfirmed`), and [`queries/splunk_app`](../queries/splunk_app/README.md) installs every detection in Splunk as a scheduled alert named after its detection id, with the report whose CSV export is the `--siem-alerts` input. The steps below are the same run done by hand.
 
 ## 1 · Prepare the lab
@@ -105,5 +107,7 @@ git add detect/detections/*/evidence.md detect/correlations/*/evidence.md && git
 ```
 The Operational Score, the evidence and latency matrices, the maturity levels and the metrics update from the committed evidence files.
 
+A run whose every file may be public (machines that existed for the run, accounts that mean nothing) can be kept beside its evidence: add `--keep <name>` to `rasd evidence --run`, and commit `purple/lab_runs/<name>` too. From then on `rasd evidence --check`, a step of `rasd ci`, recomputes that evidence from the raw run on every build and fails when an `evidence.md` is not what the run gives with today's rules; `rasd evidence --refresh` rewrites it after a rule's title or fields changed. A run from your own VMs stays with you, and its evidence is taken as written.
+
 ## What each evidence file proves
-`evidence.md` front matter records the run, host, test and step, the marker and how the events were bound to the run (`bound_by`), the number of matching events, the telemetry latency, SIEM alert latency and SIEM pipeline delay, cleanup status, the artifacts' hashes and the SHA-256 of every input file. Anyone holding the raw exports can re-run `rasd evidence --dry-run` and get the same verdict. The hashes make the file verifiable; they are not a digital signature.
+`evidence.md` front matter records the run, host, test and step, the marker and how the events were bound to the run (`bound_by`), the number of matching events, the telemetry latency, SIEM alert latency and SIEM pipeline delay, cleanup status, the artifacts' hashes and the SHA-256 of every input file. Anyone holding the raw exports can re-run `rasd evidence --dry-run` and get the same verdict; for the runs kept in [`purple/lab_runs`](../purple/lab_runs/README.md) the build does it every time. The hashes make the file verifiable; they are not a digital signature.

@@ -4,8 +4,9 @@ name: RASD lab run
 # host (red/lab/README.md, Lab guard), installs Sysmon with the repository's configuration, runs the safe
 # default red steps and uploads the run: results, collected artifacts and the exported telemetry.
 # A last job turns the runs into evidence.md with `rasd evidence`, keeps the raw runs beside it in
-# purple/lab_runs (these machines hold nothing private), rebuilds the pages and pushes the result as a branch,
-# lab-evidence/run-<id>, for a person to read and open as a pull request. Nothing reaches main from here.
+# purple/lab_runs (these machines hold nothing private), drops the kept runs this one replaces, rebuilds the
+# pages and pushes the result as a branch, lab-evidence/run-<id>, for a person to read and open as a pull
+# request. Nothing reaches main from here, and the workflow starts only when a person starts it.
 #
 # What a runner is not: joined to a domain, or watched by a SIEM. The Active Directory tests are skipped,
 # and the SIEM part of the Operational Score stays at zero for evidence made from these runs.
@@ -14,8 +15,6 @@ name: RASD lab run
 
 on:
   workflow_dispatch:
-  push:
-    branches: [lab-run]
 
 permissions:
   contents: read
@@ -291,6 +290,9 @@ jobs:
           fi
           echo "missed=$missed" >> "$GITHUB_OUTPUT"
 
+      - name: Drop the kept runs this one replaces
+        run: rasd evidence --prune
+
       - name: Rebuild the pages
         run: rasd build
 
@@ -309,7 +311,7 @@ jobs:
           git add --all
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit --quiet -m "evidence: $fired detections fired in lab run $GITHUB_RUN_ID" \
-            -m "Written by rasd evidence from the runs of workflow run $GITHUB_RUN_ID on GitHub-hosted runners marked as lab hosts. No domain and no SIEM: the Active Directory detections and the SIEM part of the Operational Score are not covered. The raw exports are the artifacts of that run."
+            -m "Written by rasd evidence from the runs of workflow run $GITHUB_RUN_ID on GitHub-hosted runners marked as lab hosts. No domain and no SIEM: the Active Directory detections and the SIEM part of the Operational Score are not covered. The raw runs are kept in purple/lab_runs/hosted-$GITHUB_RUN_ID, and rasd evidence --check recomputes this evidence from them."
           git push --quiet origin "$branch"
           echo "pushed $branch" >> "$GITHUB_STEP_SUMMARY"
 

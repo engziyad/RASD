@@ -26,9 +26,10 @@ Each step of a safe release maps to a check CI already enforces.
 | Release step | Enforced by |
 |---|---|
 | Verify base | the branch is up to date with `main`; the working tree is clean |
-| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, trace, silence, blindpath, grow, Splunk app, profiles, datasets, health, review, build, chain, advise, links |
+| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, trace, silence, blindpath, grow, Splunk app, profiles, datasets, evidence, health, review, build, chain, advise, links |
 | Formal proofs and certificates | `rasd certify --check` (inside `rasd ci`): every rule compiles to exact automata, every behaviour spec gets its expected verdict, and the certificate pages are current |
 | Differential | `rasd parity` (the generated SPL and KQL match the engine) and `rasd diff --base origin/<base>` (the events whose verdict changes in this PR) and `rasd certify --equiv origin/main` (the rule's own meaning across the edit) |
+| Lab evidence still holds | `rasd evidence --check` (inside `rasd ci`): every `evidence.md` that cites a lab run kept in [`purple/lab_runs`](purple/lab_runs/README.md) is, byte for byte, what that run gives with the rules of this change. A rule edited until it no longer fires on its run fails here |
 | No stale output | the "generated files are out of date" check fails the build until `rasd build` is committed |
 
 If any gate is red the release is blocked: fix it on the branch, never merge around it. An inconclusive result (a refused construct, a search that hit a limit) is not a pass.
@@ -63,6 +64,10 @@ gh api --method PUT -H "Accept: application/vnd.github+json" \
 - **Off until configured.** The job is skipped while the repository variable `RASD_MODEL` is unset.
 
 A candidate is promoted into the core by a person: `rasd review <candidate> --promote` after an approval of its exact rule text, then a branch and a pull request like any detection. With `main` protected as below, the workflow's push needs an exception for GitHub Actions in the rule's bypass list; without one the lane stays where its last run left it and the run says so.
+
+## Lab runs
+
+A detection becomes Validated through a lab run, never through an edit. [`lab-run.yml`](.github/workflows/lab-run.yml) is started by a person from the Actions tab, runs the safe default steps on hosted runners that exist for one run, and pushes the evidence with the raw runs as a branch `lab-evidence/run-<id>`: open a pull request from that branch like any other change. It never pushes to the branch it ran from, and it never runs the opt-in steps (LSASS memory, Security-log clear): those, the domain controller and the SIEM need a lab of your own ([lab kit](red/lab/README.md)). Keep a run in `purple/lab_runs` only when every file in it may be public.
 
 ## Keep out of the repository
 

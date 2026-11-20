@@ -1198,7 +1198,7 @@ def check(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) ->
         print(f"  {RED}✗{RESET} {det_id}: cites {label}, and the rule no longer fires on that run - "
               "the evidence no longer holds: fix the rule, or delete evidence.md")
     for label in st.unused:
-        print(f"  {RED}✗{RESET} {label}: kept, and no evidence.md comes from it - remove it from {where}")
+        print(f"  {RED}✗{RESET} {label}: kept, and no evidence.md comes from it - run: rasd evidence --prune")
     for problem in st.problems:
         print(f"  {RED}✗{RESET} {problem}")
     if st.unkept:
@@ -1228,6 +1228,29 @@ def refresh(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) 
         print(f"{DIM}every evidence.md that comes from a kept run is already what the run gives today{RESET}")
     write_output(store / STORE_PAGE, page(store, entries))
     return check(store, entries)
+
+
+def prune(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> int:
+    """Remove every kept part no evidence comes from: a later run fires each of its detections, so it has
+    nothing left to prove. A part that cannot be read is a problem to look at, and is never removed here."""
+    st = standing(store, entries)
+    for label in st.unused:
+        run, name = label.split("/", 1)
+        folder = store / run
+        path = folder / RUN_FILE
+        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        doc["parts"] = [p for p in doc.get("parts") or [] if not (isinstance(p, dict) and p.get("name") == name)]
+        if doc["parts"]:
+            shutil.rmtree(folder / name)
+            path.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8", newline="\n")
+        else:
+            shutil.rmtree(folder)
+        print(f"  {GREEN}removed{RESET} {label}: no evidence.md comes from it any more")
+    if not st.unused:
+        print(f"{DIM}every kept part carries at least one evidence.md: nothing to remove{RESET}")
+    if store.is_dir():
+        write_output(store / STORE_PAGE, page(store, entries))
+    return 0
 
 
 def _size(n: int) -> str:
@@ -1291,6 +1314,17 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
     return "\n".join(lines)
 
 
+def kept_summary(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> dict:
+    """The store in four numbers, for the pages that quote it: kept runs and parts, evidence files in the
+    library, and how many of them cite a kept run (which --check then recomputes)."""
+    parts, _notes, _problems = kept_parts(store)
+    digests = {results_digest(part) for part in parts} - {None}
+    fronts = [front_of((folder / "evidence.md").read_text(encoding="utf-8"))
+              for _id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()]
+    kept = sum(1 for front in fronts if ((front.get("inputs") or {}).get("results") or {}).get("sha256") in digests)
+    return {"runs": len({part.run for part in parts}), "parts": len(parts), "evidence": len(fronts), "kept": kept}
+
+
 def md_note(text: str) -> str:
     return " ".join(str(text).split()).replace("|", "\\|").replace("<", "&lt;")
 
@@ -1318,15 +1352,20 @@ def main() -> int:
     ap.add_argument("--check", action="store_true",
                     help="fail unless every evidence.md that cites a kept run is what this command writes from it today (CI)")
     ap.add_argument("--refresh", action="store_true", help="rewrite the evidence of every kept run, then --check")
+    ap.add_argument("--prune", action="store_true",
+                    help="remove every kept run no evidence.md comes from any more (a later run fires the same detections)")
     ap.add_argument("--page", action="store_true", help="write purple/lab_runs/README.md")
     args = ap.parse_args()
-    if args.check or args.refresh or args.page:
+    if args.check or args.refresh or args.prune or args.page:
         if args.run or args.results or args.logs or args.keep:
-            ap.error("--check, --refresh and --page read the kept runs: give them alone")
+            ap.error("--check, --refresh, --prune and --page read the kept runs: give them alone")
+        if args.prune:
+            prune()
         if args.page:
             write_output(STORE / STORE_PAGE, page())
-            return 0
-        return refresh() if args.refresh else check()
+        if args.check or args.refresh:
+            return refresh() if args.refresh else check()
+        return 0
     if (args.keep or args.note) and not args.run:
         ap.error("--keep copies a lab run into the repository: give the run with --run")
     if args.keep and args.siem_alerts:
