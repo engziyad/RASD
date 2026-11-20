@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) Disable or Modify Tools: Clear Windows Event Logs (defense-impairment) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 60/100 |
 | **Tests** | 15 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 127 variants |
 | **Behaviour proof** | 5 of 9 variants proven for every event · 4 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1685005-windows-event-log-clearing-via-command-line)) |

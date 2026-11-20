@@ -1749,10 +1749,18 @@ class Chain(unittest.TestCase):
         self.assertEqual(chain.gate_errors(self.repo), [])
 
     def test_pending_items_are_never_marked_done_without_evidence(self):
+        """Read from the evidence files themselves, not from what the repository computed from them."""
+        scores = {}
+        for d in self.repo.items:
+            path = d.folder / "evidence.md"
+            scores[d.id] = sum(evidence.operational_score(evidence.front_of(path.read_text(encoding="utf-8"))).values()) if path.exists() else None
+        self.assertTrue(any(s is not None for s in scores.values()) and any(s is None for s in scores.values()),
+                        "this repository holds detections with lab evidence and detections still waiting for it")
         for t in self.repo.techniques():
             c = self.repo.checklist(t)
-            self.assertEqual(c["Evidence file"], "pending")
-            self.assertEqual(c["Operational Score"], "pending")
+            of_t = [scores[d.id] for d in self.repo.items if d.technique == t]
+            self.assertEqual(c["Evidence file"], "done" if all(s is not None for s in of_t) else "pending", t)
+            self.assertEqual(c["Operational Score"], "done" if all((s or 0) >= chain.OPERATIONAL_TARGET for s in of_t) else "pending", t)
 
     def test_backlog_holds_every_gap_and_only_gaps(self):
         self.assertEqual(chain.backlog_errors(self.repo), [])
@@ -2487,11 +2495,29 @@ class Advise(unittest.TestCase):
         families = {advise.family(i) for i in ids}
         self.assertFalse(families & {"tests", "proof", "fuzz", "parity", "correlate", "certify.failed", "score", "chain",
                                      "tune.broken", "tune.risky"}, families)
-        # the lab run that validates the most detections is the one finding ranked "now"
+        # the lab run that validates the most detections is the one finding ranked "now", and every detection still
+        # without evidence is either in a lab run or named as out of reach of one
         now = [f for f in self.findings if f.priority == 1]
-        self.assertEqual([f.id for f in now], ["evidence.wave.windows"])
-        self.assertIn("Invoke-RasdLabRun.ps1", now[0].action)
-        self.assertEqual(len(now[0].data["detections"]), 11)
+        waves = sorted((f for f in self.findings if f.id.startswith("evidence.wave.")), key=lambda f: (-len(f.data["detections"]), f.id))
+        self.assertEqual([f.id for f in now], [waves[0].id])
+        self.assertIn("rasd evidence --run", now[0].action)
+        waiting = {d.id for d in self.repo.items if not self.repo.evidence[d.id]}
+        in_a_run = {det for f in waves for det in f.data["detections"]}
+        out_of_reach = {f.data["detection"] for f in self.findings if f.id.startswith("evidence.unreachable.")}
+        self.assertTrue(waiting, "detections still wait for a lab run")
+        self.assertEqual(in_a_run | out_of_reach, waiting)
+        self.assertFalse(in_a_run & out_of_reach)
+        # what the evidence at hand still lacks is one finding per cause, naming exactly the detections it holds back
+        validated = {d.id: self.repo.scores[d.id]["operational"] for d in self.repo.items if self.repo.evidence[d.id]}
+        self.assertTrue(validated)
+        lacks = {f.data["lacks"]: f for f in self.findings if f.id.startswith("evidence.operational.")}
+        self.assertEqual(len(lacks), sum(1 for f in self.findings if f.id.startswith("evidence.operational.")))
+        for part in ("SIEM result", "DFIR evidence", "Cleanup"):
+            short = sorted(d for d, parts in validated.items() if not parts[part] and sum(parts.values()) < chain.OPERATIONAL_TARGET)
+            self.assertEqual(lacks[part].data["detections"] if part in lacks else [], short, part)
+        self.assertIn("RASD - alert export", lacks["SIEM result"].action)
+        self.assertIn("stops at 60", lacks["SIEM result"].evidence)
+        self.assertNotIn("Detection latency", lacks, "no alert, no latency to judge")
         # one known-gap finding per behaviour gap the certificates show, each with its engine-confirmed event and fix
         gaps = [f for f in self.findings if f.id.startswith("certify.gap.")]
         self.assertEqual(len(gaps), self.repo.certify["gaps"])
@@ -2513,11 +2539,13 @@ class Advise(unittest.TestCase):
 
     def test_decisions_set_aside_defer_demote_and_count_resolved(self):
         import datetime as dt
+        wave = next(f.id for f in self.findings if f.priority == 1)
+        self.assertTrue(wave.startswith("evidence.wave."))
         doc = {"decisions": [
             {"finding": "backlog.T1083", "decision": "rejected", "date": "2026-10-01", "note": "the baseline comes first"},
             {"finding": "backlog.T1505.003", "decision": "rejected", "date": "2026-10-02", "note": "needs the WAF log source"},
             {"finding": "coverage.breadth", "decision": "deferred", "date": "2026-10-03", "until": "2027-01-01"},
-            {"finding": "evidence.wave.windows", "decision": "accepted", "date": "2026-10-04", "by": "lab"},
+            {"finding": wave, "decision": "accepted", "date": "2026-10-04", "by": "lab"},
             {"finding": "proof.T1218.011_rundll32_suspicious_execution.old-mutant", "decision": "accepted", "date": "2026-09-01"},
         ]}
         self.assertEqual(advise.decision_errors(doc), [])
@@ -2526,11 +2554,11 @@ class Advise(unittest.TestCase):
         self.assertEqual({f.id for f in view["set_aside"]}, {"backlog.T1083", "backlog.T1505.003"})
         self.assertEqual([f.id for f in view["deferred"]], ["coverage.breadth"])
         self.assertNotIn("coverage.breadth", ranked)
-        self.assertEqual(ranked["evidence.wave.windows"].decision["by"], "lab")
+        self.assertEqual(ranked[wave].decision["by"], "lab")
         # the backlog family was rejected twice: its remaining findings rank one level lower, nothing else moves
         self.assertEqual(ranked["backlog.T1087.002"].priority, 4)
         self.assertEqual(ranked["backlog.T1087.002"].base_priority, 3)
-        self.assertEqual(ranked["evidence.wave.windows"].priority, 1)
+        self.assertEqual(ranked[wave].priority, 1)
         led = view["ledger"]
         self.assertEqual((led["accepted"], led["resolved"], led["open"], led["rejected"], led["deferred"]), (2, 1, 1, 2, 1))
         self.assertEqual(led["resolved_ids"], ["proof.T1218.011_rundll32_suspicious_execution.old-mutant"])
@@ -2692,12 +2720,12 @@ class Advise(unittest.TestCase):
         self.assertEqual(advise.gate_rule({"logsource": {"product": "linux"}, "detection": {"s": {"a|nonsense": 1}, "condition": "s"}}, tps, tns)[0], False)
 
     def test_proposals_are_written_under_the_agent_folder(self):
-        f = self.by_id["evidence.wave.windows"]
+        f = next(x for x in self.findings if x.id.startswith("evidence.wave."))
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(advise, "PROPOSALS", Path(tmp)):
             folder = advise.propose(f, None)
-            self.assertEqual(folder, Path(tmp) / "evidence-wave-windows")
+            self.assertEqual(folder, Path(tmp) / f.id.replace(".", "-"))
             text = (folder / "PROPOSAL.md").read_text(encoding="utf-8")
-            self.assertIn("Invoke-RasdLabRun.ps1", text)
+            self.assertIn("rasd evidence --run", text)
             self.assertIn("Nothing is committed or pushed by the agent", text)
             decoy = self.by_id["deceive.honey-account-attribute-read"]
             folder = advise.propose(decoy, None)

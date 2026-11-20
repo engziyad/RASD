@@ -161,8 +161,36 @@ def counsel(repo) -> list[Finding]:
     return out
 
 
+# what an Operational Score below the target lacks, in the order the points are worth: the part of the score, the
+# title's words, what the part needs, and the next step
+OPERATIONAL_LACKS = (
+    ("siem", "SIEM result", "validated with no alert from a live SIEM",
+     "Each evidence.md records the run and the event the rule matched in the lab host's own telemetry. The SIEM result (25 points) "
+     "and the detection latency (up to 15) are earned only by an alert a scheduled search raised on that step, so the Operational "
+     "Score of these stops at 60.",
+     "Run the lab with the SIEM watching: install the generated app (queries/splunk_app), let Invoke-RasdLabRun.ps1 wait for the "
+     "scheduled alerts, export the report `RASD - alert export` and give the file to rasd evidence --run beside the run "
+     "(docs/OPERATIONAL_VALIDATION.md)."),
+    ("latency", "Detection latency", "alerted later than a minute after the step",
+     "The alert is in the evidence; the detection latency earns its 15 points within 60 seconds of the step, 10 within five "
+     "minutes, 5 within fifteen.",
+     "Read the latency row of each evidence file: shorten the search's schedule or the delay before the events are indexed "
+     "(rasd health shows the delay per sender), and run the step again."),
+    ("artifacts", "DFIR evidence", "validated with no artifact collected for the investigation",
+     "DFIR evidence (15 points) is earned when the lab step saves, with its SHA-256, what an investigator would take before the "
+     "cleanup removes it.",
+     "Have each step save it (a `collect:` script for a Windows test, as red/windows/powershell_encoded_command has; a file in the "
+     "step's results folder for a Linux or web test), run the step again, then rasd evidence --run."),
+    ("cleanup", "Cleanup", "validated by a run whose cleanup was not verified",
+     "Cleanup (10 points) is earned when the run's own check finds nothing of the step left on the host.",
+     "Read the step's cleanup status in the run's emulation-results.json, fix the cleanup script or its verification, and run "
+     "the step again."),
+)
+
+
 def evidence_findings(repo) -> list[Finding]:
-    """The lab runs that would validate the most detections first; the detections no red step reaches."""
+    """The lab runs that would validate the most detections first; the detections no red step reaches; and, for the
+    detections that have evidence, what their Operational Score still lacks, one finding per cause."""
     from chain import OPERATIONAL_TARGET, WAVES, wave_of
     waves: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     reached: set[str] = set()
@@ -197,15 +225,23 @@ def evidence_findings(repo) -> list[Finding]:
             evidence="docs/EVIDENCE_PLAN.md lists it under 'not reachable by an offensive step yet'.",
             action=f"Give it {need}; `rasd red --check` and `rasd chain --check` verify the link.", weight=1,
             data={"detection": d.id}))
+    lacking: dict[str, list[str]] = defaultdict(list)
     for d in repo.items:
-        ops = repo.scores[d.id]["operational_total"]
-        if repo.evidence[d.id] and ops is not None and ops < OPERATIONAL_TARGET:
+        ops, parts = repo.scores[d.id]["operational_total"], repo.scores[d.id]["operational"] or {}
+        if not repo.evidence[d.id] or ops is None or ops >= OPERATIONAL_TARGET:
+            continue
+        for key, part, _words, _why, _step in OPERATIONAL_LACKS:
+            late = key == "latency" and parts.get("SIEM result") and parts.get(part, 0) < 15
+            if late or (key != "latency" and not parts.get(part)):
+                lacking[key].append(d.id)
+    for key, part, words, why, step in OPERATIONAL_LACKS:
+        held = sorted(lacking[key])
+        if held:
             out.append(Finding(
-                id=f"evidence.operational.{d.id}", priority=2, pillar="evidence", roles=("purple", "analyst"),
-                title=f"{d.id}: Operational Score {ops}/100, below the {OPERATIONAL_TARGET} the Reference level needs",
-                evidence=f"evidence.md records the run; the score is computed from it ({_short(repo.scores[d.id]['operational'])}).",
-                action="Read the evidence file's missed and latency rows; fix the collection path they name and re-run the step.",
-                weight=OPERATIONAL_TARGET - ops, data={"detection": d.id, "operational": ops}))
+                id=f"evidence.operational.{key}", priority=2, pillar="evidence", roles=("purple", "executive"),
+                title=f"{_n(len(held), 'detection')} {words}: Operational Score below the {OPERATIONAL_TARGET} the Reference level needs",
+                evidence=f"{why} Detections: {', '.join(held)}.", action=step, weight=len(held),
+                data={"lacks": part, "detections": held}))
     return out
 
 

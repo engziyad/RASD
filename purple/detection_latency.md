@@ -7,27 +7,27 @@ Measured from the start of the emulation step. *Telemetry* is the time until the
 | Detection | Telemetry latency | SIEM alert latency | SIEM pipeline delay | Latency points |
 |---|---|---|---|---|
 | T1003.001_lsass_memory_access | pending | pending | - | - |
-| T1021.006_wsmprovhost_suspicious_child | pending | pending | - | - |
-| T1046_decoy_service_interaction | pending | pending | - | - |
-| T1053.003_crontab_noninteractive_install | pending | pending | - | - |
-| T1053.005_powershell_scheduled_task_creation | pending | pending | - | - |
-| T1053.005_schtasks_suspicious_creation | pending | pending | - | - |
-| T1059.001_powershell_encoded_command | pending | pending | - | - |
-| T1059.004_linux_suspicious_shell_execution | pending | pending | - | - |
+| T1021.006_wsmprovhost_suspicious_child | 0.189 s | not provided | - | 0/15 |
+| T1046_decoy_service_interaction | 0.018 s | not provided | - | 0/15 |
+| T1053.003_crontab_noninteractive_install | 0.012 s | not provided | - | 0/15 |
+| T1053.005_powershell_scheduled_task_creation | 0.019 s | not provided | - | 0/15 |
+| T1053.005_schtasks_suspicious_creation | 0.101 s | not provided | - | 0/15 |
+| T1059.001_powershell_encoded_command | 0.022 s | not provided | - | 0/15 |
+| T1059.004_linux_suspicious_shell_execution | 0.01 s | not provided | - | 0/15 |
 | T1078.002_honey_account_authentication | pending | pending | - | - |
-| T1218.011_rundll32_suspicious_execution | pending | pending | - | - |
-| T1547.001_registry_run_key_persistence | pending | pending | - | - |
-| T1552.001_honey_file_access | pending | pending | - | - |
+| T1218.011_rundll32_suspicious_execution | 0.028 s | not provided | - | 0/15 |
+| T1547.001_registry_run_key_persistence | 0.033 s | not provided | - | 0/15 |
+| T1552.001_honey_file_access | 0.087 s | not provided | - | 0/15 |
 | T1558.003_honey_spn_ticket_request | pending | pending | - | - |
 | T1558.003_kerberoasting_rc4_tgs | pending | pending | - | - |
-| T1569.002_suspicious_service_installation | pending | pending | - | - |
-| T1685.005_event_log_clearing | pending | pending | - | - |
+| T1569.002_suspicious_service_installation | 0.031 s | not provided | - | 0/15 |
+| T1685.005_event_log_clearing | 0.073 s | not provided | - | 0/15 |
 | T1685.005_security_log_cleared | pending | pending | - | - |
-| T1685.005_system_log_cleared | pending | pending | - | - |
+| T1685.005_system_log_cleared | 0.079 s | not provided | - | 0/15 |
 | T1110.003_password_spray_burst | pending | pending | - | - |
-| T1190_object_id_enumeration | pending | pending | - | - |
+| T1190_object_id_enumeration | 0.107 s | not provided | - | 0/15 |
 | T1558.003_kerberoasting_volume | pending | pending | - | - |
-| T1595.003_api_auth_probing | pending | pending | - | - |
+| T1595.003_api_auth_probing | 1.678 s | not provided | - | 0/15 |
 
 Targets: ≤ 60 s earns 15 points, ≤ 5 min 10, ≤ 15 min 5 (see [QUALITY_MODEL.md](../docs/QUALITY_MODEL.md)). For a correlation, telemetry latency runs to the event that made it reach its threshold, and its Splunk alert runs once per window, after the window closes.
 

@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) Scheduled Task/Job: Cron (execution, persistence, privilege-escalation) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 60/100 |
 | **Tests** | 5 true positive · 7 true negative · 5 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 29 variants |
 | **Parity** | KQL and SPL identical to the rule on 120 events (RASD's offline KQL / SPL model, not yet a live SIEM) |

@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1547.001](https://attack.mitre.org/techniques/T1547/001/) Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder (persistence, privilege-escalation) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 60/100 |
 | **Tests** | 20 true positive · 6 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 96 variants |
 | **Behaviour proof** | 2 of 4 variants proven for every event · no known gap · 2 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1547001-run-key-persistence-pointing-to-suspicious-location)) |

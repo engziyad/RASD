@@ -1,0 +1,5 @@
+Matching Defaults entries for runner on ip-10-0-140-144:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty
+
+User runner may run the following commands on ip-10-0-140-144:
+    (ALL) NOPASSWD: ALL

@@ -1,0 +1,119 @@
+[
+  {
+    "technique": "T1053.003",
+    "test": "cron_persistence",
+    "step": "crontab_entry",
+    "name": "Add a crontab line that echoes the marker every 30 minutes",
+    "detections": [
+      "T1053.003_crontab_noninteractive_install"
+    ],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-140-144",
+    "host_ips": [
+      "10.0.140.144"
+    ],
+    "user": "runner",
+    "marker": "rasd_2bf3efc9",
+    "bind": {},
+    "utc_start": "2026-11-20T18:01:01.210Z",
+    "utc_end": "2026-11-20T18:01:01.224Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-linux/cron_persistence/crontab-rasd_2bf3efc9.txt",
+        "sha256": "6f7599130ceb99a7b884488c45efbc1fa1cd1b4a9434d32eb3f9248de1207a0a"
+      }
+    ]
+  },
+  {
+    "technique": "T1046",
+    "test": "decoy_service_probe",
+    "step": "probe_decoy_services",
+    "name": "TCP connection to the decoy's SSH port, then one login attempt on its web portal",
+    "detections": [
+      "T1046_decoy_service_interaction"
+    ],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-140-144",
+    "host_ips": [
+      "10.0.140.144",
+      "172.17.0.1"
+    ],
+    "user": "runner",
+    "marker": "rasd_2bf3efc9",
+    "bind": {
+      "T1046_decoy_service_interaction": "{marker}"
+    },
+    "utc_start": "2026-11-20T18:01:01.237Z",
+    "utc_end": "2026-11-20T18:01:01.255Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": []
+  },
+  {
+    "technique": "T1083",
+    "test": "privilege_escalation_checks",
+    "step": "privesc_recon",
+    "name": "sudo -n -l, SUID and capability search, sensitive file and PATH checks",
+    "detections": [],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-140-144",
+    "host_ips": [
+      "10.0.140.144"
+    ],
+    "user": "runner",
+    "marker": "rasd_2bf3efc9",
+    "bind": {},
+    "utc_start": "2026-11-20T18:01:01.257Z",
+    "utc_end": "2026-11-20T18:05:01.350Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-linux/privilege_escalation_checks/capabilities-rasd_2bf3efc9.txt",
+        "sha256": "805391862839c844b4437e6d06031af5ed3ec39583242fde4cfcbf7f673c00bc"
+      },
+      {
+        "path": "/home/runner/work/_temp/lab-linux/privilege_escalation_checks/sudo-l-rasd_2bf3efc9.txt",
+        "sha256": "0d1ae6339c2f5e63d5ce472d92c5631704fef406bed3fce75d3c58252edebb6a"
+      },
+      {
+        "path": "/home/runner/work/_temp/lab-linux/privilege_escalation_checks/suid-rasd_2bf3efc9.txt",
+        "sha256": "e65eeb3d6a3f32506c2aaa983f9428636b2c932270f15c0456661b176bc00a3e"
+      }
+    ]
+  },
+  {
+    "technique": "T1059.004",
+    "test": "suspicious_shell_execution",
+    "step": "shell_patterns",
+    "name": "Base64 command piped into sh, then a script executed from /tmp",
+    "detections": [
+      "T1059.004_linux_suspicious_shell_execution"
+    ],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-140-144",
+    "host_ips": [
+      "10.0.140.144"
+    ],
+    "user": "runner",
+    "marker": "rasd_2bf3efc9",
+    "bind": {
+      "T1059.004_linux_suspicious_shell_execution": "{marker}"
+    },
+    "utc_start": "2026-11-20T18:05:01.352Z",
+    "utc_end": "2026-11-20T18:05:01.364Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": []
+  }
+]

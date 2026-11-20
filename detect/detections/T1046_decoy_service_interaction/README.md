@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Discovery (discovery) · related: [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Brute Force: Password Guessing (credential-access) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 45/100 |
 | **Tests** | 23 true positive · 12 true negative · 11 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 0 variants |
 | **Behaviour proof** | 3 of 7 variants proven for every event · no known gap · 4 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1046-deception---interaction-with-a-decoy-network-service)) |

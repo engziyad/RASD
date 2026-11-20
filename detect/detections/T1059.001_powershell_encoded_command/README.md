@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) Command and Scripting Interpreter: PowerShell (execution) · related: [T1027](https://attack.mitre.org/techniques/T1027/) Obfuscated Files or Information (stealth) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 60/100 |
 | **Tests** | 13 true positive · 6 true negative · 8 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 224 variants |
 | **Behaviour proof** | 2 of 7 variants proven for every event · 4 known gaps, each with an engine-confirmed event · 1 exclusion proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1059001-powershell-execution-with-encoded-command)) |
