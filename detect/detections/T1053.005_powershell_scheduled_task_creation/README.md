@@ -5,8 +5,8 @@
 |---|---|
 | **ATT&CK** | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) Scheduled Task/Job: Scheduled Task (execution, persistence, privilege-escalation) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 60/100 |
 | **Tests** | 14 true positive · 6 true negative · 3 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 158 variants |
 | **Behaviour proof** | 2 of 6 variants proven for every event · 4 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets)) |

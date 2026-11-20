@@ -16,11 +16,11 @@ RASD answers one question for every attack technique it covers: would we detect 
 | **Evidence of absence** | 10 sensor proofs, 12 records that end one and 2 kinds of time off modelled · on the sample fleet (8 hosts, 2221 records): 99 detection-host pairs, 80 attested (76 by record sequence, 4 by rhythm), 5 fired, 14 unattested · 3 breaks in the record found · documented behaviour pending lab runs ([SILENCE](../docs/SILENCE.md), [results](../dfir/silence/)) |
 | **The unseen route** | 16 behaviours over 6 stages, 23 ways around replayed through the engine (22 raise no alert) · on the sample fleet (8 hosts): 12 routes from an origin to a target, 6 unseen end to end and 6 seen on the way (6 of them on rules with no behaviour spec) · 1 change is the fewest after which every route is seen (by leg 3) · documented behaviour pending lab runs ([BLINDPATH](../docs/BLINDPATH.md), [results](../purple/blindpath/)) |
 | **RASD-Agent's lane** | 19 candidate detections drafted by a language model and kept by the gates of `rasd grow`, reviewed by no person and counted in no number of this page but this one · of the 604 techniques and sub-techniques of ATT&CK v20.1 that are drafted on their own, 17 have a core detection, 397 are in the agent's queue and 171 are out of reach of the logs RASD reads ([GROW](../docs/GROW.md), [candidates](../detect/candidates/README.md)) |
-| **Validated (lab evidence)** | 0 of 22 · Operational Score pending |
+| **Validated (lab evidence)** | 13 of 22 · Operational Score 58/100 |
 | **Analyst guidance** | 22 of 22 with triage, response, closure and escalation notes · 17 DFIR playbooks |
 | **Measured gaps** | 4 gaps without a detection (ldap_enumeration, privilege_escalation_checks, file_upload_testing, jwt_testing) · 1 posture check without a detection (security_headers_testing) |
 
-**Status:** SIEM-Ready, not yet Validated: 22 of 22 detections are SIEM-Ready and 16 fire on public attack datasets, meeting 25 of 26 expectations in 23 of 105 held-out files ([public data](PUBLIC_DATA_VALIDATION.md)); none has lab evidence yet ([evidence plan](EVIDENCE_PLAN.md)).
+**Status:** 13 of 22 detections Validated (lab evidence); the other 9 wait for a lab run ([evidence plan](EVIDENCE_PLAN.md)).
 
 <sub>Counted by `tools/chain.py` on every build.</sub>
 <!-- rasd:executive:end -->

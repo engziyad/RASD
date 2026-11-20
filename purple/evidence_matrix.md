@@ -9,26 +9,26 @@ Operational evidence per detection, read from `detect/detections/<id>/evidence.m
 | [T1003.001_lsass_memory_access](../detect/detections/T1003.001_lsass_memory_access/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/evidence.md) | 2026-11-20T17:36:32.293000Z | runnervmeozm8 | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
+| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md) | 2026-11-20T17:37:45.991583Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
+| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md) | 2026-11-20T17:37:43.902993Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
+| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/evidence.md) | 2026-11-20T17:37:20.998129Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
+| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md) | 2026-11-20T17:43:02.401000Z | runnervmeozm8 | verified | - | 35 | 0 | 0 | 0 | 10 | **45** |
 | [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md) | 2026-11-20T17:37:26.800722Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 0 | 10 | **45** |
+| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/evidence.md) | 2026-11-20T17:37:24.748076Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/evidence.md) | 2026-11-20T17:37:18.848965Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
 | [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/evidence.md) | 2026-11-20T17:37:50.627708Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/evidence.md) | 2026-11-20T17:37:16.557222Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/evidence.md) | 2026-11-20T17:37:16.557222Z | runnervmhh3zg | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/evidence.md) | 2026-11-20T17:36:35.258000Z | runnervmeozm8 | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
 | [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/evidence.md) | 2026-11-20T17:36:30.657000Z | runnervmeozm8 | verified | - | 35 | 0 | 0 | 15 | 10 | **60** |
 
-0/22 detections have lab evidence.
+13/22 detections have lab evidence.
 
 <sub>Generated by tools/chain.py · RASD · Attack-to-Defense Validation Framework</sub>
