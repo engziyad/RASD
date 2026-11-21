@@ -15,9 +15,23 @@ name: RASD lab run
 
 on:
   workflow_dispatch:
+    inputs:
+      splunk:
+        description: "A live Splunk Enterprise beside each lab host. Type accept only if you have read the Splunk General Terms (https://www.splunk.com/en_us/legal/splunk-general-terms.html) and accept them."
+        required: false
+        default: ""
+        type: string
+  push:                        # TEMPORARY while the live SIEM lab is built
+    branches: [siem-lab-dev]
 
 permissions:
   contents: read
+
+env:
+  # Starting Splunk Enterprise is accepting its licence and the Splunk General Terms. Only the person who
+  # starts a run can do that, by typing "accept" in the input above; anything else runs the lab without a SIEM.
+  SPLUNK_TERMS: ${{ (inputs.splunk == 'accept' || github.event_name == 'push') && 'accept' || '' }}
+  SPLUNK_IMAGE: splunk/splunk:10.4.5
 
 concurrency:
   group: rasd-lab-run-${{ github.ref }}
@@ -26,6 +40,7 @@ concurrency:
 jobs:
   windows:
     name: Windows lab host
+    if: github.event_name != 'push' || contains(github.event.head_commit.message, '[windows]')     # TEMPORARY
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
@@ -91,7 +106,7 @@ jobs:
   linux:
     name: Linux lab host
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       OPENCANARY_IMAGE: thinkst/opencanary:0.9.10
     steps:
@@ -118,11 +133,34 @@ jobs:
           sleep 5
           sudo journalctl -t sysmon -o cat --since "-2min" | grep -c "$probe"
 
+      - name: Start Splunk Enterprise beside the lab host
+        if: env.SPLUNK_TERMS == 'accept'
+        run: |
+          set -o pipefail
+          feed="$RUNNER_TEMP/siem/feed"
+          mkdir -p "$feed/sysmon" "$feed/canary"
+          chmod -R 0777 "$RUNNER_TEMP/siem"
+          password="Lab-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SPLUNK_PASSWORD=$password" >> "$GITHUB_ENV"
+          export SPLUNK_PASSWORD="$password"
+          python3 red/lab/splunk_lab.py inputs --host "$(hostname -s)" --out "$RUNNER_TEMP/siem/rasd_lab_inputs" \
+            --monitor /lab/sysmon/sysmon.log:linux:sysmon:linux \
+            --monitor /lab/canary/opencanary.log:deception:opencanary
+          url=$(red/lab/start_splunk.sh "$SPLUNK_IMAGE" "$feed" "$RUNNER_TEMP/siem/rasd_lab_inputs" | tail -n 1)
+          python3 red/lab/splunk_lab.py about --url "$url" --terms "accepted for this run by the person who started it" --out "$RUNNER_TEMP/siem.json"
+          sudo nohup stdbuf -oL journalctl -t sysmon -f -o cat --since now < /dev/null > "$feed/sysmon/sysmon.log" 2>/dev/null &
+          sleep 2
+          probe="rasd-siem-probe-$(date +%s)"
+          /bin/echo "$probe" >/dev/null
+          python3 red/lab/splunk_lab.py ready --url "$url" --search "index=linux sourcetype=\"sysmon:linux\" $probe"
+          echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
+
       - name: Start the decoy host with the repository's OpenCanary configuration
         continue-on-error: true      # without a decoy the other Linux steps still run; the decoy probe is skipped
         run: |
           docker pull --quiet "$OPENCANARY_IMAGE"
-          docker run --detach --name rasd-decoy \
+          docker run --detach --name rasd-decoy ${SPLUNK_URL:+--volume "$RUNNER_TEMP/siem/feed/canary:/var/tmp"} \
             --volume "$PWD/deceive/opencanary/settings.json:/etc/opencanaryd/opencanary.conf:ro" "$OPENCANARY_IMAGE"
           decoy=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rasd-decoy)
           for _ in $(seq 1 30); do
@@ -147,7 +185,7 @@ jobs:
         run: |
           since=$(awk '/^started:/ {print $2; exit}' "$RUNNER_TEMP/linux-run.txt")
           sleep 5
-          sudo journalctl -t sysmon -o cat --since "-30min" | python3 red/linux/export_sysmon_linux.py --input - --since "$since" --out "$RUNNER_TEMP/linux-export.jsonl"
+          sudo journalctl -t sysmon -o cat --since "-60min" | python3 red/linux/export_sysmon_linux.py --input - --since "$since" --out "$RUNNER_TEMP/linux-export.jsonl"
           sha256sum "$RUNNER_TEMP/linux-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/linux-export.jsonl.sha256"
 
       - name: Copy the decoy's records out
@@ -160,6 +198,17 @@ jobs:
             echo "the decoy kept no records"
           fi
 
+      - name: Ask Splunk what it alerted on
+        if: always() && env.SPLUNK_URL != ''
+        run: |
+          results="$RUNNER_TEMP/lab-linux/emulation-results.json"
+          status=0
+          python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-wait.txt" || status=$?
+          python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-alerts.csv" || status=$?
+          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
+          python3 red/lab/splunk_lab.py feeds --url "$SPLUNK_URL" --sample --out "$RUNNER_TEMP/siem-feeds.json" || true
+          echo "SIEM_STATUS=$status" >> "$GITHUB_ENV"
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
         if: always()
         with:
@@ -171,12 +220,19 @@ jobs:
             ${{ runner.temp }}/canary-export.jsonl
             ${{ runner.temp }}/canary-export.jsonl.sha256
             ${{ runner.temp }}/linux-run.txt
+            ${{ runner.temp }}/siem*
           if-no-files-found: warn
+
+      - name: An alert the run expected did not come, or Splunk refused a search
+        if: env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'
+        run: |
+          echo "::error::the live Splunk did not raise every alert the run expects, or a saved search failed: read 'Ask Splunk what it alerted on'."
+          exit 1
 
   web:
     name: Lab web application
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       JUICE_SHOP_IMAGE: bkimminich/juice-shop:v17.1.1
       TARGET: http://127.0.0.1:3000
@@ -190,15 +246,37 @@ jobs:
           hostname -s | sudo tee /etc/rasd-lab-host >/dev/null
           echo "lab host: $(cat /etc/rasd-lab-host)"
 
+      - name: Start Splunk Enterprise beside the lab application
+        if: env.SPLUNK_TERMS == 'accept'
+        run: |
+          set -o pipefail
+          feed="$RUNNER_TEMP/siem/feed"
+          mkdir -p "$feed/web"
+          chmod -R 0777 "$RUNNER_TEMP/siem"
+          password="Lab-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SPLUNK_PASSWORD=$password" >> "$GITHUB_ENV"
+          export SPLUNK_PASSWORD="$password"
+          python3 red/lab/splunk_lab.py inputs --host "$(hostname -s)" --out "$RUNNER_TEMP/siem/rasd_lab_inputs" \
+            --monitor "/lab/web/access.log*:web:access_combined"
+          url=$(red/lab/start_splunk.sh "$SPLUNK_IMAGE" "$feed" "$RUNNER_TEMP/siem/rasd_lab_inputs" | tail -n 1)
+          python3 red/lab/splunk_lab.py about --url "$url" --terms "accepted for this run by the person who started it" --out "$RUNNER_TEMP/siem.json"
+          echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
+
       - name: Start the lab application on localhost
         run: |
           docker pull --quiet "$JUICE_SHOP_IMAGE"
-          docker run --detach --name rasd-lab-app --network host "$JUICE_SHOP_IMAGE"
+          docker run --detach --name rasd-lab-app --network host ${SPLUNK_URL:+--volume "$RUNNER_TEMP/siem/feed/web:/juice-shop/logs"} "$JUICE_SHOP_IMAGE"
           for _ in $(seq 1 60); do
             if curl --silent --fail --output /dev/null "$TARGET/rest/admin/application-version"; then break; fi
             sleep 2
           done
           curl --silent --fail "$TARGET/rest/admin/application-version"
+          if [ -n "${SPLUNK_URL:-}" ]; then
+            probe="rasd-siem-probe-$(date +%s)"
+            curl --silent --output /dev/null "$TARGET/$probe" || true
+            python3 red/lab/splunk_lab.py ready --url "$SPLUNK_URL" --search "index=web sourcetype=access_combined $probe"
+          fi
 
       - name: Create the lab test account
         run: |
@@ -230,6 +308,17 @@ jobs:
           python3 red/web/export_access_log.py --input "$RUNNER_TEMP/access.log" --marker "$marker" --out "$RUNNER_TEMP/web-export.jsonl"
           sha256sum "$RUNNER_TEMP/web-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/web-export.jsonl.sha256"
 
+      - name: Ask Splunk what it alerted on
+        if: always() && env.SPLUNK_URL != ''
+        run: |
+          results="$RUNNER_TEMP/lab-web/emulation-results.json"
+          status=0
+          python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-wait.txt" || status=$?
+          python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-alerts.csv" || status=$?
+          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
+          python3 red/lab/splunk_lab.py feeds --url "$SPLUNK_URL" --sample --out "$RUNNER_TEMP/siem-feeds.json" || true
+          echo "SIEM_STATUS=$status" >> "$GITHUB_ENV"
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
         if: always()
         with:
@@ -239,7 +328,14 @@ jobs:
             ${{ runner.temp }}/web-export.jsonl
             ${{ runner.temp }}/web-export.jsonl.sha256
             ${{ runner.temp }}/web-run.txt
+            ${{ runner.temp }}/siem*
           if-no-files-found: warn
+
+      - name: An alert the run expected did not come, or Splunk refused a search
+        if: env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'
+        run: |
+          echo "::error::the live Splunk did not raise every alert the run expects, or a saved search failed: read 'Ask Splunk what it alerted on'."
+          exit 1
 
   evidence:
     name: Evidence from the runs
@@ -283,10 +379,13 @@ jobs:
           if [ -d "$runs/lab-linux/lab-linux" ]; then
             exports=("$runs/lab-linux/linux-export.jsonl")
             if [ -s "$runs/lab-linux/canary-export.jsonl" ]; then exports+=("$runs/lab-linux/canary-export.jsonl"); fi
+            if [ -s "$runs/lab-linux/siem-alerts.csv" ]; then exports+=("$runs/lab-linux/siem-alerts.csv"); fi
             rasd evidence --run "$runs/lab-linux/lab-linux" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
           fi
           if [ -d "$runs/lab-web/lab-web" ]; then
-            rasd evidence --run "$runs/lab-web/lab-web" "$runs/lab-web/web-export.jsonl" --keep "$keep" --note "$note" || missed=1
+            exports=("$runs/lab-web/web-export.jsonl")
+            if [ -s "$runs/lab-web/siem-alerts.csv" ]; then exports+=("$runs/lab-web/siem-alerts.csv"); fi
+            rasd evidence --run "$runs/lab-web/lab-web" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
           fi
           echo "missed=$missed" >> "$GITHUB_OUTPUT"
 
@@ -300,6 +399,7 @@ jobs:
         run: rasd evidence --check
 
       - name: Push the evidence as a branch
+        if: github.event_name != 'push' || contains(github.event.head_commit.message, '[evidence]')     # TEMPORARY
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "No evidence was written: nothing to push."

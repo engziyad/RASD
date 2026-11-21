@@ -23,6 +23,12 @@ queries/spl):
                                 RASD - alert export (audit)      index=_audit action=alert_fired
                                 RASD - alert export (scheduler)  index=_internal scheduler log
     metadata/default.meta     shares the searches and the field extraction app-wide
+  rasd_fields/                install on a Splunk that does NOT have the Splunk add-ons for Windows,
+                              Sysmon and Sysmon for Linux (a fresh lab Splunk): never beside them
+    default/props.conf        the fields of the event XML under the names those add-ons give them
+    default/transforms.conf   (EventCode / EventID, Computer, one field per <Data Name=...>), XML
+                              entities decoded in the fields the rules read, and one event per
+                              line with its own time for Sysmon for Linux
   rasd_forwarder/             install on the Universal Forwarder of every lab VM (and the DC)
     default/app.conf
     default/inputs.conf       Sysmon, Security, System and PowerShell logs, as XML, into
@@ -49,7 +55,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import BOLD, GREEN, RED, RESET, ROOT, VERSION, legacy_technique, load_detections
-from convert import MAPPINGS, convert
+from convert import MAPPINGS, convert, logsource_key, referenced_fields
 from correlation import load_correlations, to_spl
 
 OUT = ROOT / "queries" / "splunk_app"
@@ -131,6 +137,71 @@ EXTRACT-rasd_provider_name = <Provider Name=['"](?<Provider_Name>[^'"]+)
 
 [source::XmlWinEventLog:Security]
 EXTRACT-rasd_provider_name = <Provider Name=['"](?<Provider_Name>[^'"]+)
+
+# The decoy's records: one JSON object per line. OpenCanary writes three times into each; the
+# first one Splunk would find is the decoy host's local time, so read the UTC one by name.
+[{decoy}]
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\\r\\n]+)
+TIME_PREFIX = "utc_time":\\s*"
+TIME_FORMAT = %Y-%m-%d %H:%M:%S.%6N
+MAX_TIMESTAMP_LOOKAHEAD = 32
+TZ = UTC
+KV_MODE = json
+
+# What the alerts and the health watchdogs write to {alerts}: the time of such a record is the moment
+# it was written, never one of the event times it quotes.
+[rasd:alert]
+SHOULD_LINEMERGE = false
+DATETIME_CONFIG = CURRENT
+
+[rasd:health]
+SHOULD_LINEMERGE = false
+DATETIME_CONFIG = CURRENT
+"""
+
+FIELDS_APP = "rasd_fields"
+EVENT_XML = tuple(MAPPINGS["spl"].get("event_xml") or ())
+# the text of an XML element as it was written: &amp; last, because "&amp;lt;" is the text "&lt;"
+XML_ENTITIES = (("&lt;", "<"), ("&gt;", ">"), ("&quot;", '\\"'), ("&apos;", "'"), ("&amp;", "&"))
+FIELDS_REPORT = "rasd_fields_event_code, rasd_fields_event_id, rasd_fields_computer, rasd_fields_data"
+FIELDS_INTRO = """\
+# For a Splunk WITHOUT the Splunk Add-on for Microsoft Windows, the Splunk Add-on for Sysmon and the
+# Splunk Add-on for Sysmon for Linux (a fresh lab Splunk). Those add-ons read the fields out of the
+# event XML; this app does the same under the same names, so the RASD searches find EventCode,
+# Computer and every <Data Name='...'> as a field. Do not install it beside the add-ons.
+#
+# A field read by a regular expression holds the XML text as written (&amp; for &). The EVAL lines
+# decode the five XML entities in the fields the rules read, so a rule sees the value Windows logged.
+"""
+FIELDS_LINES = """\
+SHOULD_LINEMERGE = false
+LINE_BREAKER = ([\\r\\n]+)
+TIME_PREFIX = <TimeCreated SystemTime=['"]
+TIME_FORMAT = %Y-%m-%dT%H:%M:%S.%9N
+MAX_TIMESTAMP_LOOKAHEAD = 40
+TZ = UTC
+TRUNCATE = 65536
+"""
+TRANSFORMS = """\
+# One field per <Data Name='...'> of the event (Windows writes the attribute in single quotes,
+# Sysmon for Linux in double quotes), the event id under both names the add-ons use, and the
+# computer that logged the event.
+[rasd_fields_data]
+REGEX = <Data Name=['"]([^'"]+)['"]>([^<]*)</Data>
+FORMAT = $1::$2
+
+[rasd_fields_event_code]
+REGEX = <EventID[^>]*>(\\d+)</EventID>
+FORMAT = EventCode::$1
+
+[rasd_fields_event_id]
+REGEX = <EventID[^>]*>(\\d+)</EventID>
+FORMAT = EventID::$1
+
+[rasd_fields_computer]
+REGEX = <Computer>([^<]+)</Computer>
+FORMAT = Computer::$1
 """
 
 META = """\
@@ -272,6 +343,59 @@ def saved_searches(dets, corrs=()) -> str:
     return "\n".join(out)
 
 
+def props_stanza(source: str) -> str:
+    """The props.conf stanza the records of a log source fall under, read from the search that finds them."""
+    base = MAPPINGS["spl"]["logsources"][source]
+    by_source = re.search(r'\bsource="([^"]+)"', base)
+    if by_source:
+        return f"source::{by_source.group(1)}"
+    by_type = re.search(r'\bsourcetype="?([^"\s]+)"?', base)
+    if not by_type:
+        raise SystemExit(f"[!] spl.logsources.{source} names neither a source nor a sourcetype")
+    return by_type.group(1)
+
+
+def decoded_fields(dets, corrs=()) -> dict[str, list[str]]:
+    """props stanza -> the fields the rules read in the event XML held there, in first-seen order."""
+    fieldmap = MAPPINGS["spl"].get("fields") or {}
+    out: dict[str, list[str]] = {props_stanza(s): [] for s in EVENT_XML}
+    read = [(d.rule, ()) for d in dets]
+    read += [(c.base, (*c.params.group_by, *([c.params.counted] if c.params.counted else []))) for c in corrs]
+    for rule, grouped in read:
+        source = logsource_key(rule)
+        if source not in EVENT_XML:
+            continue
+        bucket = out[props_stanza(source)]
+        for field in (*referenced_fields(rule.get("detection") or {}), *grouped):
+            name = fieldmap.get(field, field)
+            if name in ("EventCode", "EventID", "Provider_Name") or name in bucket:
+                continue                # a number, and an attribute the rasd app reads itself
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+                raise SystemExit(f"[!] {name}: not a field name an EVAL line can carry")
+            bucket.append(name)
+    return out
+
+
+def decode_entities(field: str) -> str:
+    """The eval expression that gives a field read out of event XML the text that was logged."""
+    expr = f"'{field}'"
+    for entity, char in XML_ENTITIES:
+        expr = f'replace({expr}, "{entity}", "{char}")'
+    return expr
+
+
+def fields_props(dets, corrs=()) -> str:
+    out = [FIELDS_INTRO]
+    for stanza, fields in decoded_fields(dets, corrs).items():
+        out.append(f"[{stanza}]")
+        if not stanza.startswith("source::"):               # a sourcetype RASD's lab feeds as one event XML per line
+            out.append(FIELDS_LINES.rstrip("\n"))
+        out.append(f"REPORT-rasd_fields = {FIELDS_REPORT}")
+        out += [f"EVAL-{f} = {decode_entities(f)}" for f in fields]
+        out.append("")
+    return "\n".join(out)
+
+
 def indexes() -> str:
     out = [HEADER]
     for name in INDEXES:
@@ -298,6 +422,7 @@ Generated by `tools/splunk_app.py` on every build; do not edit by hand.
 | App | Install on | What it does |
 |---|---|---|
 | [`rasd/`](rasd/) | Splunk Enterprise / trial (search head and indexer) | {', '.join(f'`{i}`' for i in INDEXES)} indexes, `Provider_Name` extraction, one scheduled alert per detection and per correlation, three alert export reports |
+| [`rasd_fields/`](rasd_fields/) | The same Splunk, **only where the add-ons below are not installed** (a fresh lab Splunk) | `EventCode`, `Computer` and every `<Data Name='...'>` of the event XML as a field, under the names the add-ons give them; XML entities decoded in the fields the rules read; one event per line with its own time for Sysmon for Linux |
 | [`rasd_forwarder/`](rasd_forwarder/) | Universal Forwarder on each Windows lab VM and the lab DC | Sysmon, Security, System and PowerShell logs as XML into those indexes |
 | [`rasd_forwarder_linux/`](rasd_forwarder_linux/) | Universal Forwarder on a Linux lab host | Sysmon for Linux into `linux`; the lab web application's access log into `web` (disabled until you set its path) |
 
@@ -350,7 +475,12 @@ def render(dets, corrs=()) -> dict[Path, str]:
                                                          "RASD detections as scheduled alerts"),
         OUT / "rasd" / "default" / "savedsearches.conf": saved_searches(dets, corrs),
         OUT / "rasd" / "default" / "indexes.conf": indexes(),
-        OUT / "rasd" / "default" / "props.conf": HEADER + PROPS,
+        OUT / "rasd" / "default" / "props.conf": HEADER + PROPS.format(decoy=props_stanza("opencanary/honeypot"), alerts=ALERT_INDEX),
+        OUT / FIELDS_APP / "default" / "app.conf": app_conf(FIELDS_APP, "RASD Field Extractions",
+                                                             "The event XML fields the RASD searches read, for a Splunk without the vendor add-ons"),
+        OUT / FIELDS_APP / "default" / "props.conf": HEADER + fields_props(dets, corrs),
+        OUT / FIELDS_APP / "default" / "transforms.conf": HEADER + TRANSFORMS,
+        OUT / FIELDS_APP / "metadata" / "default.meta": HEADER + META,
         OUT / "rasd" / "metadata" / "default.meta": HEADER + META,
         OUT / "rasd_forwarder" / "default" / "app.conf": app_conf("rasd_forwarder", "RASD Forwarder Inputs",
                                                                    "Windows and Sysmon inputs for the RASD lab"),
