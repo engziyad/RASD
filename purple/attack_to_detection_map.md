@@ -65,7 +65,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | Validated | [kql](../queries/kql/T1053.003_crontab_noninteractive_install.kql) | [spl](../queries/spl/T1053.003_crontab_noninteractive_install.spl) | [triage](../detect/detections/T1053.003_crontab_noninteractive_install/triage.md) | [response](../detect/detections/T1053.003_crontab_noninteractive_install/response.md) |
+| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | Reference | [kql](../queries/kql/T1053.003_crontab_noninteractive_install.kql) | [spl](../queries/spl/T1053.003_crontab_noninteractive_install.spl) | [triage](../detect/detections/T1053.003_crontab_noninteractive_install/triage.md) | [response](../detect/detections/T1053.003_crontab_noninteractive_install/response.md) |
 
 **DFIR:** [linux_persistence](../dfir/playbooks/linux_persistence.md) · **Purple:** [T1053.003_cron](scenarios/T1053.003_cron.md) · **Intel:** Rocke
 
@@ -82,8 +82,8 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | Validated | [kql](../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) | [spl](../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) | [triage](../detect/detections/T1053.005_powershell_scheduled_task_creation/triage.md) | [response](../detect/detections/T1053.005_powershell_scheduled_task_creation/response.md) |
-| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | Validated | [kql](../queries/kql/T1053.005_schtasks_suspicious_creation.kql) | [spl](../queries/spl/T1053.005_schtasks_suspicious_creation.spl) | [triage](../detect/detections/T1053.005_schtasks_suspicious_creation/triage.md) | [response](../detect/detections/T1053.005_schtasks_suspicious_creation/response.md) |
+| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | Reference | [kql](../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) | [spl](../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) | [triage](../detect/detections/T1053.005_powershell_scheduled_task_creation/triage.md) | [response](../detect/detections/T1053.005_powershell_scheduled_task_creation/response.md) |
+| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | Reference | [kql](../queries/kql/T1053.005_schtasks_suspicious_creation.kql) | [spl](../queries/spl/T1053.005_schtasks_suspicious_creation.spl) | [triage](../detect/detections/T1053.005_schtasks_suspicious_creation/triage.md) | [response](../detect/detections/T1053.005_schtasks_suspicious_creation/response.md) |
 
 **DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **DFIR:** [scheduled_task_persistence](../dfir/playbooks/scheduled_task_persistence.md) · **DFIR:** [suspicious_powershell](../dfir/playbooks/suspicious_powershell.md) · **Purple:** [T1053.005_scheduled_task](scenarios/T1053.005_scheduled_task.md) · **Intel:** OilRig, APT33
 
@@ -99,7 +99,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | Validated | [kql](../queries/kql/T1059.001_powershell_encoded_command.kql) | [spl](../queries/spl/T1059.001_powershell_encoded_command.spl) | [triage](../detect/detections/T1059.001_powershell_encoded_command/triage.md) | [response](../detect/detections/T1059.001_powershell_encoded_command/response.md) |
+| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | Reference | [kql](../queries/kql/T1059.001_powershell_encoded_command.kql) | [spl](../queries/spl/T1059.001_powershell_encoded_command.spl) | [triage](../detect/detections/T1059.001_powershell_encoded_command/triage.md) | [response](../detect/detections/T1059.001_powershell_encoded_command/response.md) |
 
 **DFIR:** [phishing_triage](../dfir/playbooks/phishing_triage.md) · **DFIR:** [suspicious_powershell](../dfir/playbooks/suspicious_powershell.md) · **Purple:** [T1059.001_powershell_encoded](scenarios/T1059.001_powershell_encoded.md) · **Intel:** MuddyWater, APT29
 
@@ -161,7 +161,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | Validated | [kql](../queries/kql/correlations/T1190_object_id_enumeration.kql) | [spl](../queries/spl/correlations/T1190_object_id_enumeration.spl) | [triage](../detect/correlations/T1190_object_id_enumeration/triage.md) | [response](../detect/correlations/T1190_object_id_enumeration/response.md) |
+| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | Reference | [kql](../queries/kql/correlations/T1190_object_id_enumeration.kql) | [spl](../queries/spl/correlations/T1190_object_id_enumeration.spl) | [triage](../detect/correlations/T1190_object_id_enumeration/triage.md) | [response](../detect/correlations/T1190_object_id_enumeration/response.md) |
 
 **DFIR:** [web_application_attack](../dfir/playbooks/web_application_attack.md) · **Purple:** [T1190_object_id_enumeration](scenarios/T1190_object_id_enumeration.md) · **Intel:** HAFNIUM
 
@@ -190,7 +190,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | Validated | [kql](../queries/kql/T1547.001_registry_run_key_persistence.kql) | [spl](../queries/spl/T1547.001_registry_run_key_persistence.spl) | [triage](../detect/detections/T1547.001_registry_run_key_persistence/triage.md) | [response](../detect/detections/T1547.001_registry_run_key_persistence/response.md) |
+| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | Reference | [kql](../queries/kql/T1547.001_registry_run_key_persistence.kql) | [spl](../queries/spl/T1547.001_registry_run_key_persistence.spl) | [triage](../detect/detections/T1547.001_registry_run_key_persistence/triage.md) | [response](../detect/detections/T1547.001_registry_run_key_persistence/response.md) |
 
 **DFIR:** [run_key_persistence](../dfir/playbooks/run_key_persistence.md) · **Purple:** [T1547.001_run_key](scenarios/T1547.001_run_key.md) · **Intel:** MuddyWater
 
@@ -205,7 +205,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | Validated | [kql](../queries/kql/T1552.001_honey_file_access.kql) | [spl](../queries/spl/T1552.001_honey_file_access.spl) | [triage](../detect/detections/T1552.001_honey_file_access/triage.md) | [response](../detect/detections/T1552.001_honey_file_access/response.md) |
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | Reference | [kql](../queries/kql/T1552.001_honey_file_access.kql) | [spl](../queries/spl/T1552.001_honey_file_access.spl) | [triage](../detect/detections/T1552.001_honey_file_access/triage.md) | [response](../detect/detections/T1552.001_honey_file_access/response.md) |
 
 **DFIR:** [honey_file_access](../dfir/playbooks/honey_file_access.md) · **Purple:** [T1552.001_honey_file](scenarios/T1552.001_honey_file.md) · **Intel:** OilRig, MuddyWater, APT33, Fox Kitten
 
@@ -238,7 +238,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | Validated | [kql](../queries/kql/T1569.002_suspicious_service_installation.kql) | [spl](../queries/spl/T1569.002_suspicious_service_installation.spl) | [triage](../detect/detections/T1569.002_suspicious_service_installation/triage.md) | [response](../detect/detections/T1569.002_suspicious_service_installation/response.md) |
+| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | Reference | [kql](../queries/kql/T1569.002_suspicious_service_installation.kql) | [spl](../queries/spl/T1569.002_suspicious_service_installation.spl) | [triage](../detect/detections/T1569.002_suspicious_service_installation/triage.md) | [response](../detect/detections/T1569.002_suspicious_service_installation/response.md) |
 
 **DFIR:** [lateral_movement](../dfir/playbooks/lateral_movement.md) · **DFIR:** [service_installation](../dfir/playbooks/service_installation.md) · **Purple:** [T1569.002_service_execution](scenarios/T1569.002_service_execution.md) · **Intel:** Wizard Spider
 
@@ -253,7 +253,7 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) (correlation) | Validated | [kql](../queries/kql/correlations/T1595.003_api_auth_probing.kql) | [spl](../queries/spl/correlations/T1595.003_api_auth_probing.spl) | [triage](../detect/correlations/T1595.003_api_auth_probing/triage.md) | [response](../detect/correlations/T1595.003_api_auth_probing/response.md) |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) (correlation) | Reference | [kql](../queries/kql/correlations/T1595.003_api_auth_probing.kql) | [spl](../queries/spl/correlations/T1595.003_api_auth_probing.spl) | [triage](../detect/correlations/T1595.003_api_auth_probing/triage.md) | [response](../detect/correlations/T1595.003_api_auth_probing/response.md) |
 
 **DFIR:** [web_application_attack](../dfir/playbooks/web_application_attack.md) · **Purple:** [T1595.003_api_auth_probing](scenarios/T1595.003_api_auth_probing.md) · **Intel:** APT41, Volatile Cedar
 
@@ -269,9 +269,9 @@ For each technique: the offensive test that produces it, the telemetry it leaves
 
 | Detection | Maturity | KQL | SPL | Triage | Response |
 |---|---|---|---|---|---|
-| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | Validated | [kql](../queries/kql/T1685.005_event_log_clearing.kql) | [spl](../queries/spl/T1685.005_event_log_clearing.spl) | [triage](../detect/detections/T1685.005_event_log_clearing/triage.md) | [response](../detect/detections/T1685.005_event_log_clearing/response.md) |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | Reference | [kql](../queries/kql/T1685.005_event_log_clearing.kql) | [spl](../queries/spl/T1685.005_event_log_clearing.spl) | [triage](../detect/detections/T1685.005_event_log_clearing/triage.md) | [response](../detect/detections/T1685.005_event_log_clearing/response.md) |
 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | SIEM-Ready | [kql](../queries/kql/T1685.005_security_log_cleared.kql) | [spl](../queries/spl/T1685.005_security_log_cleared.spl) | [triage](../detect/detections/T1685.005_security_log_cleared/triage.md) | [response](../detect/detections/T1685.005_security_log_cleared/response.md) |
-| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | Validated | [kql](../queries/kql/T1685.005_system_log_cleared.kql) | [spl](../queries/spl/T1685.005_system_log_cleared.spl) | [triage](../detect/detections/T1685.005_system_log_cleared/triage.md) | [response](../detect/detections/T1685.005_system_log_cleared/response.md) |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | Reference | [kql](../queries/kql/T1685.005_system_log_cleared.kql) | [spl](../queries/spl/T1685.005_system_log_cleared.spl) | [triage](../detect/detections/T1685.005_system_log_cleared/triage.md) | [response](../detect/detections/T1685.005_system_log_cleared/response.md) |
 
 **DFIR:** [event_log_clearing](../dfir/playbooks/event_log_clearing.md) · **Purple:** [T1685.005_event_log_clearing](scenarios/T1685.005_event_log_clearing.md) · **Intel:** APT28
 

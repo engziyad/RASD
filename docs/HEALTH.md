@@ -53,9 +53,11 @@ The same watch, kept inside the SIEM. `rasd health --write` generates five searc
 
 They are deliberately simpler than the offline judge: yesterday against the same day last week, a fixed four hours of silence for hosts that normally report around the clock. Thresholds that need a real baseline belong to `rasd health`.
 
+Two of them wait before they speak, because a deployment is new exactly once. `schedule` reads the scheduler's record up to the present, and does not name a search that has no run until Splunk has been up longer than the longest schedule of the app and its wait (15 minutes with today's library). `delay` does not judge a channel in the hour Splunk first hears from it: what a new host sends first is its backlog, days old on a machine that was logging before Splunk read it. Both rules come from the lab's own Splunk, where the first forms of these searches raised an alarm over a deployment that was in order.
+
 ## Limits
 
-- The watchdog searches are generated and checked for structure, and have **not yet run on a live Splunk or Sentinel**. They wait for the live SIEM lab, like the scheduled alerts themselves ([roadmap](RELEASE_ROADMAP.md)).
+- The SPL watchdogs have run on a live Splunk only in the lab, beside hosts made for one run ([what Splunk answered](../queries/health/README.md)). That shows Splunk accepts them, and that they are quiet over a lab in order. It does not show one of them catching its fault: no feed was broken on purpose, `silent` and `volume` compare with a week such a host has not lived, and the two rules above keep `schedule` and `delay` from judging a Splunk that young. The KQL searches have **not yet run on a live Sentinel**, and the KQL `delay` has no first-hour rule yet.
 - Health sees that telemetry stopped, not why, and not whether someone stopped it on purpose. A log cleared or a sensor killed by an intruder is [RASD-Silence](SILENCE.md)'s subject, and the steps that survive it are [RASD-Trace](TRACE.md)'s.
 - A baseline taken while something was already broken makes the break normal. Take it from a period the detections were known to work: a lab run that fired them is the strongest one.
 - Volume is compared per host. A fleet that halves in size because half the hosts were retired is reported as silent hosts, which is true, and is yours to dismiss.

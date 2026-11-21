@@ -3,41 +3,53 @@ rasd_evidence: 1
 detection: T1053.005_schtasks_suspicious_creation
 technique: T1053.005
 result: fired
-run_utc: '2026-11-20T18:02:09.039189Z'
+run_utc: '2026-11-21T03:03:19.621443Z'
 host: runnervmhh3zg
 test: scheduled_task_creation
 step: schtasks
-marker: rasd_5cb71965
+marker: rasd_1c373302
 bound_by: run token
-latency_seconds: 0.101
+latency_seconds: 0.056
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: rasd_5cb71965.xml
-  sha256: b042cbbfb71736005f240bf9b550f4213778066739e95ad494c29f4aad9f13ce
-- file: rasd_5cb71965_ps.xml
-  sha256: 62b97059242f0d932c3d25a2c3721f861077c705c5e62c96270e315925460b33
-siem: null
+- file: rasd_1c373302.xml
+  sha256: 2977f5cf190b9bdf2b6b502d250562f43aa1d582d9b0c03395e44055fe22fb89
+- file: rasd_1c373302_ps.xml
+  sha256: a657f7530fe3a62f822b018c69ce714e8f443c5859f237430840924c8d5e2734
+siem:
+  alerts: 1
+  first_alert_utc: '2026-11-21T03:10:04Z'
+  alert_name: RASD - T1053.005_schtasks_suspicious_creation
+  latency_seconds: 404.379
+  pipeline_seconds: 404.323
+  platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
+    1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 671ef3f86983198f60ea932d61fc3ed4e7532c58988e7e3fea069bf2fa120f31
+    sha256: 48f30ca10817ca52cfaab3b94fbd552f145770a47d1886dbbff8d392a7c74937
   telemetry:
   - file: lab-export.jsonl
-    sha256: 1928a053afbc3427ecc6c2e9c08d26cc99c4bc0890db0045ad3ae8cd90275acd
+    sha256: 3988ac1e1cde6006ae01636cec3993adf8b79cee969a25dabc89d0fa200c30e4
   profile: sysmon-native
   manifest:
     file: lab-run-manifest.json
-    sha256: ce83936f39017d2542ba72ea47865874b87c2f2857153bc5909b521484a0f559
+    sha256: d09f7ea9df7b09460fb600a2e4a698c57c6924c6d8d51f07bf067894ca2ef0c0
     verified:
     - emulation-results.json
     - lab-export.jsonl
   run:
     file: lab-windows.zip
-    sha256: a2f2af7c6d07e7fc66fb34c2cbb0bdb6faf73e1dcab03fb0192fed7957a266f5
+    sha256: 68646245c5f866ad13d358d39fcaa5516f2cf2689d00741535baaa163d605525
     sha256_file: matched
   verification: strict
-operational_score: 60
+  siem:
+  - file: siem-alerts.csv
+    sha256: c2218c842f0fc6db131155759a5291edf884dd2ae3bafe5270bfbfe4a1aa095c
+  - file: siem.json
+    sha256: 5183932439989d0f625c2f3d0386a2f9f166bc42963626765cc7b2f66ae4da4a
+operational_score: 90
 ---
 
 # Lab evidence · Scheduled Task Created With Suspicious Action
@@ -46,28 +58,29 @@ operational_score: 60
 |---|---|
 | Emulation step | schtasks /create with a cmd /c action in %TEMP% |
 | Host · user | runnervmhh3zg · runnervmhh3zg\runneradmin |
-| Step window (UTC) | 2026-11-20T18:02:09.0391898Z → 2026-11-20T18:02:09.2272720Z |
-| First matching event (UTC) | 2026-11-20T18:02:09.140419 |
+| Step window (UTC) | 2026-11-21T03:03:19.6214433Z → 2026-11-21T03:03:19.7254423Z |
+| First matching event (UTC) | 2026-11-21T03:03:19.677035 |
 | Matching events | 1 |
-| SIEM alert | not provided |
+| SIEM alert | RASD - T1053.005_schtasks_suspicious_creation at 2026-11-21T03:10:04Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none |
 | Telemetry latency | 0.1 s - step start → the event is logged on the host |
-| SIEM alert latency | - |
-| SIEM pipeline delay | - |
+| SIEM alert latency | 404 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 404 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 2 collected and hashed |
 | Cleanup | verified |
 | Alert user | runnervmhh3zg\runneradmin |
-| Note | carries this run's token rasd_5cb71965 |
+| Note | carries this run's token rasd_1c373302 |
 
 ## Operational Score
 
 | Area | Points |
 |---|---:|
 | Lab evidence | 35 / 35 |
-| SIEM result | 0 / 25 |
-| Detection latency | 0 / 15 |
+| SIEM result | 25 / 25 |
+| Detection latency | 5 / 15 |
 | DFIR evidence | 15 / 15 |
 | Cleanup | 10 / 10 |
-| **Total** | **60 / 100** |
+| **Total** | **90 / 100** |
 
 ## Matching event (fields the rule reads)
 
@@ -76,12 +89,12 @@ operational_score: 60
   "Channel": "Microsoft-Windows-Sysmon/Operational",
   "Provider_Name": "Microsoft-Windows-Sysmon",
   "EventID": 1,
-  "TimeCreated": "2026-11-20T18:02:09.1404198Z",
+  "TimeCreated": "2026-11-21T03:03:19.6770355Z",
   "Computer": "runnervmhh3zg",
-  "UtcTime": "2026-11-20 18:02:09.107",
+  "UtcTime": "2026-11-21 03:03:19.667",
   "Image": "C:\\Windows\\System32\\schtasks.exe",
   "OriginalFileName": "schtasks.exe",
-  "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_5cb71965 /sc once /st 23:59 /f /tr \"cmd /c echo rasd_5cb71965 > %%TEMP%%\\rasd_5cb71965.txt\"",
+  "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_1c373302 /sc once /st 23:59 /f /tr \"cmd /c echo rasd_1c373302 > %%TEMP%%\\rasd_1c373302.txt\"",
   "User": "runnervmhh3zg\\runneradmin"
 }
 ```
@@ -91,9 +104,9 @@ operational_score: 60
 Hash the raw files and compare them with `inputs` above, then re-run:
 
 ```bash
-rasd evidence --run lab-windows.zip --strict --dry-run
-rasd evidence --results emulation-results.json --logs lab-export.jsonl --dry-run
-rasd explain T1053.005_schtasks_suspicious_creation --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-20T18:02:09.1404198Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-20 18:02:09.107", "Image": "C:\\Windows\\System32\\schtasks.exe", "OriginalFileName": "schtasks.exe", "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_5cb71965 /sc once /st 23:59 /f /tr \"cmd /c echo rasd_5cb71965 > %%TEMP%%\\rasd_5cb71965.txt\"", "User": "runnervmhh3zg\\runneradmin"}'
+rasd evidence --run lab-windows.zip siem-alerts.csv siem.json siem-searches.json --strict --dry-run
+rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
+rasd explain T1053.005_schtasks_suspicious_creation --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-21T03:03:19.6770355Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-21 03:03:19.667", "Image": "C:\\Windows\\System32\\schtasks.exe", "OriginalFileName": "schtasks.exe", "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_1c373302 /sc once /st 23:59 /f /tr \"cmd /c echo rasd_1c373302 > %%TEMP%%\\rasd_1c373302.txt\"", "User": "runnervmhh3zg\\runneradmin"}'
 ```
 
 <sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>

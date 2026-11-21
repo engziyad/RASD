@@ -1,6 +1,6 @@
 # SIEM Deployment Notes
 
-The generated queries in [`queries/`](../queries/) return what the tested rules return on every test event when `rasd parity` runs them through its interpreters of KQL and SPL; they have not yet run in a live SIEM. What parity cannot know is how your environment names tables and fields; that lives in one file, [`tools/mappings.yml`](../tools/mappings.yml).
+The generated queries in [`queries/`](../queries/) return what the tested rules return on every test event when `rasd parity` runs them through its interpreters of KQL and SPL. The SPL ones have also run where they are meant to live: in the lab, on a live Splunk Enterprise beside each lab host, whose own scheduler raised the alerts ([what it showed](#what-a-live-splunk-showed)). The KQL ones have not yet run in a live Sentinel. What parity cannot know is how your environment names tables and fields; that lives in one file, [`tools/mappings.yml`](../tools/mappings.yml).
 
 ## Microsoft Sentinel / Defender (KQL)
 - Process, process-access and registry rules read a function named `Sysmon` (the common community parser). If your parser has another name, change the `kql.logsources` entries in `mappings.yml`.
@@ -23,11 +23,25 @@ The generated queries in [`queries/`](../queries/) return what the tested rules 
 
 ## Splunk (SPL)
 - **Splunk app:** [`queries/splunk_app`](../queries/splunk_app/README.md) is generated on every build. `rasd/` holds the indexes, a `Provider_Name` extraction from the event XML, one scheduled alert per detection (`RASD - <detection id>`, every 5 minutes over the 5-minute slice that closed 5 minutes earlier, so runs tile time and no event alerts twice; one alert per host, each also logging an event with the alerting host to `rasd_alerts`), one per correlation (once per window length over the last two windows plus 3 minutes, keeping only the most recent complete window, so each window is reported by exactly one run with the search head in UTC or a fixed-offset time zone; one alert per window and group, the group written as the alerting host) and three reports - **RASD - alert export** and its `(audit)` and `(scheduler)` fallbacks - whose CSV is the `--siem-alerts` input of `rasd evidence`. `rasd_forwarder/` holds the Universal Forwarder inputs (`renderXml = true`, so the sources match the queries). It needs the Splunk Add-on for Microsoft Windows and the Splunk Add-on for Sysmon for field extractions.
-- Sysmon events: `index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational"`; Windows events: `index=wineventlog` with the XML sources. `EventID` is mapped to `EventCode`.
-- Linux events: `index=linux sourcetype="sysmon:linux"`, with the Splunk Add-on for Sysmon for Linux extracting the Sysmon fields. Web events: `index=web sourcetype=access_combined`, whose built-in extractions give `clientip`, `method`, `uri_path`, `uri_query`, `status` and `useragent`; `spl.fields` maps the Sigma webserver fields to them.
+- Sysmon events: `index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational"`; Windows events: `index=wineventlog` with the XML sources. `EventID` is mapped to `EventCode`. The `rasd_forwarder` inputs name those sources themselves, because Splunk left to itself does not.
+- Linux events: `index=linux sourcetype="sysmon:linux"`, with the Splunk Add-on for Sysmon for Linux, or `rasd_fields` where no add-on is installed, extracting the Sysmon fields. Web events: `index=web sourcetype=access_combined`, whose built-in extractions give `clientip`, `method`, `uri_path`, `uri_query`, `status` and `useragent`; `spl.fields` maps the Sigma webserver fields to them.
 - Every query is a raw search that starts with `index=`, so it pastes into a saved search or the REST API unchanged.
 - Inside a `NOT`, fields are read as `coalesce('F', "")`: in Splunk, `NOT` over a missing field is NULL and `where` would drop the event. Parity tests this on events with each rule field removed and emptied.
 - Schedule each saved search with a window that matches its latency target (see the Detection Latency weights in [QUALITY_MODEL.md](QUALITY_MODEL.md)).
+
+### What a live Splunk showed
+
+In the hosted lab a Splunk Enterprise stands beside each lab host for one run, with the RASD apps in it and no vendor add-on ([lab kit](../red/lab/README.md#a-lab-you-do-not-have-to-build), [kept runs](../purple/lab_runs/README.md)). The model of SPL that `rasd parity` runs could not have shown any of this:
+
+- **The source of a Windows event.** With `renderXml = true` and nothing else, Splunk indexed every event under `source=WinEventLog:<channel>`. Every search of the app reads `source="XmlWinEventLog:<channel>"`: the host's events were all there, and not one alert could fire. `rasd_forwarder` now sets the source in each input, and the lab checks before any attack step that a probe is found under the source and the fields the searches read.
+- **Fields without the add-ons.** `EventCode`, `CommandLine` and the rest are the add-ons' names for what is in the event XML. `rasd_fields` reads them from the XML for a Splunk that has no add-on, decodes the XML entities in the fields the rules read, and turns Splunk's own guessing of `name=value` pairs off for those events. Install it or the add-ons, never both.
+- **A time written out is local.** Splunk writes a time in its host's zone, under the name that host gives the zone: `GMT` on Linux, `Coordinated Universal Time` on Windows. `splunk_lab.py` asks for the number.
+- **A correlation run by hand returns nothing.** Its search keeps only the last complete window of the range it is given, so that scheduled runs tile time; run over the last hour, that is the window that has just closed. Read a correlation's alerts in `index=rasd_alerts`, not by running its search.
+- **Latency.** Every alert came about 5 to 10 minutes after its step (3 to 5 for the correlation with a one-minute window), because the app reads each slice five minutes after it closes.
+- **Two watchdogs that spoke too soon.** On a Splunk started within the hour, `schedule` named every detection as a search that did not run; `delay` named the Security and System logs of a host whose backlog Splunk had just begun to read. Both now wait ([HEALTH](HEALTH.md#the-watchdogs)).
+- **A false positive, from Splunk itself.** On the Windows lab host `T1003.001_lsass_memory_access` alerted with no credential step run: `splunkd.exe` opens `lsass.exe` with full access (`0x1fffff`). The rule is unchanged. The exclusion is a proposal in its [tuning file](../detect/detections/T1003.001_lsass_memory_access/tuning.yml), to be measured like any other.
+
+Not shown by any of it: the vendor add-ons in place of `rasd_fields`, a forwarder between host and Splunk, the detections that read a domain controller's log, Splunk Cloud or a cluster.
 
 ## Before going live
 1. `rasd doctor <export from your SIEM> --profile auto` - the [telemetry profile](../profiles/README.md) that fits the export (ECS, CIM, ASIM, Defender), fields present, command lines not truncated.

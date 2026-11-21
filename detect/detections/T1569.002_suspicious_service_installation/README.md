@@ -5,11 +5,11 @@
 |---|---|
 | **ATT&CK** | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) System Services: Service Execution (execution) · related: [T1021.002](https://attack.mitre.org/techniques/T1021/002/) Remote Services: SMB/Windows Admin Shares (lateral-movement) |
 | **Severity** | `high` |
-| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational 60/100 |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | 24 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 87 variants |
-| **Parity** | KQL and SPL identical to the rule on 459 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 459 events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 7 of 9 public recordings of its behaviour · held-out: 2 of 2 · 10 alerts · 0 labelled false positives · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1569.002_suspicious_service_installation.kql) · [SPL](../../../queries/spl/T1569.002_suspicious_service_installation.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

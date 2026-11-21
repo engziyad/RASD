@@ -18,7 +18,7 @@ Checked:      1. Identify SourceImage, its signer, parent and user -> <result>
               3. Check whether SourceImage is a known EDR, AV or backup agent in your environment -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | windows_components (applied) | powershell_process_listing (applied) | defender_engine (applied) | edr_agent_by_full_path (proposed) | defender_program_files (proposed) | azure_guest_agent (proposed)
+Tuning:       none | windows_components (applied) | powershell_process_listing (applied) | defender_engine (applied) | edr_agent_by_full_path (proposed) | defender_program_files (proposed) | azure_guest_agent (proposed) | splunk_service_on_the_host (proposed)
 ```
 
 Known benign sources for this detection:
@@ -28,6 +28,7 @@ Known benign sources for this detection:
 - PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
+- The SIEM's own service on the host: Splunk's splunkd.exe opens LSASS with full rights where it runs (seen on the lab's Windows host)
 - Windows components outside the named list on builds not covered by public data (add them by full path)
 - Administrators creating LSASS dumps for a Microsoft support case
 

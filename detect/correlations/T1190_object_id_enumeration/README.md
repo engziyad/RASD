@@ -6,8 +6,8 @@
 | **ATT&CK** | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application (initial-access) |
 | **Severity** | `high` |
 | **Type** | Sigma correlation · >= 3 distinct cs-uri-stem per c-ip in 1m windows · base rule [`web_object_id_request`](base.yml) |
-| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational 60/100 |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 95/100 |
 | **Tests** | base rule: 5 true positive · 6 true negative · 5 technique mutations · 10 scenarios (4 fire, 6 silent) |
 | **Proof** | base rule: 100% of 2 mutants killed · fuzzer n/a (no evasion strategy applies to its fields) · correlation: 5/5 parameter mutants killed |
 | **Behaviour proof** | base rule: 1 of 3 variants proven for every event · 2 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1190-web-request-for-a-single-owner-object-by-numeric-id)) |

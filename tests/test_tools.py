@@ -2619,9 +2619,18 @@ class Advise(unittest.TestCase):
         for part in ("SIEM result", "DFIR evidence", "Cleanup"):
             short = sorted(d for d, parts in validated.items() if not parts[part] and sum(parts.values()) < chain.OPERATIONAL_TARGET)
             self.assertEqual(lacks[part].data["detections"] if part in lacks else [], short, part)
-        self.assertIn("RASD - alert export", lacks["SIEM result"].action)
-        self.assertIn("stops at 60", lacks["SIEM result"].evidence)
-        self.assertNotIn("Detection latency", lacks, "no alert, no latency to judge")
+        # latency is judged only where there is an alert to time: the finding names the detections that have theirs,
+        # earned less than the full points for it and are still short of the target
+        late = sorted(d for d, parts in validated.items()
+                      if parts["SIEM result"] and parts["Detection latency"] < 15 and sum(parts.values()) < chain.OPERATIONAL_TARGET)
+        self.assertEqual(lacks["Detection latency"].data["detections"] if "Detection latency" in lacks else [], late)
+        words = {part: (why, step) for _key, part, _words, why, step in advise.OPERATIONAL_LACKS}
+        self.assertIn("stops at 60", words["SIEM result"][0])
+        self.assertIn("RASD - alert export", words["SIEM result"][1])
+        self.assertIn("lab-run.yml with the Splunk terms accepted", words["SIEM result"][1])
+        self.assertIn("by design", words["Detection latency"][0], "the app's own wait is said, not blamed on the detection")
+        for part, finding in lacks.items():
+            self.assertEqual((finding.evidence.split(" Detections: ")[0], finding.action), words[part], part)
         # one known-gap finding per behaviour gap the certificates show, each with its engine-confirmed event and fix
         gaps = [f for f in self.findings if f.id.startswith("certify.gap.")]
         self.assertEqual(len(gaps), self.repo.certify["gaps"])

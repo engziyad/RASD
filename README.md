@@ -16,7 +16,7 @@
 <!-- rasd:status:start -->
 ![detections: 22](https://img.shields.io/badge/detections-22-87afaf)
 ![engineering: 100/100](https://img.shields.io/badge/engineering-100%2F100-87af87)
-![operational: 56/100](https://img.shields.io/badge/operational-56%2F100-d7af87)
+![operational: 86/100](https://img.shields.io/badge/operational-86%2F100-d7af87)
 ![public data: 16/22](https://img.shields.io/badge/public%20data-16%2F22-87afaf)
 ![validated: 15/22](https://img.shields.io/badge/validated-15%2F22-bcbcbc)
 
@@ -62,8 +62,8 @@ Nothing on this page is typed by hand that the repository can count: every numbe
 |---|---|
 | **Validated** | 15 of 22 detections fired on a real attack step in a lab |
 | **Evidence** | 15 of 15 evidence files are recomputed from the raw lab runs kept in the repository on every build (3 parts of 1 run): a rule edited until it no longer fires on its run loses its evidence ([lab runs](purple/lab_runs/README.md)) |
-| **Operational Score** | 56/100 over 15 detections |
-| **Live SIEM** | 0 of 15 evidence files carry an alert raised by a live SIEM |
+| **Operational Score** | 86/100 over 15 detections |
+| **Live SIEM** | 15 of 15 evidence files carry an alert raised by a live SIEM: Splunk Enterprise 10.4.5 beside 3 lab hosts, its own scheduler, the RASD apps and no vendor add-on · 1 detection also alerted there with no step asking for it ([which](purple/lab_runs/README.md)) |
 | **Waiting** | 7 detections, each with the lab machine and step it needs ([evidence plan](docs/EVIDENCE_PLAN.md)) |
 
 <sub>Counted by `tools/chain.py` on every build · [every number](docs/RASD_METRICS.md)</sub>

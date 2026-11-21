@@ -3,24 +3,24 @@ rasd_evidence: 1
 detection: T1190_object_id_enumeration
 technique: T1190
 result: fired
-run_utc: '2026-11-20T18:00:32.893000Z'
-host: runnervmeozm8
+run_utc: '2026-11-21T02:55:42.302000Z'
+host: ip-10-0-132-90
 test: idor_testing
 step: walk_object_ids
-marker: rasd_65adbbfb
+marker: rasd_94463bdb
 bound_by: host and time window; client address
-latency_seconds: 0.107
-matched_events: 11
+latency_seconds: 0.698
+matched_events: 9
 correlation:
   condition: '>= 3 distinct cs-uri-stem per c-ip in 1m windows'
-  window_start: '2026-11-20T18:00:00.000Z'
+  window_start: '2026-11-21T02:55:00.000Z'
   group:
     c-ip: ::ffff:127.0.0.1
   value_count: 6
-  event_count: 11
-  first_event: '2026-11-20T18:00:28.000Z'
-  last_event: '2026-11-20T18:00:34.000Z'
-  threshold_reached: '2026-11-20T18:00:33.000Z'
+  event_count: 9
+  first_event: '2026-11-21T02:55:38.000Z'
+  last_event: '2026-11-21T02:55:44.000Z'
+  threshold_reached: '2026-11-21T02:55:43.000Z'
   values:
   - /rest/basket/1
   - /rest/basket/2
@@ -31,17 +31,29 @@ correlation:
 cleanup: verified
 artifacts:
 - file: idor_testing-findings.json
-  sha256: 4fbd894c9c91f0e4a62c4eac2a49b15172042c20644b50d6233bebfc8c4d57f0
-siem: null
+  sha256: a0dfe22c2f4695c266d5abf2e2ec4324e8f574d9f03f9f4c2d94c8768dba223f
+siem:
+  alerts: 1
+  first_alert_utc: '2026-11-21T02:59:00Z'
+  alert_name: RASD - T1190_object_id_enumeration
+  latency_seconds: 197.698
+  pipeline_seconds: 197.0
+  platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
+    1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: df0721b89965a5c0a172d255b07fbcad3d11df6b9455b239c45aa1446d309932
+    sha256: 02a8201495d25fd38437c6fbd45994a5792d0e42a2afdea63b3d950321b77cc1
   telemetry:
   - file: web-export.jsonl
-    sha256: 8ad4ba09623f06dd2d22b887558799a815ff708128b2c846c77be3445fb5b249
+    sha256: cdc0dabb4faf8dd876ce3847f515017d9a7c6d49a616cac21ecb9fff462094c0
   profile: sysmon-native
-operational_score: 60
+  siem:
+  - file: siem-alerts.csv
+    sha256: d52e3065352f93d67f19190c456e67881c7aaa7433b4ec2301fa21622981a9fb
+  - file: siem.json
+    sha256: db7ba61dab2b362c94389bebfda6c58f745a9243859a45f8823debba55444824
+operational_score: 95
 ---
 
 # Lab evidence · Object ID Enumeration - One Client Walking Single-Owner Objects
@@ -49,16 +61,17 @@ operational_score: 60
 | | |
 |---|---|
 | Emulation step | Read other users' objects with one account's token (IDs 1-5) |
-| Host · user | runnervmeozm8 · runner |
-| Step window (UTC) | 2026-11-20T18:00:32.893Z → 2026-11-20T18:00:34.216Z |
+| Host · user | ip-10-0-132-90 · runner |
+| Step window (UTC) | 2026-11-21T02:55:42.302Z → 2026-11-21T02:55:43.641Z |
 | Correlation | >= 3 distinct cs-uri-stem per c-ip in 1m windows |
-| Alert | 6 distinct cs-uri-stem from ::ffff:127.0.0.1 in the window from 2026-11-20T18:00:00.000Z |
-| Events counted | 11 (2026-11-20T18:00:28.000Z → 2026-11-20T18:00:34.000Z) |
-| Threshold reached (UTC) | 2026-11-20T18:00:33.000Z |
-| SIEM alert | not provided |
-| Telemetry latency | 0.1 s - step start → the event that reached the threshold |
-| SIEM alert latency | - |
-| SIEM pipeline delay | - |
+| Alert | 6 distinct cs-uri-stem from ::ffff:127.0.0.1 in the window from 2026-11-21T02:55:00.000Z |
+| Events counted | 9 (2026-11-21T02:55:38.000Z → 2026-11-21T02:55:44.000Z) |
+| Threshold reached (UTC) | 2026-11-21T02:55:43.000Z |
+| SIEM alert | RASD - T1190_object_id_enumeration at 2026-11-21T02:59:00Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none |
+| Telemetry latency | 0.7 s - step start → the event that reached the threshold |
+| SIEM alert latency | 198 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 197 s - threshold reached → alert: forwarding, indexing and the wait for the window to close |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 
@@ -67,63 +80,58 @@ operational_score: 60
 | Area | Points |
 |---|---:|
 | Lab evidence | 35 / 35 |
-| SIEM result | 0 / 25 |
-| Detection latency | 0 / 15 |
+| SIEM result | 25 / 25 |
+| Detection latency | 10 / 15 |
 | DFIR evidence | 15 / 15 |
 | Cleanup | 10 / 10 |
-| **Total** | **60 / 100** |
+| **Total** | **95 / 100** |
 
-## Events counted (first 10 of 11, fields the correlation reads)
+## Events counted (first 9 of 9, fields the correlation reads)
 
 ```json
 [
   {
-    "TimeCreated": "2026-11-20T18:00:28Z",
+    "TimeCreated": "2026-11-21T02:55:38Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:28Z",
+    "TimeCreated": "2026-11-21T02:55:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:28Z",
-    "c-ip": "::ffff:127.0.0.1",
-    "cs-uri-stem": "/rest/basket/1"
-  },
-  {
-    "TimeCreated": "2026-11-20T18:00:33Z",
-    "c-ip": "::ffff:127.0.0.1",
-    "cs-uri-stem": "/rest/basket/1"
-  },
-  {
-    "TimeCreated": "2026-11-20T18:00:33Z",
+    "TimeCreated": "2026-11-21T02:55:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/2"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:33Z",
+    "TimeCreated": "2026-11-21T02:55:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/3"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:33Z",
+    "TimeCreated": "2026-11-21T02:55:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/4"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:34Z",
+    "TimeCreated": "2026-11-21T02:55:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/5"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:34Z",
+    "TimeCreated": "2026-11-21T02:55:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/6"
   },
   {
-    "TimeCreated": "2026-11-20T18:00:34Z",
+    "TimeCreated": "2026-11-21T02:55:44Z",
+    "c-ip": "::ffff:127.0.0.1",
+    "cs-uri-stem": "/rest/basket/6"
+  },
+  {
+    "TimeCreated": "2026-11-21T02:55:44Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/6"
   }
@@ -135,7 +143,7 @@ operational_score: 60
 Hash the raw files and compare them with `inputs` above, then re-run:
 
 ```bash
-rasd evidence --results emulation-results.json --logs web-export.jsonl --dry-run
+rasd evidence --results emulation-results.json --logs web-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
 rasd correlate --filter T1190_object_id_enumeration --logs web-export.jsonl
 ```
 

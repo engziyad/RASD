@@ -552,8 +552,17 @@ class Watchdogs(unittest.TestCase):
         self.assertIn("## Health watchdogs", files[splunk_app.OUT / "README.md"])
 
     def test_the_page_says_what_was_and_was_not_run(self):
+        import evidence
         text = health.PAGE.read_text(encoding="utf-8")
-        self.assertIn("**Not yet run on a live SIEM.**", text)
+        self.assertIn("\n".join(health.live_block()), text, "the page says of a live SIEM what the kept runs hold, no more")
+        ran_live = any(str(r["name"]).startswith(health.HEALTH_PREFIX) for rows in evidence.siem_records().values() for r in rows)
+        if ran_live:
+            self.assertIn("**Run on a live Splunk, in the lab.**", text)
+            self.assertIn("It does not show a watchdog catching its fault.", text)
+            self.assertIn("The KQL searches have not run on a live Sentinel.", text)
+            self.assertNotIn("Not yet run on a live SIEM", text)
+        else:
+            self.assertIn("**Not yet run on a live SIEM.**", text)
         self.assertIn("**4 detections are blind and 13 degraded**", text)
         for check in health.WATCHDOGS:
             self.assertIn(f"[`{check}.spl`](spl/{check}.spl)", text)
