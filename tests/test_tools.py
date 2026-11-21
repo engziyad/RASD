@@ -1886,6 +1886,46 @@ class Chain(unittest.TestCase):
                 self.assertTrue(any(t.get("note") for t in a["techniques"] if t["id"] == g["technique"]), a["group"])
 
 
+class Scorecard(unittest.TestCase):
+    """docs/SIEM_VALIDATION_SCORECARD.md: a row for every detection, and no cell that a person typed."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.repo = shared_repo()
+        cls.text = (ROOT / "docs" / "SIEM_VALIDATION_SCORECARD.md").read_text(encoding="utf-8")
+        cls.needs = cls.text.split(chain.NEEDS_START)[1].split(chain.NEEDS_END)[0]
+        cls.results = cls.text.split(chain.RESULTS_START)[1].split(chain.RESULTS_END)[0]
+
+    def row(self, block: str, det_id: str) -> str:
+        rows = [line for line in block.splitlines() if line.startswith(f"| [{det_id}](")]
+        self.assertEqual(len(rows), 1, det_id)
+        return rows[0]
+
+    def test_every_detection_of_the_library_is_on_the_scorecard(self):
+        for d in self.repo.items:
+            needs = self.row(self.needs, d.id)
+            self.assertIn(f"queries/spl/{'correlations/' if d in self.repo.corrs else ''}{d.id}.spl", needs)
+            self.row(self.results, d.id)
+        self.assertEqual(len([line for line in self.results.splitlines() if line.startswith("| [")]), len(self.repo.items))
+        self.assertFalse("queries/splunk`" in self.text, "the folder is queries/spl")
+
+    def test_a_result_is_what_the_committed_evidence_says(self):
+        for d in self.repo.items:
+            cells = [c.strip() for c in self.row(self.results, d.id).strip("|").split("|")]
+            ev = self.repo.evidence[d.id]
+            siem = (ev or {}).get("siem") or {}
+            if not ev:
+                self.assertEqual((cells[1], cells[2], cells[6], cells[7]), ("pending",) * 4, d.id)
+            elif siem.get("alerts") and str(siem.get("platform", "")).startswith("Splunk"):
+                self.assertEqual(cells[1], "raised by " + siem["platform"].split(" (build")[0], d.id)
+                self.assertEqual(cells[2], f"{float(siem['latency_seconds']):.0f} s", d.id)
+            else:
+                self.assertEqual((cells[1], cells[2]), ("no Splunk alert in the evidence", "-"), d.id)
+            if ev:
+                self.assertEqual(cells[7], f"[{self.repo.scores[d.id]['operational_total']}/100](../{chain.det_path(d)}/evidence.md)")
+            self.assertEqual(cells[5], "pending", "no 72-hour baseline has been run: the cell says so until one is")
+
+
 class Tune(unittest.TestCase):
     def test_risky_and_safe_tunings_are_told_apart(self):
         logs = tune.DEFAULT_LOGS

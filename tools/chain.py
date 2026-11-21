@@ -90,6 +90,8 @@ DFIR_START, DFIR_END = "<!-- rasd:dfir-catalog:start -->", "<!-- rasd:dfir-catal
 README_START, README_END = "<!-- rasd:readme-metrics:start -->", "<!-- rasd:readme-metrics:end -->"
 STATUS_START, STATUS_END = "<!-- rasd:status:start -->", "<!-- rasd:status:end -->"
 EXEC_START, EXEC_END = "<!-- rasd:executive:start -->", "<!-- rasd:executive:end -->"
+NEEDS_START, NEEDS_END = "<!-- rasd:scorecard-needs:start -->", "<!-- rasd:scorecard-needs:end -->"
+RESULTS_START, RESULTS_END = "<!-- rasd:scorecard-results:start -->", "<!-- rasd:scorecard-results:end -->"
 CALM = {"good": "87af87", "wait": "d7af87", "none": "bcbcbc", "info": "87afaf"}     # badge colours
 PLATFORM_LABEL = {"windows": "Windows", "active_directory": "Active Directory", "linux": "Linux", "web": "web applications"}
 OPERATIONAL_TARGET = 80
@@ -1164,6 +1166,55 @@ def proven(repo: Repo, level: str) -> list:
     return [d for d in repo.items if MATURITY.index(repo.maturity(d)) >= MATURITY.index(level)]
 
 
+def render_scorecard_needs(repo: Repo) -> str:
+    """docs/SIEM_VALIDATION_SCORECARD.md, what each detection needs: the events it reads, the step that makes them,
+    the queries to run. One row per detection of the library, so a new detection is on the scorecard from its build."""
+    import health
+    carriers = (health.MAPPINGS.get("health") or {}).get("carriers") or {}
+    needs = {n.detection: n for n in health.needs()}
+    out = NEEDS_START + "\n| Detection | Events it reads | Attack step | Queries |\n|---|---|---|---|\n"
+    for d in repo.items:
+        n = needs[d.id]
+        reads = f"{carriers.get(n.source, 'Sysmon')} · `{n.source}`" + (f" {', '.join(n.ids)}" if n.ids else "")
+        steps = sorted({f"[{t['id']}](../red/{t['platform']}/{t['id']}/)" for t in repo.red_for_detection(d.id)})
+        folder = "correlations/" if isinstance(d, Correlation) else ""
+        queries = f"[SPL](../queries/spl/{folder}{d.id}.spl) · [KQL](../queries/kql/{folder}{d.id}.kql)"
+        if (ROOT / "queries" / "mde" / f"{d.id}.kql").exists():
+            queries += f" · [Defender](../queries/mde/{d.id}.kql)"
+        kind = " (correlation)" if isinstance(d, Correlation) else ""
+        out += f"| [{d.id}](../{det_path(d)}/){kind} | {reads} | {', '.join(steps) or 'no step reaches it yet'} | {queries} |\n"
+    return out + NEEDS_END
+
+
+def render_scorecard_results(repo: Repo) -> str:
+    """docs/SIEM_VALIDATION_SCORECARD.md, the results: every cell read from the detection's committed evidence.md and
+    from the lab runs kept beside it. A cell nothing has produced yet says so."""
+    import evidence
+    live = evidence.live_siem()
+    kept = {det_id for det_id, _folder in evidence.library()
+            if (ev := repo.evidence.get(det_id)) and ((ev.get("inputs") or {}).get("results") or {}).get("sha256") in evidence.kept_digests()}
+    out = (RESULTS_START + "\n| Detection | Splunk alert | Splunk latency | Sentinel or Defender | Alerts with no step in the lab | "
+           "False positives (72 h baseline) | The rule's event | Evidence |\n|---|---|---|---|---|---|---|---|\n")
+    for d in repo.items:
+        ev = repo.evidence[d.id]
+        siem = (ev or {}).get("siem") or {}
+        platform = str(siem.get("platform") or "").split(" (build")[0]
+        if not ev:
+            alert = latency = event = cell = "pending"
+        else:
+            raised = int(siem.get("alerts") or 0) >= 1 and platform.startswith("Splunk")
+            alert = f"raised by {platform}" if raised else "no Splunk alert in the evidence"
+            latency = f"{float(siem['latency_seconds']):.0f} s" if raised else "-"
+            event = "in the kept run" if d.id in kept else "in a run that stayed with its lab"
+            cell = f"[{repo.scores[d.id]['operational_total']}/100](../{det_path(d)}/evidence.md)"
+        other = "pending" if (ROOT / "queries" / "mde" / f"{d.id}.kql").exists() else "pending · Sentinel only"
+        unasked = live["unasked"].get(d.id)
+        kind = " (correlation)" if isinstance(d, Correlation) else ""
+        out += (f"| [{d.id}](../{det_path(d)}/){kind} | {alert} | {latency} | {other} | "
+                f"{unasked or ('0' if live['hosts'] else 'pending')} | pending | {event} | {cell} |\n")
+    return out + RESULTS_END
+
+
 def ops_average(repo: Repo, validated: list) -> float | None:
     ops = [repo.scores[d.id]["operational_total"] or 0 for d in validated]
     return sum(ops) / len(ops) if ops else None
@@ -1370,8 +1421,10 @@ def render_evidence_plan(repo: Repo) -> str:
     out += ("**A lab you do not have to build.** The Windows default run with the WinRM step, the Linux host with its decoy and the "
             "lab web application run on hosted runners that exist for one run: [`lab-run.yml`](../.github/workflows/lab-run.yml) "
             "([how](../red/lab/README.md#a-lab-you-do-not-have-to-build)). " + kept[:1].upper() + kept[1:] + ". "
-            "The opt-in steps and the domain controller need a lab that is yours: those runners have no domain and no SIEM, and "
-            "the steps that dump LSASS memory or clear the Security log never run on a machine that is not ours.\n")
+            "The opt-in steps and the domain controller need a lab that is yours: those runners have no domain, and "
+            "the steps that dump LSASS memory or clear the Security log never run on a machine that is not ours. A live "
+            "Splunk stands beside each of them when the person who starts the run accepts its terms, and its alerts come "
+            "back with the run.\n")
     rows: dict[str, list[str]] = defaultdict(list)
     reached = set()
     for t in repo.red:
@@ -1447,6 +1500,10 @@ def outputs(repo: Repo) -> dict[Path, str]:
     summary = DOCS / "EXECUTIVE_SUMMARY.md"
     if summary.exists():
         out[summary] = replace_block(summary.read_text(encoding="utf-8"), EXEC_START, EXEC_END, render_executive_block(repo))
+    scorecard = DOCS / "SIEM_VALIDATION_SCORECARD.md"
+    if scorecard.exists():
+        text = replace_block(scorecard.read_text(encoding="utf-8"), NEEDS_START, NEEDS_END, render_scorecard_needs(repo))
+        out[scorecard] = replace_block(text, RESULTS_START, RESULTS_END, render_scorecard_results(repo))
     dreadme = DFIR / "README.md"
     if dreadme.exists():
         out[dreadme] = replace_block(dreadme.read_text(encoding="utf-8"), DFIR_START, DFIR_END, render_dfir_catalog(repo))

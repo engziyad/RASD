@@ -168,9 +168,10 @@ OPERATIONAL_LACKS = (
      "Each evidence.md records the run and the event the rule matched in the lab host's own telemetry. The SIEM result (25 points) "
      "and the detection latency (up to 15) are earned only by an alert a scheduled search raised on that step, so the Operational "
      "Score of these stops at 60.",
-     "Run the lab with the SIEM watching: install the generated app (queries/splunk_app), let Invoke-RasdLabRun.ps1 wait for the "
-     "scheduled alerts, export the report `RASD - alert export` and give the file to rasd evidence --run beside the run "
-     "(docs/OPERATIONAL_VALIDATION.md)."),
+     "Run the lab with the SIEM watching. On the hosted lab: start lab-run.yml with the Splunk terms accepted, and the alerts "
+     "come back with the run. On a lab of your own: install the generated apps (queries/splunk_app), let "
+     "Invoke-RasdLabRun.ps1 wait for the scheduled alerts, export the report `RASD - alert export` (or let "
+     "red/lab/splunk_lab.py do it) and give the file to rasd evidence --run beside the run (docs/OPERATIONAL_VALIDATION.md)."),
     ("latency", "Detection latency", "alerted later than a minute after the step",
      "The alert is in the evidence; the detection latency earns its 15 points within 60 seconds of the step, 10 within five "
      "minutes, 5 within fifteen. The RASD Splunk app reads each slice five minutes after it closes, so that an event indexed "

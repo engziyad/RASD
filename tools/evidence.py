@@ -1504,6 +1504,11 @@ def siem_records(store: Path = STORE) -> dict[str, list[dict]]:
     return out
 
 
+def kept_digests(store: Path = STORE) -> set[str]:
+    """The SHA-256 of the results file of every kept part: what an evidence file cites when its run is kept."""
+    return {digest for part in kept_parts(store)[0] if (digest := results_digest(part))}
+
+
 def md_note(text: str) -> str:
     return " ".join(str(text).split()).replace("|", "\\|").replace("<", "&lt;")
 
