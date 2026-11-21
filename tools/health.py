@@ -116,6 +116,7 @@ class Need:
     critical: frozenset                  # fields the rule cannot work without (the contract's telemetry risk)
     allowance: int                       # seconds the scheduled search waits before it reads a slice
     search: str                          # the saved search that runs it
+    period: int = 300                    # seconds between two scheduled runs of it
 
     @property
     def feeds(self) -> tuple[str, ...]:
@@ -139,10 +140,14 @@ def needs(filter_: str | None = None) -> list[Need]:
     import splunk_app                                   # imported here: splunk_app schedules the watchdogs
     from correlation import load_correlations           # imported here: correlation imports replay
     single = _minutes(splunk_app.WINDOW_END) * 60
+    every = re.fullmatch(r"\*/(\d+) \* \* \* \*", splunk_app.SCHEDULE)
+    if not every:
+        raise ValueError(f"cannot read {splunk_app.SCHEDULE} as a number of minutes between two runs")
     out: list[Need] = []
-    entries = [(d.id, d.title, d.rule, d.contract, single) for d in load_detections(filter_)]
-    entries += [(c.id, c.title, c.base, c.contract, splunk_app.CORRELATION_LAG * 60) for c in load_correlations(filter_)]
-    for det_id, title, rule, contract, allowance in entries:
+    entries = [(d.id, d.title, d.rule, d.contract, single, int(every.group(1)) * 60) for d in load_detections(filter_)]
+    entries += [(c.id, c.title, c.base, c.contract, splunk_app.CORRELATION_LAG * 60, c.params.timespan)
+                for c in load_correlations(filter_)]
+    for det_id, title, rule, contract, allowance, period in entries:
         dc = contract.get("data_contract") or {}
         required = tuple(str(f) for f in dc.get("required_fields") or [])
         risk = dc.get("telemetry_risk") or {}
@@ -150,7 +155,7 @@ def needs(filter_: str | None = None) -> list[Need]:
         ids = tuple(sorted(doctor.rule_event_ids(rule), key=lambda i: (len(i), i)))
         scopes = {k: frozenset(v) for k, v in doctor.field_event_ids(rule).items()}
         out.append(Need(det_id, title, logsource_key(rule), ids, required, scopes, critical, allowance,
-                        f"{splunk_app.ALERT_PREFIX}{det_id}"))
+                        f"{splunk_app.ALERT_PREFIX}{det_id}", period))
     return out
 
 
@@ -753,7 +758,8 @@ WATCHDOGS = {
     "fields": ("daily", "23 6 * * *", "A field the rules read is filled in under 95% of the events that should carry it."),
     "delay": ("hourly", "17 * * * *",
               "Events indexed in the last hour arrived later than the scheduled searches wait."),
-    "schedule": ("hourly", "27 * * * *", "A scheduled detection search did not run, or was skipped."),
+    # two minutes after the half hour: every search has had a slot since the app was loaded, unless that was two minutes ago
+    "schedule": ("hourly", "32 * * * *", "A scheduled detection search did not run, or was skipped."),
 }
 HEALTH_PREFIX = "RASD Health - "
 
@@ -835,6 +841,7 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
     every = sorted({_spl_field(f) for names in fields.values() for f in names})
     reads = _spl_case([(feed, ",".join(_spl_field(f) for f in names)) for feed, names in sorted(fields.items())], "feed")
     allowance = _minutes(splunk_app.WINDOW_END) * 60
+    settle = max((n.period for n in wanted), default=300) + allowance      # every search has had a slot, and its wait
     out = {}
     out["silent"] = "\n".join([
         f"| tstats count where ({where}) earliest=-7d@h latest=@h by index, sourcetype, source, host, _time span=1h",
@@ -858,7 +865,7 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
         "| table feed, host, state, last_24h, week_ago, blinds"])
     out["fields"] = "\n".join([
         "| multisearch",
-        *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-24h@h latest=@h")),
+        *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-24h latest=now")),
         "| stats count as events, " + ", ".join(f"count({f}) as {f}" for f in every) + " by feed",
         f"| eval reads={reads}",
         "| foreach " + " ".join(every) + " [eval low=if(like(\",\" . reads . \",\", \"%,<<FIELD>>,%\") AND '<<FIELD>>' < 0.95 * events, "
@@ -876,7 +883,10 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
         f"| eval blinds={carrier_blinds}",
         "| table carrier, host, events, late, late_pct, p95_lag, blinds"])
     out["schedule"] = "\n".join([
-        f'index=_internal sourcetype=scheduler savedsearch_name="{splunk_app.ALERT_PREFIX}T*" earliest=-24h@h latest=@h',
+        # Read up to now, not to the last full hour, and do not name a search that has no run yet while Splunk has
+        # been up for less than the longest schedule: on a Splunk started within the hour, the first form of this
+        # search named every detection as one that did not run. The lab's own Splunk showed it.
+        f'index=_internal sourcetype=scheduler savedsearch_name="{splunk_app.ALERT_PREFIX}T*" earliest=-24h latest=now',
         '| stats count as runs, count(eval(status=="success")) as succeeded, count(eval(status=="skipped")) as skipped, '
         'max(eval(if(status=="success", _time, null()))) as last_success by savedsearch_name',
         f'| append [| rest /servicesNS/-/-/saved/searches splunk_server=local | search title="{splunk_app.ALERT_PREFIX}T*" '
@@ -884,7 +894,10 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
         "| stats max(runs) as runs, max(succeeded) as succeeded, max(skipped) as skipped, max(last_success) as last_success, "
         "max(listed) as listed by savedsearch_name",
         "| fillnull value=0 runs succeeded skipped listed",
-        f"| where listed == 1 AND (succeeded == 0 OR skipped > {SKIPPED[0]} * runs)",
+        "| appendcols [| rest /services/server/info splunk_server=local | eval uptime=now() - startup_time | fields uptime]",
+        "| eventstats max(uptime) as uptime",
+        f"| where listed == 1 AND ((succeeded == 0 AND (runs > 0 OR coalesce(uptime, 86400) >= {settle})) "
+        f"OR skipped > {SKIPPED[0]} * runs)",
         f'| eval detection=replace(savedsearch_name, "^{_plain(splunk_app.ALERT_PREFIX)}", ""), '
         'last_success=if(isnull(last_success), "none in 24 h", strftime(last_success, "%Y-%m-%d %H:%M"))',
         "| table savedsearch_name, detection, runs, succeeded, skipped, last_success"])

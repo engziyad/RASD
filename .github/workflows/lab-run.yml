@@ -8,8 +8,14 @@ name: RASD lab run
 # pages and pushes the result as a branch, lab-evidence/run-<id>, for a person to read and open as a pull
 # request. Nothing reaches main from here, and the workflow starts only when a person starts it.
 #
-# What a runner is not: joined to a domain, or watched by a SIEM. The Active Directory tests are skipped,
-# and the SIEM part of the Operational Score stays at zero for evidence made from these runs.
+# A live SIEM is the choice of the person who starts the run. Typing "accept" in the splunk input puts a
+# Splunk Enterprise beside each lab host for the length of the run (a container on the Linux hosts, the
+# service on the Windows host), with the RASD apps of queries/splunk_app in it and no vendor add-on. The
+# lab host's events reach it as they are written, its own scheduler raises the alerts, and red/lab/splunk_lab.py
+# waits for them and saves them as the --siem-alerts input of `rasd evidence`. Without that word the lab runs
+# as before, and the SIEM part of the Operational Score stays at zero for the evidence it makes.
+#
+# What a runner is not: joined to a domain. The Active Directory tests are skipped.
 # Credential access and the Security-log clear never run here. The WinRM test opens its session on the
 # lab host itself, and the decoy host is a container on the Linux lab host's own bridge network.
 
@@ -21,8 +27,11 @@ on:
         required: false
         default: ""
         type: string
-  push:                        # TEMPORARY while the live SIEM lab is built
-    branches: [siem-lab-dev]
+      evidence_branch:
+        description: "Push the evidence as a branch (lab-evidence/run-<id>). Untick to read the runs and push nothing."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -30,11 +39,12 @@ permissions:
 env:
   # Starting Splunk Enterprise is accepting its licence and the Splunk General Terms. Only the person who
   # starts a run can do that, by typing "accept" in the input above; anything else runs the lab without a SIEM.
-  SPLUNK_TERMS: ${{ (inputs.splunk == 'accept' || github.event_name == 'push') && 'accept' || '' }}
-  SPLUNK_IMAGE: splunk/splunk:10.4.5
+  SPLUNK_TERMS: ${{ inputs.splunk == 'accept' && 'accept' || '' }}
+  # One release of Splunk Enterprise on every host, each file pinned by its digest: the image on the Linux
+  # hosts, the installer on the Windows host (which must also carry a valid signature of Splunk).
+  SPLUNK_IMAGE: splunk/splunk:10.4.5@sha256:e8bd9fbd0c5f5dffc73d84fe62f60e69c1d811fd0c89b22a174a46ce99d2dc1b
   SPLUNK_MSI: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-windows-x64.msi
-  SPLUNK_MSI_ALT: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-x64-release.msi     # TEMPORARY
-  SPLUNK_MSI_SHA256: ""
+  SPLUNK_MSI_SHA256: 312a62e376393e6cb7ffda36822d67fbd772225f1330a409d614e064463a2fa3
 
 concurrency:
   group: rasd-lab-run-${{ github.ref }}
@@ -43,7 +53,6 @@ concurrency:
 jobs:
   windows:
     name: Windows lab host
-    if: github.event_name != 'push' || contains(github.event.head_commit.message, '[windows]')     # TEMPORARY
     runs-on: windows-2022
     timeout-minutes: 60
     steps:
@@ -75,16 +84,11 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $msi = Join-Path $env:RUNNER_TEMP 'splunk.msi'
-          $from = $null
-          foreach ($url in @($env:SPLUNK_MSI, $env:SPLUNK_MSI_ALT)) {
-            if (-not $url) { continue }
-            curl.exe --silent --show-error --fail --location --output $msi $url
-            if ($LASTEXITCODE -eq 0) { $from = $url; break }
-          }
-          if (-not $from) { throw 'the Splunk Enterprise installer could not be downloaded' }
+          curl.exe --silent --show-error --fail --location --output $msi $env:SPLUNK_MSI
+          if ($LASTEXITCODE -ne 0) { throw 'the Splunk Enterprise installer could not be downloaded' }
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash.ToLower()
-          "installer: $from ($([math]::Round((Get-Item -LiteralPath $msi).Length / 1MB)) MB), SHA-256 $hash"
-          if ($env:SPLUNK_MSI_SHA256 -and $hash -ne $env:SPLUNK_MSI_SHA256) { throw 'the installer is not the file this workflow pins by its SHA-256' }
+          "installer: $env:SPLUNK_MSI ($([math]::Round((Get-Item -LiteralPath $msi).Length / 1MB)) MB), SHA-256 $hash"
+          if ($hash -ne $env:SPLUNK_MSI_SHA256) { throw 'the installer is not the file this workflow pins by its SHA-256' }
           $signature = Get-AuthenticodeSignature -LiteralPath $msi
           "signed by: $($signature.SignerCertificate.Subject) ($($signature.Status))"
           if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Splunk') { throw 'the installer does not carry a valid signature of Splunk' }
@@ -107,14 +111,17 @@ jobs:
           foreach ($app in 'rasd', 'rasd_fields', 'rasd_forwarder') {
             Copy-Item -Recurse -Force -LiteralPath "queries\splunk_app\$app" -Destination "$splunk\etc\apps\"
           }
+          # TEMPORARY: one input nobody names, to see what Splunk itself calls an XML event
+          New-Item -ItemType Directory -Force -Path "$splunk\etc\apps\rasd_lab_native\default" | Out-Null
+          "[WinEventLog://Application]`ndisabled = 0`nindex = wineventlog`nrenderXml = true`n" | Out-File -FilePath "$splunk\etc\apps\rasd_lab_native\default\inputs.conf" -Encoding ascii
           Restart-Service -Name Splunkd -Force
           $url = 'https://127.0.0.1:8089'
           python red\lab\splunk_lab.py about --url $url --timeout 420 --terms "accepted for this run by the person who started it" --out (Join-Path $env:RUNNER_TEMP 'siem.json')
           if ($LASTEXITCODE -ne 0) { throw 'Splunk does not answer on its management port' }
           $probe = "rasd-siem-probe-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
           cmd.exe /c "echo $probe" | Out-Null
-          python red\lab\splunk_lab.py ready --url $url --timeout 300 --search "index=sysmon $probe"
-          if ($LASTEXITCODE -ne 0) { throw 'the Sysmon events of this host do not reach Splunk' }
+          python red\lab\splunk_lab.py ready --url $url --timeout 300 --search "index=sysmon source=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational EventCode=1 $probe"
+          if ($LASTEXITCODE -ne 0) { throw 'the Sysmon events of this host do not reach Splunk under the source and the fields the searches read' }
           "SPLUNK_URL=$url" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Plant the file decoys
@@ -233,7 +240,7 @@ jobs:
           sleep 2
           probe="rasd-siem-probe-$(date +%s)"
           /bin/echo "$probe" >/dev/null
-          python3 red/lab/splunk_lab.py ready --url "$url" --search "index=linux sourcetype=\"sysmon:linux\" $probe"
+          python3 red/lab/splunk_lab.py ready --url "$url" --search "index=linux sourcetype=\"sysmon:linux\" EventID=1 $probe"
           echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
 
       - name: Start the decoy host with the repository's OpenCanary configuration
@@ -453,10 +460,15 @@ jobs:
         run: |
           runs="$RUNNER_TEMP/runs"
           keep="hosted-$GITHUB_RUN_ID"
-          note="GitHub-hosted runners (windows-2022 and ubuntu-24.04), each marked as a RASD lab host for one run and discarded after it. No domain and no SIEM. Workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA."
+          siem_note="No domain and no SIEM."
+          if [ -n "$(find "$runs" -maxdepth 2 -name siem.json -size +0c | head -n 1)" ]; then
+            siem_note="No domain. A Splunk Enterprise stood beside each lab host for the run, started by a person who accepted its terms, with the RASD apps in it and no vendor add-on; the siem.json of each part says which Splunk it was."
+          fi
+          note="GitHub-hosted runners (windows-2022 and ubuntu-24.04), each marked as a RASD lab host for one run and discarded after it. $siem_note Workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA."
+          echo "siem_note=$siem_note" >> "$GITHUB_OUTPUT"
           missed=0
-          siem() {      # the alerts the live SIEM raised and its own description, when a run has them
-            for f in "$1/siem-alerts.csv" "$1/siem.json"; do if [ -s "$f" ]; then echo "$f"; fi; done
+          siem() {      # what the live SIEM left beside a run: the alerts it raised, its own description, what it said of every saved search
+            for f in "$1/siem-alerts.csv" "$1/siem.json" "$1/siem-searches.json"; do if [ -s "$f" ]; then echo "$f"; fi; done
           }
           if [ -f "$runs/lab-windows/lab-windows.zip" ]; then
             mapfile -t beside < <(siem "$runs/lab-windows")
@@ -487,7 +499,9 @@ jobs:
         run: rasd evidence --check
 
       - name: Push the evidence as a branch
-        if: github.event_name != 'push' || contains(github.event.head_commit.message, '[evidence]')     # TEMPORARY
+        if: inputs.evidence_branch
+        env:
+          SIEM_NOTE: ${{ steps.evidence.outputs.siem_note }}
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "No evidence was written: nothing to push."
@@ -499,7 +513,7 @@ jobs:
           git add --all
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit --quiet -m "evidence: $fired detections fired in lab run $GITHUB_RUN_ID" \
-            -m "Written by rasd evidence from the runs of workflow run $GITHUB_RUN_ID on GitHub-hosted runners marked as lab hosts. No domain and no SIEM: the Active Directory detections and the SIEM part of the Operational Score are not covered. The raw runs are kept in purple/lab_runs/hosted-$GITHUB_RUN_ID, and rasd evidence --check recomputes this evidence from them."
+            -m "Written by rasd evidence from the runs of workflow run $GITHUB_RUN_ID on GitHub-hosted runners marked as lab hosts. $SIEM_NOTE The Active Directory detections are not covered. The raw runs are kept in purple/lab_runs/hosted-$GITHUB_RUN_ID, and rasd evidence --check recomputes this evidence from them."
           git push --quiet origin "$branch"
           echo "pushed $branch" >> "$GITHUB_STEP_SUMMARY"
 

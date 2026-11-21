@@ -613,6 +613,7 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
 # --------------------------------------------------------------------------- #
 RESULTS_FILE = "emulation-results.json"
 READINESS_FILE = "lab-readiness.json"
+SIEM_SEARCHES_FILE = "siem-searches.json"     # red/lab/splunk_lab.py searches: what the lab SIEM said of every saved search
 MAX_RUN_BYTES = 4 << 30               # uncompressed size accepted from one lab-run zip
 EVENT_KEYS = {"EventID", "EventCode", "event_id", "Channel", "Image", "TargetImage", "TargetObject", "ImagePath",
               "CommandLine", "UtcTime", "cs-uri-stem", "sc-status"}
@@ -726,6 +727,22 @@ def siem_platform(path: Path) -> dict | None:
         return None
     named = isinstance(doc, dict) and all(isinstance(doc.get(k), str) and doc[k] for k in ("product", "version"))
     return doc if named and isinstance(doc.get("apps"), dict) else None
+
+
+def siem_searches(path: Path) -> tuple[int, int, int, int] | None:
+    """The record red/lab/splunk_lab.py searches leaves: how many saved searches of the RASD app ran to
+    the end on the lab's SIEM, of how many, and the same for the health watchdogs among them."""
+    if path.name.lower() != SIEM_SEARCHES_FILE:
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    rows = [r for r in doc.get("searches") or [] if isinstance(r, dict) and r.get("name")] if isinstance(doc, dict) else []
+    if not rows:
+        return None
+    health = [r for r in rows if str(r["name"]).startswith("RASD Health")]
+    return (sum(1 for r in rows if r.get("ok")), len(rows), sum(1 for r in health if r.get("ok")), len(health))
 
 
 def platform_line(doc: dict) -> str:
@@ -883,6 +900,7 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
         return "in the manifest" if _rel(f, run_dir) in listed else "added to the run folder, not in the manifest"
 
     lines.append(("results", run.results.name, origin(run.results)))
+    records: list[Path] = []           # kept with the run and compared with their .sha256, never read as evidence
     for f in found:
         if f == run.results or f in artifacts or f == manifest_path or f.suffix.lower() == ".sha256":
             continue
@@ -902,6 +920,12 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
             run.siem.append(f)
             lines.append(("SIEM", f.name, platform_line(about)))
             continue
+        ran = siem_searches(f)
+        if ran:
+            records.append(f)
+            lines.append(("SIEM searches", f.name, f"{ran[0]} of {ran[1]} saved searches ran to the end on the lab's SIEM "
+                          "(a record kept with the run, not an input of the evidence)"))
+            continue
         kind = export_kind(f) if f.suffix.lower() in (".jsonl", ".json", ".csv") else None
         if kind == "telemetry":
             run.logs.append(f)
@@ -914,7 +938,7 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
     if not run.logs:
         raise RunError("no telemetry export (*.jsonl) in the run")
     for f in beside:
-        if f not in run.logs and f not in run.siem:
+        if f not in run.logs and f not in run.siem and f not in records:
             continue
         _digest, compared = zip_digest(f)
         if strict and not compared:
@@ -1338,7 +1362,7 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
         lines += [f"## {run}", ""]
         if notes.get(run):
             lines += [md_note(notes[run]), ""]
-        lines += ["| Part | Read as | Files | Size | Evidence it carries |", "|---|---|---:|---:|---|"]
+        lines += ["| Part | Read as | Files | Size | Evidence it carries | Live SIEM |", "|---|---|---:|---:|---|---|"]
         commands = []
         for part in [p for p in parts if p.run == run]:
             folder = store / part.run / part.name
@@ -1347,7 +1371,8 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
             links = ", ".join(f"[{i}]({Path(os.path.relpath(fronts[i][0] / 'evidence.md', store)).as_posix()})"
                               for i in ids) or "-"
             lines.append(f"| `{part.name}` | {'strict' if part.strict else 'standard'} | {len(files)} | "
-                         f"{_size(sum(f.stat().st_size for f in files))} | {len(ids)}: {links} |")
+                         f"{_size(sum(f.stat().st_size for f in files))} | {len(ids)}: {links} | "
+                         f"{siem_cell(part, sum(1 for i in ids if fronts[i][1].get('siem')), len(ids))} |")
             rel = "purple/lab_runs" if store == STORE else store.name
             commands.append("rasd evidence --run " + " ".join(f"{rel}/{part.run}/{part.name}/{p.name}" for p in part.paths)
                             + (" --strict" if part.strict else "") + " --dry-run")
@@ -1362,6 +1387,23 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
                   "No detection has lab evidence yet.", ""]
     lines += ["<sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>", ""]
     return "\n".join(lines)
+
+
+def part_siem(part: Part) -> tuple[dict | None, tuple[int, int, int, int] | None]:
+    """The SIEM that ran beside a kept part, and what it said of the saved searches: (None, None) without one."""
+    about = next((doc for doc in (siem_platform(p) for p in part.paths if p.is_file()) if doc), None)
+    ran = next((r for r in (siem_searches(p) for p in part.paths if p.is_file()) if r), None)
+    return about, ran
+
+
+def siem_cell(part: Part, alerted: int, carried: int) -> str:
+    about, ran = part_siem(part)
+    if not about:
+        return "-"
+    out = f"{about['product']} {about['version']}: alert raised for {alerted} of {carried}"
+    if ran:
+        out += f"; {ran[0]}/{ran[1]} saved searches ran to the end"
+    return out
 
 
 def kept_summary(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> dict:

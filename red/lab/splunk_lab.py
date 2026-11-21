@@ -159,8 +159,7 @@ class Splunk:
                     if str(m.get("type", "")).upper() in ("ERROR", "FATAL", "WARN")]
         failed = bool(content.get("isFailed")) or not content.get("isDone") or any(m.startswith(("ERROR", "FATAL")) for m in messages)
         verdict = {"name": name, "ok": not failed, "state": content.get("dispatchState"), "results": int(content.get("resultCount") or 0),
-                   "events_scanned": int(content.get("scanCount") or 0), "seconds": round(float(content.get("runDuration") or 0), 2),
-                   "messages": messages}
+                   "events_scanned": int(content.get("scanCount") or 0), "messages": messages}
         if rows and verdict["results"]:
             got = self.get(f"/services/search/jobs/{urllib.parse.quote(sid, safe='')}/results", count=str(rows))
             verdict["rows"] = got.get("results") or []
@@ -211,6 +210,17 @@ def window(steps: list[dict]) -> tuple[datetime, datetime]:
     return start, end
 
 
+def holds(splunk: Splunk, earliest: str, index: str = "*") -> list[dict]:
+    """What Splunk holds since a time: records by index, source, sourcetype and host, its own indexes left out."""
+    rows = splunk.search(f"| tstats count where index={index} by index, source, sourcetype, host", earliest)
+    return [{"index": str(r.get("index")), "source": str(r.get("source")), "sourcetype": str(r.get("sourcetype")),
+             "host": str(r.get("host")), "records": int(r.get("count") or 0)} for r in rows if not str(r.get("index", "")).startswith("_")]
+
+
+def held_line(row: dict) -> str:
+    return f"index={row['index']} source={row['source']} sourcetype={row['sourcetype']} host={row['host']}: {row['records']} record(s)"
+
+
 def fired(splunk: Splunk, since: datetime) -> dict[str, dict]:
     rows = splunk.search(f'index={ALERT_INDEX} sourcetype="rasd:alert" | stats count min(_time) as first values(alert_host) as hosts by detection',
                          iso(since))
@@ -255,6 +265,15 @@ def cmd_ready(args: argparse.Namespace) -> int:
             return 0
         if time.monotonic() >= deadline:
             print(f"[!] nothing in Splunk after {args.timeout} s for: {args.search}")
+            try:
+                held = holds(splunk, "-60m")
+            except LabError as exc:
+                held = []
+                print(f"    and Splunk does not say what it holds: {exc}")
+            for row in held:
+                print("    Splunk holds: " + held_line(row))
+            if not held:
+                print("    Splunk holds no record of the last hour in any index of its own making: the feed does not reach it")
             return 1
         time.sleep(5)
 
@@ -292,6 +311,11 @@ def explain(splunk: Splunk, det: str, since: datetime) -> list[str]:
         seen = splunk.search(f"{source} | stats count by index, sourcetype, source, host", iso(since))
         lines.append("  without the event id: " + (", ".join(f"{r.get('index')}/{r.get('sourcetype')}/{r.get('source')}/{r.get('host')}: {r.get('count')}"
                                                               for r in seen) or "nothing either - no record of this log source reached Splunk"))
+        index = re.search(r"\bindex=(\S+)", source)
+        if not seen and index:
+            held = holds(splunk, iso(since), index.group(1))
+            lines.append(f"  the index {index.group(1)} holds: " + ("; ".join(held_line(r) for r in held)
+                                                                   or "nothing - the events never arrived"))
     return lines
 
 
@@ -356,11 +380,11 @@ def cmd_searches(args: argparse.Namespace) -> int:
         try:
             verdict = splunk.dispatch(s["name"], args.earliest, rows=args.rows if args.show and s["name"].startswith(args.show) else 0)
         except LabError as exc:
-            verdict = {"name": s["name"], "ok": False, "state": "REFUSED", "results": 0, "events_scanned": 0, "seconds": 0.0, "messages": [str(exc)]}
+            verdict = {"name": s["name"], "ok": False, "state": "REFUSED", "results": 0, "events_scanned": 0, "messages": [str(exc)]}
         verdict["scheduled"] = str(s.get("cron_schedule") or "") if str(s.get("is_scheduled", "0")) in ("1", "True", "true") else ""
         out.append(verdict)
         mark = "ok  " if verdict["ok"] else "FAIL"
-        print(f"  {mark} {verdict['name']:<58} {verdict['state']:<8} {verdict['results']:>5} row(s) {verdict['seconds']:>7.2f} s"
+        print(f"  {mark} {verdict['name']:<58} {verdict['state']:<8} {verdict['results']:>5} row(s) from {verdict['events_scanned']:>6} event(s)"
               + ("  " + " | ".join(verdict["messages"])[:300] if verdict["messages"] else ""))
         for row in verdict.pop("rows", []):
             print("         " + json.dumps(row, ensure_ascii=False)[:700])
@@ -392,7 +416,11 @@ def cmd_feeds(args: argparse.Namespace) -> int:
         if records and args.sample:
             for r in splunk.search(f"{base} | head 1 | table _raw", args.earliest):
                 print("          a record: " + str(r.get("_raw", ""))[:1800])
-    write(Path(args.out), json.dumps({"window": args.earliest, "feeds": out}, indent=1) + "\n")
+    held = holds(splunk, args.earliest)
+    print("what Splunk holds, by index, source, sourcetype and host:")
+    for row in held:
+        print("  " + held_line(row))
+    write(Path(args.out), json.dumps({"window": args.earliest, "feeds": out, "holds": held}, indent=1) + "\n")
     return 0
 
 

@@ -497,6 +497,32 @@ class Watchdogs(unittest.TestCase):
         self.assertNotIn("RASD Health", self.spl["schedule"])
         self.assertIn('SentinelResourceName startswith "RASD - T"', self.kql["schedule"])
 
+    def test_the_schedule_watchdog_reads_up_to_now_and_waits_out_a_splunk_that_has_just_started(self):
+        spl = self.spl["schedule"]
+        self.assertIn("earliest=-24h latest=now", spl)
+        self.assertNotIn("@h", spl, "a window that ends at the last full hour holds no run on a Splunk started after it")
+        longest = max(n.period for n in self.wanted)
+        self.assertIn("| rest /services/server/info splunk_server=local | eval uptime=now() - startup_time", spl)
+        self.assertIn(f"(succeeded == 0 AND (runs > 0 OR coalesce(uptime, 86400) >= {longest + 300}))", spl,
+                      "a search that ran and never succeeded is named at once; one without a run only when it has had its slot")
+        self.assertNotIn("$", spl, "Splunk reads a dollar sign in a saved search as the start of a token")
+        self.assertEqual(health.WATCHDOGS["schedule"][1], "32 * * * *")
+
+    def test_every_search_knows_how_often_it_runs(self):
+        periods = {n.detection: n.period for n in self.wanted}
+        for det in load_detections():
+            self.assertEqual(periods[det.id], 300, det.id)
+        for corr in load_correlations():
+            self.assertEqual(periods[corr.id], corr.params.timespan, corr.id)
+            cron = splunk_app.correlation_schedule(corr.params.timespan)[0]
+            self.assertTrue(cron.startswith(f"*/{corr.params.timespan // 60} ") or corr.params.timespan >= 3600, cron)
+
+    def test_the_field_watchdog_reads_the_last_day_up_to_now(self):
+        self.assertIn("earliest=-24h latest=now", self.spl["fields"])
+        self.assertNotIn("@h", self.spl["fields"], "the events of the last hour are the ones a fresh fault is in")
+        self.assertIn("earliest=-24h@h latest=@h", self.spl["volume"], "a day and the same day a week earlier, hour for hour")
+        self.assertIn("earliest=-8d@h latest=-7d@h", self.spl["volume"])
+
     def test_the_splunk_app_schedules_the_five_watchdogs(self):
         import configparser
         files = splunk_app.render(load_detections(), load_correlations())

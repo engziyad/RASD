@@ -286,6 +286,66 @@ class KeptRuns(unittest.TestCase):
         st = self.standing()
         self.assertTrue(st.stale or st.problems, "a changed input is seen")
 
+    def searches_record(self, base: Path, refused: int = 0) -> Path:
+        """What red/lab/splunk_lab.py searches leaves: what the lab's SIEM said of every saved search of the app."""
+        names = [f"RASD - {DETECTION}", "RASD - alert export",
+                 *(f"RASD Health - {c}" for c in ("delay", "fields", "schedule", "silent", "volume"))]
+        rows = [{"name": n, "ok": i >= refused, "state": "DONE" if i >= refused else "FAILED", "results": 0, "events_scanned": 12,
+                 "messages": [], "scheduled": "*/5 * * * *"} for i, n in enumerate(names)]
+        record = base / "siem-searches.json"
+        record.write_text(json.dumps({"window": "-60m", "searches": rows}), encoding="utf-8")
+        (base / f"{record.name}.sha256").write_text(f"{evidence.sha256(record)}  {record.name}\n", encoding="utf-8")
+        return record
+
+    def test_what_the_siem_said_of_every_saved_search_is_kept_with_the_run_and_is_no_input_of_the_evidence(self):
+        paths = self.folder_run()
+        paths += self.siem_files(paths[1].parent)
+        without = self.keep(paths)
+        plain = self.write_evidence()
+        self.assertEqual(evidence.part_siem(evidence.kept_parts(self.store)[0][0])[1], None)
+        shutil.rmtree(without.parent)
+        dest = self.keep([*paths, self.searches_record(paths[1].parent)])
+        self.assertTrue((dest / "siem-searches.json").is_file() and (dest / "siem-searches.json.sha256").is_file())
+        self.assertEqual(self.standing().current, {DETECTION: "hosted-1/lab-linux"}, "the record changes no byte of the evidence")
+        self.assertEqual([i["file"] for i in evidence.front_of(plain)["inputs"]["siem"]], ["siem-alerts.csv", "siem.json"])
+        part = evidence.kept_parts(self.store)[0][0]
+        about, ran = evidence.part_siem(part)
+        self.assertEqual((about["version"], ran), ("10.4.5", (7, 7, 5, 5)))
+        self.assertEqual(evidence.siem_cell(part, 1, 1),
+                         "Splunk Enterprise 10.4.5: alert raised for 1 of 1; 7/7 saved searches ran to the end")
+        self.assertEqual(self.quiet(evidence.refresh, self.store, self.entries)[0], 0)
+        self.assertEqual(self.quiet(evidence.check, self.store, self.entries)[0], 0)
+        # the record is kept as the lab wrote it: one that was edited afterwards refuses the run
+        record = dest / "siem-searches.json"
+        record.write_text(record.read_text(encoding="utf-8").replace('"results": 0', '"results": 3', 1), encoding="utf-8")
+        st = self.standing()
+        self.assertTrue(any("siem-searches.json" in p and "differs" in p for p in st.problems), st.problems)
+
+    def test_a_search_the_siem_refused_is_counted_and_a_file_of_another_name_is_no_record(self):
+        record = self.searches_record(self.tmp, refused=2)
+        self.assertEqual(evidence.siem_searches(record), (5, 7, 5, 5))
+        other = self.tmp / "searches.json"
+        other.write_text(record.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertIsNone(evidence.siem_searches(other))
+        for body in ("{}", '{"searches": []}', '{"searches": [{"ok": true}]}', "not json"):
+            record.write_text(body, encoding="utf-8")
+            self.assertIsNone(evidence.siem_searches(record), body)
+
+    def test_the_page_of_kept_runs_says_which_siem_stood_beside_each_part(self):
+        paths = self.folder_run()
+        paths += [*self.siem_files(paths[1].parent), self.searches_record(paths[1].parent)]
+        self.keep(paths)
+        self.write_evidence()
+        text = evidence.page(self.store, self.entries)
+        self.assertIn("| Part | Read as | Files | Size | Evidence it carries | Live SIEM |", text)
+        self.assertIn("| Splunk Enterprise 10.4.5: alert raised for 1 of 1; 7/7 saved searches ran to the end |", text)
+        shutil.rmtree(self.store)
+        (self.library / "evidence.md").unlink()
+        self.keep(self.folder_run())
+        self.write_evidence()
+        row = next(line for line in evidence.page(self.store, self.entries).splitlines() if line.startswith("| `lab-linux`"))
+        self.assertTrue(row.endswith("| - |"), row)
+
     def test_an_alert_of_another_host_or_another_hour_is_not_this_run_s(self):
         for kwargs in ({"host": "OTHER-PC"}, {"alert_at": "2026-10-12T07:30:00.000Z"}):
             (self.library / "evidence.md").unlink(missing_ok=True)

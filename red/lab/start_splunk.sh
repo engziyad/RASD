@@ -43,6 +43,7 @@ for folder in "$feed" "$inputs/default" "$apps/rasd/default" "$apps/rasd_fields/
 done
 
 docker pull --quiet "$image" >&2
+echo "image: $(docker image inspect --format '{{join .RepoDigests ", "}}' "$image")" >&2
 docker run --detach --name "$name" --hostname "$name" \
   --env SPLUNK_START_ARGS=--accept-license \
   --env SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com \
