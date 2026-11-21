@@ -44,7 +44,11 @@ window, group and count; latency runs to the event that reached the threshold.
 the .sha256 beside it) or its folder, plus the exports made after it (the DC export, the SIEM
 alert export). It finds emulation-results.json, checks every file against the run's manifest
 and every collected artifact against the hash the runner recorded, takes JSON lines exports as
-telemetry and alert exports as SIEM alerts, and refuses anything that does not add up.
+telemetry and alert exports as SIEM alerts, and refuses anything that does not add up. Two more
+files can stand beside a run whose lab had a live SIEM (red/lab/splunk_lab.py writes them):
+siem.json, the SIEM's own description, which goes into each evidence.md that carries an alert,
+and siem-searches.json, what the SIEM answered to every saved search, which is kept with the
+run and compared with its hash but never read as evidence.
 --strict, for tamper-evident evidence, accepts only inputs anchored by a hash recorded when they
 were written: the zip's .sha256, a manifest listing every file of the run, and a .sha256 beside
 every export (see discover()).
@@ -431,7 +435,7 @@ def run_command(run: dict | None, profile: str) -> list[str]:
 
 def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: str, results_sha: str,
            siem_files: dict[str, str], profile: str = profiles.NATIVE, manifest: dict | None = None,
-           run: dict | None = None) -> str:
+           run: dict | None = None, platform: dict | None = None) -> str:
     t0, ev, note = hits[0]
     start = step_time(step, "utc_start")
     if start is None:
@@ -472,6 +476,8 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
                          "latency_seconds": round(max(0.0, (a_time - start).total_seconds()), 3),
                          # event logged -> alert: forwarding, indexing and the wait for the scheduled search
                          "pipeline_seconds": round(max(0.0, (a_time - t0).total_seconds()), 3)}
+        if platform:
+            front["siem"]["platform"] = platform_line(platform)
         front["inputs"]["siem"] = [{"file": n, "sha256": h} for n, h in siem_files.items()]
     score = operational_score(front)
     front["operational_score"] = sum(score.values())
@@ -485,6 +491,7 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
              f"| Matching events | {len(hits)} |",
              "| SIEM alert | " + (f"{front['siem']['alert_name']} at {front['siem']['first_alert_utc']}"
                                    if alerts else "not provided") + " |",
+             *([f"| SIEM | {front['siem']['platform']} |"] if alerts and platform else []),
              f"| Telemetry latency | {latency:.1f} s - step start → the event is logged on the host |",
              "| SIEM alert latency | " + (f"{front['siem']['latency_seconds']:.0f} s - step start → the SIEM alert "
                                            "(scored)" if alerts else "-") + " |",
@@ -515,7 +522,7 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
 
 def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_alerts, files: dict[str, str],
                        results_name: str, results_sha: str, siem_files: dict[str, str], profile: str = profiles.NATIVE,
-                       manifest: dict | None = None, run: dict | None = None) -> str:
+                       manifest: dict | None = None, run: dict | None = None, platform: dict | None = None) -> str:
     p = corr.params
     start = step_time(step, "utc_start")
     if start is None:
@@ -558,6 +565,8 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
                          "latency_seconds": round(max(0.0, (a_time - start).total_seconds()), 3),
                          # threshold reached -> alert: forwarding, indexing and the wait for the window to close
                          "pipeline_seconds": round(max(0.0, (a_time - crossed).total_seconds()), 3)}
+        if platform:
+            front["siem"]["platform"] = platform_line(platform)
         front["inputs"]["siem"] = [{"file": n, "sha256": h} for n, h in siem_files.items()]
     score = operational_score(front)
     front["operational_score"] = sum(score.values())
@@ -577,6 +586,7 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
              f"| Threshold reached (UTC) | {iso(crossed)} |",
              "| SIEM alert | " + (f"{front['siem']['alert_name']} at {front['siem']['first_alert_utc']}"
                                    if siem_alerts else "not provided") + " |",
+             *([f"| SIEM | {front['siem']['platform']} |"] if siem_alerts and platform else []),
              f"| Telemetry latency | {latency:.1f} s - step start → the event that reached the threshold |",
              "| SIEM alert latency | " + (f"{front['siem']['latency_seconds']:.0f} s - step start → the SIEM alert "
                                            "(scored)" if siem_alerts else "-") + " |",
@@ -607,6 +617,7 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
 # --------------------------------------------------------------------------- #
 RESULTS_FILE = "emulation-results.json"
 READINESS_FILE = "lab-readiness.json"
+SIEM_SEARCHES_FILE = "siem-searches.json"     # red/lab/splunk_lab.py searches: what the lab SIEM said of every saved search
 MAX_RUN_BYTES = 4 << 30               # uncompressed size accepted from one lab-run zip
 EVENT_KEYS = {"EventID", "EventCode", "event_id", "Channel", "Image", "TargetImage", "TargetObject", "ImagePath",
               "CommandLine", "UtcTime", "cs-uri-stem", "sc-status"}
@@ -707,6 +718,49 @@ def first_record(path: Path) -> dict | None:
     except ValueError:
         return None
     return None
+
+
+def siem_platform(path: Path) -> dict | None:
+    """The lab SIEM's own description of itself (red/lab/splunk_lab.py about writes it): product,
+    version and the apps installed. None for any other file."""
+    if path.suffix.lower() != ".json":
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    named = isinstance(doc, dict) and all(isinstance(doc.get(k), str) and doc[k] for k in ("product", "version"))
+    return doc if named and isinstance(doc.get("apps"), dict) else None
+
+
+def siem_searches(path: Path) -> tuple[int, int, int, int] | None:
+    """The record red/lab/splunk_lab.py searches leaves: how many saved searches of the RASD app ran to
+    the end on the lab's SIEM, of how many, and the same for the health watchdogs among them."""
+    if path.name.lower() != SIEM_SEARCHES_FILE:
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    rows = [r for r in doc.get("searches") or [] if isinstance(r, dict) and r.get("name")] if isinstance(doc, dict) else []
+    if not rows:
+        return None
+    health = [r for r in rows if str(r["name"]).startswith("RASD Health")]
+    return (sum(1 for r in rows if r.get("ok")), len(rows), sum(1 for r in health if r.get("ok")), len(health))
+
+
+def platform_line(doc: dict) -> str:
+    """One line for the evidence file: which SIEM raised the alert, and what read its fields."""
+    addons = [str(a) for a in doc.get("vendor_addons") or []] if isinstance(doc.get("vendor_addons"), list) else []
+    out = f"{doc['product']} {doc['version']}"
+    if doc.get("build"):
+        out += f" (build {doc['build']})"
+    if doc.get("licence"):
+        out += f", {doc['licence']} licence"
+    if doc["apps"]:
+        out += "; apps: " + ", ".join(f"{k} {v}".strip() for k, v in sorted(doc["apps"].items()))
+    out += "; vendor add-ons: " + (", ".join(sorted(addons)) or "none")
+    return re.sub(r"[\r\n|]+", " ", out).strip()
 
 
 def export_kind(path: Path) -> str | None:
@@ -850,6 +904,7 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
         return "in the manifest" if _rel(f, run_dir) in listed else "added to the run folder, not in the manifest"
 
     lines.append(("results", run.results.name, origin(run.results)))
+    records: list[Path] = []           # kept with the run and compared with their .sha256, never read as evidence
     for f in found:
         if f == run.results or f in artifacts or f == manifest_path or f.suffix.lower() == ".sha256":
             continue
@@ -864,6 +919,17 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
             lines.append(("readiness", f.name, " · ".join(f"{n} {r}" for r, n in counts.items())
                           + (f" (FAIL: {', '.join(failed)})" if failed else "")))
             continue
+        about = siem_platform(f)
+        if about:
+            run.siem.append(f)
+            lines.append(("SIEM", f.name, platform_line(about)))
+            continue
+        ran = siem_searches(f)
+        if ran:
+            records.append(f)
+            lines.append(("SIEM searches", f.name, f"{ran[0]} of {ran[1]} saved searches ran to the end on the lab's SIEM "
+                          "(a record kept with the run, not an input of the evidence)"))
+            continue
         kind = export_kind(f) if f.suffix.lower() in (".jsonl", ".json", ".csv") else None
         if kind == "telemetry":
             run.logs.append(f)
@@ -876,7 +942,7 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
     if not run.logs:
         raise RunError("no telemetry export (*.jsonl) in the run")
     for f in beside:
-        if f not in run.logs and f not in run.siem:
+        if f not in run.logs and f not in run.siem and f not in records:
             continue
         _digest, compared = zip_digest(f)
         if strict and not compared:
@@ -917,9 +983,13 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
         events += load_jsonl(p)
         files[p.name] = sha256(p)
     events, profile = profiles.apply(events, profile_name)
-    alerts, siem_files = [], {}
+    alerts, siem_files, platform = [], {}, None
     for p in siem_paths:
-        alerts += load_siem(p)
+        about = siem_platform(p)
+        if about:
+            platform = about
+        else:
+            alerts += load_siem(p)
         siem_files[p.name] = sha256(p)
     dets = load_detections()
     corrs = load_correlations()
@@ -973,10 +1043,10 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
         bodies: dict[str, tuple[Path, str]] = {}
         for det, step, hits, al in best.values():
             bodies[det.id] = (det.folder, render(det, step, hits, al, files, results_path.name, sha256(results_path),
-                                                 siem_files, profile, manifest, run))
+                                                 siem_files, profile, manifest, run, platform))
         for corr, step, bound, alert, al in best_corr.values():
             bodies[corr.id] = (corr.folder, render_correlation(corr, step, bound, alert, al, files, results_path.name,
-                                                               sha256(results_path), siem_files, profile, manifest, run))
+                                                               sha256(results_path), siem_files, profile, manifest, run, platform))
         if collect is not None:
             collect.update({det_id: body for det_id, (_folder, body) in bodies.items()})
         else:
@@ -1273,6 +1343,7 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
               for det_id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()}
     carried: dict[str, list[str]] = {}
     digests = {part.label: results_digest(part) for part in parts}
+    known = [det_id for det_id, _folder in (entries if entries is not None else library())]
     kept_ids: set[str] = set()
     for det_id, (_folder, front) in fronts.items():
         cited = str(((front.get("inputs") or {}).get("results") or {}).get("sha256") or "")
@@ -1296,7 +1367,7 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
         lines += [f"## {run}", ""]
         if notes.get(run):
             lines += [md_note(notes[run]), ""]
-        lines += ["| Part | Read as | Files | Size | Evidence it carries |", "|---|---|---:|---:|---|"]
+        lines += ["| Part | Read as | Files | Size | Evidence it carries | Live SIEM |", "|---|---|---:|---:|---|---|"]
         commands = []
         for part in [p for p in parts if p.run == run]:
             folder = store / part.run / part.name
@@ -1305,7 +1376,8 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
             links = ", ".join(f"[{i}]({Path(os.path.relpath(fronts[i][0] / 'evidence.md', store)).as_posix()})"
                               for i in ids) or "-"
             lines.append(f"| `{part.name}` | {'strict' if part.strict else 'standard'} | {len(files)} | "
-                         f"{_size(sum(f.stat().st_size for f in files))} | {len(ids)}: {links} |")
+                         f"{_size(sum(f.stat().st_size for f in files))} | {len(ids)}: {links} | "
+                         f"{siem_cell(part, sum(1 for i in ids if fronts[i][1].get('siem')), ids, known)} |")
             rel = "purple/lab_runs" if store == STORE else store.name
             commands.append("rasd evidence --run " + " ".join(f"{rel}/{part.run}/{part.name}/{p.name}" for p in part.paths)
                             + (" --strict" if part.strict else "") + " --dry-run")
@@ -1322,6 +1394,43 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
     return "\n".join(lines)
 
 
+def part_siem(part: Part) -> tuple[dict | None, tuple[int, int, int, int] | None]:
+    """The SIEM that ran beside a kept part, and what it said of the saved searches: (None, None) without one."""
+    about = next((doc for doc in (siem_platform(p) for p in part.paths if p.is_file()) if doc), None)
+    ran = next((r for r in (siem_searches(p) for p in part.paths if p.is_file()) if r), None)
+    return about, ran
+
+
+def unasked_alerts(part: Part, asked: list[str], known: list[str]) -> dict[str, int]:
+    """Alerts the SIEM raised beside a kept part for a detection that none of the part's evidence is of:
+    detection -> how many. On a host where nobody ran that detection's attack, each of them is a false
+    positive to explain or a rule to tune, and the record of it stays with the run."""
+    out: dict[str, int] = {}
+    longest_first = sorted(known, key=len, reverse=True)
+    for path in part.paths:
+        if not path.is_file() or path.suffix.lower() not in (".csv", ".json", ".jsonl") or export_kind(path) != "siem":
+            continue
+        for alert in load_siem(path):
+            name = first(alert, SIEM_NAME).lower()
+            det = next((k for k in longest_first if k.lower() in name), None)
+            if det and det not in asked:
+                out[det] = out.get(det, 0) + 1
+    return dict(sorted(out.items()))
+
+
+def siem_cell(part: Part, alerted: int, asked: list[str], known: list[str]) -> str:
+    about, ran = part_siem(part)
+    if not about:
+        return "-"
+    out = f"{about['product']} {about['version']}: alert raised for {alerted} of {len(asked)}"
+    extra = unasked_alerts(part, asked, known)
+    if extra:
+        out += "; alerts no step asked for: " + ", ".join(f"`{det}` ({n})" for det, n in extra.items())
+    if ran:
+        out += f"; {ran[0]}/{ran[1]} saved searches ran to the end"
+    return out
+
+
 def kept_summary(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> dict:
     """The store in four numbers, for the pages that quote it: kept runs and parts, evidence files in the
     library, and how many of them cite a kept run (which --check then recomputes)."""
@@ -1331,6 +1440,68 @@ def kept_summary(store: Path = STORE, entries: list[tuple[str, Path]] | None = N
               for _id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()]
     kept = sum(1 for front in fronts if ((front.get("inputs") or {}).get("results") or {}).get("sha256") in digests)
     return {"runs": len({part.run for part in parts}), "parts": len(parts), "evidence": len(fronts), "kept": kept}
+
+
+def live_siem(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> dict:
+    """What the kept runs hold of a live SIEM, for the pages that quote it. Nothing is evaluated here: it is read
+    from the files the SIEM left beside each kept part and from the front matter of the evidence that cites the part.
+
+      runs, hosts      the kept runs with a SIEM in them, and how many lab hosts had one beside them
+      platforms        which SIEM, as its own description names it ("Splunk Enterprise 10.4.5")
+      apps, addons     the RASD apps it ran, and the vendor add-ons it had (none, in a lab that fetches none)
+      evidence, alerted  evidence files that cite those parts, and how many of them carry an alert the SIEM raised
+      unasked          detection -> alerts the SIEM raised for it on a host where no step of the run asked for it
+      searches, health   per host: (ran to the end, of how many) saved searches, and the same for the watchdogs"""
+    parts, _notes, _problems = kept_parts(store)
+    fronts = [front_of((folder / "evidence.md").read_text(encoding="utf-8"))
+              for _id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()]
+    runs: list[str] = []
+    platforms: set[str] = set()
+    apps: set[str] = set()
+    addons: set[str] = set()
+    searches: list[tuple[int, int]] = []
+    health: list[tuple[int, int]] = []
+    hosts = cited = alerted = 0
+    listed = entries if entries is not None else library()
+    known = [det_id for det_id, _folder in listed]
+    by_digest: dict[str, list[str]] = {}
+    for det_id, folder in listed:
+        if (folder / "evidence.md").exists():
+            front = front_of((folder / "evidence.md").read_text(encoding="utf-8"))
+            by_digest.setdefault(str(((front.get("inputs") or {}).get("results") or {}).get("sha256") or ""), []).append(det_id)
+    unasked: dict[str, int] = {}
+    for part in parts:
+        about, ran = part_siem(part)
+        if not about:
+            continue
+        for det, n in unasked_alerts(part, by_digest.get(results_digest(part) or "-", []), known).items():
+            unasked[det] = unasked.get(det, 0) + n
+        hosts += 1
+        if part.run not in runs:
+            runs.append(part.run)
+        platforms.add(f"{about['product']} {about['version']}")
+        apps.update(str(a) for a in about.get("apps") or {})
+        addons.update(str(a) for a in about.get("vendor_addons") or [])
+        digest = results_digest(part)
+        mine = [f for f in fronts if digest and ((f.get("inputs") or {}).get("results") or {}).get("sha256") == digest]
+        cited += len(mine)
+        alerted += sum(1 for f in mine if int((f.get("siem") or {}).get("alerts") or 0) >= 1)
+        if ran:
+            searches.append(ran[:2])
+            health.append(ran[2:])
+    return {"runs": runs, "hosts": hosts, "platforms": sorted(platforms), "apps": sorted(apps), "addons": sorted(addons),
+            "evidence": cited, "alerted": alerted, "unasked": dict(sorted(unasked.items())), "searches": searches, "health": health}
+
+
+def siem_records(store: Path = STORE) -> dict[str, list[dict]]:
+    """kept part -> what its SIEM said of every saved search (the rows of the record kept with the part)."""
+    out: dict[str, list[dict]] = {}
+    for part in kept_parts(store)[0]:
+        for path in part.paths:
+            if path.is_file() and siem_searches(path):
+                doc = json.loads(path.read_text(encoding="utf-8-sig"))
+                out[part.label] = [r for r in doc["searches"] if isinstance(r, dict) and r.get("name")]
+    return out
 
 
 def md_note(text: str) -> str:

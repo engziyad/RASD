@@ -247,6 +247,142 @@ class KeptRuns(unittest.TestCase):
         (self.library / "evidence.md").write_text(text.replace("- file: decoded.json", "- file: C:\\Lab\\decoded.json"), encoding="utf-8")
         self.assertTrue(any("recorded by its file name" in e for e in validate.evidence_errors(self.library)))
 
+    def siem_files(self, base: Path, alert_at="2026-10-12T06:07:30.000Z", host="LAB-WS01", version="10.4.5"):
+        """What red/lab/splunk_lab.py leaves beside a run: the alerts the SIEM raised, and which SIEM it was."""
+        alerts = base / "siem-alerts.csv"
+        alerts.write_text("_time,ss_name,host,alert_hosts,result_count,first_event,last_event\n"
+                          f"{alert_at},RASD - {DETECTION},{host},{host},1,1791784801.400,1791784801.400\n", encoding="utf-8")
+        about = base / "siem.json"
+        about.write_text(json.dumps({"product": "Splunk Enterprise", "version": version, "build": "de9225ad9740", "licence": "Trial",
+                                     "apps": {"rasd": "1.7.0", "rasd_fields": "1.7.0"}, "vendor_addons": [], "indexes": ["linux"]}),
+                         encoding="utf-8")
+        for f in (alerts, about):
+            (base / f"{f.name}.sha256").write_text(f"{evidence.sha256(f)}  {f.name}\n", encoding="utf-8")
+        return [alerts, about]
+
+    def test_the_alert_of_a_live_siem_and_which_siem_it_was_are_part_of_the_kept_run(self):
+        paths = self.folder_run()
+        paths += self.siem_files(paths[1].parent)
+        dest = self.keep(paths)
+        self.assertEqual(sorted(p.name for p in dest.iterdir()),
+                         ["export.jsonl", "export.jsonl.sha256", "lab-linux", "siem-alerts.csv", "siem-alerts.csv.sha256",
+                          "siem.json", "siem.json.sha256"])
+        text = self.write_evidence()
+        front = evidence.front_of(text)
+        self.assertEqual(front["siem"]["alerts"], 1)
+        self.assertEqual(front["siem"]["latency_seconds"], 450.0)
+        self.assertEqual(front["siem"]["platform"], "Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; "
+                                                    "apps: rasd 1.7.0, rasd_fields 1.7.0; vendor add-ons: none")
+        self.assertIn("| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence;", text)
+        self.assertEqual([i["file"] for i in front["inputs"]["siem"]], ["siem-alerts.csv", "siem.json"])
+        score = evidence.operational_score(front)
+        self.assertEqual((score["SIEM result"], score["Detection latency"]), (25, 5))
+        self.assertEqual(validate.evidence_errors(self.library), [])
+        self.assertEqual(self.quiet(evidence.refresh, self.store, self.entries)[0], 0)
+        self.assertIn("byte for byte", self.quiet(evidence.check, self.store, self.entries)[1])
+        # the SIEM's description is an input like the others: change it and the evidence is no longer what the run gives
+        about = dest / "siem.json"
+        about.write_text(about.read_text(encoding="utf-8").replace("10.4.5", "9.9.9"), encoding="utf-8")
+        st = self.standing()
+        self.assertTrue(st.stale or st.problems, "a changed input is seen")
+
+    def searches_record(self, base: Path, refused: int = 0) -> Path:
+        """What red/lab/splunk_lab.py searches leaves: what the lab's SIEM said of every saved search of the app."""
+        names = [f"RASD - {DETECTION}", "RASD - alert export",
+                 *(f"RASD Health - {c}" for c in ("delay", "fields", "schedule", "silent", "volume"))]
+        rows = [{"name": n, "ok": i >= refused, "state": "DONE" if i >= refused else "FAILED", "results": 0, "events_scanned": 12,
+                 "messages": [], "scheduled": "*/5 * * * *"} for i, n in enumerate(names)]
+        record = base / "siem-searches.json"
+        record.write_text(json.dumps({"window": "-60m", "searches": rows}), encoding="utf-8")
+        (base / f"{record.name}.sha256").write_text(f"{evidence.sha256(record)}  {record.name}\n", encoding="utf-8")
+        return record
+
+    def test_what_the_siem_said_of_every_saved_search_is_kept_with_the_run_and_is_no_input_of_the_evidence(self):
+        paths = self.folder_run()
+        paths += self.siem_files(paths[1].parent)
+        without = self.keep(paths)
+        plain = self.write_evidence()
+        self.assertEqual(evidence.part_siem(evidence.kept_parts(self.store)[0][0])[1], None)
+        shutil.rmtree(without.parent)
+        dest = self.keep([*paths, self.searches_record(paths[1].parent)])
+        self.assertTrue((dest / "siem-searches.json").is_file() and (dest / "siem-searches.json.sha256").is_file())
+        self.assertEqual(self.standing().current, {DETECTION: "hosted-1/lab-linux"}, "the record changes no byte of the evidence")
+        self.assertEqual([i["file"] for i in evidence.front_of(plain)["inputs"]["siem"]], ["siem-alerts.csv", "siem.json"])
+        part = evidence.kept_parts(self.store)[0][0]
+        about, ran = evidence.part_siem(part)
+        self.assertEqual((about["version"], ran), ("10.4.5", (7, 7, 5, 5)))
+        self.assertEqual(evidence.siem_cell(part, 1, [DETECTION], [DETECTION]),
+                         "Splunk Enterprise 10.4.5: alert raised for 1 of 1; 7/7 saved searches ran to the end")
+        self.assertEqual(self.quiet(evidence.refresh, self.store, self.entries)[0], 0)
+        self.assertEqual(self.quiet(evidence.check, self.store, self.entries)[0], 0)
+        # the record is kept as the lab wrote it: one that was edited afterwards refuses the run
+        record = dest / "siem-searches.json"
+        record.write_text(record.read_text(encoding="utf-8").replace('"results": 0', '"results": 3', 1), encoding="utf-8")
+        st = self.standing()
+        self.assertTrue(any("siem-searches.json" in p and "differs" in p for p in st.problems), st.problems)
+
+    def test_a_search_the_siem_refused_is_counted_and_a_file_of_another_name_is_no_record(self):
+        record = self.searches_record(self.tmp, refused=2)
+        self.assertEqual(evidence.siem_searches(record), (5, 7, 5, 5))
+        other = self.tmp / "searches.json"
+        other.write_text(record.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertIsNone(evidence.siem_searches(other))
+        for body in ("{}", '{"searches": []}', '{"searches": [{"ok": true}]}', "not json"):
+            record.write_text(body, encoding="utf-8")
+            self.assertIsNone(evidence.siem_searches(record), body)
+
+    def test_the_page_of_kept_runs_says_which_siem_stood_beside_each_part(self):
+        paths = self.folder_run()
+        paths += [*self.siem_files(paths[1].parent), self.searches_record(paths[1].parent)]
+        self.keep(paths)
+        self.write_evidence()
+        text = evidence.page(self.store, self.entries)
+        self.assertIn("| Part | Read as | Files | Size | Evidence it carries | Live SIEM |", text)
+        self.assertIn("| Splunk Enterprise 10.4.5: alert raised for 1 of 1; 7/7 saved searches ran to the end |", text)
+        shutil.rmtree(self.store)
+        (self.library / "evidence.md").unlink()
+        self.keep(self.folder_run())
+        self.write_evidence()
+        row = next(line for line in evidence.page(self.store, self.entries).splitlines() if line.startswith("| `lab-linux`"))
+        self.assertTrue(row.endswith("| - |"), row)
+
+    def test_an_alert_no_step_asked_for_is_counted_and_shown_with_the_run(self):
+        other = "T1003.001_lsass_memory_access"
+        entries = [*self.entries, (other, self.tmp / "no-evidence-here")]
+        paths = self.folder_run()
+        alerts, about = self.siem_files(paths[1].parent)
+        with alerts.open("a", encoding="utf-8") as f:
+            for at in ("2026-10-12T06:05:01.000Z", "2026-10-12T06:10:01.000Z"):
+                f.write(f"{at},RASD - {other},LAB-WS01,LAB-WS01,1,1791784801.400,1791784801.400\n")
+            f.write("2026-10-12T06:05:02.000Z,Some other search,LAB-WS01,LAB-WS01,1,1791784801.400,1791784801.400\n")
+        (alerts.parent / "siem-alerts.csv.sha256").write_text(f"{evidence.sha256(alerts)}  siem-alerts.csv\n", encoding="utf-8")
+        self.keep([*paths, alerts, about])
+        self.write_evidence()
+        part = evidence.kept_parts(self.store)[0][0]
+        self.assertEqual(evidence.unasked_alerts(part, [DETECTION], [DETECTION, other]), {other: 2},
+                         "a search that is not a detection of the library is nobody's false positive")
+        self.assertEqual(evidence.live_siem(self.store, entries)["unasked"], {other: 2})
+        self.assertEqual(evidence.live_siem(self.store, entries)["alerted"], 1)
+        row = next(line for line in evidence.page(self.store, entries).splitlines() if line.startswith("| `lab-linux`"))
+        self.assertIn(f"alert raised for 1 of 1; alerts no step asked for: `{other}` (2) |", row)
+
+    def test_an_alert_of_another_host_or_another_hour_is_not_this_run_s(self):
+        for kwargs in ({"host": "OTHER-PC"}, {"alert_at": "2026-10-12T07:30:00.000Z"}):
+            (self.library / "evidence.md").unlink(missing_ok=True)
+            paths = self.folder_run()
+            paths += self.siem_files(paths[1].parent, **kwargs)
+            self.keep(paths)
+            front = evidence.front_of(self.standing().stale[DETECTION][1])
+            self.assertIsNone(front["siem"], kwargs)
+            self.assertEqual(evidence.operational_score(front)["SIEM result"], 0)
+
+    def test_a_json_file_that_is_not_a_siem_s_description_is_not_read_as_one(self):
+        for body in ('{"product": "x"}', '{"product": "x", "version": "1"}', '[{"product": "x", "version": "1", "apps": {}}]', "not json"):
+            f = self.tmp / "other.json"
+            f.write_text(body, encoding="utf-8")
+            self.assertIsNone(evidence.siem_platform(f), body)
+        self.assertIsNone(evidence.siem_platform(self.tmp / "missing.json"))
+
     def test_evidence_whose_run_stayed_with_its_lab_is_listed_and_left_alone(self):
         self.keep(self.folder_run())
         text = self.write_evidence()
