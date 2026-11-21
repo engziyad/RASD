@@ -70,11 +70,11 @@ def utc(text: object) -> datetime:
         return datetime.fromtimestamp(float(raw), timezone.utc)
     except ValueError:
         pass
-    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d+))?\s*(Z|UTC|[+-]\d{2}:?\d{2})?", raw)
+    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d+))?\s*(Z|UTC|GMT|[+-]\d{2}:?\d{2})?", raw)
     if not m:
         raise LabError(f"{raw}: not a time this tool can read")
     zone = m.group(4) or "Z"
-    offset = "+00:00" if zone in ("Z", "UTC") else (zone if ":" in zone else f"{zone[:3]}:{zone[3:]}")
+    offset = "+00:00" if zone in ("Z", "UTC", "GMT") else (zone if ":" in zone else f"{zone[:3]}:{zone[3:]}")
     fraction = (m.group(3) or "0")[:6].ljust(6, "0")
     return datetime.fromisoformat(f"{m.group(1)}T{m.group(2)}.{fraction}{offset}").astimezone(timezone.utc)
 
@@ -143,7 +143,7 @@ class Splunk:
         doc = self.get(f"/servicesNS/nobody/{APP}/saved/searches", count="0", search=f"eai:acl.app={APP}")
         return [{"name": e["name"], **e["content"]} for e in doc.get("entry", []) if e.get("acl", {}).get("app") == APP]
 
-    def dispatch(self, name: str, earliest: str, latest: str = "now", timeout: int = 300) -> dict:
+    def dispatch(self, name: str, earliest: str, latest: str = "now", timeout: int = 300, rows: int = 0) -> dict:
         """Run one saved search once, without its alert actions, and say what Splunk said of it."""
         path = f"/servicesNS/nobody/{APP}/saved/searches/{urllib.parse.quote(name, safe='')}/dispatch"
         started = time.monotonic()
@@ -158,9 +158,13 @@ class Splunk:
         messages = [f"{m.get('type')}: {m.get('text')}" for m in content.get("messages") or []
                     if str(m.get("type", "")).upper() in ("ERROR", "FATAL", "WARN")]
         failed = bool(content.get("isFailed")) or not content.get("isDone") or any(m.startswith(("ERROR", "FATAL")) for m in messages)
-        return {"name": name, "ok": not failed, "state": content.get("dispatchState"), "results": int(content.get("resultCount") or 0),
-                "events_scanned": int(content.get("scanCount") or 0), "seconds": round(float(content.get("runDuration") or 0), 2),
-                "messages": messages}
+        verdict = {"name": name, "ok": not failed, "state": content.get("dispatchState"), "results": int(content.get("resultCount") or 0),
+                   "events_scanned": int(content.get("scanCount") or 0), "seconds": round(float(content.get("runDuration") or 0), 2),
+                   "messages": messages}
+        if rows and verdict["results"]:
+            got = self.get(f"/services/search/jobs/{urllib.parse.quote(sid, safe='')}/results", count=str(rows))
+            verdict["rows"] = got.get("results") or []
+        return verdict
 
 
 def connect(args: argparse.Namespace) -> Splunk:
@@ -229,7 +233,8 @@ def cmd_inputs(args: argparse.Namespace) -> int:
     header = "# Written by red/lab/splunk_lab.py for one lab run: the files of the lab host this Splunk reads.\n"
     (out / "default" / "inputs.conf").write_text(header + "\n" + "\n".join(stanzas), encoding="utf-8", newline="\n")
     (out / "default" / "app.conf").write_text(
-        header + f"[install]\nis_configured = 1\n\n[ui]\nis_visible = 0\nlabel = RASD Lab Inputs\n\n[package]\nid = {out.name}\n",
+        header + f"[install]\nis_configured = 1\n\n[ui]\nis_visible = 0\nlabel = RASD Lab Inputs\n\n"
+        f"[launcher]\nversion = {datetime.now(timezone.utc):%Y.%m.%d}\n\n[package]\nid = {out.name}\n",
         encoding="utf-8", newline="\n")
     print(f"[+] {out}: {len(stanzas)} input(s), host = {args.host}")
     return 0
@@ -349,7 +354,7 @@ def cmd_searches(args: argparse.Namespace) -> int:
     out = []
     for s in saved:
         try:
-            verdict = splunk.dispatch(s["name"], args.earliest)
+            verdict = splunk.dispatch(s["name"], args.earliest, rows=args.rows if args.show and s["name"].startswith(args.show) else 0)
         except LabError as exc:
             verdict = {"name": s["name"], "ok": False, "state": "REFUSED", "results": 0, "events_scanned": 0, "seconds": 0.0, "messages": [str(exc)]}
         verdict["scheduled"] = str(s.get("cron_schedule") or "") if str(s.get("is_scheduled", "0")) in ("1", "True", "true") else ""
@@ -357,6 +362,8 @@ def cmd_searches(args: argparse.Namespace) -> int:
         mark = "ok  " if verdict["ok"] else "FAIL"
         print(f"  {mark} {verdict['name']:<58} {verdict['state']:<8} {verdict['results']:>5} row(s) {verdict['seconds']:>7.2f} s"
               + ("  " + " | ".join(verdict["messages"])[:300] if verdict["messages"] else ""))
+        for row in verdict.pop("rows", []):
+            print("         " + json.dumps(row, ensure_ascii=False)[:700])
     bad = [v for v in out if not v["ok"]]
     write(Path(args.out), json.dumps({"window": args.earliest, "searches": out}, indent=1) + "\n")
     print(f"{len(out) - len(bad)}/{len(out)} saved searches of the {APP} app ran to the end on this Splunk" + (f"; {len(bad)} did not" if bad else ""))
@@ -454,6 +461,8 @@ def main() -> int:
 
     p = online("searches", "run every saved search of the RASD app once")
     p.add_argument("--earliest", default="-60m", help="how far back each search reads (default -60m)")
+    p.add_argument("--show", default="", metavar="PREFIX", help="print the first rows of the searches whose name starts with this")
+    p.add_argument("--rows", type=int, default=5)
     p.add_argument("--out", required=True)
     p.set_defaults(run=cmd_searches)
 

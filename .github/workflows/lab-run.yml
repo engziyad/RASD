@@ -32,6 +32,9 @@ env:
   # starts a run can do that, by typing "accept" in the input above; anything else runs the lab without a SIEM.
   SPLUNK_TERMS: ${{ (inputs.splunk == 'accept' || github.event_name == 'push') && 'accept' || '' }}
   SPLUNK_IMAGE: splunk/splunk:10.4.5
+  SPLUNK_MSI: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-windows-x64.msi
+  SPLUNK_MSI_ALT: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-x64-release.msi     # TEMPORARY
+  SPLUNK_MSI_SHA256: ""
 
 concurrency:
   group: rasd-lab-run-${{ github.ref }}
@@ -42,7 +45,7 @@ jobs:
     name: Windows lab host
     if: github.event_name != 'push' || contains(github.event.head_commit.message, '[windows]')     # TEMPORARY
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
         with:
@@ -63,6 +66,56 @@ jobs:
           Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
           & (Join-Path $dir 'Sysmon64.exe') -accepteula -i red\lab\sysmon-rasd.xml
           Get-Service Sysmon64 | Format-Table -AutoSize
+
+      - name: Install Splunk Enterprise on the lab host
+        if: env.SPLUNK_TERMS == 'accept'
+        shell: powershell
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = Join-Path $env:RUNNER_TEMP 'splunk.msi'
+          $from = $null
+          foreach ($url in @($env:SPLUNK_MSI, $env:SPLUNK_MSI_ALT)) {
+            if (-not $url) { continue }
+            curl.exe --silent --show-error --fail --location --output $msi $url
+            if ($LASTEXITCODE -eq 0) { $from = $url; break }
+          }
+          if (-not $from) { throw 'the Splunk Enterprise installer could not be downloaded' }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash.ToLower()
+          "installer: $from ($([math]::Round((Get-Item -LiteralPath $msi).Length / 1MB)) MB), SHA-256 $hash"
+          if ($env:SPLUNK_MSI_SHA256 -and $hash -ne $env:SPLUNK_MSI_SHA256) { throw 'the installer is not the file this workflow pins by its SHA-256' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $msi
+          "signed by: $($signature.SignerCertificate.Subject) ($($signature.Status))"
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Splunk') { throw 'the installer does not carry a valid signature of Splunk' }
+
+          $bytes = New-Object byte[] 16
+          [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+          $password = 'Lab-' + (($bytes | ForEach-Object { $_.ToString('x2') }) -join '')
+          Write-Output "::add-mask::$password"
+          "SPLUNK_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $env:SPLUNK_PASSWORD = $password
+
+          $splunk = 'C:\Program Files\Splunk'
+          Add-MpPreference -ExclusionPath $splunk -ErrorAction SilentlyContinue
+          $log = Join-Path $env:RUNNER_TEMP 'splunk-install.log'
+          $started = Get-Date
+          $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @('/i', "`"$msi`"", '/quiet', '/norestart', '/l*v', "`"$log`"",
+            'AGREETOLICENSE=Yes', 'SPLUNKUSERNAME=admin', "SPLUNKPASSWORD=$password", 'INSTALL_SHORTCUT=0')
+          "msiexec ended with $($install.ExitCode) after $([int]((Get-Date) - $started).TotalSeconds) s"
+          if ($install.ExitCode -ne 0) { Get-Content -LiteralPath $log -Tail 40; throw 'Splunk Enterprise did not install' }
+          foreach ($app in 'rasd', 'rasd_fields', 'rasd_forwarder') {
+            Copy-Item -Recurse -Force -LiteralPath "queries\splunk_app\$app" -Destination "$splunk\etc\apps\"
+          }
+          Restart-Service -Name Splunkd -Force
+          $url = 'https://127.0.0.1:8089'
+          python red\lab\splunk_lab.py about --url $url --timeout 420 --terms "accepted for this run by the person who started it" --out (Join-Path $env:RUNNER_TEMP 'siem.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Splunk does not answer on its management port' }
+          $probe = "rasd-siem-probe-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+          cmd.exe /c "echo $probe" | Out-Null
+          python red\lab\splunk_lab.py ready --url $url --timeout 300 --search "index=sysmon $probe"
+          if ($LASTEXITCODE -ne 0) { throw 'the Sysmon events of this host do not reach Splunk' }
+          "SPLUNK_URL=$url" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Plant the file decoys
         shell: powershell
@@ -94,6 +147,24 @@ jobs:
             (Get-Content -LiteralPath $results -Raw | ConvertFrom-Json) | Format-Table -Property test, step, status, cleanup, error -AutoSize -Wrap | Out-String -Width 220
           }
 
+      - name: Ask Splunk what it alerted on
+        if: always() && env.SPLUNK_URL != ''
+        shell: powershell
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          $results = Join-Path $env:RUNNER_TEMP 'lab-windows\emulation-results.json'
+          $status = 0
+          python red\lab\splunk_lab.py wait --url $env:SPLUNK_URL --results $results --out (Join-Path $env:RUNNER_TEMP 'siem-wait.txt')
+          if ($LASTEXITCODE -ne 0) { $status = $LASTEXITCODE }
+          python red\lab\splunk_lab.py export --url $env:SPLUNK_URL --results $results --out (Join-Path $env:RUNNER_TEMP 'siem-alerts.csv')
+          if ($LASTEXITCODE -ne 0) { $status = $LASTEXITCODE }
+          python red\lab\splunk_lab.py searches --url $env:SPLUNK_URL --show "RASD Health" --out (Join-Path $env:RUNNER_TEMP 'siem-searches.json')
+          if ($LASTEXITCODE -ne 0) { $status = $LASTEXITCODE }
+          python red\lab\splunk_lab.py feeds --url $env:SPLUNK_URL --sample --out (Join-Path $env:RUNNER_TEMP 'siem-feeds.json')
+          "SIEM_STATUS=$status" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          exit 0
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
         if: always()
         with:
@@ -101,7 +172,16 @@ jobs:
           path: |
             ${{ runner.temp }}/lab-windows.zip
             ${{ runner.temp }}/lab-windows.zip.sha256
+            ${{ runner.temp }}/siem-*
+            ${{ runner.temp }}/siem.json*
           if-no-files-found: warn
+
+      - name: An alert the run expected did not come, or Splunk refused a search
+        if: env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'
+        shell: powershell
+        run: |
+          Write-Output "::error::the live Splunk did not raise every alert the run expects, or a saved search failed: read 'Ask Splunk what it alerted on'."
+          exit 1
 
   linux:
     name: Linux lab host
@@ -205,7 +285,7 @@ jobs:
           status=0
           python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-wait.txt" || status=$?
           python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-alerts.csv" || status=$?
-          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
+          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --show "RASD Health" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
           python3 red/lab/splunk_lab.py feeds --url "$SPLUNK_URL" --sample --out "$RUNNER_TEMP/siem-feeds.json" || true
           echo "SIEM_STATUS=$status" >> "$GITHUB_ENV"
 
@@ -220,7 +300,8 @@ jobs:
             ${{ runner.temp }}/canary-export.jsonl
             ${{ runner.temp }}/canary-export.jsonl.sha256
             ${{ runner.temp }}/linux-run.txt
-            ${{ runner.temp }}/siem*
+            ${{ runner.temp }}/siem-*
+            ${{ runner.temp }}/siem.json*
           if-no-files-found: warn
 
       - name: An alert the run expected did not come, or Splunk refused a search
@@ -315,7 +396,7 @@ jobs:
           status=0
           python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-wait.txt" || status=$?
           python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-alerts.csv" || status=$?
-          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
+          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --show "RASD Health" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
           python3 red/lab/splunk_lab.py feeds --url "$SPLUNK_URL" --sample --out "$RUNNER_TEMP/siem-feeds.json" || true
           echo "SIEM_STATUS=$status" >> "$GITHUB_ENV"
 
@@ -328,7 +409,8 @@ jobs:
             ${{ runner.temp }}/web-export.jsonl
             ${{ runner.temp }}/web-export.jsonl.sha256
             ${{ runner.temp }}/web-run.txt
-            ${{ runner.temp }}/siem*
+            ${{ runner.temp }}/siem-*
+            ${{ runner.temp }}/siem.json*
           if-no-files-found: warn
 
       - name: An alert the run expected did not come, or Splunk refused a search
@@ -373,18 +455,24 @@ jobs:
           keep="hosted-$GITHUB_RUN_ID"
           note="GitHub-hosted runners (windows-2022 and ubuntu-24.04), each marked as a RASD lab host for one run and discarded after it. No domain and no SIEM. Workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA."
           missed=0
+          siem() {      # the alerts the live SIEM raised and its own description, when a run has them
+            for f in "$1/siem-alerts.csv" "$1/siem.json"; do if [ -s "$f" ]; then echo "$f"; fi; done
+          }
           if [ -f "$runs/lab-windows/lab-windows.zip" ]; then
-            rasd evidence --run "$runs/lab-windows/lab-windows.zip" --strict --keep "$keep" --note "$note" || missed=1
+            mapfile -t beside < <(siem "$runs/lab-windows")
+            rasd evidence --run "$runs/lab-windows/lab-windows.zip" "${beside[@]}" --strict --keep "$keep" --note "$note" || missed=1
           fi
           if [ -d "$runs/lab-linux/lab-linux" ]; then
             exports=("$runs/lab-linux/linux-export.jsonl")
             if [ -s "$runs/lab-linux/canary-export.jsonl" ]; then exports+=("$runs/lab-linux/canary-export.jsonl"); fi
-            if [ -s "$runs/lab-linux/siem-alerts.csv" ]; then exports+=("$runs/lab-linux/siem-alerts.csv"); fi
+            mapfile -t beside < <(siem "$runs/lab-linux")
+            exports+=("${beside[@]}")
             rasd evidence --run "$runs/lab-linux/lab-linux" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
           fi
           if [ -d "$runs/lab-web/lab-web" ]; then
             exports=("$runs/lab-web/web-export.jsonl")
-            if [ -s "$runs/lab-web/siem-alerts.csv" ]; then exports+=("$runs/lab-web/siem-alerts.csv"); fi
+            mapfile -t beside < <(siem "$runs/lab-web")
+            exports+=("${beside[@]}")
             rasd evidence --run "$runs/lab-web/lab-web" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
           fi
           echo "missed=$missed" >> "$GITHUB_OUTPUT"

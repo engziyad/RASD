@@ -431,7 +431,7 @@ def run_command(run: dict | None, profile: str) -> list[str]:
 
 def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: str, results_sha: str,
            siem_files: dict[str, str], profile: str = profiles.NATIVE, manifest: dict | None = None,
-           run: dict | None = None) -> str:
+           run: dict | None = None, platform: dict | None = None) -> str:
     t0, ev, note = hits[0]
     start = step_time(step, "utc_start")
     if start is None:
@@ -472,6 +472,8 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
                          "latency_seconds": round(max(0.0, (a_time - start).total_seconds()), 3),
                          # event logged -> alert: forwarding, indexing and the wait for the scheduled search
                          "pipeline_seconds": round(max(0.0, (a_time - t0).total_seconds()), 3)}
+        if platform:
+            front["siem"]["platform"] = platform_line(platform)
         front["inputs"]["siem"] = [{"file": n, "sha256": h} for n, h in siem_files.items()]
     score = operational_score(front)
     front["operational_score"] = sum(score.values())
@@ -485,6 +487,7 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
              f"| Matching events | {len(hits)} |",
              "| SIEM alert | " + (f"{front['siem']['alert_name']} at {front['siem']['first_alert_utc']}"
                                    if alerts else "not provided") + " |",
+             *([f"| SIEM | {front['siem']['platform']} |"] if alerts and platform else []),
              f"| Telemetry latency | {latency:.1f} s - step start → the event is logged on the host |",
              "| SIEM alert latency | " + (f"{front['siem']['latency_seconds']:.0f} s - step start → the SIEM alert "
                                            "(scored)" if alerts else "-") + " |",
@@ -515,7 +518,7 @@ def render(det, step: dict, hits, alerts, files: dict[str, str], results_name: s
 
 def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_alerts, files: dict[str, str],
                        results_name: str, results_sha: str, siem_files: dict[str, str], profile: str = profiles.NATIVE,
-                       manifest: dict | None = None, run: dict | None = None) -> str:
+                       manifest: dict | None = None, run: dict | None = None, platform: dict | None = None) -> str:
     p = corr.params
     start = step_time(step, "utc_start")
     if start is None:
@@ -558,6 +561,8 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
                          "latency_seconds": round(max(0.0, (a_time - start).total_seconds()), 3),
                          # threshold reached -> alert: forwarding, indexing and the wait for the window to close
                          "pipeline_seconds": round(max(0.0, (a_time - crossed).total_seconds()), 3)}
+        if platform:
+            front["siem"]["platform"] = platform_line(platform)
         front["inputs"]["siem"] = [{"file": n, "sha256": h} for n, h in siem_files.items()]
     score = operational_score(front)
     front["operational_score"] = sum(score.values())
@@ -577,6 +582,7 @@ def render_correlation(corr, step: dict, bound: list[dict], alert: dict, siem_al
              f"| Threshold reached (UTC) | {iso(crossed)} |",
              "| SIEM alert | " + (f"{front['siem']['alert_name']} at {front['siem']['first_alert_utc']}"
                                    if siem_alerts else "not provided") + " |",
+             *([f"| SIEM | {front['siem']['platform']} |"] if siem_alerts and platform else []),
              f"| Telemetry latency | {latency:.1f} s - step start → the event that reached the threshold |",
              "| SIEM alert latency | " + (f"{front['siem']['latency_seconds']:.0f} s - step start → the SIEM alert "
                                            "(scored)" if siem_alerts else "-") + " |",
@@ -707,6 +713,33 @@ def first_record(path: Path) -> dict | None:
     except ValueError:
         return None
     return None
+
+
+def siem_platform(path: Path) -> dict | None:
+    """The lab SIEM's own description of itself (red/lab/splunk_lab.py about writes it): product,
+    version and the apps installed. None for any other file."""
+    if path.suffix.lower() != ".json":
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    named = isinstance(doc, dict) and all(isinstance(doc.get(k), str) and doc[k] for k in ("product", "version"))
+    return doc if named and isinstance(doc.get("apps"), dict) else None
+
+
+def platform_line(doc: dict) -> str:
+    """One line for the evidence file: which SIEM raised the alert, and what read its fields."""
+    addons = [str(a) for a in doc.get("vendor_addons") or []] if isinstance(doc.get("vendor_addons"), list) else []
+    out = f"{doc['product']} {doc['version']}"
+    if doc.get("build"):
+        out += f" (build {doc['build']})"
+    if doc.get("licence"):
+        out += f", {doc['licence']} licence"
+    if doc["apps"]:
+        out += "; apps: " + ", ".join(f"{k} {v}".strip() for k, v in sorted(doc["apps"].items()))
+    out += "; vendor add-ons: " + (", ".join(sorted(addons)) or "none")
+    return re.sub(r"[\r\n|]+", " ", out).strip()
 
 
 def export_kind(path: Path) -> str | None:
@@ -864,6 +897,11 @@ def discover(paths: list[Path], workdir: Path, strict: bool = False) -> LabRun:
             lines.append(("readiness", f.name, " · ".join(f"{n} {r}" for r, n in counts.items())
                           + (f" (FAIL: {', '.join(failed)})" if failed else "")))
             continue
+        about = siem_platform(f)
+        if about:
+            run.siem.append(f)
+            lines.append(("SIEM", f.name, platform_line(about)))
+            continue
         kind = export_kind(f) if f.suffix.lower() in (".jsonl", ".json", ".csv") else None
         if kind == "telemetry":
             run.logs.append(f)
@@ -917,9 +955,13 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
         events += load_jsonl(p)
         files[p.name] = sha256(p)
     events, profile = profiles.apply(events, profile_name)
-    alerts, siem_files = [], {}
+    alerts, siem_files, platform = [], {}, None
     for p in siem_paths:
-        alerts += load_siem(p)
+        about = siem_platform(p)
+        if about:
+            platform = about
+        else:
+            alerts += load_siem(p)
         siem_files[p.name] = sha256(p)
     dets = load_detections()
     corrs = load_correlations()
@@ -973,10 +1015,10 @@ def evaluate(results_path: Path, log_paths: list[Path], siem_paths: list[Path], 
         bodies: dict[str, tuple[Path, str]] = {}
         for det, step, hits, al in best.values():
             bodies[det.id] = (det.folder, render(det, step, hits, al, files, results_path.name, sha256(results_path),
-                                                 siem_files, profile, manifest, run))
+                                                 siem_files, profile, manifest, run, platform))
         for corr, step, bound, alert, al in best_corr.values():
             bodies[corr.id] = (corr.folder, render_correlation(corr, step, bound, alert, al, files, results_path.name,
-                                                               sha256(results_path), siem_files, profile, manifest, run))
+                                                               sha256(results_path), siem_files, profile, manifest, run, platform))
         if collect is not None:
             collect.update({det_id: body for det_id, (_folder, body) in bodies.items()})
         else:

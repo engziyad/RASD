@@ -173,6 +173,8 @@ FIELDS_INTRO = """\
 #
 # A field read by a regular expression holds the XML text as written (&amp; for &). The EVAL lines
 # decode the five XML entities in the fields the rules read, so a rule sees the value Windows logged.
+# KV_MODE = none: only the extractions named here read these records. Left on, Splunk would also make
+# a field of every name=value it finds in the text, and a command line is text an intruder writes.
 """
 FIELDS_LINES = """\
 SHOULD_LINEMERGE = false
@@ -390,6 +392,7 @@ def fields_props(dets, corrs=()) -> str:
         out.append(f"[{stanza}]")
         if not stanza.startswith("source::"):               # a sourcetype RASD's lab feeds as one event XML per line
             out.append(FIELDS_LINES.rstrip("\n"))
+        out.append("KV_MODE = none")
         out.append(f"REPORT-rasd_fields = {FIELDS_REPORT}")
         out += [f"EVAL-{f} = {decode_entities(f)}" for f in fields]
         out.append("")

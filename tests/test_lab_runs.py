@@ -247,6 +247,62 @@ class KeptRuns(unittest.TestCase):
         (self.library / "evidence.md").write_text(text.replace("- file: decoded.json", "- file: C:\\Lab\\decoded.json"), encoding="utf-8")
         self.assertTrue(any("recorded by its file name" in e for e in validate.evidence_errors(self.library)))
 
+    def siem_files(self, base: Path, alert_at="2026-10-12T06:07:30.000Z", host="LAB-WS01", version="10.4.5"):
+        """What red/lab/splunk_lab.py leaves beside a run: the alerts the SIEM raised, and which SIEM it was."""
+        alerts = base / "siem-alerts.csv"
+        alerts.write_text("_time,ss_name,host,alert_hosts,result_count,first_event,last_event\n"
+                          f"{alert_at},RASD - {DETECTION},{host},{host},1,1791784801.400,1791784801.400\n", encoding="utf-8")
+        about = base / "siem.json"
+        about.write_text(json.dumps({"product": "Splunk Enterprise", "version": version, "build": "de9225ad9740", "licence": "Trial",
+                                     "apps": {"rasd": "1.7.0", "rasd_fields": "1.7.0"}, "vendor_addons": [], "indexes": ["linux"]}),
+                         encoding="utf-8")
+        for f in (alerts, about):
+            (base / f"{f.name}.sha256").write_text(f"{evidence.sha256(f)}  {f.name}\n", encoding="utf-8")
+        return [alerts, about]
+
+    def test_the_alert_of_a_live_siem_and_which_siem_it_was_are_part_of_the_kept_run(self):
+        paths = self.folder_run()
+        paths += self.siem_files(paths[1].parent)
+        dest = self.keep(paths)
+        self.assertEqual(sorted(p.name for p in dest.iterdir()),
+                         ["export.jsonl", "export.jsonl.sha256", "lab-linux", "siem-alerts.csv", "siem-alerts.csv.sha256",
+                          "siem.json", "siem.json.sha256"])
+        text = self.write_evidence()
+        front = evidence.front_of(text)
+        self.assertEqual(front["siem"]["alerts"], 1)
+        self.assertEqual(front["siem"]["latency_seconds"], 450.0)
+        self.assertEqual(front["siem"]["platform"], "Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; "
+                                                    "apps: rasd 1.7.0, rasd_fields 1.7.0; vendor add-ons: none")
+        self.assertIn("| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence;", text)
+        self.assertEqual([i["file"] for i in front["inputs"]["siem"]], ["siem-alerts.csv", "siem.json"])
+        score = evidence.operational_score(front)
+        self.assertEqual((score["SIEM result"], score["Detection latency"]), (25, 5))
+        self.assertEqual(validate.evidence_errors(self.library), [])
+        self.assertEqual(self.quiet(evidence.refresh, self.store, self.entries)[0], 0)
+        self.assertIn("byte for byte", self.quiet(evidence.check, self.store, self.entries)[1])
+        # the SIEM's description is an input like the others: change it and the evidence is no longer what the run gives
+        about = dest / "siem.json"
+        about.write_text(about.read_text(encoding="utf-8").replace("10.4.5", "9.9.9"), encoding="utf-8")
+        st = self.standing()
+        self.assertTrue(st.stale or st.problems, "a changed input is seen")
+
+    def test_an_alert_of_another_host_or_another_hour_is_not_this_run_s(self):
+        for kwargs in ({"host": "OTHER-PC"}, {"alert_at": "2026-10-12T07:30:00.000Z"}):
+            (self.library / "evidence.md").unlink(missing_ok=True)
+            paths = self.folder_run()
+            paths += self.siem_files(paths[1].parent, **kwargs)
+            self.keep(paths)
+            front = evidence.front_of(self.standing().stale[DETECTION][1])
+            self.assertIsNone(front["siem"], kwargs)
+            self.assertEqual(evidence.operational_score(front)["SIEM result"], 0)
+
+    def test_a_json_file_that_is_not_a_siem_s_description_is_not_read_as_one(self):
+        for body in ('{"product": "x"}', '{"product": "x", "version": "1"}', '[{"product": "x", "version": "1", "apps": {}}]', "not json"):
+            f = self.tmp / "other.json"
+            f.write_text(body, encoding="utf-8")
+            self.assertIsNone(evidence.siem_platform(f), body)
+        self.assertIsNone(evidence.siem_platform(self.tmp / "missing.json"))
+
     def test_evidence_whose_run_stayed_with_its_lab_is_listed_and_left_alone(self):
         self.keep(self.folder_run())
         text = self.write_evidence()
