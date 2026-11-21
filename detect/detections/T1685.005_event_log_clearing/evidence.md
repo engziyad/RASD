@@ -3,39 +3,51 @@ rasd_evidence: 1
 detection: T1685.005_event_log_clearing
 technique: T1685.005
 result: fired
-run_utc: '2026-11-20T18:01:40.809396Z'
+run_utc: '2026-11-21T03:02:53.279572Z'
 host: runnervmhh3zg
 test: event_log_clearing
 step: clear_test_log
-marker: rasd_5cb71965
+marker: rasd_1c373302
 bound_by: run token
-latency_seconds: 0.073
+latency_seconds: 0.107
 matched_events: 1
 cleanup: verified
 artifacts:
 - file: log-clear-records.json
-  sha256: fa8e27a1162b6cc682cca3a4e4ee9ce6a9dd536a277026cee160857d8aee7a9b
-siem: null
+  sha256: b025aabc90bdc24074d429853404bc731d095ceeb92ca3d06d1d31f625a503ca
+siem:
+  alerts: 1
+  first_alert_utc: '2026-11-21T03:10:04Z'
+  alert_name: RASD - T1685.005_event_log_clearing
+  latency_seconds: 430.72
+  pipeline_seconds: 430.614
+  platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
+    1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 671ef3f86983198f60ea932d61fc3ed4e7532c58988e7e3fea069bf2fa120f31
+    sha256: 48f30ca10817ca52cfaab3b94fbd552f145770a47d1886dbbff8d392a7c74937
   telemetry:
   - file: lab-export.jsonl
-    sha256: 1928a053afbc3427ecc6c2e9c08d26cc99c4bc0890db0045ad3ae8cd90275acd
+    sha256: 3988ac1e1cde6006ae01636cec3993adf8b79cee969a25dabc89d0fa200c30e4
   profile: sysmon-native
   manifest:
     file: lab-run-manifest.json
-    sha256: ce83936f39017d2542ba72ea47865874b87c2f2857153bc5909b521484a0f559
+    sha256: d09f7ea9df7b09460fb600a2e4a698c57c6924c6d8d51f07bf067894ca2ef0c0
     verified:
     - emulation-results.json
     - lab-export.jsonl
   run:
     file: lab-windows.zip
-    sha256: a2f2af7c6d07e7fc66fb34c2cbb0bdb6faf73e1dcab03fb0192fed7957a266f5
+    sha256: 68646245c5f866ad13d358d39fcaa5516f2cf2689d00741535baaa163d605525
     sha256_file: matched
   verification: strict
-operational_score: 60
+  siem:
+  - file: siem-alerts.csv
+    sha256: c2218c842f0fc6db131155759a5291edf884dd2ae3bafe5270bfbfe4a1aa095c
+  - file: siem.json
+    sha256: 5183932439989d0f625c2f3d0386a2f9f166bc42963626765cc7b2f66ae4da4a
+operational_score: 90
 ---
 
 # Lab evidence · Windows Event Log Clearing via Command Line
@@ -44,28 +56,29 @@ operational_score: 60
 |---|---|
 | Emulation step | wevtutil cl on a dedicated test log (writes System 104) |
 | Host · user | runnervmhh3zg · runnervmhh3zg\runneradmin |
-| Step window (UTC) | 2026-11-20T18:01:40.8093964Z → 2026-11-20T18:01:40.8884692Z |
-| First matching event (UTC) | 2026-11-20T18:01:40.882277 |
+| Step window (UTC) | 2026-11-21T03:02:53.2795722Z → 2026-11-21T03:02:53.4116308Z |
+| First matching event (UTC) | 2026-11-21T03:02:53.386261 |
 | Matching events | 1 |
-| SIEM alert | not provided |
+| SIEM alert | RASD - T1685.005_event_log_clearing at 2026-11-21T03:10:04Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none |
 | Telemetry latency | 0.1 s - step start → the event is logged on the host |
-| SIEM alert latency | - |
-| SIEM pipeline delay | - |
+| SIEM alert latency | 431 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 431 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 | Alert user | runnervmhh3zg\runneradmin |
-| Note | carries this run's token R5cb71965 |
+| Note | carries this run's token R1c373302 |
 
 ## Operational Score
 
 | Area | Points |
 |---|---:|
 | Lab evidence | 35 / 35 |
-| SIEM result | 0 / 25 |
-| Detection latency | 0 / 15 |
+| SIEM result | 25 / 25 |
+| Detection latency | 5 / 15 |
 | DFIR evidence | 15 / 15 |
 | Cleanup | 10 / 10 |
-| **Total** | **60 / 100** |
+| **Total** | **90 / 100** |
 
 ## Matching event (fields the rule reads)
 
@@ -74,12 +87,12 @@ operational_score: 60
   "Channel": "Microsoft-Windows-Sysmon/Operational",
   "Provider_Name": "Microsoft-Windows-Sysmon",
   "EventID": 1,
-  "TimeCreated": "2026-11-20T18:01:40.8822772Z",
+  "TimeCreated": "2026-11-21T03:02:53.3862617Z",
   "Computer": "runnervmhh3zg",
-  "UtcTime": "2026-11-20 18:01:40.879",
+  "UtcTime": "2026-11-21 03:02:53.383",
   "Image": "C:\\Windows\\System32\\wevtutil.exe",
   "OriginalFileName": "wevtutil.exe",
-  "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl R5cb71965",
+  "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl R1c373302",
   "User": "runnervmhh3zg\\runneradmin"
 }
 ```
@@ -89,9 +102,9 @@ operational_score: 60
 Hash the raw files and compare them with `inputs` above, then re-run:
 
 ```bash
-rasd evidence --run lab-windows.zip --strict --dry-run
-rasd evidence --results emulation-results.json --logs lab-export.jsonl --dry-run
-rasd explain T1685.005_event_log_clearing --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-20T18:01:40.8822772Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-20 18:01:40.879", "Image": "C:\\Windows\\System32\\wevtutil.exe", "OriginalFileName": "wevtutil.exe", "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl R5cb71965", "User": "runnervmhh3zg\\runneradmin"}'
+rasd evidence --run lab-windows.zip siem-alerts.csv siem.json siem-searches.json --strict --dry-run
+rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
+rasd explain T1685.005_event_log_clearing --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-21T03:02:53.3862617Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-21 03:02:53.383", "Image": "C:\\Windows\\System32\\wevtutil.exe", "OriginalFileName": "wevtutil.exe", "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl R1c373302", "User": "runnervmhh3zg\\runneradmin"}'
 ```
 
 <sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>

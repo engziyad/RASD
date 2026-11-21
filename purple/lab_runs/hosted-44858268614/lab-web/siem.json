@@ -1,0 +1,26 @@
+{
+ "product": "Splunk Enterprise",
+ "version": "10.4.5",
+ "build": "de9225ad9740",
+ "licence": "Trial",
+ "os": "Linux",
+ "apps": {
+  "rasd": "1.7.0",
+  "rasd_fields": "1.7.0",
+  "rasd_lab_inputs": "2026.11.21"
+ },
+ "vendor_addons": [],
+ "indexes": [
+  "deception",
+  "history",
+  "linux",
+  "main",
+  "rasd_alerts",
+  "splunklogger",
+  "summary",
+  "sysmon",
+  "web",
+  "wineventlog"
+ ],
+ "terms": "accepted for this run by the person who started it"
+}

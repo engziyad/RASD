@@ -14,7 +14,15 @@ A rule that is not fed looks exactly like a rule on a quiet day. These searches 
 
 The Splunk app schedules the five SPL searches as `RASD Health - <name>` and writes each row to the alert index as `sourcetype=rasd:health`. The KQL searches are for Sentinel analytics rules or a workbook; `schedule.kql` reads the `SentinelHealth` table, which health monitoring has to be turned on for.
 
-> **Not yet run on a live SIEM.** The searches are generated and checked for structure on every build, but they wait for a lab run with a live SIEM in it ([how](../../red/lab/README.md)). The same checks, as `rasd health` runs them on exports, are exercised by the tests and by the sample below.
+> **Run on a live Splunk, in the lab.** The table is what Splunk Enterprise 10.4.5 answered when each SPL search was run once beside 3 lab hosts, after the attack steps ([kept runs](../../purple/lab_runs/README.md); the record is each part's `siem-searches.json`). It shows that Splunk accepts the searches as generated, and what they return over a lab that is in order: a row there would be a false alarm. It does not show a watchdog catching its fault. No feed was broken on purpose, and `silent` and `volume` compare with a week that a host made for one run has not lived. The KQL searches have not run on a live Sentinel.
+
+| Watchdog | `hosted-44858268614/lab-linux` | `hosted-44858268614/lab-web` | `hosted-44858268614/lab-windows` |
+|---|---|---|---|
+| **silent** | ran: 0 rows | ran: 0 rows | ran: 0 rows |
+| **volume** | ran: 0 rows | ran: 0 rows | ran: 0 rows |
+| **fields** | ran: 0 rows | ran: 0 rows | ran: 0 rows |
+| **delay** | ran: 0 rows | ran: 0 rows | ran: 0 rows |
+| **schedule** | ran: 0 rows | ran: 0 rows | ran: 0 rows |
 
 ## What is watched
 

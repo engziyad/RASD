@@ -3,30 +3,42 @@ rasd_evidence: 1
 detection: T1053.003_crontab_noninteractive_install
 technique: T1053.003
 result: fired
-run_utc: '2026-11-20T18:01:01.210000Z'
-host: ip-10-0-140-144
+run_utc: '2026-11-21T02:56:14.113000Z'
+host: ip-10-0-135-155
 test: cron_persistence
 step: crontab_entry
-marker: rasd_2bf3efc9
+marker: rasd_df4a417d
 bound_by: host and time window
-latency_seconds: 0.012
+latency_seconds: 0.011
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: crontab-rasd_2bf3efc9.txt
-  sha256: 6f7599130ceb99a7b884488c45efbc1fa1cd1b4a9434d32eb3f9248de1207a0a
-siem: null
+- file: crontab-rasd_df4a417d.txt
+  sha256: 30d33e098dda2e7fab6e8d9f2256749df19227d9e4d22d73e4029d05dc5b30ec
+siem:
+  alerts: 1
+  first_alert_utc: '2026-11-21T03:05:02Z'
+  alert_name: RASD - T1053.003_crontab_noninteractive_install
+  latency_seconds: 527.887
+  pipeline_seconds: 527.876
+  platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
+    1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 872d796a14f31bb2a2ab2cb45757cbbb376defde2608339fcd0f003d58d6de6a
+    sha256: 4ecb45f17adbbf8fb0ab5550af5e80a053ac1598aa2c462f2613b9686d04be2b
   telemetry:
   - file: linux-export.jsonl
-    sha256: c4292c2689902c3f5e4c3166e106845cc5af0329d260d032e2c7304ca4ff2a49
+    sha256: e487670f8ac82ba25a2e4955754623fcc77b6cdbdf9140b9b6bab7b83fee360b
   - file: canary-export.jsonl
-    sha256: 5fdaa692eab93f59d083c84e4da3185fc88e8ce179b7e3a56e853e26a8993e70
+    sha256: 598f49351dff4a245c6e405284c0be7bc63905039cdabf64a7930189787b75f9
   profile: sysmon-native
-operational_score: 60
+  siem:
+  - file: siem-alerts.csv
+    sha256: f10cdb6393e38f103d63f4617cf463a5f98e13f2642d0478266c63f801f481a5
+  - file: siem.json
+    sha256: db7ba61dab2b362c94389bebfda6c58f745a9243859a45f8823debba55444824
+operational_score: 90
 ---
 
 # Lab evidence · Crontab Installed From Standard Input or a File
@@ -34,14 +46,15 @@ operational_score: 60
 | | |
 |---|---|
 | Emulation step | Add a crontab line that echoes the marker every 30 minutes |
-| Host · user | ip-10-0-140-144 · runner |
-| Step window (UTC) | 2026-11-20T18:01:01.210Z → 2026-11-20T18:01:01.224Z |
-| First matching event (UTC) | 2026-11-20T18:01:01.222251 |
+| Host · user | ip-10-0-135-155 · runner |
+| Step window (UTC) | 2026-11-21T02:56:14.113Z → 2026-11-21T02:56:14.125Z |
+| First matching event (UTC) | 2026-11-21T02:56:14.124224 |
 | Matching events | 1 |
-| SIEM alert | not provided |
+| SIEM alert | RASD - T1053.003_crontab_noninteractive_install at 2026-11-21T03:05:02Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none |
 | Telemetry latency | 0.0 s - step start → the event is logged on the host |
-| SIEM alert latency | - |
-| SIEM pipeline delay | - |
+| SIEM alert latency | 528 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 528 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 | Alert user | runner |
@@ -51,21 +64,21 @@ operational_score: 60
 | Area | Points |
 |---|---:|
 | Lab evidence | 35 / 35 |
-| SIEM result | 0 / 25 |
-| Detection latency | 0 / 15 |
+| SIEM result | 25 / 25 |
+| Detection latency | 5 / 15 |
 | DFIR evidence | 15 / 15 |
 | Cleanup | 10 / 10 |
-| **Total** | **60 / 100** |
+| **Total** | **90 / 100** |
 
 ## Matching event (fields the rule reads)
 
 ```json
 {
   "EventID": 1,
-  "TimeCreated": "2026-11-20T18:01:01.222251000Z",
+  "TimeCreated": "2026-11-21T02:56:14.124224000Z",
   "Channel": "Linux-Sysmon/Operational",
-  "Computer": "ip-10-0-140-144",
-  "UtcTime": "2026-11-20 18:01:01.223",
+  "Computer": "ip-10-0-135-155",
+  "UtcTime": "2026-11-21 02:56:14.124",
   "Image": "/usr/bin/crontab",
   "CommandLine": "crontab -",
   "User": "runner"
@@ -77,8 +90,8 @@ operational_score: 60
 Hash the raw files and compare them with `inputs` above, then re-run:
 
 ```bash
-rasd evidence --results emulation-results.json --logs linux-export.jsonl canary-export.jsonl --dry-run
-rasd explain T1053.003_crontab_noninteractive_install --event '{"EventID": 1, "TimeCreated": "2026-11-20T18:01:01.222251000Z", "Channel": "Linux-Sysmon/Operational", "Computer": "ip-10-0-140-144", "UtcTime": "2026-11-20 18:01:01.223", "Image": "/usr/bin/crontab", "CommandLine": "crontab -", "User": "runner"}'
+rasd evidence --results emulation-results.json --logs linux-export.jsonl canary-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
+rasd explain T1053.003_crontab_noninteractive_install --event '{"EventID": 1, "TimeCreated": "2026-11-21T02:56:14.124224000Z", "Channel": "Linux-Sysmon/Operational", "Computer": "ip-10-0-135-155", "UtcTime": "2026-11-21 02:56:14.124", "Image": "/usr/bin/crontab", "CommandLine": "crontab -", "User": "runner"}'
 ```
 
 <sub>Generated by RASD · Attack-to-Defense Validation Framework</sub>

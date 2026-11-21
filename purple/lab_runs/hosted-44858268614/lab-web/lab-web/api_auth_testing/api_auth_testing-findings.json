@@ -1,0 +1,207 @@
+{
+  "test": "api_auth_testing",
+  "marker": "rasd_94463bdb",
+  "target": "http://127.0.0.1:3000",
+  "findings": [
+    {
+      "check": "GET /rest/basket/1 with no token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/basket/1 with malformed token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/basket/1 with foreign-signed JWT",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Cards with no token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Cards with malformed token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Cards with foreign-signed JWT",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Users with no token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Users with malformed token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Users with foreign-signed JWT",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Addresss with no token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Addresss with malformed token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /api/Addresss with foreign-signed JWT",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/wallet/balance with no token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/wallet/balance with malformed token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/wallet/balance with foreign-signed JWT",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/user/authentication-details with no token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/user/authentication-details with malformed token",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "check": "GET /rest/user/authentication-details with foreign-signed JWT",
+      "result": "PASS",
+      "detail": "HTTP 401"
+    }
+  ],
+  "requests": [
+    {
+      "time": "2026-11-21T02:55:37Z",
+      "method": "GET",
+      "path": "/rest/basket/1",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:37Z",
+      "method": "GET",
+      "path": "/rest/basket/1",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:38Z",
+      "method": "GET",
+      "path": "/rest/basket/1",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:38Z",
+      "method": "GET",
+      "path": "/api/Cards",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:38Z",
+      "method": "GET",
+      "path": "/api/Cards",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:38Z",
+      "method": "GET",
+      "path": "/api/Cards",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:38Z",
+      "method": "GET",
+      "path": "/api/Users",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:39Z",
+      "method": "GET",
+      "path": "/api/Users",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:39Z",
+      "method": "GET",
+      "path": "/api/Users",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:39Z",
+      "method": "GET",
+      "path": "/api/Addresss",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:39Z",
+      "method": "GET",
+      "path": "/api/Addresss",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:40Z",
+      "method": "GET",
+      "path": "/api/Addresss",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:40Z",
+      "method": "GET",
+      "path": "/rest/wallet/balance",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:40Z",
+      "method": "GET",
+      "path": "/rest/wallet/balance",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:40Z",
+      "method": "GET",
+      "path": "/rest/wallet/balance",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:40Z",
+      "method": "GET",
+      "path": "/rest/user/authentication-details",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:41Z",
+      "method": "GET",
+      "path": "/rest/user/authentication-details",
+      "status": 401
+    },
+    {
+      "time": "2026-11-21T02:55:41Z",
+      "method": "GET",
+      "path": "/rest/user/authentication-details",
+      "status": 401
+    }
+  ]
+}

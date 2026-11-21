@@ -6,8 +6,8 @@
 | **ATT&CK** | [T1595.003](https://attack.mitre.org/techniques/T1595/003/) Active Scanning: Wordlist Scanning (reconnaissance) |
 | **Severity** | `medium` |
 | **Type** | Sigma correlation · >= 5 distinct cs-uri-stem per c-ip in 5m windows · base rule [`web_request_rejected`](base.yml) |
-| **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational 60/100 |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | base rule: 5 true positive · 5 true negative · 5 technique mutations · 11 scenarios (3 fire, 8 silent) |
 | **Proof** | base rule: 100% of 4 mutants killed · fuzzer n/a (no evasion strategy applies to its fields) · correlation: 5/5 parameter mutants killed |
 | **Behaviour proof** | base rule: 1 of 3 variants proven for every event · 1 known gap, each with an engine-confirmed event · 1 exclusion proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1595003-web-request-rejected-with-401-or-403)) |

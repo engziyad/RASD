@@ -6,10 +6,10 @@
 | **ATT&CK** | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Command and Scripting Interpreter: Unix Shell (execution) · related: [T1027](https://attack.mitre.org/techniques/T1027/) Obfuscated Files or Information (stealth) |
 | **Severity** | `high` |
 | **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational 45/100 |
+| **Engineering Score** | 100/100 · operational 75/100 |
 | **Tests** | 11 true positive · 7 true negative · 6 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 60 variants |
-| **Parity** | KQL and SPL identical to the rule on 185 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 185 events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 1 of 5 public recordings of its behaviour · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1059.004_linux_suspicious_shell_execution.kql) · [SPL](../../../queries/spl/T1059.004_linux_suspicious_shell_execution.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

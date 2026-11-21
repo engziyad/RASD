@@ -6,10 +6,10 @@
 | **ATT&CK** | [T1218.011](https://attack.mitre.org/techniques/T1218/011/) System Binary Proxy Execution: Rundll32 (stealth) |
 | **Severity** | `high` |
 | **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational 45/100 |
+| **Engineering Score** | 100/100 · operational 75/100 |
 | **Tests** | 21 true positive · 8 true negative · 4 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 178 variants |
-| **Parity** | KQL and SPL identical to the rule on 1859 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 1859 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 17 of 19 public recordings of its behaviour · held-out: 2 of 2 · 32 alerts · 0 labelled false positives · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1218.011_rundll32_suspicious_execution.kql) · [SPL](../../../queries/spl/T1218.011_rundll32_suspicious_execution.spl) · [Defender](../../../queries/mde/T1218.011_rundll32_suspicious_execution.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

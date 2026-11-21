@@ -6,11 +6,11 @@
 | **ATT&CK** | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Discovery (discovery) · related: [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Brute Force: Password Guessing (credential-access) |
 | **Severity** | `high` |
 | **Maturity** | **Validated** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational 45/100 |
+| **Engineering Score** | 100/100 · operational 75/100 |
 | **Tests** | 23 true positive · 12 true negative · 11 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 0 variants |
 | **Behaviour proof** | 3 of 7 variants proven for every event · no known gap · 4 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1046-deception---interaction-with-a-decoy-network-service)) |
-| **Parity** | KQL and SPL identical to the rule on 274 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 274 events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | no public dataset records it yet · [why](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1046_decoy_service_interaction.kql) · [SPL](../../../queries/spl/T1046_decoy_service_interaction.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
