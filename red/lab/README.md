@@ -27,7 +27,19 @@ The workflow [`lab-run.yml`](../../.github/workflows/lab-run.yml) runs the same 
 | Lab web application | Ubuntu with OWASP Juice Shop on localhost | the web steps, with a lab account made for the run |
 | Evidence from the runs | - | `rasd evidence` on each run, the raw runs kept in [`purple/lab_runs`](../../purple/lab_runs/README.md), `rasd build`, `rasd evidence --check`, and the result pushed as a branch `lab-evidence/run-<id>` for a person to read and merge |
 
-What a hosted runner is not: joined to a domain, or watched by a SIEM. The Active Directory steps are skipped there, and evidence made from these runs carries no SIEM alert, so its Operational Score stops at 60. **The opt-in steps never run there**: dumping LSASS memory and clearing the Security log belong on a machine that is yours. For those, for the domain controller and for Splunk, the rest of this page is the way.
+**A live SIEM in the same run.** Type `accept` in the workflow's **splunk** box and a Splunk Enterprise stands beside each lab host for the length of the run: a container on the Linux hosts ([`start_splunk.sh`](start_splunk.sh)), the service on the Windows host. It gets the RASD apps of [`queries/splunk_app`](../../queries/splunk_app/README.md) and no vendor add-on, so the fields are read by `rasd_fields`. The host's events reach it as they are written, and Splunk's own scheduler raises the alerts; nothing in the job runs a detection search for it. [`splunk_lab.py`](splunk_lab.py) then waits for every alert the run expects and leaves three files beside the run:
+
+| File | What it holds | To `rasd evidence` it is |
+|---|---|---|
+| `siem-alerts.csv` | the report **RASD - alert export** over the run: one row per alert, with the alerting host | the alerts: SIEM result and latency of the Operational Score |
+| `siem.json` | which Splunk this was: version, build, licence, the RASD apps in it, the vendor add-ons (none) | part of the evidence: written into each `evidence.md` that carries an alert |
+| `siem-searches.json` | what Splunk answered when every saved search of the app, the health watchdogs included, was run once | a record kept with the run, compared with its hash, never read as evidence |
+
+An expected alert that does not come, or a search Splunk refuses, ends the job red after the run is uploaded, with what Splunk itself can say of the reason: how often the scheduler ran the search, whether it finds the events now, which fields it reads there, and what the index holds under any other name.
+
+That word is yours to type and nobody else's. Starting Splunk Enterprise is accepting its licence and the [Splunk General Terms](https://www.splunk.com/en_us/legal/splunk-general-terms.html), which allow it for your own internal use, and a fresh install runs on a trial licence. The workflow fetches Splunk from Splunk for the run, one release pinned by digest (the Windows installer also by its signature); this repository holds none of it and passes none of it on. Left empty, the box means a lab without a SIEM, and evidence without an alert.
+
+What a hosted runner is not: joined to a domain. The Active Directory steps are skipped there, and the detections that read a domain controller's log stay pending. **The opt-in steps never run there**: dumping LSASS memory and clearing the Security log belong on a machine that is yours. For those, for the domain controller and for a Splunk of your own with the vendor add-ons, the rest of this page is the way.
 
 ## Lab guard
 
@@ -58,7 +70,7 @@ Machine-level variables are read from the registry, so a value set only in one s
 
 ## Steps
 
-**1 · Splunk.** Install Splunk Enterprise and the three add-ons (Microsoft Windows, Sysmon, Sysmon for Linux). Copy `queries/splunk_app/rasd` to `$SPLUNK_HOME/etc/apps/`, enable receiving on 9997 (Settings › Forwarding and receiving), restart. The app creates every index the queries read (`sysmon`, `wineventlog`, `linux`, `web`) and `rasd_alerts` (where the alerts are written), plus one scheduled alert per detection and per correlation, named `RASD - <detection id>` - see [queries/splunk_app](../../queries/splunk_app/README.md).
+**1 · Splunk.** Install Splunk Enterprise and the three add-ons (Microsoft Windows, Sysmon, Sysmon for Linux), or, on a Splunk without them, copy `queries/splunk_app/rasd_fields` beside the app: it reads the same fields out of the event XML (one or the other, never both). Copy `queries/splunk_app/rasd` to `$SPLUNK_HOME/etc/apps/`, enable receiving on 9997 (Settings › Forwarding and receiving), restart. The app creates every index the queries read (`sysmon`, `wineventlog`, `linux`, `web`) and `rasd_alerts` (where the alerts are written), plus one scheduled alert per detection and per correlation, named `RASD - <detection id>` - see [queries/splunk_app](../../queries/splunk_app/README.md).
 
 **2 · Lab VM and DC.** On each machine, from an elevated Windows PowerShell:
 
@@ -95,7 +107,7 @@ The probe starts a harmless `cmd.exe /c rem rasd-readiness-…` and confirms Sys
 The safe default leaves `T1003.001_lsass_memory_access` and `T1685.005_security_log_cleared` without a step, so they stay pending; the full run attempts every Windows detection. Without `-Spn` the Kerberoasting step is skipped too, and without `-Target <second VM>` the WinRM step; the WinRM event is logged on the target, so export that VM's logs as well (`.\red\Export-LabTelemetry.ps1 -Since '<start>' -OutFile target-export.jsonl`). The script checks readiness, runs every test, waits for Splunk's alerts (15 minutes, or 25 when a correlation step such as the password spray ran), exports the run's events and packs everything into `red\results\lab-<time>.zip`. The zip holds the workstation side only; the script then prints the commands for the rest:
 
 - on the DC, when Kerberoasting or the password spray ran: `Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '<start>' -OutFile dc-export.jsonl`
-- in Splunk: the report **RASD - alert export** over the run window, exported as `siem-alerts.csv` - preferred, because it carries the alerting host; the `(audit)` and `(scheduler)` variants are acceptable fallbacks without a host. On the first run, confirm the host is written: `index=rasd_alerts | table _time rasd_alert alert_host alert_hosts first_event last_event`
+- in Splunk: the report **RASD - alert export** over the run window, exported as `siem-alerts.csv` - preferred, because it carries the alerting host; the `(audit)` and `(scheduler)` variants are acceptable fallbacks without a host. On the first run, confirm the host is written: `index=rasd_alerts | table _time rasd_alert alert_host alert_hosts first_event last_event`. When the Splunk is on the lab host or on a private address, [`splunk_lab.py`](splunk_lab.py) does this for you, with the admin password of that lab Splunk in `SPLUNK_PASSWORD`: `wait --results <emulation-results.json>` returns when every expected alert is there or says why one is not, `export` writes the same `siem-alerts.csv`, and `about --out siem.json` records which Splunk it was, to give to `rasd evidence` with it
 
 **5b · Linux and web.** On the Linux VM, after a snapshot (and the [lab guard](#lab-guard) marking, once):
 
@@ -145,6 +157,8 @@ After a rule's title or fields change, `rasd evidence --refresh` rewrites the ev
 | [`Test-LabReadiness.ps1`](Test-LabReadiness.ps1) | Sysmon, live probe, audit policy, PowerShell logging, forwarder and connection, lab context; `-Fix` |
 | [`RasdLabGuard.ps1`](RasdLabGuard.ps1) | Refuses to run anywhere but a machine marked as a lab (`RASD_LAB_HOST`, `RASD_LAB_DOMAINS`) |
 | [`Invoke-RasdLabRun.ps1`](Invoke-RasdLabRun.ps1) | Readiness → tests → SIEM wait → export → zip, then the remaining commands |
+| [`start_splunk.sh`](start_splunk.sh) | A Splunk Enterprise container beside a Linux lab host, with the RASD apps in it and no port published; starts nothing until `SPLUNK_TERMS=accept` |
+| [`splunk_lab.py`](splunk_lab.py) | Asks a lab Splunk over its management port: wait for the alerts a run expects, export them, run every saved search once, say which Splunk it was. Talks to this host or a private address only; the password comes from the environment |
 | [`sysmon-rasd.xml`](sysmon-rasd.xml) | Sysmon configuration covering what the rules, hunts and playbooks read. **Do not deploy sysmon-rasd.xml to production. It is intentionally verbose for validation.** |
 | [`sysmon-rasd-linux.xml`](sysmon-rasd-linux.xml) | Sysmon for Linux configuration for the Linux lab host: every process creation, nothing else |
 | [`../../.github/workflows/lab-run.yml`](../../.github/workflows/lab-run.yml) | The same kit on hosted runners that exist for one run |

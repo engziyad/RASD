@@ -81,7 +81,7 @@ Real evidence, on an isolated Windows lab VM that forwards to Splunk ([lab kit](
 .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -IncludeCredentialAccess -IncludeSecurityLogClear -Spn <lab SPN> -UserList <lab accounts>
 ```
 
-A run produces one workstation zip; Kerberoasting and the password spray also need the DC's export (`dc-export.jsonl`) and the SIEM part needs the Splunk alert export (`siem-alerts.csv`). `rasd evidence --run` reads the zip as it is: it refuses a zip that differs from the `.sha256` beside it, a file that differs from the run's manifest or is not in it, and an artifact that differs from the hash the runner recorded, then finds the results, the telemetry and the alert export by name and content:
+A run produces one workstation zip; Kerberoasting and the password spray also need the DC's export (`dc-export.jsonl`) and the SIEM part needs the Splunk alert export (`siem-alerts.csv`), with `siem.json` beside it when `red/lab/splunk_lab.py` recorded which Splunk raised the alerts. `rasd evidence --run` reads the zip as it is: it refuses a zip that differs from the `.sha256` beside it, a file that differs from the run's manifest or is not in it, and an artifact that differs from the hash the runner recorded, then finds the results, the telemetry and the alert export by name and content:
 
 ```bash
 rasd evidence --run lab-20261012-101500.zip dc-export.jsonl siem-alerts.csv

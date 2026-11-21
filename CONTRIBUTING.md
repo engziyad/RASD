@@ -67,7 +67,7 @@ A candidate is promoted into the core by a person: `rasd review <candidate> --pr
 
 ## Lab runs
 
-A detection becomes Validated through a lab run, never through an edit. [`lab-run.yml`](.github/workflows/lab-run.yml) is started by a person from the Actions tab, runs the safe default steps on hosted runners that exist for one run, and pushes the evidence with the raw runs as a branch `lab-evidence/run-<id>`: open a pull request from that branch like any other change. It never pushes to the branch it ran from, and it never runs the opt-in steps (LSASS memory, Security-log clear): those, the domain controller and the SIEM need a lab of your own ([lab kit](red/lab/README.md)). Keep a run in `purple/lab_runs` only when every file in it may be public.
+A detection becomes Validated through a lab run, never through an edit. [`lab-run.yml`](.github/workflows/lab-run.yml) is started by a person from the Actions tab, runs the safe default steps on hosted runners that exist for one run, and pushes the evidence with the raw runs as a branch `lab-evidence/run-<id>`: open a pull request from that branch like any other change. With `accept` typed in its **splunk** box it also puts a live Splunk Enterprise beside each host and brings the alerts back with the run; that word is the acceptance of Splunk's terms by the person who types it, so nobody types it for someone else. It never pushes to the branch it ran from, and it never runs the opt-in steps (LSASS memory, Security-log clear): those and the domain controller need a lab of your own ([lab kit](red/lab/README.md)). Keep a run in `purple/lab_runs` only when every file in it may be public.
 
 ## Keep out of the repository
 

@@ -1,16 +1,30 @@
 """The lab kit as it runs on machines that exist for one run: the workflow's own limits, and the faults
 the first real runs found, each held in place here."""
+import argparse
+import configparser
+import io
+import json
+import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
+from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "red" / "lab"))
 
+import evidence  # noqa: E402
 import health  # noqa: E402
+import splunk_lab  # noqa: E402
 import red  # noqa: E402
 from convert import MAPPINGS  # noqa: E402
 
@@ -18,6 +32,10 @@ WORKFLOW = ROOT / ".github" / "workflows" / "lab-run.yml"
 LAB_HOSTS = ("windows", "linux", "web")
 PINNED = re.compile(r"[^@\s]+@[0-9a-f]{40}")
 SYSMON_CHANNEL = "Microsoft-Windows-Sysmon/Operational"
+START_SPLUNK = {"windows": "Install Splunk Enterprise on the lab host", "linux": "Start Splunk Enterprise beside the lab host",
+                "web": "Start Splunk Enterprise beside the lab application"}
+ASK_SPLUNK = "Ask Splunk what it alerted on"
+SIEM_FAILED = "An alert the run expected did not come, or Splunk refused a search"
 DECOY_LOG = "/var/tmp/opencanary.log"  # noqa: S108 - the path inside the decoy container, never opened here
 
 
@@ -51,8 +69,14 @@ class LabWorkflow(unittest.TestCase):
 
     def test_only_a_person_starts_a_lab_run(self):
         triggers = self.doc.get("on", self.doc.get(True))
-        self.assertEqual(triggers, {"workflow_dispatch": None},
+        self.assertEqual(list(triggers), ["workflow_dispatch"],
                          "attack steps run when a person starts them: never on a push, a pull request or a schedule")
+        inputs = triggers["workflow_dispatch"]["inputs"]
+        self.assertEqual(sorted(inputs), ["evidence_branch", "splunk"])
+        self.assertEqual((inputs["splunk"]["type"], inputs["splunk"]["default"], inputs["splunk"]["required"]), ("string", "", False),
+                         "a run started without a word from its starter has no SIEM in it")
+        self.assertIn("https://www.splunk.com/en_us/legal/splunk-general-terms.html", inputs["splunk"]["description"])
+        self.assertEqual((inputs["evidence_branch"]["type"], inputs["evidence_branch"]["default"]), ("boolean", True))
 
     def test_the_jobs_are_the_three_lab_hosts_and_the_evidence(self):
         self.assertEqual(sorted(self.jobs), sorted([*LAB_HOSTS, "evidence"]))
@@ -128,9 +152,86 @@ class LabWorkflow(unittest.TestCase):
             image = self.jobs[job]["env"][key]
             self.assertRegex(image, r":v?\d+\.\d+\.\d+$", f"{image}: a lab image is pinned to a version")
 
-    def test_no_real_siem_and_no_wait_for_one(self):
-        self.assertEqual(set(re.findall(r"-SiemWaitMinutes (\S+)", script_of(self.jobs["windows"]))), {"0"})
-        self.assertNotIn("--siem-alerts", script_of(self.jobs["evidence"]))
+    def test_a_live_siem_starts_only_when_the_person_who_starts_the_run_accepts_its_terms(self):
+        self.assertEqual(self.doc["env"]["SPLUNK_TERMS"], "${{ inputs.splunk == 'accept' && 'accept' || '' }}",
+                         "nothing but the starter's own word accepts the terms: no event, no branch name, no default")
+        self.assertEqual(self.text.count("SPLUNK_TERMS:"), 1, "set once, for the whole run")
+        for name in LAB_HOSTS:
+            job = self.jobs[name]
+            start = steps_of(job)[position(job, START_SPLUNK[name])]
+            self.assertEqual(start.get("if"), "env.SPLUNK_TERMS == 'accept'", name)
+            self.assertLess(position(job, "Mark this runner as a RASD lab host"), position(job, START_SPLUNK[name]), name)
+            self.assertLess(position(job, START_SPLUNK[name]), position(job, "Lab run"), f"{name}: the SIEM is watching before the first step")
+            others = "\n".join(str(st.get("run") or "") for st in steps_of(job) if st is not start)
+            self.assertNotRegex(others, r"start_splunk\.sh|msiexec|SPLUNK_URL=", f"{name}: Splunk is started by one step and by no other")
+            self.assertEqual(str(start["run"]).count("SPLUNK_URL="), 1, name)
+            ask = steps_of(job)[position(job, ASK_SPLUNK)]
+            self.assertEqual(ask.get("if"), "always() && env.SPLUNK_URL != ''", f"{name}: no Splunk was started, none is asked")
+        for name in ("linux", "web"):
+            self.assertIn('red/lab/start_splunk.sh "$SPLUNK_IMAGE"', self.jobs[name]["steps"][position(self.jobs[name], START_SPLUNK[name])]["run"])
+        self.assertIn("AGREETOLICENSE=Yes", self.jobs["windows"]["steps"][position(self.jobs["windows"], START_SPLUNK["windows"])]["run"])
+
+    def test_the_lab_splunk_is_one_pinned_release_with_a_password_nobody_wrote_down(self):
+        env = self.doc["env"]
+        image = re.fullmatch(r"splunk/splunk:(\d+\.\d+\.\d+)@sha256:[0-9a-f]{64}", env["SPLUNK_IMAGE"])
+        self.assertTrue(image, f"{env['SPLUNK_IMAGE']}: the image is pinned to a release and to its digest")
+        msi = re.fullmatch(r"https://download\.splunk\.com/products/splunk/releases/(\d+\.\d+\.\d+)/windows/"
+                           r"splunk-\1-[0-9a-f]{12}-windows-x64\.msi", env["SPLUNK_MSI"])
+        self.assertTrue(msi, f"{env['SPLUNK_MSI']}: the installer comes from Splunk's own download host, one release by name")
+        self.assertEqual(image.group(1), msi.group(1), "the same release beside every lab host")
+        self.assertRegex(env["SPLUNK_MSI_SHA256"], r"^[0-9a-f]{64}$")
+        windows = self.jobs["windows"]["steps"][position(self.jobs["windows"], START_SPLUNK["windows"])]["run"]
+        self.assertIn("if ($hash -ne $env:SPLUNK_MSI_SHA256) { throw", windows, "a file that is not the pinned one is never run")
+        self.assertIn("$signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Splunk'", windows)
+        self.assertLess(windows.index("SPLUNK_MSI_SHA256) { throw"), windows.index("msiexec.exe"))
+        self.assertLess(windows.index("$signature.Status -ne 'Valid'"), windows.index("msiexec.exe"))
+        self.assertEqual(sorted(set(re.findall(r"foreach \(\$app in ([^)]+)\)", windows))), ["'rasd', 'rasd_fields', 'rasd_forwarder'"],
+                         "the apps of this repository and nothing else: no vendor add-on is fetched")
+        self.assertEqual(len(re.findall(r"etc\\apps", windows)), 1, "one place puts apps into the lab Splunk")
+        for name in LAB_HOSTS:
+            start = str(self.jobs[name]["steps"][position(self.jobs[name], START_SPLUNK[name])]["run"])
+            self.assertIn("::add-mask::", start, f"{name}: the password is hidden from the log before it is used")
+            self.assertLess(start.index("::add-mask::"), start.index("SPLUNK_PASSWORD="), name)
+            self.assertRegex(start, r"openssl rand -hex 16|RandomNumberGenerator", f"{name}: made for this run, by the run")
+            self.assertNotIn("SPLUNK_PASSWORD", yaml.safe_dump(self.jobs[name].get("env") or {}), name)
+            self.assertNotRegex(script_of(self.jobs[name]), r"--publish|-p \d", f"{name}: no port of the lab is published")
+            self.assertNotRegex(script_of(self.jobs[name]), r"--password|-auth ", f"{name}: the password is never an argument")
+        script = (ROOT / "red" / "lab" / "start_splunk.sh").read_text(encoding="utf-8")
+        self.assertNotRegex(script, r"--publish|-p \d|-P\b", "the lab host reaches its Splunk on the Docker bridge")
+        self.assertIn("--env SPLUNK_PASSWORD \\\n", script, "the password goes from environment to environment, never onto a command line")
+        self.assertEqual(sorted(set(re.findall(r"https://[\w.:\[\]]+:8089", self.text))), ["https://127.0.0.1:8089"])
+
+    def test_the_alerts_are_the_siem_s_own_and_reach_rasd_evidence_with_the_run(self):
+        self.assertEqual(set(re.findall(r"-SiemWaitMinutes (\S+)", script_of(self.jobs["windows"]))), {"0"},
+                         "the lab run does not sleep for a SIEM: the step after it waits for the alerts themselves")
+        for name in LAB_HOSTS:
+            job = self.jobs[name]
+            ask = str(steps_of(job)[position(job, ASK_SPLUNK)]["run"])
+            order = [ask.index(f"splunk_lab.py {command} ") for command in ("wait", "export", "searches", "feeds")]
+            self.assertEqual(order, sorted(order), name)
+            self.assertNotIn("dispatch", ask, f"{name}: the alerts are raised by Splunk's scheduler, never by this job")
+            self.assertIn("SIEM_STATUS=", ask, name)
+            self.assertLess(position(job, "Lab run"), position(job, ASK_SPLUNK), name)
+            upload = next(st for st in steps_of(job) if str(st.get("uses", "")).startswith("actions/upload-artifact@"))
+            for kept in ("siem-*", "siem.json*"):
+                self.assertIn("${{ runner.temp }}/" + kept, upload["with"]["path"], name)
+            self.assertNotRegex(upload["with"]["path"], r"temp \}\}/siem\*|temp \}\}/siem\s*$|temp \}\}/siem/",
+                                f"{name}: the feed folder, which holds every event Splunk read, is not uploaded")
+            failed = steps_of(job)[position(job, SIEM_FAILED)]
+            self.assertEqual(failed.get("if"), "env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'", name)
+            self.assertIn("exit 1", failed["run"])
+            self.assertEqual(position(job, SIEM_FAILED), len(steps_of(job)) - 1, f"{name}: the run is uploaded before it is failed")
+        evidence_job = script_of(self.jobs["evidence"])
+        self.assertIn('for f in "$1/siem-alerts.csv" "$1/siem.json" "$1/siem-searches.json"; do if [ -s "$f" ]; then echo "$f"; fi; done',
+                      evidence_job, "what the SIEM left is given beside the run it belongs to, and only when it is there")
+        self.assertEqual(evidence_job.count('mapfile -t beside < <(siem "$runs/lab-'), 3)
+        self.assertNotIn("--siem-alerts", evidence_job, "files beside --run are told apart by what they hold")
+        for name in ("linux", "web"):
+            feeds = re.findall(r"--monitor \"?(/lab/[^\s\"]+)", script_of(self.jobs[name]))
+            self.assertTrue(feeds, name)
+            volumes = re.findall(r'--volume "\$RUNNER_TEMP/siem/feed/(\w+):', script_of(self.jobs[name]))
+            self.assertEqual(sorted({f.split("/")[2] for f in feeds} - {"sysmon"}), sorted(volumes),
+                             f"{name}: every file Splunk is told to read is one the lab host writes into the feed folder")
 
     def test_evidence_is_written_kept_pruned_rebuilt_and_checked_before_it_is_pushed(self):
         job = self.jobs["evidence"]
@@ -143,8 +244,9 @@ class LabWorkflow(unittest.TestCase):
         self.assertEqual(script.count("rasd evidence --run "), 3)
         self.assertEqual(script.count('--keep "$keep"'), 3, "every part of a hosted run is kept with its evidence")
         self.assertIn('keep="hosted-$GITHUB_RUN_ID"', script)
-        self.assertIn('rasd evidence --run "$runs/lab-windows/lab-windows.zip" --strict', script,
-                      "the Windows run is a zip with a manifest: it is read in strict mode")
+        self.assertIn('rasd evidence --run "$runs/lab-windows/lab-windows.zip" "${beside[@]}" --strict', script,
+                      "the Windows run is a zip with a manifest: it is read in strict mode, and so is what the SIEM left beside it")
+        self.assertEqual(steps_of(job)[position(job, "Push the evidence as a branch")].get("if"), "inputs.evidence_branch")
         self.assertIn("rasd evidence --prune", script)
         self.assertIn("rasd evidence --check", script)
         last = steps_of(job)[-1]
@@ -157,6 +259,334 @@ class LabWorkflow(unittest.TestCase):
             self.assertEqual(upload.get("if"), "always()", name)
             self.assertEqual(upload["with"]["name"], f"lab-{name}")
         self.assertEqual(self.jobs["evidence"].get("if"), "always()")
+
+
+FAKE_DOCKER = """#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$FAKE_DOCKER_LOG"
+case "$1 $*" in
+  "image "*) echo "splunk/splunk@sha256:0000" ;;
+  "inspect "*State.Health*) echo healthy ;;
+  "inspect "*State.Running*) echo true ;;
+  "inspect "*NetworkSettings*) echo 172.17.0.3 ;;
+esac
+exit 0
+"""
+
+
+@unittest.skipIf(os.name == "nt", "start_splunk.sh is a script for a Linux lab host")
+class StartSplunk(unittest.TestCase):
+    """red/lab/start_splunk.sh with a docker that only writes down what it is asked: what the script refuses,
+    and what it would start."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        lab = self.tmp / "repo" / "red" / "lab"
+        lab.mkdir(parents=True)
+        shutil.copy(ROOT / "red" / "lab" / "start_splunk.sh", lab / "start_splunk.sh")
+        (self.tmp / "repo" / "red" / "linux").mkdir()
+        self.guard = self.tmp / "repo" / "red" / "linux" / "lab_guard.sh"
+        self.guard.write_text("rasd_assert_lab() { :; }\n", encoding="utf-8")
+        for app in ("rasd", "rasd_fields"):
+            (self.tmp / "repo" / "queries" / "splunk_app" / app / "default").mkdir(parents=True)
+        (self.tmp / "feed").mkdir()
+        (self.tmp / "rasd_lab_inputs" / "default").mkdir(parents=True)
+        (self.tmp / "bin").mkdir()
+        docker = self.tmp / "bin" / "docker"
+        docker.write_text(FAKE_DOCKER, encoding="utf-8")
+        docker.chmod(0o755)
+        self.log = self.tmp / "docker.log"
+        self.script = lab / "start_splunk.sh"
+
+    def start(self, **env):
+        full = {"PATH": f"{self.tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", "FAKE_DOCKER_LOG": str(self.log), **env}
+        return subprocess.run(["bash", str(self.script), "splunk/splunk:10.4.5", str(self.tmp / "feed"), str(self.tmp / "rasd_lab_inputs")],  # noqa: S607
+                              capture_output=True, text=True, env=full, timeout=60, check=False)
+
+    def asked(self) -> list[str]:
+        return self.log.read_text(encoding="utf-8").splitlines() if self.log.exists() else []
+
+    def test_nothing_starts_until_the_person_running_it_accepts_the_terms(self):
+        for env in ({}, {"SPLUNK_TERMS": "yes"}, {"SPLUNK_TERMS": "ACCEPT"}, {"SPLUNK_PASSWORD": "Lab-0123456789abcdef"}):
+            r = self.start(**env)
+            self.assertEqual(r.returncode, 2, env)
+            self.assertIn("https://www.splunk.com/en_us/legal/splunk-general-terms.html", r.stderr)
+            self.assertEqual(self.asked(), [], f"{env}: docker was asked for something before the terms were accepted")
+
+    def test_it_starts_nothing_without_a_password_or_on_a_host_that_is_not_a_lab(self):
+        r = self.start(SPLUNK_TERMS="accept")
+        self.assertEqual((r.returncode, self.asked()), (2, []))
+        self.assertIn("SPLUNK_PASSWORD", r.stderr)
+        shutil.copy(ROOT / "red" / "linux" / "lab_guard.sh", self.guard)
+        r = self.start(SPLUNK_TERMS="accept", SPLUNK_PASSWORD="Lab-0123456789abcdef")  # noqa: S106 - a value for the test, used nowhere
+        if not Path("/etc/rasd-lab-host").exists():
+            self.assertEqual((r.returncode, self.asked()), (2, []), "the lab guard is asked first")
+            self.assertIn("not marked as a RASD lab", r.stderr)
+
+    def test_what_it_starts_is_one_container_nobody_outside_can_reach(self):
+        password = "Lab-0123456789abcdef"  # noqa: S105 - a value for the test, used nowhere
+        r = self.start(SPLUNK_TERMS="accept", SPLUNK_PASSWORD=password)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip().splitlines()[-1], "https://172.17.0.3:8089", "the last line is the management URL")
+        asked = self.asked()
+        self.assertFalse(any(password in line for line in asked), "the password never reaches a command line")
+        runs = [line for line in asked if line.startswith("run ")]
+        self.assertEqual(len(runs), 1, runs)
+        run = runs[0]
+        self.assertIn("--env SPLUNK_START_ARGS=--accept-license", run)
+        self.assertIn("--env SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com", run)
+        self.assertIn("--env SPLUNK_PASSWORD ", run)
+        self.assertIn(f"--volume {self.tmp / 'feed'}:/lab:ro", run, "Splunk reads the feed and cannot write into it")
+        self.assertNotRegex(run, r"--publish|-p \d|-P\b|--network host|--privileged")
+        self.assertEqual(asked[0], "pull --quiet splunk/splunk:10.4.5")
+        copied = [line.split()[1].rsplit("/", 1)[-1] for line in asked if line.startswith("cp ")]
+        self.assertEqual(copied, ["rasd", "rasd_fields", "rasd_lab_inputs"], "the RASD apps and the run's inputs: nothing else is put in")
+        self.assertTrue(any(line.startswith("exec --user splunk rasd-splunk /opt/splunk/bin/splunk restart") for line in asked))
+
+
+class FakeSplunk:
+    """A Splunk that answers from a script: what the alert index holds on each poll, and the saved searches."""
+
+    def __init__(self, polls=(), saved=(), export=(), found=None, info=None):
+        self.polls = list(polls)
+        self._saved = list(saved)
+        self.export = list(export)
+        self.found = found or {}
+        self.info = info or {}
+        self.asked: list[str] = []
+
+    def search(self, spl, earliest, latest="now", timeout=300):
+        self.asked.append(spl)
+        if spl.startswith(f"index={splunk_lab.ALERT_INDEX} ") and "by detection" in spl:
+            rows = self.polls.pop(0) if len(self.polls) > 1 else (self.polls[0] if self.polls else [])
+            return [{"detection": d, "count": "1", "first": str(t), "hosts": "lab-linux01"} for d, t in rows]
+        if spl.startswith("| savedsearch"):
+            return [dict(r) for r in self.export]
+        return [dict(r) for r in next((v for k, v in self.found.items() if k in spl), [])]
+
+    def saved(self):
+        return [dict(x) for x in self._saved]
+
+    def dispatch(self, name, earliest, latest="now", timeout=300, rows=0):
+        bad = name.endswith("broken")
+        return {"name": name, "ok": not bad, "state": "FAILED" if bad else "DONE", "results": 0, "events_scanned": 0,
+                "messages": ["ERROR: Unknown search command 'nope'."] if bad else []}
+
+    def get(self, path, **params):
+        return self.info[path]
+
+
+class SplunkLab(unittest.TestCase):
+    """red/lab/splunk_lab.py against a scripted Splunk: what it expects of a run, what it writes, and
+    that what it writes is what `rasd evidence` reads."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.t0 = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(seconds=90)
+
+    def results(self, age=0, **extra):
+        start = self.t0 - timedelta(seconds=age)
+        steps = [
+            {"test": "cron_persistence", "status": "executed", "detections": ["T1053.003_crontab_noninteractive_install"], "correlations": [],
+             "utc_start": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"), "utc_end": (start + timedelta(seconds=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")},
+            {"test": "web", "status": "executed", "detections": [], "correlations": ["T1190_object_id_enumeration"],
+             "utc_start": (start + timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%S.0000000Z"),
+             "utc_end": (start + timedelta(seconds=9)).strftime("%Y-%m-%dT%H:%M:%S.0000000Z")},
+            {"test": "skipped", "status": "skipped", "detections": ["T1003.001_lsass_memory_access"], "correlations": []},
+        ]
+        path = self.tmp / "emulation-results.json"
+        path.write_text(json.dumps(steps), encoding="utf-8")
+        return path
+
+    def run_command(self, fn, fake, **args):
+        out = io.StringIO()
+        with mock.patch.object(splunk_lab, "connect", return_value=fake), mock.patch.object(splunk_lab.time, "sleep"), redirect_stdout(out):
+            code = fn(argparse.Namespace(url="https://127.0.0.1:8089", user="admin", **args))
+        return code, out.getvalue()
+
+    def test_it_reads_every_spelling_of_a_time_it_meets(self):
+        for text, want in (("2026-11-20T18:01:01.210Z", "2026-11-20T18:01:01.210000+00:00"),
+                           ("2026-10-12T06:00:00.0000000Z", "2026-10-12T06:00:00+00:00"),            # PowerShell: seven decimals
+                           ("2026-11-21 00:52:00.000 GMT", "2026-11-21T00:52:00+00:00"),             # Splunk's JSON results
+                           ("2026-11-21 01:55:01.000 Coordinated Universal Time", "2026-11-21T01:55:01+00:00"),   # the same on Windows
+                           ("2026-11-21T04:10:03.000+0300", "2026-11-21T01:10:03+00:00"),
+                           ("2026-11-21T01:10:03.000+00:00", "2026-11-21T01:10:03+00:00"),
+                           ("1795225803.25", "2026-11-21T01:50:03.250000+00:00")):
+            self.assertEqual(splunk_lab.utc(text).isoformat(), want, text)
+        for bad in ("", "yesterday", "21/Nov/2026:00:48:50 +0000", "2026-11-21 04:55:01.000 Arab Standard Time"):
+            with self.assertRaises(splunk_lab.LabError):
+                splunk_lab.utc(bad)
+
+    def test_it_talks_to_a_lab_splunk_and_to_nothing_else(self):
+        for url in ("https://127.0.0.1:8089", "https://localhost:8089", "https://172.17.0.3:8089/", "https://10.0.0.5:8089", "https://[::1]:8089"):
+            self.assertEqual(splunk_lab.lab_address(url), url.rstrip("/"))
+        for url in ("http://127.0.0.1:8089", "https://8.8.8.8:8089", "https://splunk.example.com:8089", "https://:8089", "127.0.0.1:8089"):
+            with self.assertRaises(splunk_lab.LabError, msg=url):
+                splunk_lab.lab_address(url)
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("SPLUNK_PASSWORD", None)
+            with self.assertRaises(splunk_lab.LabError):
+                splunk_lab.connect(argparse.Namespace(url="https://127.0.0.1:8089", user="admin"))
+
+    def test_what_a_run_expects_is_what_its_executed_steps_name(self):
+        steps = splunk_lab.read_steps(self.results())
+        self.assertEqual(splunk_lab.expected(steps), ["T1053.003_crontab_noninteractive_install", "T1190_object_id_enumeration"])
+        start, end = splunk_lab.window(steps)
+        self.assertEqual((start, end), (self.t0, self.t0 + timedelta(seconds=9)))
+        with self.assertRaises(splunk_lab.LabError):
+            splunk_lab.window([{"status": "skipped"}])
+
+    def test_the_inputs_app_names_the_lab_host_and_the_indexes_the_searches_read(self):
+        out = self.tmp / "rasd_lab_inputs"
+        with redirect_stdout(io.StringIO()):
+            code = splunk_lab.cmd_inputs(argparse.Namespace(host="lab-linux01", out=str(out), monitor=[
+                "/lab/sysmon/sysmon.log:linux:sysmon:linux", "/lab/web/access.log*:web:access_combined"]))
+        self.assertEqual(code, 0)
+        conf = configparser.ConfigParser(interpolation=None)
+        conf.read(out / "default" / "inputs.conf", encoding="utf-8")
+        self.assertEqual(dict(conf["monitor:///lab/sysmon/sysmon.log"]), {"disabled": "0", "index": "linux", "sourcetype": "sysmon:linux", "host": "lab-linux01"})
+        self.assertEqual(conf["monitor:///lab/web/access.log*"]["sourcetype"], "access_combined")
+        for spec in ("relative/file.log:linux:sysmon:linux", "/lab/x.log", "/lab/x.log:linux"):
+            with self.assertRaises(splunk_lab.LabError, msg=spec):
+                splunk_lab.cmd_inputs(argparse.Namespace(host="h", out=str(out), monitor=[spec]))
+        # what the workflow feeds is what the generated searches read
+        text = WORKFLOW.read_text(encoding="utf-8")
+        spl = MAPPINGS["spl"]["logsources"]
+        for source, spec in (("linux/process_creation", "/lab/sysmon/sysmon.log:linux:sysmon:linux"),
+                             ("opencanary/honeypot", "/lab/canary/opencanary.log:deception:opencanary"),
+                             ("webserver", "/lab/web/access.log*:web:access_combined")):
+            self.assertIn(f"--monitor {spec}", text.replace('"', ""))
+            _path, index, sourcetype = spec.split(":", 2)
+            self.assertIn(f"index={index}", spl[source])
+            self.assertIn(sourcetype, spl[source].replace('"', ""))
+
+    def test_wait_ends_when_every_expected_alert_is_there(self):
+        at = self.t0.timestamp() + 300
+        unasked = {"name": "RASD - T1046_decoy_service_interaction",
+                   "search": 'index=deception sourcetype=opencanary | where logtype=3001 | eval rasd_detection="T1046_decoy_service_interaction" '
+                             "| stats count by host"}
+        fake = FakeSplunk(polls=[[], [("T1053.003_crontab_noninteractive_install", at)],
+                                 [("T1053.003_crontab_noninteractive_install", at), ("T1190_object_id_enumeration", at + 60),
+                                  ("T1046_decoy_service_interaction", at)]],
+                          saved=[unasked], found={"| where logtype=3001  | head 3": [{"_raw": '{"logtype": 3001, "src_host": "10.0.0.9"}'}]})
+        report = self.tmp / "siem-wait.txt"
+        code, out = self.run_command(splunk_lab.cmd_wait, fake, results=str(self.results()), timeout=900, out=str(report))
+        self.assertEqual(code, 0, out)
+        self.assertIn("0/2 raised", out)
+        self.assertIn("2/2 raised", out)
+        text = report.read_text(encoding="utf-8")
+        self.assertIn("raised  T1053.003_crontab_noninteractive_install", text)
+        self.assertIn("300 s after the first step", text)
+        self.assertIn("also    T1046_decoy_service_interaction", text, "an alert no step of the run expects is named, not hidden")
+        self.assertIn('        an event behind it: {"logtype": 3001, "src_host": "10.0.0.9"}', text,
+                      "and shown: on a host where nobody ran its attack, a person has to read what the detection saw")
+        self.assertFalse(any("rasd_detection" in q and "head 3" in q for q in fake.asked), "the events are read before the summary is made")
+
+    def test_wait_says_why_an_alert_did_not_come(self):
+        name = "RASD - T1190_object_id_enumeration"
+        saved = [{"name": name, "search": "index=web sourcetype=access_combined | where 1=1"}]
+        fake = FakeSplunk(polls=[[("T1053.003_crontab_noninteractive_install", self.t0.timestamp())]], saved=saved,
+                          found={"sourcetype=scheduler": [{"status": "success", "result_count": "0"}],
+                                 "| stats count by index": []})
+        code, out = self.run_command(splunk_lab.cmd_wait, fake, results=str(self.results(age=3000)), timeout=10, out=None)
+        self.assertEqual(code, 1)
+        self.assertIn("MISSING T1190_object_id_enumeration", out)
+        self.assertIn("1 scheduled run(s) since the run began: success/0 result(s)", out)
+        self.assertIn("no record of this log source reached Splunk", out)
+        self.assertIn("the index web holds: nothing - the events never arrived", out)
+        # the events arrived, under another name than the one the searches read: say the name they have
+        fake = FakeSplunk(polls=[[]], saved=saved, found={"| tstats count where index=web": [
+            {"index": "web", "source": "/var/log/app/access.log", "sourcetype": "access_combined_wcookie", "host": "lab-linux01", "count": "32"}]})
+        code, out = self.run_command(splunk_lab.cmd_wait, fake, results=str(self.results(age=3000)), timeout=10, out=None)
+        self.assertIn("the index web holds: index=web source=/var/log/app/access.log sourcetype=access_combined_wcookie host=lab-linux01: 32 record(s)",
+                      out)
+        # the same search finding rows now is a different story: the events were late
+        fake = FakeSplunk(polls=[[]], saved=saved, found={"where 1=1": [{"result_count": "3"}]})
+        code, out = self.run_command(splunk_lab.cmd_wait, fake, results=str(self.results(age=3000)), timeout=10, out=None)
+        self.assertIn("finds 1 row(s) now", out)
+        fake = FakeSplunk(polls=[[]], saved=[])
+        code, out = self.run_command(splunk_lab.cmd_wait, fake, results=str(self.results(age=3000)), timeout=10, out=None)
+        self.assertIn("Splunk has no saved search of that name", out)
+
+    def test_a_feed_that_arrives_under_another_name_is_shown_as_what_arrived(self):
+        held = [{"index": "sysmon", "source": "WinEventLog:Microsoft-Windows-Sysmon/Operational", "sourcetype": "XmlWinEventLog", "host": "LAB-WS01",
+                 "count": "40"},
+                {"index": "_internal", "source": "splunkd.log", "sourcetype": "splunkd", "host": "LAB-WS01", "count": "900"}]
+        search = 'index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 rasd-siem-probe-1'
+        code, out = self.run_command(splunk_lab.cmd_ready, FakeSplunk(found={"| tstats count where index=*": held}), search=search, timeout=0)
+        self.assertEqual(code, 1)
+        self.assertIn("Splunk holds: index=sysmon source=WinEventLog:Microsoft-Windows-Sysmon/Operational sourcetype=XmlWinEventLog "
+                      "host=LAB-WS01: 40 record(s)", out)
+        self.assertNotIn("_internal", out, "Splunk's own indexes are not the lab's feed")
+        code, out = self.run_command(splunk_lab.cmd_ready, FakeSplunk(), search=search, timeout=0)
+        self.assertIn("the feed does not reach it", out)
+        code, out = self.run_command(splunk_lab.cmd_ready, FakeSplunk(found={"rasd-siem-probe-1 | stats count": [{"count": "2"}]}), search=search,
+                                     timeout=0)
+        self.assertEqual(code, 0, out)
+        # feeds: every channel the alerts read, and what the indexes hold whatever its name
+        saved = [{"name": "RASD - T1190_object_id_enumeration", "search": "index=web sourcetype=access_combined | where 1=1"}]
+        fake = FakeSplunk(saved=saved, found={"| stats count dc(host)": [{"count": "0", "hosts": "0"}], "| tstats count where index=*": held})
+        out_file = self.tmp / "siem-feeds.json"
+        code, out = self.run_command(splunk_lab.cmd_feeds, fake, earliest="-60m", sample=False, out=str(out_file))
+        doc = json.loads(out_file.read_text(encoding="utf-8"))
+        self.assertEqual((code, [f["records"] for f in doc["feeds"]]), (0, [0]))
+        self.assertEqual(doc["holds"], [{"index": "sysmon", "source": "WinEventLog:Microsoft-Windows-Sysmon/Operational",
+                                         "sourcetype": "XmlWinEventLog", "host": "LAB-WS01", "records": 40}])
+
+    def test_the_export_is_what_rasd_evidence_reads_as_siem_alerts(self):
+        at = datetime(2026, 11, 21, 0, 52, tzinfo=timezone.utc).timestamp()
+        row = {"ss_name": "RASD - T1190_object_id_enumeration", "host": "::ffff:127.0.0.1", "alert_hosts": "::ffff:127.0.0.1",
+               "result_count": "6", "first_event": "1795222130", "last_event": "1795222133", "_raw": "left out"}
+        # Splunk writes a time out in its host's zone, under the name that host gives the zone: only the number is the same everywhere
+        fake = FakeSplunk(export=[{**row, "_time": "2026-11-21 03:52:00.000 Arab Standard Time", "rasd_alert_epoch": f"{at:.3f}"},
+                                  {**row, "_time": "2026-11-21 00:52:00.000 GMT"},
+                                  {**row, "_time": "2026-11-21 00:52:00.000 Coordinated Universal Time"}])
+        out_file = self.tmp / "siem-alerts.csv"
+        code, out = self.run_command(splunk_lab.cmd_export, fake, results=str(self.results()), out=str(out_file))
+        self.assertEqual(code, 0, out)
+        self.assertTrue(any(q.startswith('| savedsearch "RASD - alert export" | eval rasd_alert_epoch=_time') for q in fake.asked))
+        self.assertEqual(out_file.read_text(encoding="utf-8").splitlines(), [
+            "_time,ss_name,host,alert_hosts,result_count,first_event,last_event",
+            *["2026-11-21T00:52:00.000Z,RASD - T1190_object_id_enumeration,::ffff:127.0.0.1,::ffff:127.0.0.1,6,1795222130,1795222133"] * 3])
+        digest, name = (self.tmp / "siem-alerts.csv.sha256").read_text(encoding="utf-8").split()
+        self.assertEqual((digest, name), (evidence.sha256(out_file), "siem-alerts.csv"))
+        self.assertEqual(evidence.export_kind(out_file), "siem")
+        alert = evidence.load_siem(out_file)[0]
+        self.assertEqual(evidence.siem_time(alert["_time"]).isoformat(), "2026-11-21T00:52:00")
+        self.assertIn('| savedsearch "RASD - alert export"', fake.asked[0], "the export is the app's own report")
+
+    def test_what_it_records_of_the_splunk_is_what_evidence_reads_as_the_siem(self):
+        fake = FakeSplunk(info={
+            "/services/server/info": {"entry": [{"content": {"product_type": "enterprise", "version": "10.4.5", "build": "de9225ad9740",
+                                                             "activeLicenseGroup": "Trial", "os_name": "Linux"}}]},
+            "/services/apps/local": {"entry": [{"name": "rasd", "content": {"version": "1.7.0"}}, {"name": "rasd_fields", "content": {"version": "1.7.0"}},
+                                               {"name": "search", "content": {"version": "10.4.5"}},
+                                               {"name": "Splunk_TA_windows", "content": {"version": "9.0.1", "disabled": True}}]},
+            "/services/data/indexes": {"entry": [{"name": "linux"}, {"name": "_internal"}, {"name": "rasd_alerts"}]}})
+        out_file = self.tmp / "siem.json"
+        code, out = self.run_command(splunk_lab.cmd_about, fake, timeout=5, terms="accepted for this run by the person who started it", out=str(out_file))
+        self.assertEqual(code, 0, out)
+        doc = json.loads(out_file.read_text(encoding="utf-8"))
+        self.assertEqual((doc["product"], doc["version"], doc["licence"], doc["vendor_addons"], doc["indexes"]),
+                         ("Splunk Enterprise", "10.4.5", "Trial", [], ["linux", "rasd_alerts"]))
+        self.assertEqual(evidence.platform_line(evidence.siem_platform(out_file)),
+                         "Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0; vendor add-ons: none")
+
+    def test_a_search_splunk_refuses_fails_the_command(self):
+        fake = FakeSplunk(saved=[{"name": "RASD - T1190_object_id_enumeration", "is_scheduled": "1", "cron_schedule": "*/1 * * * *"},
+                                 {"name": "RASD Health - silent", "is_scheduled": "1", "cron_schedule": "7 * * * *"}])
+        out_file = self.tmp / "siem-searches.json"
+        code, out = self.run_command(splunk_lab.cmd_searches, fake, earliest="-60m", show="", rows=5, out=str(out_file))
+        self.assertEqual(code, 0, out)
+        self.assertIn("2/2 saved searches of the rasd app ran to the end", out)
+        self.assertEqual([s["scheduled"] for s in json.loads(out_file.read_text(encoding="utf-8"))["searches"]], ["*/1 * * * *", "7 * * * *"])
+        fake = FakeSplunk(saved=[{"name": "RASD - broken", "is_scheduled": "1", "cron_schedule": "*/5 * * * *"}])
+        code, out = self.run_command(splunk_lab.cmd_searches, fake, earliest="-60m", show="", rows=5, out=str(out_file))
+        self.assertEqual(code, 1)
+        self.assertIn("Unknown search command", out)
+        with self.assertRaises(splunk_lab.LabError):
+            self.run_command(splunk_lab.cmd_searches, FakeSplunk(), earliest="-60m", show="", rows=5, out=str(out_file))
 
 
 class WhatTheFirstRunsFound(unittest.TestCase):
