@@ -853,6 +853,109 @@ class SplunkApp(unittest.TestCase):
         xml = "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7045</EventID>"
         self.assertEqual(rx.search(xml).group("Provider_Name"), "Service Control Manager")
 
+    def fields_app(self):
+        """The field app's props stanzas and its transforms, as (stanza -> {setting: value}) and (name -> compiled REGEX, FORMAT)."""
+        import configparser
+        props = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#",), interpolation=None, strict=True)
+        props.optionxform = str
+        props.read_string(self.files[splunk_app.OUT / splunk_app.FIELDS_APP / "default" / "props.conf"])
+        transforms = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#",), interpolation=None, strict=True)
+        transforms.optionxform = str
+        transforms.read_string(self.files[splunk_app.OUT / splunk_app.FIELDS_APP / "default" / "transforms.conf"])
+        return props, {name: (re.compile(transforms.get(name, "REGEX")), transforms.get(name, "FORMAT")) for name in transforms.sections()}
+
+    @staticmethod
+    def read_fields(xml: str, names: list[str], transforms: dict) -> dict[str, str]:
+        """What a REPORT line gives on one record: FORMAT $1::$2 makes a field of every match, NAME::$1 one field."""
+        out: dict[str, str] = {}
+        for name in names:
+            rx, fmt = transforms[name]
+            for m in rx.finditer(xml):
+                key, _, value = fmt.partition("::")
+                key = m.group(1) if key == "$1" else key
+                out.setdefault(key, m.group(2) if value == "$2" else m.group(1))
+        return out
+
+    def test_the_field_app_reads_event_xml_under_the_names_the_searches_use(self):
+        props, transforms = self.fields_app()
+        report = [n.strip() for n in splunk_app.FIELDS_REPORT.split(",")]
+        windows = ("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Sysmon' "
+                   "Guid='{5770385F-C22A-43E0-BF4C-06F5698FFBD9}'/><EventID>1</EventID><Version>5</Version><Computer>LAB-WS01.lab.local</Computer>"
+                   "</System><EventData><Data Name='RuleName'>-</Data><Data Name='Image'>C:\\Windows\\System32\\cmd.exe</Data>"
+                   "<Data Name='CommandLine'>cmd.exe /c \"echo a &amp; echo b &gt; C:\\Temp\\o.txt\"</Data><Data Name='ParentImage'></Data></EventData></Event>")
+        got = self.read_fields(windows, report, transforms)
+        self.assertEqual((got["EventCode"], got["EventID"], got["Computer"], got["Image"]), ("1", "1", "LAB-WS01.lab.local", "C:\\Windows\\System32\\cmd.exe"))
+        self.assertEqual(got["CommandLine"], 'cmd.exe /c "echo a &amp; echo b &gt; C:\\Temp\\o.txt"', "the regular expression reads the XML text as written")
+        self.assertEqual(got["ParentImage"], "")
+        scm = "<Event><System><Provider Name='Service Control Manager'/><EventID Qualifiers='16384'>7045</EventID><Computer>LAB-WS01</Computer></System></Event>"
+        self.assertEqual(self.read_fields(scm, report, transforms)["EventCode"], "7045", "an EventID with attributes is still the event's id")
+        linux = ('<Event><System><Provider Name="Linux-Sysmon" Guid="{ff032593-a8d3-4f13-b0d6-01fc615a0f97}"/><EventID>1</EventID>'
+                 '<TimeCreated SystemTime="2026-11-21T01:01:04.634661000Z"/><Computer>lab-linux01</Computer></System><EventData>'
+                 '<Data Name="Image">/usr/bin/bash</Data><Data Name="CommandLine">bash -c "id &amp;&amp; whoami"</Data></EventData></Event>')
+        got = self.read_fields(linux, report, transforms)
+        self.assertEqual((got["EventID"], got["Computer"], got["Image"]), ("1", "lab-linux01", "/usr/bin/bash"))
+        # every stanza is one the searches really read, takes nothing but the declared extraction, and decodes what the rules read
+        stanzas = {splunk_app.props_stanza(source) for source in splunk_app.EVENT_XML}
+        self.assertEqual(set(props.sections()), stanzas)
+        self.assertEqual(stanzas, {"source::XmlWinEventLog:Microsoft-Windows-Sysmon/Operational", "source::XmlWinEventLog:Security",
+                                   "source::XmlWinEventLog:System", "sysmon:linux"})
+        searches = " ".join(self.saved.get(sec, "search") for sec in self.saved.sections())
+        for stanza in props.sections():
+            self.assertEqual(props.get(stanza, "KV_MODE"), "none", stanza)
+            self.assertEqual(props.get(stanza, "REPORT-rasd_fields"), splunk_app.FIELDS_REPORT)
+            needle = stanza.split("::", 1)[1] if stanza.startswith("source::") else stanza
+            self.assertIn(needle, searches, f"{stanza}: no search reads these records")
+        linux_stanza = dict(props["sysmon:linux"])
+        self.assertEqual(linux_stanza["SHOULD_LINEMERGE"], "false")
+        self.assertTrue(re.search(linux_stanza["TIME_PREFIX"], linux), "the time Splunk gives a Linux record is the event's own")
+        self.assertNotIn("TIME_PREFIX", dict(props["source::XmlWinEventLog:Security"]), "Windows inputs carry their own time")
+
+    def test_the_field_app_decodes_xml_text_in_every_field_the_rules_read_there(self):
+        props, _transforms = self.fields_app()
+        self.assertEqual(splunk_app.decode_entities("CommandLine"),
+                         'replace(replace(replace(replace(replace(\'CommandLine\', "&lt;", "<"), "&gt;", ">"), "&quot;", "\\""), "&apos;", "\'"), "&amp;", "&")')
+        self.assertEqual(splunk_app.XML_ENTITIES[-1][0], "&amp;", '&amp; is decoded last: "&amp;lt;" is the text "&lt;", not "<"')
+        text = "a &amp;lt; b &amp;&amp; c &gt; d &quot;e&quot; &apos;f&apos;"
+        for entity, char in splunk_app.XML_ENTITIES:
+            text = text.replace(entity, char.replace("\\", ""))
+        self.assertEqual(text, "a &lt; b && c > d \"e\" 'f'")
+        fieldmap = splunk_app.MAPPINGS["spl"].get("fields") or {}
+        wanted: dict[str, set[str]] = {}
+        for rule, extra in ([(d.rule, ()) for d in load_detections()]
+                            + [(c.base, (*c.params.group_by, *([c.params.counted] if c.params.counted else []))) for c in load_correlations()]):
+            source = convert.logsource_key(rule)
+            if source in splunk_app.EVENT_XML:
+                names = {fieldmap.get(f, f) for f in (*convert.referenced_fields(rule["detection"]), *extra)}
+                wanted.setdefault(splunk_app.props_stanza(source), set()).update(names - {"EventCode", "EventID", "Provider_Name"})
+        self.assertGreaterEqual(len(wanted), 4)
+        for stanza, fields in wanted.items():
+            decoded = {k[5:] for k in dict(props[stanza]) if k.startswith("EVAL-")}
+            self.assertEqual(decoded, fields, stanza)
+            for field in fields:
+                self.assertEqual(props.get(stanza, f"EVAL-{field}"), splunk_app.decode_entities(field))
+        self.assertIn("CommandLine", wanted["sysmon:linux"])
+
+    def test_the_decoy_and_the_alert_records_get_the_time_they_were_written(self):
+        import configparser
+        props = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#",), interpolation=None, strict=True)
+        props.optionxform = str
+        props.read_string(self.files[splunk_app.OUT / "rasd" / "default" / "props.conf"])
+        decoy = dict(props["opencanary"])
+        self.assertEqual((decoy["KV_MODE"], decoy["TZ"], decoy["SHOULD_LINEMERGE"]), ("json", "UTC", "false"))
+        record = ('{"dst_host": "172.17.0.3", "dst_port": 80, "local_time": "2026-11-21 03:49:13.858165", "local_time_adjusted": "2026-11-21 03:49:13.858178", '
+                  '"logdata": {"PATH": "/index.html"}, "logtype": 3001, "node_id": "lab-canary-01", "src_host": "172.17.0.1", "utc_time": "2026-11-21 00:49:13.858176"}')
+        m = re.search(decoy["TIME_PREFIX"], record)
+        self.assertTrue(m)
+        from datetime import datetime as _dt
+        stamp = record[m.end():m.end() + 26]
+        self.assertEqual(_dt.strptime(stamp, decoy["TIME_FORMAT"].replace("%6N", "%f")).isoformat(), "2026-11-21T00:49:13.858176",
+                         "the UTC time is read, not the decoy host's local time that comes first in the record")
+        self.assertIn("opencanary", splunk_app.MAPPINGS["spl"]["logsources"]["opencanary/honeypot"])
+        for sourcetype in ("rasd:alert", "rasd:health"):
+            self.assertEqual(props.get(sourcetype, "DATETIME_CONFIG"), "CURRENT", sourcetype)
+        written = set(re.findall(r"action\.logevent\.param\.sourcetype = (\S+)", self.files[splunk_app.OUT / "rasd" / "default" / "savedsearches.conf"]))
+        self.assertEqual(written, {"rasd:alert", "rasd:health"})
+
     def test_indexes_cover_every_index_the_queries_read(self):
         conf = self.files[splunk_app.OUT / "rasd" / "default" / "indexes.conf"]
         declared = set(re.findall(r"^\[([A-Za-z0-9_]+)\]$", conf, re.M))

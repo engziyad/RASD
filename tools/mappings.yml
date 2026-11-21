@@ -95,6 +95,10 @@ spl:
       index=web sourcetype=access_combined
     opencanary/honeypot: |
       index=deception sourcetype=opencanary
+  # The log sources whose records Splunk holds as event XML. The Splunk add-ons for Windows, Sysmon
+  # and Sysmon for Linux read the fields out of it; where they are not installed, the generated
+  # rasd_fields app does, under the same names.
+  event_xml: [process_creation, process_access, registry_set, windows/security, windows/system, linux/process_creation]
 
 # --------------------------------------------------------------------------- #
 # Microsoft Defender XDR advanced hunting (queries/mde). Optional: only the log sources a
