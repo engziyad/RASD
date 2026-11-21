@@ -111,9 +111,6 @@ jobs:
           foreach ($app in 'rasd', 'rasd_fields', 'rasd_forwarder') {
             Copy-Item -Recurse -Force -LiteralPath "queries\splunk_app\$app" -Destination "$splunk\etc\apps\"
           }
-          # TEMPORARY: one input nobody names, to see what Splunk itself calls an XML event
-          New-Item -ItemType Directory -Force -Path "$splunk\etc\apps\rasd_lab_native\default" | Out-Null
-          "[WinEventLog://Application]`ndisabled = 0`nindex = wineventlog`nrenderXml = true`n" | Out-File -FilePath "$splunk\etc\apps\rasd_lab_native\default\inputs.conf" -Encoding ascii
           Restart-Service -Name Splunkd -Force
           $url = 'https://127.0.0.1:8089'
           python red\lab\splunk_lab.py about --url $url --timeout 420 --terms "accepted for this run by the person who started it" --out (Join-Path $env:RUNNER_TEMP 'siem.json')

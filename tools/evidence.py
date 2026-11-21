@@ -1339,6 +1339,7 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
               for det_id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()}
     carried: dict[str, list[str]] = {}
     digests = {part.label: results_digest(part) for part in parts}
+    known = [det_id for det_id, _folder in (entries if entries is not None else library())]
     kept_ids: set[str] = set()
     for det_id, (_folder, front) in fronts.items():
         cited = str(((front.get("inputs") or {}).get("results") or {}).get("sha256") or "")
@@ -1372,7 +1373,7 @@ def page(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> 
                               for i in ids) or "-"
             lines.append(f"| `{part.name}` | {'strict' if part.strict else 'standard'} | {len(files)} | "
                          f"{_size(sum(f.stat().st_size for f in files))} | {len(ids)}: {links} | "
-                         f"{siem_cell(part, sum(1 for i in ids if fronts[i][1].get('siem')), len(ids))} |")
+                         f"{siem_cell(part, sum(1 for i in ids if fronts[i][1].get('siem')), ids, known)} |")
             rel = "purple/lab_runs" if store == STORE else store.name
             commands.append("rasd evidence --run " + " ".join(f"{rel}/{part.run}/{part.name}/{p.name}" for p in part.paths)
                             + (" --strict" if part.strict else "") + " --dry-run")
@@ -1396,11 +1397,31 @@ def part_siem(part: Part) -> tuple[dict | None, tuple[int, int, int, int] | None
     return about, ran
 
 
-def siem_cell(part: Part, alerted: int, carried: int) -> str:
+def unasked_alerts(part: Part, asked: list[str], known: list[str]) -> dict[str, int]:
+    """Alerts the SIEM raised beside a kept part for a detection that none of the part's evidence is of:
+    detection -> how many. On a host where nobody ran that detection's attack, each of them is a false
+    positive to explain or a rule to tune, and the record of it stays with the run."""
+    out: dict[str, int] = {}
+    longest_first = sorted(known, key=len, reverse=True)
+    for path in part.paths:
+        if not path.is_file() or path.suffix.lower() not in (".csv", ".json", ".jsonl") or export_kind(path) != "siem":
+            continue
+        for alert in load_siem(path):
+            name = first(alert, SIEM_NAME).lower()
+            det = next((k for k in longest_first if k.lower() in name), None)
+            if det and det not in asked:
+                out[det] = out.get(det, 0) + 1
+    return dict(sorted(out.items()))
+
+
+def siem_cell(part: Part, alerted: int, asked: list[str], known: list[str]) -> str:
     about, ran = part_siem(part)
     if not about:
         return "-"
-    out = f"{about['product']} {about['version']}: alert raised for {alerted} of {carried}"
+    out = f"{about['product']} {about['version']}: alert raised for {alerted} of {len(asked)}"
+    extra = unasked_alerts(part, asked, known)
+    if extra:
+        out += "; alerts no step asked for: " + ", ".join(f"`{det}` ({n})" for det, n in extra.items())
     if ran:
         out += f"; {ran[0]}/{ran[1]} saved searches ran to the end"
     return out
@@ -1415,6 +1436,68 @@ def kept_summary(store: Path = STORE, entries: list[tuple[str, Path]] | None = N
               for _id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()]
     kept = sum(1 for front in fronts if ((front.get("inputs") or {}).get("results") or {}).get("sha256") in digests)
     return {"runs": len({part.run for part in parts}), "parts": len(parts), "evidence": len(fronts), "kept": kept}
+
+
+def live_siem(store: Path = STORE, entries: list[tuple[str, Path]] | None = None) -> dict:
+    """What the kept runs hold of a live SIEM, for the pages that quote it. Nothing is evaluated here: it is read
+    from the files the SIEM left beside each kept part and from the front matter of the evidence that cites the part.
+
+      runs, hosts      the kept runs with a SIEM in them, and how many lab hosts had one beside them
+      platforms        which SIEM, as its own description names it ("Splunk Enterprise 10.4.5")
+      apps, addons     the RASD apps it ran, and the vendor add-ons it had (none, in a lab that fetches none)
+      evidence, alerted  evidence files that cite those parts, and how many of them carry an alert the SIEM raised
+      unasked          detection -> alerts the SIEM raised for it on a host where no step of the run asked for it
+      searches, health   per host: (ran to the end, of how many) saved searches, and the same for the watchdogs"""
+    parts, _notes, _problems = kept_parts(store)
+    fronts = [front_of((folder / "evidence.md").read_text(encoding="utf-8"))
+              for _id, folder in (entries if entries is not None else library()) if (folder / "evidence.md").exists()]
+    runs: list[str] = []
+    platforms: set[str] = set()
+    apps: set[str] = set()
+    addons: set[str] = set()
+    searches: list[tuple[int, int]] = []
+    health: list[tuple[int, int]] = []
+    hosts = cited = alerted = 0
+    listed = entries if entries is not None else library()
+    known = [det_id for det_id, _folder in listed]
+    by_digest: dict[str, list[str]] = {}
+    for det_id, folder in listed:
+        if (folder / "evidence.md").exists():
+            front = front_of((folder / "evidence.md").read_text(encoding="utf-8"))
+            by_digest.setdefault(str(((front.get("inputs") or {}).get("results") or {}).get("sha256") or ""), []).append(det_id)
+    unasked: dict[str, int] = {}
+    for part in parts:
+        about, ran = part_siem(part)
+        if not about:
+            continue
+        for det, n in unasked_alerts(part, by_digest.get(results_digest(part) or "-", []), known).items():
+            unasked[det] = unasked.get(det, 0) + n
+        hosts += 1
+        if part.run not in runs:
+            runs.append(part.run)
+        platforms.add(f"{about['product']} {about['version']}")
+        apps.update(str(a) for a in about.get("apps") or {})
+        addons.update(str(a) for a in about.get("vendor_addons") or [])
+        digest = results_digest(part)
+        mine = [f for f in fronts if digest and ((f.get("inputs") or {}).get("results") or {}).get("sha256") == digest]
+        cited += len(mine)
+        alerted += sum(1 for f in mine if int((f.get("siem") or {}).get("alerts") or 0) >= 1)
+        if ran:
+            searches.append(ran[:2])
+            health.append(ran[2:])
+    return {"runs": runs, "hosts": hosts, "platforms": sorted(platforms), "apps": sorted(apps), "addons": sorted(addons),
+            "evidence": cited, "alerted": alerted, "unasked": dict(sorted(unasked.items())), "searches": searches, "health": health}
+
+
+def siem_records(store: Path = STORE) -> dict[str, list[dict]]:
+    """kept part -> what its SIEM said of every saved search (the rows of the record kept with the part)."""
+    out: dict[str, list[dict]] = {}
+    for part in kept_parts(store)[0]:
+        for path in part.paths:
+            if path.is_file() and siem_searches(path):
+                doc = json.loads(path.read_text(encoding="utf-8-sig"))
+                out[part.label] = [r for r in doc["searches"] if isinstance(r, dict) and r.get("name")]
+    return out
 
 
 def md_note(text: str) -> str:

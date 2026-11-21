@@ -64,17 +64,18 @@ class LabError(Exception):
 
 
 def utc(text: object) -> datetime:
-    """An ISO 8601 time (PowerShell writes seven decimals, Splunk three and an offset) or epoch seconds."""
+    """An ISO 8601 time (PowerShell writes seven decimals, Splunk three and an offset or the name its host gives
+    UTC) or epoch seconds. A time in a zone known only by a local name is refused: ask Splunk for the epoch."""
     raw = str(text).strip()
     try:
         return datetime.fromtimestamp(float(raw), timezone.utc)
     except ValueError:
         pass
-    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d+))?\s*(Z|UTC|GMT|[+-]\d{2}:?\d{2})?", raw)
+    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d+))?\s*(Z|UTC|GMT|Coordinated Universal Time|[+-]\d{2}:?\d{2})?", raw)
     if not m:
         raise LabError(f"{raw}: not a time this tool can read")
     zone = m.group(4) or "Z"
-    offset = "+00:00" if zone in ("Z", "UTC", "GMT") else (zone if ":" in zone else f"{zone[:3]}:{zone[3:]}")
+    offset = "+00:00" if zone[0] not in "+-" else (zone if ":" in zone else f"{zone[:3]}:{zone[3:]}")
     fraction = (m.group(3) or "0")[:6].ljust(6, "0")
     return datetime.fromisoformat(f"{m.group(1)}T{m.group(2)}.{fraction}{offset}").astimezone(timezone.utc)
 
@@ -319,6 +320,22 @@ def explain(splunk: Splunk, det: str, since: datetime) -> list[str]:
     return lines
 
 
+def behind(splunk: Splunk, det: str, since: datetime) -> list[str]:
+    """The first events behind an alert no step asked for, as Splunk holds them: a person has to read what
+    the detection saw on a host where nobody ran its attack."""
+    saved = next((s for s in splunk.saved() if s["name"] == f"{ALERT_PREFIX}{det}"), None)
+    spl = str((saved or {}).get("search", ""))
+    cut = spl.find("| eval rasd_detection=")
+    if cut < 0:
+        return []
+    try:
+        rows = splunk.search(f"{spl[:cut]} | head 3", iso(since))
+    except LabError as exc:
+        return [f"its events could not be read: {exc}"]
+    return ["an event behind it: " + str(r.get("_raw") or json.dumps({k: v for k, v in r.items() if not k.startswith("_")}))[:1600]
+            for r in rows]
+
+
 def cmd_wait(args: argparse.Namespace) -> int:
     splunk = connect(args)
     steps = read_steps(Path(args.results))
@@ -347,6 +364,7 @@ def cmd_wait(args: argparse.Namespace) -> int:
             report += ["        " + line for line in explain(splunk, det, since)]
     for det in sorted(set(have) - set(want)):
         report.append(f"also    {det}  ({have[det].get('count')} alert(s)): not expected by a step of this run")
+        report += ["        " + line for line in behind(splunk, det, since)]
     print("\n".join(report))
     if args.out:
         Path(args.out).write_text("\n".join(report) + "\n", encoding="utf-8", newline="\n")
@@ -356,12 +374,13 @@ def cmd_wait(args: argparse.Namespace) -> int:
 def cmd_export(args: argparse.Namespace) -> int:
     splunk = connect(args)
     start, _end = window(read_steps(Path(args.results)))
-    rows = splunk.search(f'| savedsearch "{EXPORT_REPORT}"', iso(start - timedelta(seconds=EARLY)))
+    # the time of each alert as a number: written out, Splunk gives it in its host's zone under that zone's local name
+    rows = splunk.search(f'| savedsearch "{EXPORT_REPORT}" | eval rasd_alert_epoch=_time', iso(start - timedelta(seconds=EARLY)))
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=EXPORT_COLUMNS, extrasaction="ignore", lineterminator="\n")
     writer.writeheader()
     for row in rows:
-        row["_time"] = utc(row.get("_time", "")).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"     # one spelling, whatever Splunk's is
+        row["_time"] = utc(row.get("rasd_alert_epoch") or row.get("_time", "")).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         writer.writerow({k: ("" if row.get(k) is None else row.get(k)) for k in EXPORT_COLUMNS})
     write(Path(args.out), out.getvalue())
     print(f"[+] {args.out}: {len(rows)} alert(s) from the report '{EXPORT_REPORT}'")

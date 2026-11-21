@@ -492,6 +492,17 @@ class Watchdogs(unittest.TestCase):
         self.assertIn("ingestion_time() > ago(1h)", self.kql["delay"])
         self.assertNotIn("OpenCanary", self.kql["delay"], "a table behind a function has no ingestion time to read")
 
+    def test_the_delay_watchdog_does_not_judge_a_channel_in_the_hour_splunk_first_hears_from_it(self):
+        spl = self.spl["delay"]
+        self.assertIn("| tstats min(_indextime) as first_heard where (", spl)
+        self.assertIn('first_heard < relative_time(now(), "-60m@m")', spl,
+                      "what a new host sends first is its backlog: late by days, and no fault of the pipeline")
+        counted = spl.index("count(eval(lag > 300)) as late")
+        self.assertLess(counted, spl.index("| append [| tstats"), "the events are counted where they are, before anything is joined to them")
+        self.assertLess(spl.index("first_heard < relative_time"), spl.index("| where late_pct >= 1"))
+        self.assertEqual(spl.count("earliest=-7d@d latest=+1d@d"), 2, "the first time heard is looked for over the same days as the events")
+        self.assertNotIn("$", spl)
+
     def test_the_schedule_watchdog_watches_the_alerts_and_not_itself(self):
         self.assertIn('savedsearch_name="RASD - T*"', self.spl["schedule"])
         self.assertNotIn("RASD Health", self.spl["schedule"])
