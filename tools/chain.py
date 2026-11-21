@@ -830,13 +830,29 @@ def health_line(root: str) -> str:
     import health
     wanted = health.needs()
     text = (f"{len(health.WATCHDOGS)} watchdog searches in SPL and KQL over the {len(health.feed_detections(wanted))} kinds of event "
-            "the rules read, each row naming the detections it blinds; generated, not yet run on a live SIEM")
+            f"the rules read, each row naming the detections it blinds; {health.live_line()}")
     c = health.sample_counts()
     if c:
         text += (f" · on the sample ({c['hosts']} hosts, a baseline of {c['baseline_events']} events, then a day of "
                  f"{c['current_events']}): {c['blind']} detections blind, {c['degraded']} degraded, {c['healthy']} healthy, "
                  f"{c['unknown']} with nothing to compare")
     return text + f" ([HEALTH]({root}docs/HEALTH.md), [watchdogs]({root}queries/health/README.md))"
+
+
+def live_siem_line(with_alert: int, validated: int, store: Path | None = None, entries: list | None = None) -> str:
+    """How many evidence files carry an alert a live SIEM raised, and which SIEM the kept runs say it was."""
+    import evidence
+    live = evidence.live_siem(store or evidence.STORE, entries)
+    text = f"{with_alert} of {validated} evidence files carry an alert raised by a live SIEM"
+    if with_alert and live["alerted"]:
+        addons = "no vendor add-on" if not live["addons"] else "the vendor add-ons " + ", ".join(live["addons"])
+        text += (f": {' and '.join(live['platforms'])} beside {live['hosts']} lab host{'' if live['hosts'] == 1 else 's'}, "
+                 f"its own scheduler, the RASD apps and {addons}")
+    if live["unasked"]:
+        n = len(live["unasked"])
+        text += (f" · {n} detection{'' if n == 1 else 's'} also alerted there with no step asking for it "
+                 "([which](purple/lab_runs/README.md))")
+    return text
 
 
 def lab_runs_line(root: str) -> str:
@@ -1012,7 +1028,9 @@ def render_facts(repo: Repo, d) -> str:
         *([f"| **Behaviour proof** | {cell} |"] if (cell := behaviour_cell(repo, d)) else []),
         f"| **Parity** | KQL and SPL {'identical to the rule' if f['parity_ok'] else 'NOT proven'} on {f['parity_events']} events"
         + (" · Defender advanced hunting identical on the same events" if f.get("defender_events") else "")
-        + " (RASD's offline KQL / SPL model, not yet a live SIEM) |",
+        + (" (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab "
+           "([evidence](evidence.md)) |" if (repo.evidence[d.id] or {}).get("siem") else
+           " (RASD's offline KQL / SPL model, not yet a live SIEM) |"),
         f"| **Public data** | {public_cell(repo, d)} |",
         f"| **Rule** | [`rule.yml`](rule.yml) · [KQL]({rel(ROOT / 'queries' / 'kql' / (d.id + '.kql'), up)}) · "
         f"[SPL]({rel(ROOT / 'queries' / 'spl' / (d.id + '.spl'), up)})"
@@ -1120,8 +1138,7 @@ def render_readme_metrics(repo: Repo) -> str:
                       f"0 of {n}: no lab run is committed yet"),
         ("Evidence", lab_runs_line("")),
         ("Operational Score", f"{ops:.0f}/100 over {len(validated)} detections" if ops is not None else "pending a lab run"),
-        ("Live SIEM", f"{with_alert} of {len(validated)} evidence files carry an alert raised by a live SIEM" if validated else
-                      "no alert from a live SIEM yet"),
+        ("Live SIEM", live_siem_line(with_alert, len(validated)) if validated else "no alert from a live SIEM yet"),
         ("Waiting", f"{n - len(validated)} detections, each with the lab machine and step it needs ([evidence plan](docs/EVIDENCE_PLAN.md))"
                     if len(validated) < n else "none"),
     ]

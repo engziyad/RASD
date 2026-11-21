@@ -346,6 +346,50 @@ class KeptRuns(unittest.TestCase):
         row = next(line for line in evidence.page(self.store, self.entries).splitlines() if line.startswith("| `lab-linux`"))
         self.assertTrue(row.endswith("| - |"), row)
 
+    def test_the_pages_say_of_a_live_siem_what_the_kept_runs_hold_and_no_more(self):
+        import chain
+        import health
+        import splunk_app
+        self.keep(self.folder_run())
+        self.write_evidence()
+        for text in (health.live_line(self.store, self.entries), " ".join(health.live_block(self.store, self.entries)),
+                     splunk_app.live_section(self.store, self.entries)):
+            self.assertRegex(text, r"[Nn]ot yet run on a live (SIEM|Splunk)", "a run kept without a SIEM says nothing of one")
+        self.assertEqual(chain.live_siem_line(0, 1, self.store, self.entries), "0 of 1 evidence files carry an alert raised by a live SIEM")
+        shutil.rmtree(self.store)
+        (self.library / "evidence.md").unlink()
+        paths = self.folder_run()
+        paths += [*self.siem_files(paths[1].parent), self.searches_record(paths[1].parent)]
+        self.keep(paths)
+        self.write_evidence()
+        live = evidence.live_siem(self.store, self.entries)
+        self.assertEqual(live, {"runs": ["hosted-1"], "hosts": 1, "platforms": ["Splunk Enterprise 10.4.5"], "apps": ["rasd", "rasd_fields"],
+                                "addons": [], "evidence": 1, "alerted": 1, "unasked": {}, "searches": [(7, 7)], "health": [(5, 5)]})
+        self.assertEqual(health.live_line(self.store, self.entries),
+                         "generated, and the SPL ones ran to the end on Splunk Enterprise 10.4.5 beside 1 lab host in the kept lab run")
+        block = "\n".join(health.live_block(self.store, self.entries))
+        self.assertIn("**Run on a live Splunk, in the lab.**", block)
+        self.assertIn("It does not show a watchdog catching its fault.", block)
+        self.assertIn("| Watchdog | `hosted-1/lab-linux` |", block)
+        for check in health.WATCHDOGS:
+            self.assertIn(f"| **{check}** | ran: 0 rows |", block)
+        section = splunk_app.live_section(self.store, self.entries)
+        self.assertIn("ran on Splunk Enterprise 10.4.5 beside 1 lab host, with `rasd_fields` and no vendor add-on", section)
+        self.assertIn("raised the alert of 1 of the 1 detections whose attack step ran there", section)
+        self.assertIn("every saved search of the `rasd` app (7 of them) ran to the end on each host", section)
+        self.assertIn("Not shown by a kept run: the same searches over the fields of the vendor add-ons", section)
+        self.assertEqual(chain.live_siem_line(1, 1, self.store, self.entries),
+                         "1 of 1 evidence files carry an alert raised by a live SIEM: Splunk Enterprise 10.4.5 beside 1 lab host, "
+                         "its own scheduler, the RASD apps and no vendor add-on")
+        # a search the SIEM refused is said, not averaged away
+        shutil.rmtree(self.store)
+        paths = self.folder_run()
+        paths += [*self.siem_files(paths[1].parent), self.searches_record(paths[1].parent, refused=3)]
+        self.keep(paths)
+        self.assertIn("3 saved search run(s) did not reach the end", splunk_app.live_section(self.store, self.entries))
+        self.assertIn("1 SPL run(s) did not reach the end", health.live_line(self.store, self.entries))
+        self.assertIn("| **delay** | **refused** |", "\n".join(health.live_block(self.store, self.entries)))
+
     def test_an_alert_no_step_asked_for_is_counted_and_shown_with_the_run(self):
         other = "T1003.001_lsass_memory_access"
         entries = [*self.entries, (other, self.tmp / "no-evidence-here")]
@@ -365,6 +409,13 @@ class KeptRuns(unittest.TestCase):
         self.assertEqual(evidence.live_siem(self.store, entries)["alerted"], 1)
         row = next(line for line in evidence.page(self.store, entries).splitlines() if line.startswith("| `lab-linux`"))
         self.assertIn(f"alert raised for 1 of 1; alerts no step asked for: `{other}` (2) |", row)
+        import chain
+        import splunk_app
+        self.assertIn(f"It also raised alerts that no step of the run asked for: `{other}` (2). On a host where nobody ran that attack, "
+                      "each is a false positive to explain or a rule to tune. Not shown by a kept run:",
+                      splunk_app.live_section(self.store, entries))
+        self.assertTrue(chain.live_siem_line(1, 1, self.store, entries).endswith(
+            "no vendor add-on · 1 detection also alerted there with no step asking for it ([which](purple/lab_runs/README.md))"))
 
     def test_an_alert_of_another_host_or_another_hour_is_not_this_run_s(self):
         for kwargs in ({"host": "OTHER-PC"}, {"alert_at": "2026-10-12T07:30:00.000Z"}):

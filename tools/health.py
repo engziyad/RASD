@@ -116,6 +116,7 @@ class Need:
     critical: frozenset                  # fields the rule cannot work without (the contract's telemetry risk)
     allowance: int                       # seconds the scheduled search waits before it reads a slice
     search: str                          # the saved search that runs it
+    period: int = 300                    # seconds between two scheduled runs of it
 
     @property
     def feeds(self) -> tuple[str, ...]:
@@ -139,10 +140,14 @@ def needs(filter_: str | None = None) -> list[Need]:
     import splunk_app                                   # imported here: splunk_app schedules the watchdogs
     from correlation import load_correlations           # imported here: correlation imports replay
     single = _minutes(splunk_app.WINDOW_END) * 60
+    every = re.fullmatch(r"\*/(\d+) \* \* \* \*", splunk_app.SCHEDULE)
+    if not every:
+        raise ValueError(f"cannot read {splunk_app.SCHEDULE} as a number of minutes between two runs")
     out: list[Need] = []
-    entries = [(d.id, d.title, d.rule, d.contract, single) for d in load_detections(filter_)]
-    entries += [(c.id, c.title, c.base, c.contract, splunk_app.CORRELATION_LAG * 60) for c in load_correlations(filter_)]
-    for det_id, title, rule, contract, allowance in entries:
+    entries = [(d.id, d.title, d.rule, d.contract, single, int(every.group(1)) * 60) for d in load_detections(filter_)]
+    entries += [(c.id, c.title, c.base, c.contract, splunk_app.CORRELATION_LAG * 60, c.params.timespan)
+                for c in load_correlations(filter_)]
+    for det_id, title, rule, contract, allowance, period in entries:
         dc = contract.get("data_contract") or {}
         required = tuple(str(f) for f in dc.get("required_fields") or [])
         risk = dc.get("telemetry_risk") or {}
@@ -150,7 +155,7 @@ def needs(filter_: str | None = None) -> list[Need]:
         ids = tuple(sorted(doctor.rule_event_ids(rule), key=lambda i: (len(i), i)))
         scopes = {k: frozenset(v) for k, v in doctor.field_event_ids(rule).items()}
         out.append(Need(det_id, title, logsource_key(rule), ids, required, scopes, critical, allowance,
-                        f"{splunk_app.ALERT_PREFIX}{det_id}"))
+                        f"{splunk_app.ALERT_PREFIX}{det_id}", period))
     return out
 
 
@@ -753,7 +758,8 @@ WATCHDOGS = {
     "fields": ("daily", "23 6 * * *", "A field the rules read is filled in under 95% of the events that should carry it."),
     "delay": ("hourly", "17 * * * *",
               "Events indexed in the last hour arrived later than the scheduled searches wait."),
-    "schedule": ("hourly", "27 * * * *", "A scheduled detection search did not run, or was skipped."),
+    # two minutes after the half hour: every search has had a slot since the app was loaded, unless that was two minutes ago
+    "schedule": ("hourly", "32 * * * *", "A scheduled detection search did not run, or was skipped."),
 }
 HEALTH_PREFIX = "RASD Health - "
 
@@ -835,6 +841,7 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
     every = sorted({_spl_field(f) for names in fields.values() for f in names})
     reads = _spl_case([(feed, ",".join(_spl_field(f) for f in names)) for feed, names in sorted(fields.items())], "feed")
     allowance = _minutes(splunk_app.WINDOW_END) * 60
+    settle = max((n.period for n in wanted), default=300) + allowance      # every search has had a slot, and its wait
     out = {}
     out["silent"] = "\n".join([
         f"| tstats count where ({where}) earliest=-7d@h latest=@h by index, sourcetype, source, host, _time span=1h",
@@ -858,7 +865,7 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
         "| table feed, host, state, last_24h, week_ago, blinds"])
     out["fields"] = "\n".join([
         "| multisearch",
-        *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-24h@h latest=@h")),
+        *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-24h latest=now")),
         "| stats count as events, " + ", ".join(f"count({f}) as {f}" for f in every) + " by feed",
         f"| eval reads={reads}",
         "| foreach " + " ".join(every) + " [eval low=if(like(\",\" . reads . \",\", \"%,<<FIELD>>,%\") AND '<<FIELD>>' < 0.95 * events, "
@@ -871,12 +878,23 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
         f"| eval lag=_indextime - _time, carrier={carrier}",
         "| where isnotnull(carrier)",
         f"| stats count as events, count(eval(lag > {allowance})) as late, perc95(lag) as p95_lag by carrier, host",
+        # A channel Splunk first heard from within the hour brings its backlog first, days old on a host that was
+        # logging before Splunk read it: true of every new host, and no fault of the pipeline. It is judged from
+        # the next hour on. The lab's own Splunk named the Security and System logs of its host this way.
+        f"| append [| tstats min(_indextime) as first_heard where ({where}) earliest=-7d@d latest=+1d@d "
+        f"by index, sourcetype, source, host | eval carrier={carrier} | where isnotnull(carrier) "
+        "| stats min(first_heard) as first_heard by carrier, host]",
+        "| stats max(events) as events, max(late) as late, max(p95_lag) as p95_lag, min(first_heard) as first_heard by carrier, host",
+        '| where isnotnull(events) AND (isnull(first_heard) OR first_heard < relative_time(now(), "-60m@m"))',
         "| eval late_pct=round(100 * late / events, 1), p95_lag=round(p95_lag)",
         f"| where late_pct >= {100 * LATE[0]:g}",
         f"| eval blinds={carrier_blinds}",
         "| table carrier, host, events, late, late_pct, p95_lag, blinds"])
     out["schedule"] = "\n".join([
-        f'index=_internal sourcetype=scheduler savedsearch_name="{splunk_app.ALERT_PREFIX}T*" earliest=-24h@h latest=@h',
+        # Read up to now, not to the last full hour, and do not name a search that has no run yet while Splunk has
+        # been up for less than the longest schedule: on a Splunk started within the hour, the first form of this
+        # search named every detection as one that did not run. The lab's own Splunk showed it.
+        f'index=_internal sourcetype=scheduler savedsearch_name="{splunk_app.ALERT_PREFIX}T*" earliest=-24h latest=now',
         '| stats count as runs, count(eval(status=="success")) as succeeded, count(eval(status=="skipped")) as skipped, '
         'max(eval(if(status=="success", _time, null()))) as last_success by savedsearch_name',
         f'| append [| rest /servicesNS/-/-/saved/searches splunk_server=local | search title="{splunk_app.ALERT_PREFIX}T*" '
@@ -884,7 +902,10 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
         "| stats max(runs) as runs, max(succeeded) as succeeded, max(skipped) as skipped, max(last_success) as last_success, "
         "max(listed) as listed by savedsearch_name",
         "| fillnull value=0 runs succeeded skipped listed",
-        f"| where listed == 1 AND (succeeded == 0 OR skipped > {SKIPPED[0]} * runs)",
+        "| appendcols [| rest /services/server/info splunk_server=local | eval uptime=now() - startup_time | fields uptime]",
+        "| eventstats max(uptime) as uptime",
+        f"| where listed == 1 AND ((succeeded == 0 AND (runs > 0 OR coalesce(uptime, 86400) >= {settle})) "
+        f"OR skipped > {SKIPPED[0]} * runs)",
         f'| eval detection=replace(savedsearch_name, "^{_plain(splunk_app.ALERT_PREFIX)}", ""), '
         'last_success=if(isnull(last_success), "none in 24 h", strftime(last_success, "%Y-%m-%d %H:%M"))',
         "| table savedsearch_name, detection, runs, succeeded, skipped, last_success"])
@@ -1000,6 +1021,54 @@ def kql_watchdogs(wanted: list[Need]) -> dict[str, str]:
     return out
 
 
+def live_line(store: Path | None = None, entries: list | None = None) -> str:
+    """What the kept lab runs hold of the watchdogs on a live SIEM, as one clause for a table cell."""
+    import evidence                                     # imported here: the kept runs are evidence's to read
+    live = evidence.live_siem(store or evidence.STORE, entries)
+    ran = live["health"]
+    if not ran:
+        return "generated, not yet run on a live SIEM"
+    where = f"{' and '.join(live['platforms'])} beside {len(ran)} lab host{'' if len(ran) == 1 else 's'} in the kept lab run"
+    if all(ok == total for ok, total in ran):
+        return f"generated, and the SPL ones ran to the end on {where}"
+    return f"generated; on {where}, {sum(total - ok for ok, total in ran)} SPL run(s) did not reach the end"
+
+
+def live_block(store: Path | None = None, entries: list | None = None) -> list[str]:
+    """The page's own account of a live SIEM: what the records kept with the lab runs say, and what they do not."""
+    import evidence
+    live = evidence.live_siem(store or evidence.STORE, entries)
+    records = {label: [r for r in rows if str(r["name"]).startswith(HEALTH_PREFIX)]
+               for label, rows in evidence.siem_records(store or evidence.STORE).items()}
+    records = {label: rows for label, rows in records.items() if rows}
+    if not records:
+        return ["> **Not yet run on a live SIEM.** The searches are generated and checked for structure on every build, but "
+                "they wait for a lab run with a live SIEM in it ([how](../../red/lab/README.md)). The same checks, as "
+                "`rasd health` runs them on exports, are exercised by the tests and by the sample below."]
+    labels = sorted(records)
+    lines = [f"> **Run on a live Splunk, in the lab.** The table is what {' and '.join(live['platforms'])} answered when each "
+             f"SPL search was run once beside {len(labels)} lab host{'' if len(labels) == 1 else 's'}, after the attack steps "
+             "([kept runs](../../purple/lab_runs/README.md); the record is each part's `siem-searches.json`). It shows that "
+             "Splunk accepts the searches as generated, and what they return over a lab that is in order: a row there would "
+             "be a false alarm. It does not show a watchdog catching its fault. No feed was broken on purpose, and `silent` "
+             "and `volume` compare with a week that a host made for one run has not lived. The KQL searches have not run "
+             "on a live Sentinel.", "",
+             "| Watchdog | " + " | ".join(f"`{label}`" for label in labels) + " |", "|---|" + "---|" * len(labels)]
+    for check in WATCHDOGS:
+        cells = []
+        for label in labels:
+            row = next((r for r in records[label] if r["name"] == f"{HEALTH_PREFIX}{check}"), None)
+            if row is None:
+                cells.append("not run")
+            elif not row.get("ok"):
+                cells.append("**refused**")
+            else:
+                n = int(row.get("results") or 0)
+                cells.append(f"ran: {n} row{'' if n == 1 else 's'}")
+        lines.append(f"| **{check}** | " + " | ".join(cells) + " |")
+    return lines
+
+
 def app_stanzas(wanted: list[Need] | None = None) -> list[str]:
     """The watchdogs as saved searches of the Splunk app: scheduled, and written to the alert index."""
     import splunk_app
@@ -1053,10 +1122,7 @@ def page(wanted: list[Need]) -> str:
     lines += ["", "The Splunk app schedules the five SPL searches as `" + HEALTH_PREFIX + "<name>` and writes each row to the "
               "alert index as `sourcetype=rasd:health`. The KQL searches are for Sentinel analytics rules or a workbook; "
               "`schedule.kql` reads the `SentinelHealth` table, which health monitoring has to be turned on for.", "",
-              "> **Not yet run on a live SIEM.** The searches are generated and checked for structure on every build, but "
-              "like the rest of the SIEM half of this repository they wait for the live Splunk and Sentinel lab "
-              "([roadmap](../../docs/RELEASE_ROADMAP.md)). The same checks, as `rasd health` runs them on exports, are "
-              "exercised by the tests and by the sample below.", "",
+              *live_block(), "",
               "## What is watched", "",
               f"{len(feeds)} kinds of event, read by {len(wanted)} detections. A watchdog row for one of them means the "
               "detections beside it cannot be trusted until it clears.", "",

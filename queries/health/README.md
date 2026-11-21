@@ -14,7 +14,7 @@ A rule that is not fed looks exactly like a rule on a quiet day. These searches 
 
 The Splunk app schedules the five SPL searches as `RASD Health - <name>` and writes each row to the alert index as `sourcetype=rasd:health`. The KQL searches are for Sentinel analytics rules or a workbook; `schedule.kql` reads the `SentinelHealth` table, which health monitoring has to be turned on for.
 
-> **Not yet run on a live SIEM.** The searches are generated and checked for structure on every build, but like the rest of the SIEM half of this repository they wait for the live Splunk and Sentinel lab ([roadmap](../../docs/RELEASE_ROADMAP.md)). The same checks, as `rasd health` runs them on exports, are exercised by the tests and by the sample below.
+> **Not yet run on a live SIEM.** The searches are generated and checked for structure on every build, but they wait for a lab run with a live SIEM in it ([how](../../red/lab/README.md)). The same checks, as `rasd health` runs them on exports, are exercised by the tests and by the sample below.
 
 ## What is watched
 

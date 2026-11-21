@@ -173,9 +173,12 @@ OPERATIONAL_LACKS = (
      "(docs/OPERATIONAL_VALIDATION.md)."),
     ("latency", "Detection latency", "alerted later than a minute after the step",
      "The alert is in the evidence; the detection latency earns its 15 points within 60 seconds of the step, 10 within five "
-     "minutes, 5 within fifteen.",
-     "Read the latency row of each evidence file: shorten the search's schedule or the delay before the events are indexed "
-     "(rasd health shows the delay per sender), and run the step again."),
+     "minutes, 5 within fifteen. The RASD Splunk app reads each slice five minutes after it closes, so that an event indexed "
+     "late is still read: its alerts come 5 to 10 minutes after the event, by design.",
+     "Nothing is wrong with these detections, and the points they lack are sooner found in the other findings that name them. "
+     "More points here mean a shorter wait for late events (WINDOW_END in tools/splunk_app.py) or a search that runs as "
+     "events arrive: a decision for the whole app, taken with the delay watchdog's numbers in hand (rasd health), not for one "
+     "detection."),
     ("artifacts", "DFIR evidence", "validated with no artifact collected for the investigation",
      "DFIR evidence (15 points) is earned when the lab step saves, with its SHA-256, what an investigator would take before the "
      "cleanup removes it.",
