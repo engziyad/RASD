@@ -1,0 +1,2 @@
+# user: runner
+*/30 * * * * /bin/echo rasd_df4a417d >/dev/null 2>&1 # rasd_df4a417d

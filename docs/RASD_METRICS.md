@@ -24,7 +24,8 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Evidence survivability (trace) | 94 detection-question pairs over 18 detections: 38 out of reach, 0 evident, 56 exposed to a sequence that raises no alert · 3 rules on anti-forensic traces would leave 0 exposed · 31 artifacts, 16 anti-forensic actions, documented behaviour pending lab runs ([TRACE](../docs/TRACE.md), [results](../dfir/trace/)) |
 | Evidence of absence (silence) | 10 sensor proofs, 12 records that end one and 2 kinds of time off modelled · on the sample fleet (8 hosts, 2221 records): 99 detection-host pairs, 80 attested (76 by record sequence, 4 by rhythm), 5 fired, 14 unattested · 3 breaks in the record found · documented behaviour pending lab runs ([SILENCE](../docs/SILENCE.md), [results](../dfir/silence/)) |
 | The unseen route (blindpath) | 16 behaviours over 6 stages, 23 ways around replayed through the engine (22 raise no alert) · on the sample fleet (8 hosts): 12 routes from an origin to a target, 6 unseen end to end and 6 seen on the way (6 of them on rules with no behaviour spec) · 1 change is the fewest after which every route is seen (by leg 3) · documented behaviour pending lab runs ([BLINDPATH](../docs/BLINDPATH.md), [results](../purple/blindpath/)) |
-| RASD-Agent's lane (grow) | 19 candidate detections drafted by a language model and kept by the gates of `rasd grow`, reviewed by no person and counted in no number of this page but this one · of the 604 techniques and sub-techniques of ATT&CK v20.1 that are drafted on their own, 17 have a core detection, 397 are in the agent's queue and 171 are out of reach of the logs RASD reads ([GROW](../docs/GROW.md), [candidates](../detect/candidates/README.md)) |
+| Detection health (health) | 5 watchdog searches in SPL and KQL over the 16 kinds of event the rules read, each row naming the detections it blinds; generated, and the SPL ones ran to the end on Splunk Enterprise 10.4.5 beside 3 lab hosts in the kept lab run · on the sample (8 hosts, a baseline of 2794 events, then a day of 795): 4 detections blind, 13 degraded, 4 healthy, 1 with nothing to compare ([HEALTH](../docs/HEALTH.md), [watchdogs](../queries/health/README.md)) |
+| RASD-Agent's lane (grow) | 19 candidate detections drafted by a language model and kept by the gates of `rasd grow`, reviewed by no person, and counted in no number of this page but this one; none reaches the core without a person's approval of its exact text ([GOVERNANCE](../docs/GOVERNANCE.md)) · of the 604 techniques and sub-techniques of ATT&CK v20.1 that are drafted on their own, 17 have a core detection, 397 are in the agent's queue and 171 are out of reach of the logs RASD reads ([GROW](../docs/GROW.md), [candidates](../detect/candidates/README.md)) |
 | Near misses (replay corpus) | 246 events one field edit away from an alert, on 10 boundaries (10 pinned by a true negative) · correlation headroom T1110.003_password_spray_burst 4, T1558.003_kerberoasting_volume 1 · not measured, no events of their log source in the replay corpus: T1046_decoy_service_interaction, T1053.003_crontab_noninteractive_install, T1059.004_linux_suspicious_shell_execution, T1190_object_id_enumeration, T1190_object_id_enumeration (base), T1595.003_api_auth_probing, T1595.003_api_auth_probing (base) |
 | SIEM backends | SPL / KQL |
 | Hunting queries | 5 (KQL + SPL) |
@@ -35,11 +36,12 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | DFIR playbooks | 17 |
 | Purple scenarios | 18 |
 | Public dataset replay | 16/22 detections fire on the pinned public attack data that records their behaviour · 114 in-sample files from 3 sources (219 with the held-out files) · 253 alerts on the recorded attacks, 555 on the labs' own activity (each explained), 1 labelled false positive on these lab captures · held-out: 25 of 26 expectations met, in 23 of 105 files labelled before their first replay ([public data](PUBLIC_DATA_VALIDATION.md)) |
-| Validated detections (lab evidence) | 0 |
+| Validated detections (lab evidence) | 15 |
+| Lab evidence recomputed | 15 of 15 evidence files are recomputed from the raw lab runs kept in the repository on every build (3 parts of 1 run): a rule edited until it no longer fires on its run loses its evidence ([lab runs](../purple/lab_runs/README.md)) |
 | Average Engineering Score | 100/100 |
-| Operational Score | Pending |
-| Chain completeness | 306/340 items |
-| Maturity levels | 22 SIEM-Ready |
+| Operational Score | 86/100 |
+| Chain completeness | 326/340 items |
+| Maturity levels | 7 SIEM-Ready, 4 Validated, 11 Reference |
 
 A detection cannot be marked as Reference-level until it has lab evidence.
 

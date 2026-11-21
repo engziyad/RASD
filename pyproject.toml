@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rasd"
-version = "1.6.0"
+version = "1.7.0"
 description = "Attack-to-defense validation framework: lab emulation, tested Sigma detections, KQL and SPL checked against the rules, DFIR playbooks and lab evidence tooling."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -48,6 +48,7 @@ ignore = [
 # seeded pseudo-random numbers build synthetic events and test sequences, never secrets
 "samples/replay/generate.py" = ["S311"]
 "samples/silence/generate.py" = ["S311"]
+"samples/health/generate.py" = ["S311"]
 "tools/benchmark.py" = ["S311"]
 "tools/correlate.py" = ["S311"]
 "tests/*" = ["S311"]

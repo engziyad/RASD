@@ -42,6 +42,7 @@ Base score **60**.
 - PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
+- The SIEM's own service on the host: Splunk's splunkd.exe opens LSASS with full rights where it runs (seen on the lab's Windows host)
 - Windows components outside the named list on builds not covered by public data (add them by full path)
 - Administrators creating LSASS dumps for a Microsoft support case
 

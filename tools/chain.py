@@ -90,6 +90,8 @@ DFIR_START, DFIR_END = "<!-- rasd:dfir-catalog:start -->", "<!-- rasd:dfir-catal
 README_START, README_END = "<!-- rasd:readme-metrics:start -->", "<!-- rasd:readme-metrics:end -->"
 STATUS_START, STATUS_END = "<!-- rasd:status:start -->", "<!-- rasd:status:end -->"
 EXEC_START, EXEC_END = "<!-- rasd:executive:start -->", "<!-- rasd:executive:end -->"
+NEEDS_START, NEEDS_END = "<!-- rasd:scorecard-needs:start -->", "<!-- rasd:scorecard-needs:end -->"
+RESULTS_START, RESULTS_END = "<!-- rasd:scorecard-results:start -->", "<!-- rasd:scorecard-results:end -->"
 CALM = {"good": "87af87", "wait": "d7af87", "none": "bcbcbc", "info": "87afaf"}     # badge colours
 PLATFORM_LABEL = {"windows": "Windows", "active_directory": "Active Directory", "linux": "Linux", "web": "web applications"}
 OPERATIONAL_TARGET = 80
@@ -705,6 +707,7 @@ def render_metrics(repo: Repo) -> str:
         ("Evidence survivability (trace)", trace_line("../")),
         ("Evidence of absence (silence)", silence_line("../")),
         ("The unseen route (blindpath)", blindpath_line("../")),
+        ("Detection health (health)", health_line("../")),
         ("RASD-Agent's lane (grow)", lane_line("../")),
         ("Near misses (replay corpus)", near_summary(repo)),
         ("SIEM backends", "SPL / KQL"),
@@ -717,6 +720,7 @@ def render_metrics(repo: Repo) -> str:
         ("Purple scenarios", len(repo.scenarios)),
         ("Public dataset replay", public_summary_line(repo, "")),
         ("Validated detections (lab evidence)", len(validated)),
+        ("Lab evidence recomputed", lab_runs_line("../")),
         ("Average Engineering Score", f"{eng:.0f}/100"),
         ("Operational Score", f"{sum(s['operational_total'] for s in validated) / len(validated):.0f}/100" if validated else "Pending"),
         ("Chain completeness", f"{done}/{len(CHECKLIST) * len(maps)} items"),
@@ -810,12 +814,60 @@ def lane_line(root: str) -> str:
     """The lane RASD-Agent grows on its own, stated beside the core and never added to it; `root` is the path to the
     repository root from the page."""
     s = lane_summary()
+    reviewed = s["approved"] + s["revise"]
+    people = ("reviewed by no person" if not reviewed else
+              f"{reviewed} reviewed by a person ({s['approved']} approved, {s['revise']} sent back) and {s['unreviewed']} not yet")
     return (f"{s['candidates']} candidate detection{'' if s['candidates'] == 1 else 's'} drafted by a language model and kept by the "
-            f"gates of `rasd grow`, reviewed by no person and counted in no number of this page but this one · of the "
+            f"gates of `rasd grow`, {people}, and counted in no number of this page but this one; none reaches the core without a "
+            f"person's approval of its exact text ([GOVERNANCE]({root}docs/GOVERNANCE.md)) · of the "
             f"{s['techniques']} techniques and sub-techniques of ATT&CK v{s['attack_version']} that are drafted on their own, "
             f"{s['core']} have a core detection, {s['queue']} are in the agent's queue and {s['out_of_reach']} are out of reach of "
             f"the logs RASD reads "
             f"([GROW]({root}docs/GROW.md), [candidates]({root}detect/candidates/README.md))")
+
+
+def health_line(root: str) -> str:
+    """RASD-Health: the watchdogs that exist, and what the offline judge finds on the bundled sample; `root` is the
+    path to the repository root from the page."""
+    import health
+    wanted = health.needs()
+    text = (f"{len(health.WATCHDOGS)} watchdog searches in SPL and KQL over the {len(health.feed_detections(wanted))} kinds of event "
+            f"the rules read, each row naming the detections it blinds; {health.live_line()}")
+    c = health.sample_counts()
+    if c:
+        text += (f" · on the sample ({c['hosts']} hosts, a baseline of {c['baseline_events']} events, then a day of "
+                 f"{c['current_events']}): {c['blind']} detections blind, {c['degraded']} degraded, {c['healthy']} healthy, "
+                 f"{c['unknown']} with nothing to compare")
+    return text + f" ([HEALTH]({root}docs/HEALTH.md), [watchdogs]({root}queries/health/README.md))"
+
+
+def live_siem_line(with_alert: int, validated: int, store: Path | None = None, entries: list | None = None) -> str:
+    """How many evidence files carry an alert a live SIEM raised, and which SIEM the kept runs say it was."""
+    import evidence
+    live = evidence.live_siem(store or evidence.STORE, entries)
+    text = f"{with_alert} of {validated} evidence files carry an alert raised by a live SIEM"
+    if with_alert and live["alerted"]:
+        addons = "no vendor add-on" if not live["addons"] else "the vendor add-ons " + ", ".join(live["addons"])
+        text += (f": {' and '.join(live['platforms'])} beside {live['hosts']} lab host{'' if live['hosts'] == 1 else 's'}, "
+                 f"its own scheduler, the RASD apps and {addons}")
+    if live["unasked"]:
+        n = len(live["unasked"])
+        text += (f" · {n} detection{'' if n == 1 else 's'} also alerted there with no step asking for it "
+                 "([which](purple/lab_runs/README.md))")
+    return text
+
+
+def lab_runs_line(root: str) -> str:
+    """How much of the lab evidence is recomputed from raw runs kept in the repository."""
+    import evidence
+    s = evidence.kept_summary()
+    if not s["evidence"]:
+        return "no detection has lab evidence yet"
+    if not s["kept"]:
+        return f"{s['evidence']} evidence files, each taken as written: no raw lab run is kept in the repository"
+    return (f"{s['kept']} of {s['evidence']} evidence files are recomputed from the raw lab runs kept in the repository on every "
+            f"build ({s['parts']} parts of {s['runs']} run{'' if s['runs'] == 1 else 's'}): a rule edited until it no longer fires on "
+            f"its run loses its evidence ([lab runs]({root}purple/lab_runs/README.md))")
 
 
 def equiv_line(docs: str) -> str:
@@ -978,7 +1030,9 @@ def render_facts(repo: Repo, d) -> str:
         *([f"| **Behaviour proof** | {cell} |"] if (cell := behaviour_cell(repo, d)) else []),
         f"| **Parity** | KQL and SPL {'identical to the rule' if f['parity_ok'] else 'NOT proven'} on {f['parity_events']} events"
         + (" · Defender advanced hunting identical on the same events" if f.get("defender_events") else "")
-        + " (RASD's offline KQL / SPL model, not yet a live SIEM) |",
+        + (" (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab "
+           "([evidence](evidence.md)) |" if (repo.evidence[d.id] or {}).get("siem") else
+           " (RASD's offline KQL / SPL model, not yet a live SIEM) |"),
         f"| **Public data** | {public_cell(repo, d)} |",
         f"| **Rule** | [`rule.yml`](rule.yml) · [KQL]({rel(ROOT / 'queries' / 'kql' / (d.id + '.kql'), up)}) · "
         f"[SPL]({rel(ROOT / 'queries' / 'spl' / (d.id + '.spl'), up)})"
@@ -1059,7 +1113,8 @@ def public_summary_line(repo: Repo, docs: str) -> str:
 
 
 def render_readme_metrics(repo: Repo) -> str:
-    tests = len(repo.tests)
+    """The front page's two short tables: what the build proves, and what a lab has proven. Every other number
+    is on the metrics page."""
     fuzz = sum(v["tried"] for v in repo.fuzz.values())
     byp = sum(len(v["bypasses"]) for v in repo.fuzz.values())
     mutants = sum(v["mutants"] for v in repo.proof.values())
@@ -1067,47 +1122,33 @@ def render_readme_metrics(repo: Repo) -> str:
     parity = sum(v["events"] for v in repo.parity.values())
     divergences = sum(len(v["kql"]) + len(v["spl"]) for v in repo.parity.values())
     eng = sum(s["total"] for s in repo.scores.values()) / len(repo.scores)
-    validated = [s for s in repo.scores.values() if s["operational"]]
-    maps = {t: repo.checklist(t) for t in repo.techniques()}
-    done = sum(v == "done" for m in maps.values() for v in m.values())
-    ops = (f"{sum(s['operational_total'] for s in validated) / len(validated):.0f}/100 over {len(validated)} detections"
-           if validated else "pending a real lab run")
-    cf = [repo.det_facts(c) for c in repo.corrs]
-    rows = [
-        ("Detections · techniques", f"{len(repo.items)} detections ({len(repo.dets)} single-event, {len(repo.corrs)} correlations) "
-                                    f"across {len(repo.techniques())} ATT&CK v19.2 techniques "
-                                    "([legacy v18 aliases](intel/mappings/attack_v18_aliases.yml))"),
-        ("Offensive tests", f"{len(repo.red)}: {sum(1 for t in repo.red if covers(t))} mapped to current detections "
-                            f"(only these can raise the Operational Score) · "
-                            f"{sum(1 for t in repo.red if not covers(t))} gap or posture tests reserved for future coverage"),
-        ("Tests", f"{tests} cases · {len(repo.muts)} mutations · {fuzz} fuzzer variants ({byp} bypasses) on the "
-                  f"{len(repo.dets)} single-event rules"
-                  + (f"; the {len(cf)} correlation base rules add {sum(f['tp'] + f['tn'] for f in cf)} cases, "
-                     f"{sum(f['mutations'] for f in cf)} technique mutations and {sum(f['fuzz_variants'] for f in cf)} "
-                     "fuzzer variants" if cf else "")),
-        ("Proof", f"{mutants - survivors}/{mutants} rule mutants killed or accepted · {parity} parity verdicts per backend "
-                  f"({divergences} divergences)" + defender_summary(repo)),
-        *([("Correlations", f"{sum(f['scenarios'] for f in cf)} scenarios · "
-                            f"{sum(f['param_mutants'] - f['param_survivors'] for f in cf)}/{sum(f['param_mutants'] for f in cf)} "
-                            f"parameter mutants killed · {sum(f['aggregation_runs'] for f in cf)} aggregation parity runs "
-                            f"({'0 divergences' if all(f['parity_ok'] for f in cf) else 'NOT proven'}) · burst guarantee "
-                            "verified")] if cf else []),
-        ("Exact automata", certify_line(repo, "docs/")),
-        *([("Behaviour proofs", behaviour_line(repo, "docs/"))] if repo.certify["variants"] else []),
-        ("Edit equivalence", equiv_line("docs/")),
-        ("Deception", deceive_line("")),
-        ("Evidence survivability", trace_line("")),
-        ("Evidence of absence", silence_line("")),
-        ("The unseen route", blindpath_line("")),
-        ("RASD-Agent's lane", lane_line("")),
-        ("Near misses", near_summary(repo)),
-        ("Public datasets", public_summary_line(repo, "docs/")),
+    n = len(repo.items)
+    validated = [d for d in repo.items if repo.evidence[d.id]]
+    ops = ops_average(repo, validated)
+    with_alert = sum(1 for d in validated if repo.evidence[d.id].get("siem"))
+    build = [
+        ("Library", f"{n} detections ({len(repo.dets)} single-event, {len(repo.corrs)} correlations) across "
+                    f"{len(repo.techniques())} ATT&CK techniques"),
+        ("Tests", f"{len(repo.tests)} cases · {len(repo.muts)} mutations · {fuzz} evasion variants, {byp} bypasses"),
+        ("Rule logic", f"{mutants - survivors}/{mutants} rule mutants killed or accepted · {repo.certify['compiled']}/{repo.certify['rules']} rules as exact automata"),
+        ("SIEM queries", f"{parity} parity verdicts per backend, {divergences} divergences (offline model of KQL and SPL)"),
+        ("Public attack data", f"{public_counts(repo)['validated']}/{n} detections fire on pinned public datasets"),
         ("Engineering Score", f"{eng:.0f}/100"),
-        ("Operational Score", ops),
-        ("Chain completeness", f"{done}/{len(CHECKLIST) * len(maps)} items ([validation matrix](purple/validation_matrix.md))"),
     ]
-    return (README_START + "\n| | |\n|---|---|\n" + "\n".join(f"| **{k}** | {v} |" for k, v in rows)
-            + "\n\n<sub>Counted by `tools/chain.py` on every build.</sub>\n" + README_END)
+    lab = [
+        ("Validated", f"{len(validated)} of {n} detections fired on a real attack step in a lab" if validated else
+                      f"0 of {n}: no lab run is committed yet"),
+        ("Evidence", lab_runs_line("")),
+        ("Operational Score", f"{ops:.0f}/100 over {len(validated)} detections" if ops is not None else "pending a lab run"),
+        ("Live SIEM", live_siem_line(with_alert, len(validated)) if validated else "no alert from a live SIEM yet"),
+        ("Waiting", f"{n - len(validated)} detections, each with the lab machine and step it needs ([evidence plan](docs/EVIDENCE_PLAN.md))"
+                    if len(validated) < n else "none"),
+    ]
+    def table(title: str, rows: list[tuple[str, str]]) -> str:
+        return f"| {title} | |\n|---|---|\n" + "\n".join(f"| **{k}** | {v} |" for k, v in rows)
+
+    return (README_START + "\n" + table("✅ Proven by the build", build) + "\n\n" + table("🧪 Proven in a lab", lab)
+            + "\n\n<sub>Counted by `tools/chain.py` on every build · [every number](docs/RASD_METRICS.md)</sub>\n" + README_END)
 
 
 # --------------------------------------------------------------------------- #
@@ -1123,6 +1164,55 @@ def badge(label: str, message: str, colour: str) -> str:
 def proven(repo: Repo, level: str) -> list:
     """The detections at or above a maturity level."""
     return [d for d in repo.items if MATURITY.index(repo.maturity(d)) >= MATURITY.index(level)]
+
+
+def render_scorecard_needs(repo: Repo) -> str:
+    """docs/SIEM_VALIDATION_SCORECARD.md, what each detection needs: the events it reads, the step that makes them,
+    the queries to run. One row per detection of the library, so a new detection is on the scorecard from its build."""
+    import health
+    carriers = (health.MAPPINGS.get("health") or {}).get("carriers") or {}
+    needs = {n.detection: n for n in health.needs()}
+    out = NEEDS_START + "\n| Detection | Events it reads | Attack step | Queries |\n|---|---|---|---|\n"
+    for d in repo.items:
+        n = needs[d.id]
+        reads = f"{carriers.get(n.source, 'Sysmon')} · `{n.source}`" + (f" {', '.join(n.ids)}" if n.ids else "")
+        steps = sorted({f"[{t['id']}](../red/{t['platform']}/{t['id']}/)" for t in repo.red_for_detection(d.id)})
+        folder = "correlations/" if isinstance(d, Correlation) else ""
+        queries = f"[SPL](../queries/spl/{folder}{d.id}.spl) · [KQL](../queries/kql/{folder}{d.id}.kql)"
+        if (ROOT / "queries" / "mde" / f"{d.id}.kql").exists():
+            queries += f" · [Defender](../queries/mde/{d.id}.kql)"
+        kind = " (correlation)" if isinstance(d, Correlation) else ""
+        out += f"| [{d.id}](../{det_path(d)}/){kind} | {reads} | {', '.join(steps) or 'no step reaches it yet'} | {queries} |\n"
+    return out + NEEDS_END
+
+
+def render_scorecard_results(repo: Repo) -> str:
+    """docs/SIEM_VALIDATION_SCORECARD.md, the results: every cell read from the detection's committed evidence.md and
+    from the lab runs kept beside it. A cell nothing has produced yet says so."""
+    import evidence
+    live = evidence.live_siem()
+    kept = {det_id for det_id, _folder in evidence.library()
+            if (ev := repo.evidence.get(det_id)) and ((ev.get("inputs") or {}).get("results") or {}).get("sha256") in evidence.kept_digests()}
+    out = (RESULTS_START + "\n| Detection | Splunk alert | Splunk latency | Sentinel or Defender | Alerts with no step in the lab | "
+           "False positives (72 h baseline) | The rule's event | Evidence |\n|---|---|---|---|---|---|---|---|\n")
+    for d in repo.items:
+        ev = repo.evidence[d.id]
+        siem = (ev or {}).get("siem") or {}
+        platform = str(siem.get("platform") or "").split(" (build")[0]
+        if not ev:
+            alert = latency = event = cell = "pending"
+        else:
+            raised = int(siem.get("alerts") or 0) >= 1 and platform.startswith("Splunk")
+            alert = f"raised by {platform}" if raised else "no Splunk alert in the evidence"
+            latency = f"{float(siem['latency_seconds']):.0f} s" if raised else "-"
+            event = "in the kept run" if d.id in kept else "in a run that stayed with its lab"
+            cell = f"[{repo.scores[d.id]['operational_total']}/100](../{det_path(d)}/evidence.md)"
+        other = "pending" if (ROOT / "queries" / "mde" / f"{d.id}.kql").exists() else "pending · Sentinel only"
+        unasked = live["unasked"].get(d.id)
+        kind = " (correlation)" if isinstance(d, Correlation) else ""
+        out += (f"| [{d.id}](../{det_path(d)}/){kind} | {alert} | {latency} | {other} | "
+                f"{unasked or ('0' if live['hosts'] else 'pending')} | pending | {event} | {cell} |\n")
+    return out + RESULTS_END
 
 
 def ops_average(repo: Repo, validated: list) -> float | None:
@@ -1198,9 +1288,10 @@ def render_executive_block(repo: Repo, docs: str = "") -> str:
         ("Evidence survivability", trace_line("../")),
         ("Evidence of absence", silence_line("../")),
         ("The unseen route", blindpath_line("../")),
+        ("Detection health", health_line("../")),
         ("RASD-Agent's lane", lane_line("../")),
         ("Validated (lab evidence)", f"{len(validated)} of {n}" + (f" · Operational Score {ops:.0f}/100" if ops is not None
-                                                           else " · Operational Score pending")),
+                                                           else " · Operational Score pending") + " · " + lab_runs_line("../")),
         ("Analyst guidance", f"{len(guided)} of {n} with triage, response, closure and escalation notes · "
                              f"{len(repo.playbooks)} DFIR playbooks"),
         ("Measured gaps", " · ".join(
@@ -1256,7 +1347,8 @@ def render_executive_matrix(repo: Repo) -> str:
 
 WAVES = [
     ("windows", "Windows lab VM, default run",
-     "A domain-joined Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml)) and the `rasd_forwarder` app.",
+     "A Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml)) and the `rasd_forwarder` app. The two honey "
+     "account steps also need the VM joined to the lab domain; on a host with no domain they are recorded as not run.",
      ["`.\\red\\lab\\Invoke-RasdLabRun.ps1 -LabConfirmed` runs every step below, waits for Splunk and exports the VM's "
       "events into one zip."]),
     ("opt_in", "Windows lab VM, opt-in steps",
@@ -1269,13 +1361,18 @@ WAVES = [
       "On the DC: `.\\red\\Export-LabTelemetry.ps1 -LogName Security -EventId 4768,4769,4771,4776,4625 -Since '<start>' "
       "-OutFile dc-export.jsonl`"]),
     ("target", "WinRM target",
-     "A second Windows VM with WinRM enabled and Sysmon. The target logs what the remote session starts.",
+     "A second Windows VM with WinRM enabled and Sysmon. The target logs what the remote session starts. The lab host can be "
+     "its own target (`Enable-PSRemoting`, then `-Target $env:COMPUTERNAME`): the session host and its child process are the same "
+     "records either way.",
      ["Add `-Target <second VM>` to the lab run.",
       "On the target: `.\\red\\Export-LabTelemetry.ps1 -Since '<start>' -OutFile target-export.jsonl`"]),
     ("linux", "Linux lab VM",
-     "A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app.",
-     ["`python3 red/run_red.py --platform linux --lab-confirmed`",
-      "`python3 red/linux/export_sysmon_linux.py --since '<start>' --out linux-export.jsonl`"]),
+     "A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app, and for the decoy probe an OpenCanary host with "
+     "[`deceive/opencanary/settings.json`](../deceive/opencanary/settings.json) on a private address.",
+     ["`python3 red/run_red.py --platform linux --lab-confirmed --target http://<decoy address>` (without `--target` the decoy "
+      "probe is skipped)",
+      "`python3 red/linux/export_sysmon_linux.py --since '<start>' --out linux-export.jsonl`",
+      "On the decoy: copy `/var/tmp/opencanary.log` out as `canary-export.jsonl` and give it to `rasd evidence` beside the run"]),
     ("web", "Lab web application",
      "A lab copy of a web application (for example OWASP Juice Shop) on localhost, with its access log in combined format.",
      ["`export RASD_LAB_EMAIL=<lab test account> RASD_LAB_PASSWORD=<its password>` (the IDOR test logs in)",
@@ -1319,7 +1416,15 @@ def render_evidence_plan(repo: Repo) -> str:
             "detection's `evidence.md` is committed; nothing here is estimated.\n\n")
     ops = ops_average(repo, validated)
     out += (f"**Progress:** {len(validated)}/{n} detections Validated (lab evidence) · Operational Score "
-            + (f"{ops:.0f}/100" if ops is not None else "pending") + ".\n")
+            + (f"{ops:.0f}/100" if ops is not None else "pending") + ".\n\n")
+    kept = lab_runs_line("../")
+    out += ("**A lab you do not have to build.** The Windows default run with the WinRM step, the Linux host with its decoy and the "
+            "lab web application run on hosted runners that exist for one run: [`lab-run.yml`](../.github/workflows/lab-run.yml) "
+            "([how](../red/lab/README.md#a-lab-you-do-not-have-to-build)). " + kept[:1].upper() + kept[1:] + ". "
+            "The opt-in steps and the domain controller need a lab that is yours: those runners have no domain, and "
+            "the steps that dump LSASS memory or clear the Security log never run on a machine that is not ours. A live "
+            "Splunk stands beside each of them when the person who starts the run accepts its terms, and its alerts come "
+            "back with the run.\n")
     rows: dict[str, list[str]] = defaultdict(list)
     reached = set()
     for t in repo.red:
@@ -1354,7 +1459,9 @@ def render_evidence_plan(repo: Repo) -> str:
             "rasd build\n```\n\n"
             "`--run` refuses a zip that differs from the `.sha256` beside it and any file that differs from the run's "
             "manifest before it reads anything. Linux and web runs write their own `emulation-results.json`; run "
-            "`rasd evidence --run` once per run folder with its exports. Commit only the `evidence.md` files; the raw exports stay with you. Details: "
+            "`rasd evidence --run` once per run folder with its exports. Commit the `evidence.md` files; the raw exports stay with you, unless "
+            "everything in the run may be public: then `--keep <name>` stores it in `purple/lab_runs` and every build recomputes its "
+            "evidence. Details: "
             "[OPERATIONAL_VALIDATION](OPERATIONAL_VALIDATION.md) · [lab kit](../red/lab/README.md).\n")
     return out + FOOTER
 
@@ -1393,6 +1500,10 @@ def outputs(repo: Repo) -> dict[Path, str]:
     summary = DOCS / "EXECUTIVE_SUMMARY.md"
     if summary.exists():
         out[summary] = replace_block(summary.read_text(encoding="utf-8"), EXEC_START, EXEC_END, render_executive_block(repo))
+    scorecard = DOCS / "SIEM_VALIDATION_SCORECARD.md"
+    if scorecard.exists():
+        text = replace_block(scorecard.read_text(encoding="utf-8"), NEEDS_START, NEEDS_END, render_scorecard_needs(repo))
+        out[scorecard] = replace_block(text, RESULTS_START, RESULTS_END, render_scorecard_results(repo))
     dreadme = DFIR / "README.md"
     if dreadme.exists():
         out[dreadme] = replace_block(dreadme.read_text(encoding="utf-8"), DFIR_START, DFIR_END, render_dfir_catalog(repo))

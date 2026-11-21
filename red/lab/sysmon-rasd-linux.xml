@@ -1,0 +1,34 @@
+<!--
+  RASD lab Sysmon for Linux configuration: logs what the Linux detections read.
+
+  Install:  sudo sysmon -accepteula -i sysmon-rasd-linux.xml
+  Update:   sudo sysmon -c sysmon-rasd-linux.xml
+
+  Do not deploy sysmon-rasd-linux.xml to production. It is intentionally verbose for validation:
+  it logs every process creation. Any other configuration works too, as long as it logs
+  EID 1 for all processes.
+-->
+<Sysmon schemaversion="4.70">
+  <EventFiltering>
+    <!-- EID 1: every process creation (T1053.003, T1059.004) -->
+    <RuleGroup name="" groupRelation="or">
+      <ProcessCreate onmatch="exclude"/>
+    </RuleGroup>
+    <!-- everything else stays off: the rules read process creation only -->
+    <RuleGroup name="" groupRelation="or">
+      <NetworkConnect onmatch="include"/>
+    </RuleGroup>
+    <RuleGroup name="" groupRelation="or">
+      <ProcessTerminate onmatch="include"/>
+    </RuleGroup>
+    <RuleGroup name="" groupRelation="or">
+      <RawAccessRead onmatch="include"/>
+    </RuleGroup>
+    <RuleGroup name="" groupRelation="or">
+      <FileCreate onmatch="include"/>
+    </RuleGroup>
+    <RuleGroup name="" groupRelation="or">
+      <FileDelete onmatch="include"/>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>

@@ -471,6 +471,33 @@ class EvidenceBinding(unittest.TestCase):
         self.assertEqual(len(evidence.find_alerts(det, step, [alert], grace=900)), 1)
         self.assertEqual(evidence.find_alerts(det, {**step, "targets": []}, [alert], grace=900), [])
 
+    def test_runner_records_the_address_a_target_sees(self):
+        sys.path.insert(0, str(ROOT / "red"))
+        import run_red
+        self.assertEqual(run_red.address_toward("http://127.0.0.1:3000"), "127.0.0.1")
+        self.assertIsNone(run_red.address_toward("http://no-such-host.invalid"))
+        self.assertIsNone(run_red.address_toward(None))
+        text = (ROOT / "red" / "run_red.py").read_text(encoding="utf-8")
+        self.assertIn('rec["host_ips"] = [*ips, toward]', text)
+
+    @unittest.skipIf(os.name == "nt", "a Linux lab script: `bash` on Windows is not the shell it runs in")
+    @unittest.skipUnless(shutil.which("bash"), "bash is not installed")
+    def test_decoy_probe_accepts_a_lab_url_and_nothing_else(self):
+        script = ROOT / "red" / "linux" / "decoy_service_probe" / "probe_decoy.sh"
+
+        def refusal(target: str) -> str:
+            # --ssh-port is checked right after --target and before anything runs: the probe never starts
+            r = subprocess.run(["bash", str(script), "--marker", "rasd_1a2b3c4d", "--lab-confirmed", "--target", target,  # noqa: S607
+                                "--ssh-port", "x"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2, r.stderr)
+            return r.stderr
+        for good in ("http://10.0.0.40", "http://10.0.0.40/", "http://172.17.0.2", "https://lab-canary-01.lab.local:8443",
+                     "http://[fd00::40]"):
+            self.assertIn("--ssh-port must be", refusal(good), good)
+        for bad in ("http://10.0.0.40/admin", "http://10.0.0.40;id", "http://10.0.0.40 x", "ftp://10.0.0.40",
+                    "http://$(id)", "10.0.0.40"):
+            self.assertIn("--target must be", refusal(bad), bad)
+
     def test_runner_records_the_target_of_a_remote_step(self):
         text = (ROOT / "red" / "Invoke-RasdEmulation.ps1").read_text(encoding="utf-8")
         self.assertRegex(text, r"targets = @\(if \(\(Get-Parameters \$s\) -contains 'Target' -and \$Target\) \{ \$Target \}\)")
@@ -825,6 +852,109 @@ class SplunkApp(unittest.TestCase):
         rx = _re.compile(pcre.replace("(?<", "(?P<"))
         xml = "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7045</EventID>"
         self.assertEqual(rx.search(xml).group("Provider_Name"), "Service Control Manager")
+
+    def fields_app(self):
+        """The field app's props stanzas and its transforms, as (stanza -> {setting: value}) and (name -> compiled REGEX, FORMAT)."""
+        import configparser
+        props = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#",), interpolation=None, strict=True)
+        props.optionxform = str
+        props.read_string(self.files[splunk_app.OUT / splunk_app.FIELDS_APP / "default" / "props.conf"])
+        transforms = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#",), interpolation=None, strict=True)
+        transforms.optionxform = str
+        transforms.read_string(self.files[splunk_app.OUT / splunk_app.FIELDS_APP / "default" / "transforms.conf"])
+        return props, {name: (re.compile(transforms.get(name, "REGEX")), transforms.get(name, "FORMAT")) for name in transforms.sections()}
+
+    @staticmethod
+    def read_fields(xml: str, names: list[str], transforms: dict) -> dict[str, str]:
+        """What a REPORT line gives on one record: FORMAT $1::$2 makes a field of every match, NAME::$1 one field."""
+        out: dict[str, str] = {}
+        for name in names:
+            rx, fmt = transforms[name]
+            for m in rx.finditer(xml):
+                key, _, value = fmt.partition("::")
+                key = m.group(1) if key == "$1" else key
+                out.setdefault(key, m.group(2) if value == "$2" else m.group(1))
+        return out
+
+    def test_the_field_app_reads_event_xml_under_the_names_the_searches_use(self):
+        props, transforms = self.fields_app()
+        report = [n.strip() for n in splunk_app.FIELDS_REPORT.split(",")]
+        windows = ("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Sysmon' "
+                   "Guid='{5770385F-C22A-43E0-BF4C-06F5698FFBD9}'/><EventID>1</EventID><Version>5</Version><Computer>LAB-WS01.lab.local</Computer>"
+                   "</System><EventData><Data Name='RuleName'>-</Data><Data Name='Image'>C:\\Windows\\System32\\cmd.exe</Data>"
+                   "<Data Name='CommandLine'>cmd.exe /c \"echo a &amp; echo b &gt; C:\\Temp\\o.txt\"</Data><Data Name='ParentImage'></Data></EventData></Event>")
+        got = self.read_fields(windows, report, transforms)
+        self.assertEqual((got["EventCode"], got["EventID"], got["Computer"], got["Image"]), ("1", "1", "LAB-WS01.lab.local", "C:\\Windows\\System32\\cmd.exe"))
+        self.assertEqual(got["CommandLine"], 'cmd.exe /c "echo a &amp; echo b &gt; C:\\Temp\\o.txt"', "the regular expression reads the XML text as written")
+        self.assertEqual(got["ParentImage"], "")
+        scm = "<Event><System><Provider Name='Service Control Manager'/><EventID Qualifiers='16384'>7045</EventID><Computer>LAB-WS01</Computer></System></Event>"
+        self.assertEqual(self.read_fields(scm, report, transforms)["EventCode"], "7045", "an EventID with attributes is still the event's id")
+        linux = ('<Event><System><Provider Name="Linux-Sysmon" Guid="{ff032593-a8d3-4f13-b0d6-01fc615a0f97}"/><EventID>1</EventID>'
+                 '<TimeCreated SystemTime="2026-11-21T01:01:04.634661000Z"/><Computer>lab-linux01</Computer></System><EventData>'
+                 '<Data Name="Image">/usr/bin/bash</Data><Data Name="CommandLine">bash -c "id &amp;&amp; whoami"</Data></EventData></Event>')
+        got = self.read_fields(linux, report, transforms)
+        self.assertEqual((got["EventID"], got["Computer"], got["Image"]), ("1", "lab-linux01", "/usr/bin/bash"))
+        # every stanza is one the searches really read, takes nothing but the declared extraction, and decodes what the rules read
+        stanzas = {splunk_app.props_stanza(source) for source in splunk_app.EVENT_XML}
+        self.assertEqual(set(props.sections()), stanzas)
+        self.assertEqual(stanzas, {"source::XmlWinEventLog:Microsoft-Windows-Sysmon/Operational", "source::XmlWinEventLog:Security",
+                                   "source::XmlWinEventLog:System", "sysmon:linux"})
+        searches = " ".join(self.saved.get(sec, "search") for sec in self.saved.sections())
+        for stanza in props.sections():
+            self.assertEqual(props.get(stanza, "KV_MODE"), "none", stanza)
+            self.assertEqual(props.get(stanza, "REPORT-rasd_fields"), splunk_app.FIELDS_REPORT)
+            needle = stanza.split("::", 1)[1] if stanza.startswith("source::") else stanza
+            self.assertIn(needle, searches, f"{stanza}: no search reads these records")
+        linux_stanza = dict(props["sysmon:linux"])
+        self.assertEqual(linux_stanza["SHOULD_LINEMERGE"], "false")
+        self.assertTrue(re.search(linux_stanza["TIME_PREFIX"], linux), "the time Splunk gives a Linux record is the event's own")
+        self.assertNotIn("TIME_PREFIX", dict(props["source::XmlWinEventLog:Security"]), "Windows inputs carry their own time")
+
+    def test_the_field_app_decodes_xml_text_in_every_field_the_rules_read_there(self):
+        props, _transforms = self.fields_app()
+        self.assertEqual(splunk_app.decode_entities("CommandLine"),
+                         'replace(replace(replace(replace(replace(\'CommandLine\', "&lt;", "<"), "&gt;", ">"), "&quot;", "\\""), "&apos;", "\'"), "&amp;", "&")')
+        self.assertEqual(splunk_app.XML_ENTITIES[-1][0], "&amp;", '&amp; is decoded last: "&amp;lt;" is the text "&lt;", not "<"')
+        text = "a &amp;lt; b &amp;&amp; c &gt; d &quot;e&quot; &apos;f&apos;"
+        for entity, char in splunk_app.XML_ENTITIES:
+            text = text.replace(entity, char.replace("\\", ""))
+        self.assertEqual(text, "a &lt; b && c > d \"e\" 'f'")
+        fieldmap = splunk_app.MAPPINGS["spl"].get("fields") or {}
+        wanted: dict[str, set[str]] = {}
+        for rule, extra in ([(d.rule, ()) for d in load_detections()]
+                            + [(c.base, (*c.params.group_by, *([c.params.counted] if c.params.counted else []))) for c in load_correlations()]):
+            source = convert.logsource_key(rule)
+            if source in splunk_app.EVENT_XML:
+                names = {fieldmap.get(f, f) for f in (*convert.referenced_fields(rule["detection"]), *extra)}
+                wanted.setdefault(splunk_app.props_stanza(source), set()).update(names - {"EventCode", "EventID", "Provider_Name"})
+        self.assertGreaterEqual(len(wanted), 4)
+        for stanza, fields in wanted.items():
+            decoded = {k[5:] for k in dict(props[stanza]) if k.startswith("EVAL-")}
+            self.assertEqual(decoded, fields, stanza)
+            for field in fields:
+                self.assertEqual(props.get(stanza, f"EVAL-{field}"), splunk_app.decode_entities(field))
+        self.assertIn("CommandLine", wanted["sysmon:linux"])
+
+    def test_the_decoy_and_the_alert_records_get_the_time_they_were_written(self):
+        import configparser
+        props = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#",), interpolation=None, strict=True)
+        props.optionxform = str
+        props.read_string(self.files[splunk_app.OUT / "rasd" / "default" / "props.conf"])
+        decoy = dict(props["opencanary"])
+        self.assertEqual((decoy["KV_MODE"], decoy["TZ"], decoy["SHOULD_LINEMERGE"]), ("json", "UTC", "false"))
+        record = ('{"dst_host": "172.17.0.3", "dst_port": 80, "local_time": "2026-11-21 03:49:13.858165", "local_time_adjusted": "2026-11-21 03:49:13.858178", '
+                  '"logdata": {"PATH": "/index.html"}, "logtype": 3001, "node_id": "lab-canary-01", "src_host": "172.17.0.1", "utc_time": "2026-11-21 00:49:13.858176"}')
+        m = re.search(decoy["TIME_PREFIX"], record)
+        self.assertTrue(m)
+        from datetime import datetime as _dt
+        stamp = record[m.end():m.end() + 26]
+        self.assertEqual(_dt.strptime(stamp, decoy["TIME_FORMAT"].replace("%6N", "%f")).isoformat(), "2026-11-21T00:49:13.858176",
+                         "the UTC time is read, not the decoy host's local time that comes first in the record")
+        self.assertIn("opencanary", splunk_app.MAPPINGS["spl"]["logsources"]["opencanary/honeypot"])
+        for sourcetype in ("rasd:alert", "rasd:health"):
+            self.assertEqual(props.get(sourcetype, "DATETIME_CONFIG"), "CURRENT", sourcetype)
+        written = set(re.findall(r"action\.logevent\.param\.sourcetype = (\S+)", self.files[splunk_app.OUT / "rasd" / "default" / "savedsearches.conf"]))
+        self.assertEqual(written, {"rasd:alert", "rasd:health"})
 
     def test_indexes_cover_every_index_the_queries_read(self):
         conf = self.files[splunk_app.OUT / "rasd" / "default" / "indexes.conf"]
@@ -1723,10 +1853,18 @@ class Chain(unittest.TestCase):
         self.assertEqual(chain.gate_errors(self.repo), [])
 
     def test_pending_items_are_never_marked_done_without_evidence(self):
+        """Read from the evidence files themselves, not from what the repository computed from them."""
+        scores = {}
+        for d in self.repo.items:
+            path = d.folder / "evidence.md"
+            scores[d.id] = sum(evidence.operational_score(evidence.front_of(path.read_text(encoding="utf-8"))).values()) if path.exists() else None
+        self.assertTrue(any(s is not None for s in scores.values()) and any(s is None for s in scores.values()),
+                        "this repository holds detections with lab evidence and detections still waiting for it")
         for t in self.repo.techniques():
             c = self.repo.checklist(t)
-            self.assertEqual(c["Evidence file"], "pending")
-            self.assertEqual(c["Operational Score"], "pending")
+            of_t = [scores[d.id] for d in self.repo.items if d.technique == t]
+            self.assertEqual(c["Evidence file"], "done" if all(s is not None for s in of_t) else "pending", t)
+            self.assertEqual(c["Operational Score"], "done" if all((s or 0) >= chain.OPERATIONAL_TARGET for s in of_t) else "pending", t)
 
     def test_backlog_holds_every_gap_and_only_gaps(self):
         self.assertEqual(chain.backlog_errors(self.repo), [])
@@ -1746,6 +1884,46 @@ class Chain(unittest.TestCase):
             for a in self.repo.actors_for(g["technique"]):
                 self.assertRegex(a["source"], r"^https://attack\.mitre\.org/groups/G\d{4}/$")
                 self.assertTrue(any(t.get("note") for t in a["techniques"] if t["id"] == g["technique"]), a["group"])
+
+
+class Scorecard(unittest.TestCase):
+    """docs/SIEM_VALIDATION_SCORECARD.md: a row for every detection, and no cell that a person typed."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.repo = shared_repo()
+        cls.text = (ROOT / "docs" / "SIEM_VALIDATION_SCORECARD.md").read_text(encoding="utf-8")
+        cls.needs = cls.text.split(chain.NEEDS_START)[1].split(chain.NEEDS_END)[0]
+        cls.results = cls.text.split(chain.RESULTS_START)[1].split(chain.RESULTS_END)[0]
+
+    def row(self, block: str, det_id: str) -> str:
+        rows = [line for line in block.splitlines() if line.startswith(f"| [{det_id}](")]
+        self.assertEqual(len(rows), 1, det_id)
+        return rows[0]
+
+    def test_every_detection_of_the_library_is_on_the_scorecard(self):
+        for d in self.repo.items:
+            needs = self.row(self.needs, d.id)
+            self.assertIn(f"queries/spl/{'correlations/' if d in self.repo.corrs else ''}{d.id}.spl", needs)
+            self.row(self.results, d.id)
+        self.assertEqual(len([line for line in self.results.splitlines() if line.startswith("| [")]), len(self.repo.items))
+        self.assertFalse("queries/splunk`" in self.text, "the folder is queries/spl")
+
+    def test_a_result_is_what_the_committed_evidence_says(self):
+        for d in self.repo.items:
+            cells = [c.strip() for c in self.row(self.results, d.id).strip("|").split("|")]
+            ev = self.repo.evidence[d.id]
+            siem = (ev or {}).get("siem") or {}
+            if not ev:
+                self.assertEqual((cells[1], cells[2], cells[6], cells[7]), ("pending",) * 4, d.id)
+            elif siem.get("alerts") and str(siem.get("platform", "")).startswith("Splunk"):
+                self.assertEqual(cells[1], "raised by " + siem["platform"].split(" (build")[0], d.id)
+                self.assertEqual(cells[2], f"{float(siem['latency_seconds']):.0f} s", d.id)
+            else:
+                self.assertEqual((cells[1], cells[2]), ("no Splunk alert in the evidence", "-"), d.id)
+            if ev:
+                self.assertEqual(cells[7], f"[{self.repo.scores[d.id]['operational_total']}/100](../{chain.det_path(d)}/evidence.md)")
+            self.assertEqual(cells[5], "pending", "no 72-hour baseline has been run: the cell says so until one is")
 
 
 class Tune(unittest.TestCase):
@@ -2461,11 +2639,38 @@ class Advise(unittest.TestCase):
         families = {advise.family(i) for i in ids}
         self.assertFalse(families & {"tests", "proof", "fuzz", "parity", "correlate", "certify.failed", "score", "chain",
                                      "tune.broken", "tune.risky"}, families)
-        # the lab run that validates the most detections is the one finding ranked "now"
+        # the lab run that validates the most detections is the one finding ranked "now", and every detection still
+        # without evidence is either in a lab run or named as out of reach of one
         now = [f for f in self.findings if f.priority == 1]
-        self.assertEqual([f.id for f in now], ["evidence.wave.windows"])
-        self.assertIn("Invoke-RasdLabRun.ps1", now[0].action)
-        self.assertEqual(len(now[0].data["detections"]), 11)
+        waves = sorted((f for f in self.findings if f.id.startswith("evidence.wave.")), key=lambda f: (-len(f.data["detections"]), f.id))
+        self.assertEqual([f.id for f in now], [waves[0].id])
+        self.assertIn("rasd evidence --run", now[0].action)
+        waiting = {d.id for d in self.repo.items if not self.repo.evidence[d.id]}
+        in_a_run = {det for f in waves for det in f.data["detections"]}
+        out_of_reach = {f.data["detection"] for f in self.findings if f.id.startswith("evidence.unreachable.")}
+        self.assertTrue(waiting, "detections still wait for a lab run")
+        self.assertEqual(in_a_run | out_of_reach, waiting)
+        self.assertFalse(in_a_run & out_of_reach)
+        # what the evidence at hand still lacks is one finding per cause, naming exactly the detections it holds back
+        validated = {d.id: self.repo.scores[d.id]["operational"] for d in self.repo.items if self.repo.evidence[d.id]}
+        self.assertTrue(validated)
+        lacks = {f.data["lacks"]: f for f in self.findings if f.id.startswith("evidence.operational.")}
+        self.assertEqual(len(lacks), sum(1 for f in self.findings if f.id.startswith("evidence.operational.")))
+        for part in ("SIEM result", "DFIR evidence", "Cleanup"):
+            short = sorted(d for d, parts in validated.items() if not parts[part] and sum(parts.values()) < chain.OPERATIONAL_TARGET)
+            self.assertEqual(lacks[part].data["detections"] if part in lacks else [], short, part)
+        # latency is judged only where there is an alert to time: the finding names the detections that have theirs,
+        # earned less than the full points for it and are still short of the target
+        late = sorted(d for d, parts in validated.items()
+                      if parts["SIEM result"] and parts["Detection latency"] < 15 and sum(parts.values()) < chain.OPERATIONAL_TARGET)
+        self.assertEqual(lacks["Detection latency"].data["detections"] if "Detection latency" in lacks else [], late)
+        words = {part: (why, step) for _key, part, _words, why, step in advise.OPERATIONAL_LACKS}
+        self.assertIn("stops at 60", words["SIEM result"][0])
+        self.assertIn("RASD - alert export", words["SIEM result"][1])
+        self.assertIn("lab-run.yml with the Splunk terms accepted", words["SIEM result"][1])
+        self.assertIn("by design", words["Detection latency"][0], "the app's own wait is said, not blamed on the detection")
+        for part, finding in lacks.items():
+            self.assertEqual((finding.evidence.split(" Detections: ")[0], finding.action), words[part], part)
         # one known-gap finding per behaviour gap the certificates show, each with its engine-confirmed event and fix
         gaps = [f for f in self.findings if f.id.startswith("certify.gap.")]
         self.assertEqual(len(gaps), self.repo.certify["gaps"])
@@ -2487,11 +2692,13 @@ class Advise(unittest.TestCase):
 
     def test_decisions_set_aside_defer_demote_and_count_resolved(self):
         import datetime as dt
+        wave = next(f.id for f in self.findings if f.priority == 1)
+        self.assertTrue(wave.startswith("evidence.wave."))
         doc = {"decisions": [
             {"finding": "backlog.T1083", "decision": "rejected", "date": "2026-10-01", "note": "the baseline comes first"},
             {"finding": "backlog.T1505.003", "decision": "rejected", "date": "2026-10-02", "note": "needs the WAF log source"},
             {"finding": "coverage.breadth", "decision": "deferred", "date": "2026-10-03", "until": "2027-01-01"},
-            {"finding": "evidence.wave.windows", "decision": "accepted", "date": "2026-10-04", "by": "lab"},
+            {"finding": wave, "decision": "accepted", "date": "2026-10-04", "by": "lab"},
             {"finding": "proof.T1218.011_rundll32_suspicious_execution.old-mutant", "decision": "accepted", "date": "2026-09-01"},
         ]}
         self.assertEqual(advise.decision_errors(doc), [])
@@ -2500,11 +2707,11 @@ class Advise(unittest.TestCase):
         self.assertEqual({f.id for f in view["set_aside"]}, {"backlog.T1083", "backlog.T1505.003"})
         self.assertEqual([f.id for f in view["deferred"]], ["coverage.breadth"])
         self.assertNotIn("coverage.breadth", ranked)
-        self.assertEqual(ranked["evidence.wave.windows"].decision["by"], "lab")
+        self.assertEqual(ranked[wave].decision["by"], "lab")
         # the backlog family was rejected twice: its remaining findings rank one level lower, nothing else moves
         self.assertEqual(ranked["backlog.T1087.002"].priority, 4)
         self.assertEqual(ranked["backlog.T1087.002"].base_priority, 3)
-        self.assertEqual(ranked["evidence.wave.windows"].priority, 1)
+        self.assertEqual(ranked[wave].priority, 1)
         led = view["ledger"]
         self.assertEqual((led["accepted"], led["resolved"], led["open"], led["rejected"], led["deferred"]), (2, 1, 1, 2, 1))
         self.assertEqual(led["resolved_ids"], ["proof.T1218.011_rundll32_suspicious_execution.old-mutant"])
@@ -2666,12 +2873,12 @@ class Advise(unittest.TestCase):
         self.assertEqual(advise.gate_rule({"logsource": {"product": "linux"}, "detection": {"s": {"a|nonsense": 1}, "condition": "s"}}, tps, tns)[0], False)
 
     def test_proposals_are_written_under_the_agent_folder(self):
-        f = self.by_id["evidence.wave.windows"]
+        f = next(x for x in self.findings if x.id.startswith("evidence.wave."))
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(advise, "PROPOSALS", Path(tmp)):
             folder = advise.propose(f, None)
-            self.assertEqual(folder, Path(tmp) / "evidence-wave-windows")
+            self.assertEqual(folder, Path(tmp) / f.id.replace(".", "-"))
             text = (folder / "PROPOSAL.md").read_text(encoding="utf-8")
-            self.assertIn("Invoke-RasdLabRun.ps1", text)
+            self.assertIn("rasd evidence --run", text)
             self.assertIn("Nothing is committed or pushed by the agent", text)
             decoy = self.by_id["deceive.honey-account-attribute-read"]
             folder = advise.propose(decoy, None)

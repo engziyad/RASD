@@ -380,9 +380,11 @@ class Gates(unittest.TestCase):
         self.assertIn("every true positive is already caught by T9998_wide_rule", refusal(self, draft(), [catches_all]))
 
     def test_an_exclusion_needs_a_true_negative(self):
-        detection = {**draft()["detection"], "filter_monitor": {"User": "LAB\\svc_monitor"}, "condition": "selection_img and selection_arg and not filter_monitor"}
+        detection = {**draft()["detection"], "filter_monitor": {"ParentImage|endswith": "\\monitor-agent.exe"},
+                     "condition": "selection_img and selection_arg and not filter_monitor"}
         self.assertIn("no true negative needs the exclusion 'filter_monitor'", refusal(self, draft(detection=detection)))
-        tns = [*draft()["true_negatives"], proc("the monitoring account's scheduled check", "nltest /domain_trusts", User="LAB\\svc_monitor")]
+        tns = [*draft()["true_negatives"], proc("the monitoring agent's scheduled check", "nltest /domain_trusts",
+                                                ParentImage="C:\\Program Files\\Monitor\\monitor-agent.exe")]
         built = grow.build(NLTEST, draft(detection=detection, true_negatives=tns), CORE, TODAY)
         self.assertIn("filter_monitor", built["rule"]["detection"])
 
@@ -658,7 +660,7 @@ class Run(LaneCase):
         self.assertEqual(drafter.draft(NLTEST, "the variation 'x' is not matched")["name"], "nltest_trust_listing")
         self.assertEqual(seen["required"], ("observable",))
         self.assertEqual(seen["user"]["technique"], {"id": "T1482", "name": "Domain Trust Discovery", "tactics": ["discovery"],
-                                                     "platforms": ["Windows"], "description": "What ATT&CK says."})
+                                                     "platforms": ["Windows"], "reference_text": "What ATT&CK says."})
         self.assertEqual(seen["user"]["previous_draft_refused_because"], "the variation 'x' is not matched")
         self.assertEqual(seen["user"]["accepted_example"], {"technique": "T1482", "draft": grow.EXAMPLE})
         self.assertIn("accepted_example", seen["system"])
@@ -798,20 +800,22 @@ class Guard(unittest.TestCase):
     """What an unattended run may change, and the workflow that publishes it."""
 
     def test_what_the_lane_owns(self):
-        self.assertEqual(sorted(grow.PAGES), ["README.md", "agent/ADVICE.md", "docs/EXECUTIVE_SUMMARY.md", "docs/RASD_METRICS.md",
+        self.assertEqual(sorted(grow.PAGES), ["agent/ADVICE.md", "docs/EXECUTIVE_SUMMARY.md", "docs/RASD_METRICS.md",
                                               "purple/executive_matrix.md"])
         for path in ("detect/candidates/README.md", "detect/candidates/T1482_x/tests/true_positive.jsonl", "agent/growth.yml",
                      "intel/mappings/attack_enterprise.json", *grow.PAGES):
             self.assertTrue(grow.owned(path), path)
         for path in ("detect/detections/T1059.001_powershell_encoded_command/rule.yml", "detect/candidatesx/rule.yml", "tools/grow.py",
                      "agent/decisions.yml", ".github/workflows/agent-grow.yml", "intel/mappings/backlog.yml", "docs/GROW.md",
-                     "rasd.py", "detect/correlations/T1190_object_id_enumeration/base.yml", "tests/test_grow.py"):
+                     "rasd.py", "detect/correlations/T1190_object_id_enumeration/base.yml", "tests/test_grow.py", "README.md",
+                     "docs/PROOFS.md"):
             self.assertFalse(grow.owned(path), path)
 
     def test_the_pages_that_state_the_lane_are_the_ones_it_owns(self):
         st = grow.summary()
         row = f"{st['candidates']} candidate detection{'' if st['candidates'] == 1 else 's'} drafted by a language model"
-        counsel = f"RASD-Agent's lane: {st['candidates']} candidate{'' if st['candidates'] == 1 else 's'} no person has reviewed"
+        counsel = (f"RASD-Agent's lane: {st['unreviewed']} of {st['candidates']} candidate{'' if st['candidates'] == 1 else 's'} "
+                   "wait for a person's review")
         stated = sorted(p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*.md") if ".git" not in p.parts and "candidates" not in p.parts
                         and (row in p.read_text(encoding="utf-8") or counsel in p.read_text(encoding="utf-8")))
         self.assertEqual(stated, sorted(grow.PAGES))
@@ -826,24 +830,25 @@ class Guard(unittest.TestCase):
                                          "-c", "commit.gpgsign=false", *a], check=True, capture_output=True)
         write = lambda rel, text: grow._write(repo / rel, text)
         git("init", "--quiet")
-        for rel in ("README.md", "tools/grow.py", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml", "detect/detections/T1059.001_y/rule.yml",
-                    "detect/detections/T1059.001_y/README.md"):
+        for rel in ("README.md", "docs/RASD_METRICS.md", "tools/grow.py", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml",
+                    "detect/detections/T1059.001_y/rule.yml", "detect/detections/T1059.001_y/README.md"):
             write(rel, "first\n")
         git("add", "--all")
         git("commit", "--quiet", "-m", "first")
         self.assertEqual(grow.strays(repo), [])
-        for rel in ("README.md", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml", "detect/candidates/T1105 with a blank/rule.yml",
-                    "intel/mappings/attack_enterprise.json"):
+        for rel in ("docs/RASD_METRICS.md", "agent/growth.yml", "detect/candidates/T1482_x/rule.yml",
+                    "detect/candidates/T1105 with a blank/rule.yml", "intel/mappings/attack_enterprise.json"):
             write(rel, "second\n")
         (repo / "detect/candidates/T1482_x/rule.yml").unlink()
         self.assertEqual(grow.strays(repo), [])
         git("add", "--all")
         self.assertEqual(grow.strays(repo), [])
         write("tools/grow.py", "second\n")
+        write("README.md", "second\n")
         write(".github/workflows/other.yml", "second\n")
         (repo / "detect/detections/T1059.001_y/rule.yml").unlink()
         git("mv", "detect/detections/T1059.001_y/README.md", "detect/candidates/README.md")
-        self.assertEqual(grow.strays(repo), [".github/workflows/other.yml", "detect/detections/T1059.001_y/README.md",
+        self.assertEqual(grow.strays(repo), [".github/workflows/other.yml", "README.md", "detect/detections/T1059.001_y/README.md",
                                              "detect/detections/T1059.001_y/rule.yml", "tools/grow.py"])
 
     def test_the_workflow_publishes_only_behind_the_gates(self):
@@ -915,7 +920,8 @@ class TheLane(unittest.TestCase):
     def test_the_page_states_what_the_lane_is(self):
         page = (grow.LANE / "README.md").read_text(encoding="utf-8")
         st = grow.state(grow.Lane())
-        self.assertIn("No person reviewed them and no lab run validated them", page)
+        self.assertIn("that is a person's judgement, recorded in the Review column below, and no lab run has validated any of them", page)
+        self.assertIn(f"**Reviewed by a person: {st['reviews']['approved'] + st['reviews']['revise']} of {st['counts']['candidate']}**", page)
         self.assertIn(f"**ATT&CK v{st['attack_version']}**", page)
         self.assertIn(f"| Candidate of this lane | {st['counts']['candidate']} |", page)
         self.assertIn(f"| Core detection, written and reviewed by a person | {st['counts']['core']} |", page)

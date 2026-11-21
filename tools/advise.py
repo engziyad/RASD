@@ -161,8 +161,40 @@ def counsel(repo) -> list[Finding]:
     return out
 
 
+# what an Operational Score below the target lacks, in the order the points are worth: the part of the score, the
+# title's words, what the part needs, and the next step
+OPERATIONAL_LACKS = (
+    ("siem", "SIEM result", "validated with no alert from a live SIEM",
+     "Each evidence.md records the run and the event the rule matched in the lab host's own telemetry. The SIEM result (25 points) "
+     "and the detection latency (up to 15) are earned only by an alert a scheduled search raised on that step, so the Operational "
+     "Score of these stops at 60.",
+     "Run the lab with the SIEM watching. On the hosted lab: start lab-run.yml with the Splunk terms accepted, and the alerts "
+     "come back with the run. On a lab of your own: install the generated apps (queries/splunk_app), let "
+     "Invoke-RasdLabRun.ps1 wait for the scheduled alerts, export the report `RASD - alert export` (or let "
+     "red/lab/splunk_lab.py do it) and give the file to rasd evidence --run beside the run (docs/OPERATIONAL_VALIDATION.md)."),
+    ("latency", "Detection latency", "alerted later than a minute after the step",
+     "The alert is in the evidence; the detection latency earns its 15 points within 60 seconds of the step, 10 within five "
+     "minutes, 5 within fifteen. The RASD Splunk app reads each slice five minutes after it closes, so that an event indexed "
+     "late is still read: its alerts come 5 to 10 minutes after the event, by design.",
+     "Nothing is wrong with these detections, and the points they lack are sooner found in the other findings that name them. "
+     "More points here mean a shorter wait for late events (WINDOW_END in tools/splunk_app.py) or a search that runs as "
+     "events arrive: a decision for the whole app, taken with the delay watchdog's numbers in hand (rasd health), not for one "
+     "detection."),
+    ("artifacts", "DFIR evidence", "validated with no artifact collected for the investigation",
+     "DFIR evidence (15 points) is earned when the lab step saves, with its SHA-256, what an investigator would take before the "
+     "cleanup removes it.",
+     "Have each step save it (a `collect:` script for a Windows test, as red/windows/powershell_encoded_command has; a file in the "
+     "step's results folder for a Linux or web test), run the step again, then rasd evidence --run."),
+    ("cleanup", "Cleanup", "validated by a run whose cleanup was not verified",
+     "Cleanup (10 points) is earned when the run's own check finds nothing of the step left on the host.",
+     "Read the step's cleanup status in the run's emulation-results.json, fix the cleanup script or its verification, and run "
+     "the step again."),
+)
+
+
 def evidence_findings(repo) -> list[Finding]:
-    """The lab runs that would validate the most detections first; the detections no red step reaches."""
+    """The lab runs that would validate the most detections first; the detections no red step reaches; and, for the
+    detections that have evidence, what their Operational Score still lacks, one finding per cause."""
     from chain import OPERATIONAL_TARGET, WAVES, wave_of
     waves: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     reached: set[str] = set()
@@ -197,15 +229,23 @@ def evidence_findings(repo) -> list[Finding]:
             evidence="docs/EVIDENCE_PLAN.md lists it under 'not reachable by an offensive step yet'.",
             action=f"Give it {need}; `rasd red --check` and `rasd chain --check` verify the link.", weight=1,
             data={"detection": d.id}))
+    lacking: dict[str, list[str]] = defaultdict(list)
     for d in repo.items:
-        ops = repo.scores[d.id]["operational_total"]
-        if repo.evidence[d.id] and ops is not None and ops < OPERATIONAL_TARGET:
+        ops, parts = repo.scores[d.id]["operational_total"], repo.scores[d.id]["operational"] or {}
+        if not repo.evidence[d.id] or ops is None or ops >= OPERATIONAL_TARGET:
+            continue
+        for key, part, _words, _why, _step in OPERATIONAL_LACKS:
+            late = key == "latency" and parts.get("SIEM result") and parts.get(part, 0) < 15
+            if late or (key != "latency" and not parts.get(part)):
+                lacking[key].append(d.id)
+    for key, part, words, why, step in OPERATIONAL_LACKS:
+        held = sorted(lacking[key])
+        if held:
             out.append(Finding(
-                id=f"evidence.operational.{d.id}", priority=2, pillar="evidence", roles=("purple", "analyst"),
-                title=f"{d.id}: Operational Score {ops}/100, below the {OPERATIONAL_TARGET} the Reference level needs",
-                evidence=f"evidence.md records the run; the score is computed from it ({_short(repo.scores[d.id]['operational'])}).",
-                action="Read the evidence file's missed and latency rows; fix the collection path they name and re-run the step.",
-                weight=OPERATIONAL_TARGET - ops, data={"detection": d.id, "operational": ops}))
+                id=f"evidence.operational.{key}", priority=2, pillar="evidence", roles=("purple", "executive"),
+                title=f"{_n(len(held), 'detection')} {words}: Operational Score below the {OPERATIONAL_TARGET} the Reference level needs",
+                evidence=f"{why} Detections: {', '.join(held)}.", action=step, weight=len(held),
+                data={"lacks": part, "detections": held}))
     return out
 
 
@@ -439,28 +479,36 @@ def backlog_findings(repo) -> list[Finding]:
 
 
 def lane_findings(repo) -> list[Finding]:
-    """The lane RASD-Agent grows on its own, as work for people: the candidates no person has reviewed,
-    the ones whose technique the backlog already ranks first."""
+    """The lane RASD-Agent grows on its own, as work for people: the candidates that wait for a person's
+    review, the ones whose technique the backlog already ranks first, and the approved ones nobody promoted."""
     from chain import backlog_ranked
-    from grow import Lane, load_candidates, summary
+    from grow import Lane, load_candidates, state, summary
     lane = Lane()
     cands = load_candidates(lane)
     if not cands:
         return []
     s = summary(lane)
+    standing = {row["id"]: row["review"] for row in state(lane)["candidates"]}
+    waiting = [c for c in cands if standing.get(c.id) in ("unreviewed", "stale")]
+    approved = sorted(cid for cid, review in standing.items() if review == "approved")
     ranked = [g["technique"] for g, _acts in backlog_ranked(repo)]
-    near = sorted((c.id for c in cands if c.technique in ranked), key=lambda cid: ranked.index(cid.split("_")[0]))
+    near = sorted((c.id for c in waiting if c.technique in ranked), key=lambda cid: ranked.index(cid.split("_")[0]))
     tactics = Counter(t for c in cands for t in c.record.get("tactics") or [])
     spread = ", ".join(f"{t} {tactics[t]}" for t in ATTACK_TACTICS if tactics[t])
+    first = near[0] if near else (waiting[0].id if waiting else (approved[0] if approved else cands[0].id))
     return [Finding(
         id="lane.candidates", priority=3, pillar="coverage", roles=("engineer", "executive"),
-        title=f"RASD-Agent's lane: {_n(len(cands), 'candidate')} no person has reviewed, {_n(s['queue'], 'technique')} in its queue",
+        title=f"RASD-Agent's lane: {len(waiting)} of {_n(len(cands), 'candidate')} wait for a person's review, "
+              f"{_n(s['queue'], 'technique')} in its queue",
         evidence=f"Drafted by a language model and kept by the gates of rasd grow: each is proven against its own tests, validated by no "
-                 f"lab run and counted in no score. By tactic: {spread}. "
-                 + (f"The backlog already ranks the technique of {', '.join(near)}." if near else "None is for a technique the backlog ranks."),
-        action="Review the candidates the lab can exercise and promote them into the core (docs/GROW.md, promoting a candidate)"
-               + (f", {near[0]} first" if near else "") + ". rasd grow shows what is drafted next; detect/candidates/README.md lists them all.",
-        weight=len(near), data={"candidates": [c.id for c in cands], "backlog": near, "queue": s["queue"]})]
+                 f"lab run and counted in no score. {s['approved']} approved by a person, {s['revise']} sent back to revise. By tactic: {spread}. "
+                 + (f"The backlog already ranks the technique of {', '.join(near)}." if near else "None that waits is for a technique the backlog ranks.")
+                 + (f" Approved and not promoted: {', '.join(approved)}." if approved else ""),
+        action=(f"rasd review {first} shows the rule, what it will never alert on and what only a person can judge; record the verdict with "
+                "--approve, --revise or --reject, and promote an approved one with --promote (docs/GOVERNANCE.md). "
+                "rasd review lists them all; rasd grow shows what is drafted next."),
+        weight=len(near), data={"candidates": [c.id for c in cands], "backlog": near, "queue": s["queue"],
+                                "waiting": [c.id for c in waiting], "approved": approved})]
 
 
 def deception_findings(repo) -> list[Finding]:

@@ -5,12 +5,12 @@
 |---|---|
 | **ATT&CK** | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) Unsecured Credentials: Credentials In Files (credential-access) · related: [T1083](https://attack.mitre.org/techniques/T1083/) File and Directory Discovery (discovery) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | 9 true positive · 9 true negative · 13 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 9 variants |
 | **Behaviour proof** | 1 of 5 variants proven for every event · no known gap · 4 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1552001-deception---honey-credentials-file-opened)) |
-| **Parity** | KQL and SPL identical to the rule on 717 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 717 events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | no public dataset records it yet · [why](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1552.001_honey_file_access.kql) · [SPL](../../../queries/spl/T1552.001_honey_file_access.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

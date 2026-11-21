@@ -1,19 +1,19 @@
 # RASD-Agent's lane: detections grown with no person in the loop
 
-`rasd advise` counsels; a person decides. `rasd grow` is the part of RASD-Agent that works alone: it takes the next ATT&CK technique RASD has no rule for, has the configured language model draft a rule with its tests, runs the draft through every gate, keeps it when all of them accept it, and moves to the next technique. Nobody approves a candidate, and nobody has to.
+`rasd advise` counsels; a person decides. `rasd grow` is the part of RASD-Agent that works alone: it takes the next ATT&CK technique RASD has no rule for, has the configured language model draft a rule with its tests, runs the draft through every gate, keeps it when all of them accept it, and moves to the next technique. Nobody has to be there for a candidate to be drafted.
 
-That is only safe because of where the result goes. RASD holds two libraries, and the agent writes to one of them:
+That is only safe because of where the result goes, and of what the agent cannot do with it. RASD holds two libraries, and the agent writes to one of them. Whether a candidate is right is a person's decision, taken with `rasd review` and recorded against the exact rule text; nothing the agent drafts reaches the core, a generated query or the Splunk app any other way ([GOVERNANCE](GOVERNANCE.md)).
 
 | | Core | Candidates |
 |---|---|---|
 | Where | [`detect/detections/`](../detect/detections/), [`detect/correlations/`](../detect/correlations/) | [`detect/candidates/`](../detect/candidates/README.md) |
 | Written by | a person | a language model, for RASD-Agent |
-| Reviewed by a person | yes | no |
+| Reviewed by a person | yes | when someone does: [`rasd review`](GOVERNANCE.md), shown on each candidate's page |
 | Kept when | `rasd ci` passes and a person merges it | every gate of `rasd grow` accepts it |
 | Counted in the scores, the coverage map, the certificates, RASD-Trace, RASD-Silence and RASD-Blindpath | yes | never |
 | Maturity | Draft to Reference ([model](RASD_MATURITY_MODEL.md)) | none: a candidate is a candidate |
 
-Every number RASD publishes about the core stays what it was. The lane has its own page, [`detect/candidates/README.md`](../detect/candidates/README.md), one row in the metrics that says how many candidates there are and that no person reviewed them, and one finding in [the counsel](../agent/ADVICE.md) that hands them to people: which candidates wait for a review, and which of them the backlog already asks for.
+Every number RASD publishes about the core stays what it was. The lane has its own page, [`detect/candidates/README.md`](../detect/candidates/README.md), one row in the metrics that says how many candidates there are and how many a person has reviewed, and one finding in [the counsel](../agent/ADVICE.md) that hands them to people: which candidates wait for a review, and which of them the backlog already asks for.
 
 ## The queue: the whole matrix
 
@@ -54,12 +54,12 @@ A draft is refused by the first gate that does not hold, and the refusal, in wor
 
 | Gate | What must hold |
 |---|---|
-| form | every key is present and text is within bounds; prose is plain sentences, with no placeholder, address, Markdown or bracket, and no identifier ATT&CK has retired; selection names, fields and values are one line of printable text, so what a draft holds is exactly what its page and its queries show |
+| form | every key is present and text is within bounds; prose is plain sentences, with no placeholder, address, Markdown or bracket, and no identifier ATT&CK has retired; selection names, fields and values are one line of printable text, so what a draft holds is exactly what its page and its queries show; at most ten selections, and no regular expression that repeats a repeating group |
 | engine | the rule compiles; every true positive matches and every true negative stays quiet |
 | vocabulary | every field of the rule and of every test event is one the log source writes, spelled as it writes it; the linter has no remark (a case-sensitive regular expression or a very short substring is one) |
 | routing | every test event is an event of that log source, as `rasd replay` routes it |
 | evasion | every variation the fuzzer makes of a true positive still matches: case, spacing, a quoted or full-path program, a renamed binary, forward slashes, numbers written another way |
-| exclusions | every `filter_*` has a true negative that only it keeps quiet |
+| exclusions | every selection that can take an event out of the rule is found from what the condition does, must be named `filter_*`, and reads no field that says who ran it, on which machine or from which address; each has a true negative that only it keeps quiet |
 | noise | the rule fires on no event the repository records as benign: the true negatives of every other rule that reads the same log source |
 | novelty | the true positives are not all caught by a rule that already exists |
 | parity | the generated KQL and SPL return the rule's verdict on every event of its corpus, in RASD's offline model of each language |
@@ -107,7 +107,7 @@ Each run, in order:
 1. reads the latest ATT&CK release and syncs the reference (a release that disagrees with the core's mapping is held, with a warning);
 2. runs `rasd grow --run`: the candidates are proven again, then the model drafts down the queue;
 3. runs `rasd build`, then the gate every change passes: `ruff`, `mypy` and the whole of `rasd ci`, and checks that the build leaves the tree as it is. When that fails with this run's candidates in the tree, they are set aside (`rasd grow --set-aside`): removed, recorded as refused with that reason, and the gate runs once more without them. A candidate that breaks a check the lane's own gates do not make is therefore drafted again with that said, parked after 4 runs, and never blocks the lane;
-4. runs `rasd grow --guard`: nothing differs from the last commit but the lane's own files, which are its folder, its ledger, the ATT&CK reference and the five generated pages that state its numbers or name its candidates. A run that changed a core rule, a test, a tool or a workflow is refused here;
+4. runs `rasd grow --guard`: nothing differs from the last commit but the lane's own files, which are its folder, its ledger, new lines at the end of its audit trail, the ATT&CK reference and the four generated pages that state its numbers or name its candidates. A run that changed the front page, a core rule, a test, a tool, a workflow or a person's review is refused here;
 5. commits the lane to the branch it started from and starts the CI workflow on that commit.
 
 A run whose gate fails without its candidates too publishes nothing. A run in which the model stops answering publishes what the gates had accepted before that, then fails so that it is seen. The key is given to the drafting step alone.
@@ -118,9 +118,9 @@ What leaves the machine is the prompt: the technique's public description, RASD'
 
 `rasd grow --run --drafts DIR` reads `DIR/<technique>.json` instead of calling a model: for a model that is not reached over an API, and for running a draft through the gates again. The gates are the same. A rule a person writes does not belong in the lane; it goes to the core, through review.
 
-## Promoting a candidate
+## Reviewing and promoting a candidate
 
-A candidate becomes a core detection the way any detection does: `rasd new`, the rule and the tests carried over, then the contract, the tuning guide, the behaviour spec and the lab run, reviewed by a person, through `rasd ci` and a pull request. Delete the candidate's folder and its ledger entry in the same pull request; the technique then stands as core.
+`rasd review <candidate>` shows a reviewer the rule, everything it will never alert on, its tests and the four questions no gate can answer; `--approve`, `--revise` or `--reject` records the verdict with the reviewer's name against the SHA-256 of the rule text. `rasd review <candidate> --promote` then turns an approved candidate into the start of a core detection: the rule and the tests carried over byte for byte, the contract, the tuning guide and the mutation tests left for a person to write, and from there the behaviour spec and the lab run, through `rasd ci` and a pull request. The technique then stands as core. Who may do what, the audit trail and how a run is rolled back are in [GOVERNANCE](GOVERNANCE.md).
 
 ## Commands
 
@@ -134,9 +134,10 @@ rasd grow --run --drafts DIR           # drafts from a folder
 rasd grow --run --report run.json --note note.txt   # what the run did, and the note to commit it with
 rasd grow --sync BUNDLE.json           # rebuild the ATT&CK reference from an official Enterprise bundle
 rasd grow --check                      # CI: every candidate, the ledger and the page
-rasd grow --guard                      # nothing but the lane's own files differs from the last commit
+rasd grow --guard                      # nothing but the lane's own files differs from the last commit; the audit trail only grew
 rasd grow --set-aside run.json         # take what that run accepted out again, recorded as refused
 rasd grow --write                      # regenerate the lane's pages (part of rasd build)
+rasd review                            # the people's side: the board, a dossier, a verdict, promotion, rollback, the trail
 ```
 
 Exit codes: 0 done; 1 a check failed, or the model stopped answering three times in a row (what the gates had accepted is kept); 2 the model is misconfigured; 3 `--sync` held a release that disagrees with the core.
@@ -145,6 +146,7 @@ Exit codes: 0 done; 1 a check failed, or the model stopped answering three times
 
 - **A candidate is proven consistent, not proven true.** The gates prove that the rule does what its tests say, that the tests leave no part of the rule unheld, and that the queries agree with the rule. They cannot prove that the test events are what a real host writes, nor that the behaviour is the technique the candidate is filed under: a model wrote both, and no lab run stands behind them. That is why a candidate carries no maturity and no score.
 - **The notes are a model's.** False positives, blind spots and first checks are bounded and screened for form, not checked for truth.
+- **A request can be poisoned; an answer still has to pass.** The technique's description comes from a public catalogue and is given to the model marked as reference material. No wording makes a model immune to what it reads, so the control is on the way out: an answer that excludes a person or a machine, hides an exclusion, or carries a link is refused, and each such draft is a test ([GOVERNANCE](GOVERNANCE.md#what-a-draft-cannot-smuggle-in)).
 - **One event, seven log sources.** The lane drafts single-event rules for the log sources listed above. Behaviour that needs a count over time, a log source RASD does not read, or two events joined, is declined or refused, and stays in the queue's record. The techniques of cloud, identity, email and network platforms are counted as out of reach until the core reads their logs ([roadmap](RELEASE_ROADMAP.md#after-v20-new-data-domains)).
 - **The noise gate knows only this repository.** A rule that is quiet on every benign event here can still be noisy in an environment; `rasd doctor`, `rasd replay` and `rasd tune` on your own export are the measure of that, as for any rule.
 - **It writes rules, never attacks.** The lane drafts detections and the events that test them. It does not write offensive tests, exploits or malware, and it does not run anything against a host.

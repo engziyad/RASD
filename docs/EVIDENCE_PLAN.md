@@ -4,11 +4,13 @@
 
 How every detection moves from SIEM-Ready to Validated: the lab machine, the offensive step that produces the attack, the logs to export and how `rasd evidence` binds them to the run. A status changes only when the detection's `evidence.md` is committed; nothing here is estimated.
 
-**Progress:** 0/22 detections Validated (lab evidence) · Operational Score pending.
+**Progress:** 15/22 detections Validated (lab evidence) · Operational Score 86/100.
+
+**A lab you do not have to build.** The Windows default run with the WinRM step, the Linux host with its decoy and the lab web application run on hosted runners that exist for one run: [`lab-run.yml`](../.github/workflows/lab-run.yml) ([how](../red/lab/README.md#a-lab-you-do-not-have-to-build)). 15 of 15 evidence files are recomputed from the raw lab runs kept in the repository on every build (3 parts of 1 run): a rule edited until it no longer fires on its run loses its evidence ([lab runs](../purple/lab_runs/README.md)). The opt-in steps and the domain controller need a lab that is yours: those runners have no domain, and the steps that dump LSASS memory or clear the Security log never run on a machine that is not ours. A live Splunk stands beside each of them when the person who starts the run accepts its terms, and its alerts come back with the run.
 
 ## 1 · Windows lab VM, default run
 
-A domain-joined Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml)) and the `rasd_forwarder` app.
+A Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-rasd.xml)) and the `rasd_forwarder` app. The two honey account steps also need the VM joined to the lab domain; on a host with no domain they are recorded as not run.
 
 - `.\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed` runs every step below, waits for Splunk and exports the VM's events into one zip.
 
@@ -16,15 +18,15 @@ A domain-joined Windows VM with Sysmon ([`sysmon-rasd.xml`](../red/lab/sysmon-ra
 |---|---|---|---|
 | [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | [honey_account_use](../red/active_directory/honey_account_use/) · `bind_as_honey_account` | logged on the lab host | pending |
 | [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/) | [honey_account_use](../red/active_directory/honey_account_use/) · `request_honey_spn_ticket` | client address is the lab host | pending |
-| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
-| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | pending |
-| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | [honey_file_access](../red/windows/honey_file_access/) · `read_honey_file` | logged on the lab host | pending |
-| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | [powershell_encoded_command](../red/windows/powershell_encoded_command/) · `encoded_command` | logged on the lab host, carries the run token | pending |
-| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | [run_key_persistence](../red/windows/run_key_persistence/) · `run_value` | logged on the lab host, carries the run token | pending |
-| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rundll32_execution](../red/windows/rundll32_execution/) · `javascript_proxy` | logged on the lab host, carries the run token | pending |
-| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | [scheduled_task_creation](../red/windows/scheduled_task_creation/) · `schtasks` | logged on the lab host, carries the run token | pending |
-| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [scheduled_task_creation](../red/windows/scheduled_task_creation/) · `register_scheduledtask` | logged on the lab host, carries the run token | pending |
-| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | [service_creation](../red/windows/service_creation/) · `create_service` | logged on the lab host, carries the run token | pending |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_test_log` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | [honey_file_access](../red/windows/honey_file_access/) · `read_honey_file` | logged on the lab host | FIRED · 2026-11-21 |
+| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | [powershell_encoded_command](../red/windows/powershell_encoded_command/) · `encoded_command` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | [run_key_persistence](../red/windows/run_key_persistence/) · `run_value` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [rundll32_execution](../red/windows/rundll32_execution/) · `javascript_proxy` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | [scheduled_task_creation](../red/windows/scheduled_task_creation/) · `schtasks` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | [scheduled_task_creation](../red/windows/scheduled_task_creation/) · `register_scheduledtask` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
+| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | [service_creation](../red/windows/service_creation/) · `create_service` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
 
 ## 2 · Windows lab VM, opt-in steps
 
@@ -34,10 +36,10 @@ The same VM, from a snapshot: these steps dump LSASS memory or clear the Securit
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host, carries the run token | pending |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | [event_log_clearing](../red/windows/event_log_clearing/) · `clear_security_log` | logged on the lab host | pending |
 | [T1003.001_lsass_memory_access](../detect/detections/T1003.001_lsass_memory_access/) | [lsass_memory_access](../red/windows/lsass_memory_access/) · `comsvcs_minidump` | logged on the lab host | pending |
-| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [lsass_memory_access](../red/windows/lsass_memory_access/) · `comsvcs_minidump` | logged on the lab host, carries the run token | pending |
+| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | [lsass_memory_access](../red/windows/lsass_memory_access/) · `comsvcs_minidump` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
 
 ## 3 · Domain controller
 
@@ -53,27 +55,28 @@ The lab DC with the audit policy `Test-LabReadiness.ps1 -Fix` sets. The events a
 
 ## 4 · WinRM target
 
-A second Windows VM with WinRM enabled and Sysmon. The target logs what the remote session starts.
+A second Windows VM with WinRM enabled and Sysmon. The target logs what the remote session starts. The lab host can be its own target (`Enable-PSRemoting`, then `-Target $env:COMPUTERNAME`): the session host and its child process are the same records either way.
 
 - Add `-Target <second VM>` to the lab run.
 - On the target: `.\red\Export-LabTelemetry.ps1 -Since '<start>' -OutFile target-export.jsonl`
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [winrm_access_validation](../red/active_directory/winrm_access_validation/) · `invoke_command` | logged on the target, carries the run token | pending |
+| [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [winrm_access_validation](../red/active_directory/winrm_access_validation/) · `invoke_command` | logged on the target, carries the run token | FIRED · 2026-11-21 |
 
 ## 5 · Linux lab VM
 
-A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app.
+A Linux VM with Sysmon for Linux and the `rasd_forwarder_linux` app, and for the decoy probe an OpenCanary host with [`deceive/opencanary/settings.json`](../deceive/opencanary/settings.json) on a private address.
 
-- `python3 red/run_red.py --platform linux --lab-confirmed`
+- `python3 red/run_red.py --platform linux --lab-confirmed --target http://<decoy address>` (without `--target` the decoy probe is skipped)
 - `python3 red/linux/export_sysmon_linux.py --since '<start>' --out linux-export.jsonl`
+- On the decoy: copy `/var/tmp/opencanary.log` out as `canary-export.jsonl` and give it to `rasd evidence` beside the run
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | [cron_persistence](../red/linux/cron_persistence/) · `crontab_entry` | logged on the lab host | pending |
-| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | [decoy_service_probe](../red/linux/decoy_service_probe/) · `probe_decoy_services` | logged on the decoy; the client address (src_host) is the lab host | pending |
-| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [suspicious_shell_execution](../red/linux/suspicious_shell_execution/) · `shell_patterns` | logged on the lab host, carries the run token | pending |
+| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | [cron_persistence](../red/linux/cron_persistence/) · `crontab_entry` | logged on the lab host | FIRED · 2026-11-21 |
+| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | [decoy_service_probe](../red/linux/decoy_service_probe/) · `probe_decoy_services` | logged on the decoy; the client address (src_host) is the lab host | FIRED · 2026-11-21 |
+| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | [suspicious_shell_execution](../red/linux/suspicious_shell_execution/) · `shell_patterns` | logged on the lab host, carries the run token | FIRED · 2026-11-21 |
 
 ## 6 · Lab web application
 
@@ -85,8 +88,8 @@ A lab copy of a web application (for example OWASP Juice Shop) on localhost, wit
 
 | Detection | Red test · step | Bound to the run by | Status |
 |---|---|---|---|
-| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) (correlation) | [api_auth_testing](../red/web/api_auth_testing/) · `unauthenticated_calls` | enough base events from the lab host's address in one window | pending |
-| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | [idor_testing](../red/web/idor_testing/) · `walk_object_ids` | enough base events from the lab host's address in one window | pending |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) (correlation) | [api_auth_testing](../red/web/api_auth_testing/) · `unauthenticated_calls` | enough base events from the lab host's address in one window | FIRED · 2026-11-21 |
+| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) (correlation) | [idor_testing](../red/web/idor_testing/) · `walk_object_ids` | enough base events from the lab host's address in one window | FIRED · 2026-11-21 |
 
 ## Not reachable by an offensive step yet
 
@@ -104,6 +107,6 @@ rasd evidence --run red/results/lab-<timestamp>.zip dc-export.jsonl target-expor
 rasd build
 ```
 
-`--run` refuses a zip that differs from the `.sha256` beside it and any file that differs from the run's manifest before it reads anything. Linux and web runs write their own `emulation-results.json`; run `rasd evidence --run` once per run folder with its exports. Commit only the `evidence.md` files; the raw exports stay with you. Details: [OPERATIONAL_VALIDATION](OPERATIONAL_VALIDATION.md) · [lab kit](../red/lab/README.md).
+`--run` refuses a zip that differs from the `.sha256` beside it and any file that differs from the run's manifest before it reads anything. Linux and web runs write their own `emulation-results.json`; run `rasd evidence --run` once per run folder with its exports. Commit the `evidence.md` files; the raw exports stay with you, unless everything in the run may be public: then `--keep <name>` stores it in `purple/lab_runs` and every build recomputes its evidence. Details: [OPERATIONAL_VALIDATION](OPERATIONAL_VALIDATION.md) · [lab kit](../red/lab/README.md).
 
 <sub>Generated by tools/chain.py · RASD · Attack-to-Defense Validation Framework</sub>

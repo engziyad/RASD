@@ -5,12 +5,12 @@
 |---|---|
 | **ATT&CK** | [T1685.005](https://attack.mitre.org/techniques/T1685/005/) Disable or Modify Tools: Clear Windows Event Logs (defense-impairment) |
 | **Severity** | `high` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | 5 true positive · 5 true negative · 3 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 5 variants |
 | **Behaviour proof** | 2 of 2 variants proven for every event · no known gap ([certificate](../../../docs/CERTIFICATES.md#t1685005-windows-event-log-cleared-system-event-104)) |
-| **Parity** | KQL and SPL identical to the rule on 122 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 122 events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 2 of 2 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1685.005_system_log_cleared.kql) · [SPL](../../../queries/spl/T1685.005_system_log_cleared.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

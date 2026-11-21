@@ -5,12 +5,12 @@
 |---|---|
 | **ATT&CK** | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) Scheduled Task/Job: Scheduled Task (execution, persistence, privilege-escalation) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | 14 true positive · 6 true negative · 3 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 158 variants |
 | **Behaviour proof** | 2 of 6 variants proven for every event · 4 known gaps, each with an engine-confirmed event ([certificate](../../../docs/CERTIFICATES.md#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets)) |
-| **Parity** | KQL and SPL identical to the rule on 1772 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 1772 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 2 of 3 public recordings of its behaviour · held-out: 1 of 1 · 2 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.005_powershell_scheduled_task_creation.kql) · [SPL](../../../queries/spl/T1053.005_powershell_scheduled_task_creation.spl) · [Defender](../../../queries/mde/T1053.005_powershell_scheduled_task_creation.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

@@ -7,28 +7,28 @@ Operational evidence per detection, read from `detect/detections/<id>/evidence.m
 | Detection | Run (UTC) | Host | Cleanup | SIEM alert | Lab evidence /35 | SIEM result /25 | Detection latency /15 | DFIR evidence /15 | Cleanup /10 | Score |
 |---|---|---|---|---|---|---|---|---|---|---|
 | [T1003.001_lsass_memory_access](../detect/detections/T1003.001_lsass_memory_access/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1021.006_wsmprovhost_suspicious_child](../detect/detections/T1021.006_wsmprovhost_suspicious_child/evidence.md) | 2026-11-21T03:02:50.720317Z | runnervmhh3zg | verified | RASD - T1021.006_wsmprovhost_suspicious_child | 35 | 25 | 5 | 0 | 10 | **75** |
+| [T1046_decoy_service_interaction](../detect/detections/T1046_decoy_service_interaction/evidence.md) | 2026-11-21T02:56:14.140000Z | ip-10-0-135-155 | verified | RASD - T1046_decoy_service_interaction | 35 | 25 | 5 | 0 | 10 | **75** |
+| [T1053.003_crontab_noninteractive_install](../detect/detections/T1053.003_crontab_noninteractive_install/evidence.md) | 2026-11-21T02:56:14.113000Z | ip-10-0-135-155 | verified | RASD - T1053.003_crontab_noninteractive_install | 35 | 25 | 5 | 15 | 10 | **90** |
+| [T1053.005_powershell_scheduled_task_creation](../detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md) | 2026-11-21T03:03:21.727439Z | runnervmhh3zg | verified | RASD - T1053.005_powershell_scheduled_task_creation | 35 | 25 | 5 | 15 | 10 | **90** |
+| [T1053.005_schtasks_suspicious_creation](../detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md) | 2026-11-21T03:03:19.621443Z | runnervmhh3zg | verified | RASD - T1053.005_schtasks_suspicious_creation | 35 | 25 | 5 | 15 | 10 | **90** |
+| [T1059.001_powershell_encoded_command](../detect/detections/T1059.001_powershell_encoded_command/evidence.md) | 2026-11-21T03:02:57.748290Z | runnervmhh3zg | verified | RASD - T1059.001_powershell_encoded_command | 35 | 25 | 5 | 15 | 10 | **90** |
+| [T1059.004_linux_suspicious_shell_execution](../detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md) | 2026-11-21T03:00:21.151000Z | ip-10-0-135-155 | verified | RASD - T1059.004_linux_suspicious_shell_execution | 35 | 25 | 5 | 0 | 10 | **75** |
 | [T1078.002_honey_account_authentication](../detect/detections/T1078.002_honey_account_authentication/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1218.011_rundll32_suspicious_execution](../detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md) | 2026-11-21T03:03:02.493239Z | runnervmhh3zg | verified | RASD - T1218.011_rundll32_suspicious_execution | 35 | 25 | 5 | 0 | 10 | **75** |
+| [T1547.001_registry_run_key_persistence](../detect/detections/T1547.001_registry_run_key_persistence/evidence.md) | 2026-11-21T03:03:00.443769Z | runnervmhh3zg | verified | RASD - T1547.001_registry_run_key_persistence | 35 | 25 | 5 | 15 | 10 | **90** |
+| [T1552.001_honey_file_access](../detect/detections/T1552.001_honey_file_access/evidence.md) | 2026-11-21T03:02:55.577123Z | runnervmhh3zg | verified | RASD - T1552.001_honey_file_access | 35 | 25 | 5 | 15 | 10 | **90** |
 | [T1558.003_honey_spn_ticket_request](../detect/detections/T1558.003_honey_spn_ticket_request/) | pending | - | - | - | - | - | - | - | - | pending |
 | [T1558.003_kerberoasting_rc4_tgs](../detect/detections/T1558.003_kerberoasting_rc4_tgs/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1569.002_suspicious_service_installation](../detect/detections/T1569.002_suspicious_service_installation/evidence.md) | 2026-11-21T03:03:26.543414Z | runnervmhh3zg | verified | RASD - T1569.002_suspicious_service_installation | 35 | 25 | 5 | 15 | 10 | **90** |
+| [T1685.005_event_log_clearing](../detect/detections/T1685.005_event_log_clearing/evidence.md) | 2026-11-21T03:02:53.279572Z | runnervmhh3zg | verified | RASD - T1685.005_event_log_clearing | 35 | 25 | 5 | 15 | 10 | **90** |
 | [T1685.005_security_log_cleared](../detect/detections/T1685.005_security_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1685.005_system_log_cleared](../detect/detections/T1685.005_system_log_cleared/evidence.md) | 2026-11-21T03:02:53.279572Z | runnervmhh3zg | verified | RASD - T1685.005_system_log_cleared | 35 | 25 | 5 | 15 | 10 | **90** |
 | [T1110.003_password_spray_burst](../detect/correlations/T1110.003_password_spray_burst/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1190_object_id_enumeration](../detect/correlations/T1190_object_id_enumeration/evidence.md) | 2026-11-21T02:55:42.302000Z | ip-10-0-132-90 | verified | RASD - T1190_object_id_enumeration | 35 | 25 | 10 | 15 | 10 | **95** |
 | [T1558.003_kerberoasting_volume](../detect/correlations/T1558.003_kerberoasting_volume/) | pending | - | - | - | - | - | - | - | - | pending |
-| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/) | pending | - | - | - | - | - | - | - | - | pending |
+| [T1595.003_api_auth_probing](../detect/correlations/T1595.003_api_auth_probing/evidence.md) | 2026-11-21T02:55:37.708000Z | ip-10-0-132-90 | verified | RASD - T1595.003_api_auth_probing | 35 | 25 | 5 | 15 | 10 | **90** |
 
-0/22 detections have lab evidence.
+15/22 detections have lab evidence.
 
 <sub>Generated by tools/chain.py · RASD · Attack-to-Defense Validation Framework</sub>

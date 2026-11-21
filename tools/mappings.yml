@@ -95,6 +95,10 @@ spl:
       index=web sourcetype=access_combined
     opencanary/honeypot: |
       index=deception sourcetype=opencanary
+  # The log sources whose records Splunk holds as event XML. The Splunk add-ons for Windows, Sysmon
+  # and Sysmon for Linux read the fields out of it; where they are not installed, the generated
+  # rasd_fields app does, under the same names.
+  event_xml: [process_creation, process_access, registry_set, windows/security, windows/system, linux/process_creation]
 
 # --------------------------------------------------------------------------- #
 # Microsoft Defender XDR advanced hunting (queries/mde). Optional: only the log sources a
@@ -142,3 +146,48 @@ mde:
 correlation:
   normalize:
     IpAddress: '^::ffff:'
+
+# --------------------------------------------------------------------------- #
+# RASD-Health (queries/health): the channel each log source arrives through. The watchdogs measure
+# silence and indexing delay there, because a host's channel is what stops, not one event id.
+#   carriers       the name the watchdogs give the channel of each log source. SPL finds the channel
+#                  itself: the spl.logsources entry above without its event id
+#   kql_carriers   the table (and filter) the channel's records land in, under the parser functions the
+#                  detections read through; host: the column that names the sender (default Computer);
+#                  arrival: false when the table sits behind a function and ingestion_time() is not
+#                  available through it
+#   kql_hosts      the sender column of a log source that has no Computer column
+# --------------------------------------------------------------------------- #
+health:
+  carriers:
+    process_creation: Sysmon
+    process_access: Sysmon
+    registry_set: Sysmon
+    windows/security: Security log
+    windows/system: System log
+    linux/process_creation: Sysmon for Linux
+    webserver: Web access log
+    opencanary/honeypot: Decoy records
+  kql_carriers:
+    Sysmon:
+      table: Event | where Source == "Microsoft-Windows-Sysmon"
+      logsources: [process_creation, process_access, registry_set]
+    Security log:
+      table: SecurityEvent
+      logsources: [windows/security]
+    System log:
+      table: Event | where EventLog == "System"
+      logsources: [windows/system]
+    Sysmon for Linux:
+      table: Syslog | where ProcessName == "sysmon"
+      logsources: [linux/process_creation]
+    Web access log:
+      table: W3CIISLog
+      logsources: [webserver]
+    Decoy records:
+      table: OpenCanary
+      host: node_id
+      arrival: false
+      logsources: [opencanary/honeypot]
+  kql_hosts:
+    opencanary/honeypot: node_id

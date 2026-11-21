@@ -11,7 +11,8 @@
                     4768, 4769, 4771, 4776 and 4625
       Logging       PowerShell script block logging (4104) for the DFIR playbooks
       Splunk        Universal Forwarder running, rasd_forwarder app present, connected to
-                    an indexer on 9997
+                    an indexer on 9997; or Splunk Enterprise on this host itself, with the
+                    rasd_forwarder app
       Lab context   LSA protection and Defender real-time protection, which block parts of
                     the credential-access and proxy-execution tests
     -Fix turns on the audit policy and PowerShell logging it checks. It never installs
@@ -95,7 +96,8 @@ if ($sysmon.Count -eq 0) {
 }
 
 if ($sysmonExe -and $admin) {
-    $config = (& $sysmonExe -c 2>&1 | Out-String)
+    # Sysmon writes UTF-16 to a pipe: without the NULs the text is what the console shows
+    $config = ((& $sysmonExe -c 2>&1 | Out-String) -replace "`0", '')
     $missing = @()
     if (-not ($config -match 'ProcessAccess' -and $config -match 'lsass')) { $missing += 'EID 10 for lsass.exe' }
     if (-not ($config -match 'Registry' -and $config -match 'CurrentVersion\\Run')) { $missing += 'EID 13 for Run keys' }
@@ -179,30 +181,44 @@ if ($sbl -and $sbl.EnableScriptBlockLogging -eq 1) {
 }
 
 # ------------------------------------------------------------------ Splunk
-$uf = Get-Service -Name SplunkForwarder -ErrorAction SilentlyContinue
-if (-not $uf) {
-    Add-Check 'Splunk forwarder' 'WARN' 'not installed: lab evidence still counts, but the SIEM result and latency score 0' 'Install the Splunk Universal Forwarder and point it at the lab Splunk on 9997'
-} elseif ($uf.Status -ne 'Running') {
-    Add-Check 'Splunk forwarder' 'FAIL' "SplunkForwarder is $($uf.Status)" 'Start-Service SplunkForwarder'
-} else {
-    Add-Check 'Splunk forwarder' 'PASS' 'SplunkForwarder running'
-    $ufApps = Join-Path ${env:ProgramFiles} 'SplunkUniversalForwarder\etc\apps'
-    $rasdInputs = Join-Path $ufApps 'rasd_forwarder\default\inputs.conf'
-    if (Test-Path -LiteralPath $rasdInputs) {
-        $rawInputs = Get-Content -LiteralPath $rasdInputs -Raw
-        $neededInputs = @('WinEventLog://Microsoft-Windows-Sysmon/Operational', 'WinEventLog://Security', 'WinEventLog://System', 'renderXml = true')
-        $missingInputs = @($neededInputs | Where-Object { $rawInputs -notmatch [regex]::Escape($_) })
-        if ($missingInputs.Count) {
-            Add-Check 'rasd_forwarder app' 'FAIL' ('installed but missing: ' + ($missingInputs -join ', ')) "Re-copy queries\splunk_app\rasd_forwarder to $ufApps, then Restart-Service SplunkForwarder"
-        } else {
-            Add-Check 'rasd_forwarder app' 'PASS' 'Sysmon, Security and System XML inputs installed'
-        }
-    } else {
-        Add-Check 'rasd_forwarder app' 'FAIL' 'the forwarder does not have the RASD inputs' "Copy queries\splunk_app\rasd_forwarder to $ufApps, then Restart-Service SplunkForwarder"
+function Test-RasdInputs([string] $Apps, [string] $Restart) {
+    $rasdInputs = Join-Path $Apps 'rasd_forwarder\default\inputs.conf'
+    if (-not (Test-Path -LiteralPath $rasdInputs)) {
+        Add-Check 'rasd_forwarder app' 'FAIL' 'Splunk on this host does not have the RASD inputs' "Copy queries\splunk_app\rasd_forwarder to $Apps, then $Restart"
+        return
     }
-    $link = @(Get-NetTCPConnection -RemotePort 9997 -State Established -ErrorAction SilentlyContinue)
-    if ($link.Count) { Add-Check 'Forwarder connection' 'PASS' "connected to $($link[0].RemoteAddress):9997" }
-    else { Add-Check 'Forwarder connection' 'FAIL' 'no connection to an indexer on 9997' 'Enable receiving on 9997 in Splunk and run: splunk add forward-server <splunk-host>:9997' }
+    $rawInputs = Get-Content -LiteralPath $rasdInputs -Raw
+    $neededInputs = @('WinEventLog://Microsoft-Windows-Sysmon/Operational', 'WinEventLog://Security', 'WinEventLog://System', 'renderXml = true',
+                      'source = XmlWinEventLog:Security')
+    $missingInputs = @($neededInputs | Where-Object { $rawInputs -notmatch [regex]::Escape($_) })
+    if ($missingInputs.Count) {
+        Add-Check 'rasd_forwarder app' 'FAIL' ('installed but missing: ' + ($missingInputs -join ', ')) "Re-copy queries\splunk_app\rasd_forwarder to $Apps, then $Restart"
+    } else {
+        Add-Check 'rasd_forwarder app' 'PASS' 'Sysmon, Security and System XML inputs installed, each under the source the searches read'
+    }
+}
+
+$uf = Get-Service -Name SplunkForwarder -ErrorAction SilentlyContinue
+$splunkd = Get-Service -Name Splunkd -ErrorAction SilentlyContinue
+if ($uf) {
+    if ($uf.Status -ne 'Running') {
+        Add-Check 'Splunk forwarder' 'FAIL' "SplunkForwarder is $($uf.Status)" 'Start-Service SplunkForwarder'
+    } else {
+        Add-Check 'Splunk forwarder' 'PASS' 'SplunkForwarder running'
+        Test-RasdInputs (Join-Path ${env:ProgramFiles} 'SplunkUniversalForwarder\etc\apps') 'Restart-Service SplunkForwarder'
+        $link = @(Get-NetTCPConnection -RemotePort 9997 -State Established -ErrorAction SilentlyContinue)
+        if ($link.Count) { Add-Check 'Forwarder connection' 'PASS' "connected to $($link[0].RemoteAddress):9997" }
+        else { Add-Check 'Forwarder connection' 'FAIL' 'no connection to an indexer on 9997' 'Enable receiving on 9997 in Splunk and run: splunk add forward-server <splunk-host>:9997' }
+    }
+} elseif ($splunkd) {
+    if ($splunkd.Status -ne 'Running') {
+        Add-Check 'Splunk' 'FAIL' "Splunkd is $($splunkd.Status)" 'Start-Service Splunkd'
+    } else {
+        Add-Check 'Splunk' 'PASS' 'Splunk Enterprise runs on this host and reads its event logs itself: no forwarder between them'
+        Test-RasdInputs (Join-Path ${env:ProgramFiles} 'Splunk\etc\apps') 'Restart-Service Splunkd'
+    }
+} else {
+    Add-Check 'Splunk forwarder' 'WARN' 'not installed: lab evidence still counts, but the SIEM result and latency score 0' 'Install the Splunk Universal Forwarder and point it at the lab Splunk on 9997'
 }
 
 # ------------------------------------------------------------------ lab context

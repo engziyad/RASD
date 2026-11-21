@@ -5,11 +5,11 @@
 |---|---|
 | **ATT&CK** | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) Scheduled Task/Job: Cron (execution, persistence, privilege-escalation) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | 5 true positive · 7 true negative · 5 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 29 variants |
-| **Parity** | KQL and SPL identical to the rule on 120 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 120 events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 1 of 4 public recordings of its behaviour · 1 alert · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.003_crontab_noninteractive_install.kql) · [SPL](../../../queries/spl/T1053.003_crontab_noninteractive_install.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

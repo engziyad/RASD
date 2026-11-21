@@ -1,0 +1,4 @@
+# What people decided about the candidates of RASD-Agent's lane (detect/candidates), written by `rasd review`.
+# A review stands only for the rule text whose SHA-256 it records. The lane's unattended run may not change this file.
+rasd_reviews: 1
+reviews: []

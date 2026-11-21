@@ -5,11 +5,11 @@
 |---|---|
 | **ATT&CK** | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) Scheduled Task/Job: Scheduled Task (execution, persistence, privilege-escalation) |
 | **Severity** | `medium` |
-| **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
-| **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
+| **Maturity** | **Reference** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
+| **Engineering Score** | 100/100 · operational 90/100 |
 | **Tests** | 24 true positive · 6 true negative · 7 technique mutations |
 | **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 231 variants |
-| **Parity** | KQL and SPL identical to the rule on 1865 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Parity** | KQL and SPL identical to the rule on 1865 events · Defender advanced hunting identical on the same events (RASD's offline KQL / SPL model) · the Splunk alert was raised by a live Splunk's own scheduler in the lab ([evidence](evidence.md)) |
 | **Public data** | fires on 10 of 11 public recordings of its behaviour · held-out: 6 of 6 · 16 alerts · 0 labelled false positives · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1053.005_schtasks_suspicious_creation.kql) · [SPL](../../../queries/spl/T1053.005_schtasks_suspicious_creation.spl) · [Defender](../../../queries/mde/T1053.005_schtasks_suspicious_creation.kql) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |

@@ -11,6 +11,8 @@ RASD tracks four validation levels, and only the lab run moves the maturity leve
 | SIEM replay | The generated query run in your Splunk or Sentinel over replayed data, counts compared with the engine | [checklist](PUBLIC_DATA_VALIDATION.md#siem-replay-checklist), SIEM alerts in `rasd evidence` |
 | Production | The detection tuned and running on an estate's own telemetry | [ENTERPRISE_ADOPTION](ENTERPRISE_ADOPTION.md) |
 
+**No lab of your own:** the workflow [`lab-run.yml`](../.github/workflows/lab-run.yml) runs the Windows, Linux and web steps on hosted runners that exist for one run, turns them into evidence and keeps the raw runs in [`purple/lab_runs`](../purple/lab_runs/README.md), where every build recomputes that evidence ([how](../red/lab/README.md#a-lab-you-do-not-have-to-build)). Started with the Splunk terms accepted, it also puts a live Splunk Enterprise beside each lab host, whose own scheduler raises the alerts, and hands them to `rasd evidence` with the run. It has no domain controller, and it never runs the opt-in steps; the steps below cover those.
+
 **Fast path with Splunk:** the [lab kit](../red/lab/README.md) does steps 1-3 in two commands (`Test-LabReadiness.ps1 -Fix`, `Invoke-RasdLabRun.ps1 -LabConfirmed`), and [`queries/splunk_app`](../queries/splunk_app/README.md) installs every detection in Splunk as a scheduled alert named after its detection id, with the report whose CSV export is the `--siem-alerts` input. The steps below are the same run done by hand.
 
 ## 1 · Prepare the lab
@@ -75,7 +77,7 @@ For tamper-evident evidence add `--strict`: every input must be anchored by a ha
 rasd evidence --run lab-20261012-101500.zip dc-export.jsonl siem-alerts.csv --strict
 ```
 
-It then takes JSON lines exports as telemetry and CSV or JSON alert exports (an alert name and time, no event fields) as SIEM alerts, prints what it found and where each file came from, and records the zip, its SHA-256 and whether the `.sha256` file was there in every `evidence.md` it writes. The separate form gives each file by hand:
+It then takes JSON lines exports as telemetry and CSV or JSON alert exports (an alert name and time, no event fields) as SIEM alerts, a `siem.json` written by `red/lab/splunk_lab.py about` as the description of the SIEM that raised them (it goes into each `evidence.md` that carries an alert), prints what it found and where each file came from, and records the zip, its SHA-256 and whether the `.sha256` file was there in every `evidence.md` it writes. The separate form gives each file by hand:
 
 ```bash
 rasd evidence --results emulation-results.json --logs lab-export.jsonl dc-export.jsonl --siem-alerts siem-alerts.csv
@@ -96,7 +98,9 @@ Each test's `detection_links.md` shows which binding applies to each detection, 
 
 A step can also name **correlations** (the password spray step names `T1110.003_password_spray_burst`; the web steps name `T1595.003_api_auth_probing` and `T1190_object_id_enumeration`). A correlation fires as evidence only when the base-rule events bound to the run - inside the step window, logged on the host or naming it as the client - reach its threshold on their own; another client spraying in the same minutes does not help. Its evidence goes to `detect/correlations/<id>/evidence.md` and records the window, the group, the count and the moment the threshold was reached; latency runs to that moment. With the RASD Splunk app, the correlation alert carries the client address as `alert_host`, which is matched against the host's addresses.
 
-`--siem-alerts` takes a Splunk or Sentinel alert export (CSV or JSON); an alert counts when its name contains the detection's id, title or rule UUID and its time falls inside the step's window. With the RASD Splunk app, run the report **RASD - alert export** (`index=rasd_alerts`, written by each alert's Log Event action, with the alerting host) over the run window and export it as CSV. If that index is unavailable, **RASD - alert export (audit)** (`index=_audit action=alert_fired`) and **RASD - alert export (scheduler)** (`index=_internal sourcetype=scheduler`) read two independent sources.
+`--siem-alerts` takes a Splunk or Sentinel alert export (CSV or JSON); an alert counts when its name contains the detection's id, title or rule UUID and its time falls inside the step's window. With the RASD Splunk app, run the report **RASD - alert export** (`index=rasd_alerts`, written by each alert's Log Event action, with the alerting host) over the run window and export it as CSV. If that index is unavailable, **RASD - alert export (audit)** (`index=_audit action=alert_fired`) and **RASD - alert export (scheduler)** (`index=_internal sourcetype=scheduler`) read two independent sources. A lab Splunk on the lab host or on a private address can be asked by [`red/lab/splunk_lab.py`](../red/lab/splunk_lab.py) instead of by hand: it waits until every alert the run expects is there, or says why one is not, and writes the same CSV.
+
+An alert of a scheduled search comes minutes after the event, by design: each run of the app reads a five-minute slice that closed five minutes earlier, so that an event indexed late is still read. In the hosted lab the alerts came about 5 to 10 minutes after their step (3 to 5 for the correlation with a one-minute window). That is 5 of the 15 latency points, 10 for that correlation; the full 15 are for an alert within a minute, which a schedule with that wait cannot give.
 
 ## 5 · Commit and rebuild
 ```bash
@@ -105,5 +109,7 @@ git add detect/detections/*/evidence.md detect/correlations/*/evidence.md && git
 ```
 The Operational Score, the evidence and latency matrices, the maturity levels and the metrics update from the committed evidence files.
 
+A run whose every file may be public (machines that existed for the run, accounts that mean nothing) can be kept beside its evidence: add `--keep <name>` to `rasd evidence --run`, and commit `purple/lab_runs/<name>` too. From then on `rasd evidence --check`, a step of `rasd ci`, recomputes that evidence from the raw run on every build and fails when an `evidence.md` is not what the run gives with today's rules; `rasd evidence --refresh` rewrites it after a rule's title or fields changed. A run from your own VMs stays with you, and its evidence is taken as written.
+
 ## What each evidence file proves
-`evidence.md` front matter records the run, host, test and step, the marker and how the events were bound to the run (`bound_by`), the number of matching events, the telemetry latency, SIEM alert latency and SIEM pipeline delay, cleanup status, the artifacts' hashes and the SHA-256 of every input file. Anyone holding the raw exports can re-run `rasd evidence --dry-run` and get the same verdict. The hashes make the file verifiable; they are not a digital signature.
+`evidence.md` front matter records the run, host, test and step, the marker and how the events were bound to the run (`bound_by`), the number of matching events, the telemetry latency, SIEM alert latency and SIEM pipeline delay, cleanup status, the artifacts' hashes and the SHA-256 of every input file. Anyone holding the raw exports can re-run `rasd evidence --dry-run` and get the same verdict; for the runs kept in [`purple/lab_runs`](../purple/lab_runs/README.md) the build does it every time. The hashes make the file verifiable; they are not a digital signature.
