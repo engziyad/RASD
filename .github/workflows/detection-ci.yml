@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   validate:
-    name: RASD · Red → Detect → DFIR → Intel → Purple
+    name: RASD · Foundation → Assurance → Decision
     runs-on: ubuntu-latest
     env:
       NO_BANNER: "1"

@@ -49,7 +49,7 @@ With the GitHub CLI (confirm the exact check name from the first pull request's 
 gh api --method PUT -H "Accept: application/vnd.github+json" \
   /repos/engziyad/RASD/branches/main/protection \
   -F "required_status_checks[strict]=true" \
-  -F "required_status_checks[checks][][context]=RASD · Red → Detect → DFIR → Intel → Purple" \
+  -F "required_status_checks[checks][][context]=RASD · Foundation → Assurance → Decision" \
   -F "enforce_admins=false" \
   -F "required_pull_request_reviews[required_approving_review_count]=0" \
   -F "restrictions=null"
