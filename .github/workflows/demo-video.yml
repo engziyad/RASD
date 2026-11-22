@@ -1,0 +1,667 @@
+name: RASD demo recording
+
+# One lab run, recorded for the demo video. Every command a person types is a step of its own, so each
+# job log holds that command's output with the time of every line. A step that opens with "# cam:" is
+# on camera: "# cam:" names the folder the prompt shows and "# show:" the command as typed. The other
+# steps prepare the machine and stay off camera.
+#
+# The three lab hosts run at the same time, as in lab-run.yml; the last job turns their runs into
+# evidence and prints the report. The Splunk General Terms were accepted by the repository's owner for
+# the lab. This branch exists for the recording and is not meant for main.
+
+on:
+  push:
+    branches: [demo-video]
+
+permissions:
+  contents: read
+
+env:
+  SPLUNK_TERMS: accept
+  SPLUNK_IMAGE: splunk/splunk:10.4.5@sha256:e8bd9fbd0c5f5dffc73d84fe62f60e69c1d811fd0c89b22a174a46ce99d2dc1b
+  SPLUNK_MSI: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-windows-x64.msi
+  SPLUNK_MSI_SHA256: 312a62e376393e6cb7ffda36822d67fbd772225f1330a409d614e064463a2fa3
+  PYTHONUNBUFFERED: "1"
+  PYTHONUTF8: "1"
+  COLUMNS: "110"
+
+concurrency:
+  group: rasd-demo-recording
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux lab host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OPENCANARY_IMAGE: thinkst/opencanary:0.9.10
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Prepare the machine
+        run: |
+          echo "rec-host: $(hostname -s)"
+          if ! apt-cache show sysmonforlinux >/dev/null 2>&1; then
+            wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" -O "$RUNNER_TEMP/packages-microsoft-prod.deb"
+            sudo dpkg -i "$RUNNER_TEMP/packages-microsoft-prod.deb"
+            sudo apt-get update -qq
+          fi
+          sudo apt-get install -y -qq sysmonforlinux cron
+          docker pull --quiet "$SPLUNK_IMAGE"
+          docker pull --quiet "$OPENCANARY_IMAGE"
+          password="Lab-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SPLUNK_PASSWORD=$password" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/siem/feed/sysmon" "$HOME/siem/feed/canary"
+          chmod -R 0777 "$HOME/siem"
+
+      - name: git clone
+        working-directory: /home/runner
+        run: |
+          # cam: ~
+          # show: git clone https://github.com/engziyad/RASD.git
+          git clone https://github.com/engziyad/RASD.git
+
+      - name: cd RASD
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~
+          # show: cd RASD
+          true
+
+      - name: pip install
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: pip install -q -e .
+          pip install -q -e .
+
+      - name: rasd
+        working-directory: /home/runner/RASD
+        env:
+          CI: ""
+        run: |
+          # cam: ~/RASD
+          # show: rasd
+          script -qec "rasd" /dev/null
+
+      - name: Mark this machine as a lab host
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: hostname -s | sudo tee /etc/rasd-lab-host
+          hostname -s | sudo tee /etc/rasd-lab-host
+
+      - name: Sysmon for Linux with the RASD configuration
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: sudo sysmon -accepteula -i red/lab/sysmon-rasd-linux.xml
+          sudo sysmon -accepteula -i red/lab/sysmon-rasd-linux.xml
+
+      - name: The inputs Splunk reads on this host
+        working-directory: /home/runner/RASD
+        run: |
+          python3 red/lab/splunk_lab.py inputs --host "$(hostname -s)" --out "$HOME/siem/rasd_lab_inputs" \
+            --monitor /lab/sysmon/sysmon.log:linux:sysmon:linux \
+            --monitor /lab/canary/opencanary.log:deception:opencanary
+
+      - name: Splunk Enterprise with the RASD apps
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: red/lab/start_splunk.sh $SPLUNK_IMAGE ~/siem/feed ~/siem/rasd_lab_inputs
+          red/lab/start_splunk.sh "$SPLUNK_IMAGE" "$HOME/siem/feed" "$HOME/siem/rasd_lab_inputs"
+
+      - name: Feed the host's Sysmon events to Splunk
+        working-directory: /home/runner/RASD
+        run: |
+          url="https://$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rasd-splunk):8089"
+          echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
+          sudo nohup stdbuf -oL journalctl -t sysmon -f -o cat --since now < /dev/null > "$HOME/siem/feed/sysmon/sysmon.log" 2>/dev/null &
+          sleep 2
+          probe="rasd-siem-probe-$(date +%s)"
+          /bin/echo "$probe" >/dev/null
+          python3 red/lab/splunk_lab.py ready --url "$url" --search "index=linux sourcetype=\"sysmon:linux\" EventID=1 $probe"
+
+      - name: What Splunk this is
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/lab/splunk_lab.py about --url $SPLUNK_URL --terms "accepted by the lab owner" --out ~/siem.json
+          python3 red/lab/splunk_lab.py about --url "$SPLUNK_URL" --terms "accepted by the lab owner" --out "$HOME/siem.json"
+
+      - name: The decoy host with the RASD OpenCanary configuration
+        working-directory: /home/runner/RASD
+        run: |
+          docker run --detach --name rasd-decoy --volume "$HOME/siem/feed/canary:/var/tmp" \
+            --volume "$PWD/deceive/opencanary/settings.json:/etc/opencanaryd/opencanary.conf:ro" "$OPENCANARY_IMAGE"
+          decoy=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rasd-decoy)
+          for _ in $(seq 1 30); do
+            if timeout 2 bash -c "exec 3<>/dev/tcp/$decoy/80" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          timeout 2 bash -c "exec 3<>/dev/tcp/$decoy/80"
+          echo "DECOY=http://$decoy" >> "$GITHUB_ENV"
+
+      - name: The plan
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/run_red.py --platform linux --lab-confirmed --target $DECOY --dry-run
+          python3 red/run_red.py --platform linux --lab-confirmed --target "$DECOY" --dry-run
+
+      - name: The run
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/run_red.py --platform linux --lab-confirmed --target $DECOY --out-dir ~/lab-linux | tee ~/linux-run.txt
+          set -o pipefail
+          python3 red/run_red.py --platform linux --lab-confirmed --target "$DECOY" --out-dir "$HOME/lab-linux" | tee "$HOME/linux-run.txt"
+          echo "RUN_STARTED=$(awk '/^started:/ {print $2; exit}' "$HOME/linux-run.txt")" >> "$GITHUB_ENV"
+
+      - name: Export the Sysmon events of the run
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: sudo journalctl -t sysmon -o cat --since -60min | python3 red/linux/export_sysmon_linux.py --input - --since $RUN_STARTED --out ~/linux-export.jsonl
+          sleep 5
+          sudo journalctl -t sysmon -o cat --since "-60min" | python3 red/linux/export_sysmon_linux.py --input - --since "$RUN_STARTED" --out "$HOME/linux-export.jsonl"
+          (cd "$HOME" && sha256sum linux-export.jsonl > linux-export.jsonl.sha256)
+
+      - name: Copy the decoy's records out
+        working-directory: /home/runner
+        run: |
+          docker cp rasd-decoy:/var/tmp/opencanary.log canary-export.jsonl
+          sha256sum canary-export.jsonl > canary-export.jsonl.sha256
+
+      - name: Splunk alerts
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/lab/splunk_lab.py wait --url $SPLUNK_URL --results ~/lab-linux/emulation-results.json
+          python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$HOME/lab-linux/emulation-results.json"
+
+      - name: Splunk alert export
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/lab/splunk_lab.py export --url $SPLUNK_URL --results ~/lab-linux/emulation-results.json --out ~/siem-alerts.csv
+          python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$HOME/lab-linux/emulation-results.json" --out "$HOME/siem-alerts.csv"
+
+      - name: Every saved search of the app, once
+        if: always()
+        working-directory: /home/runner/RASD
+        run: python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --show "RASD Health" --out "$HOME/siem-searches.json"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-linux
+          path: |
+            /home/runner/lab-linux
+            /home/runner/linux-export.jsonl
+            /home/runner/linux-export.jsonl.sha256
+            /home/runner/canary-export.jsonl
+            /home/runner/canary-export.jsonl.sha256
+            /home/runner/siem-*
+            /home/runner/siem.json*
+          if-no-files-found: warn
+
+  web:
+    name: Lab web application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      JUICE_SHOP_IMAGE: bkimminich/juice-shop:v17.1.1
+      TARGET: http://127.0.0.1:3000
+    steps:
+      - name: Prepare the machine
+        run: |
+          echo "rec-host: $(hostname -s)"
+          docker pull --quiet "$SPLUNK_IMAGE"
+          docker pull --quiet "$JUICE_SHOP_IMAGE"
+          password="Lab-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SPLUNK_PASSWORD=$password" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/siem/feed/web"
+          chmod -R 0777 "$HOME/siem"
+
+      - name: git clone
+        working-directory: /home/runner
+        run: |
+          # cam: ~
+          # show: git clone https://github.com/engziyad/RASD.git
+          git clone https://github.com/engziyad/RASD.git
+
+      - name: cd RASD
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~
+          # show: cd RASD
+          true
+
+      - name: Mark this machine as a lab host
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: hostname -s | sudo tee /etc/rasd-lab-host
+          hostname -s | sudo tee /etc/rasd-lab-host
+
+      - name: Splunk Enterprise with the RASD apps, reading the application's access log
+        working-directory: /home/runner/RASD
+        run: |
+          python3 red/lab/splunk_lab.py inputs --host "$(hostname -s)" --out "$HOME/siem/rasd_lab_inputs" \
+            --monitor "/lab/web/access.log*:web:access_combined"
+          url=$(red/lab/start_splunk.sh "$SPLUNK_IMAGE" "$HOME/siem/feed" "$HOME/siem/rasd_lab_inputs" | tail -n 1)
+          python3 red/lab/splunk_lab.py about --url "$url" --terms "accepted by the lab owner" --out "$HOME/siem.json"
+          echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
+
+      - name: The lab application
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: docker run --detach --name rasd-lab-app --network host --volume ~/siem/feed/web:/juice-shop/logs $JUICE_SHOP_IMAGE
+          docker run --detach --name rasd-lab-app --network host --volume "$HOME/siem/feed/web:/juice-shop/logs" "$JUICE_SHOP_IMAGE"
+
+      - name: Wait for the application, and for its log to reach Splunk
+        working-directory: /home/runner/RASD
+        run: |
+          for _ in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null "$TARGET/rest/admin/application-version"; then break; fi
+            sleep 2
+          done
+          probe="rasd-siem-probe-$(date +%s)"
+          curl --silent --output /dev/null "$TARGET/$probe" || true
+          python3 red/lab/splunk_lab.py ready --url "$SPLUNK_URL" --search "index=web sourcetype=access_combined $probe"
+
+      - name: The application answers
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: curl -s $TARGET/rest/admin/application-version
+          curl -s "$TARGET/rest/admin/application-version"
+          echo
+
+      - name: The lab test account
+        run: |
+          email="lab.user01@lab.local"
+          password="Lab-$(openssl rand -hex 12)"
+          echo "::add-mask::$password"
+          curl --silent --fail --output /dev/null --request POST "$TARGET/api/Users" \
+            --header 'Content-Type: application/json' \
+            --data "{\"email\":\"$email\",\"password\":\"$password\",\"passwordRepeat\":\"$password\"}"
+          {
+            echo "RASD_LAB_EMAIL=$email"
+            echo "RASD_LAB_PASSWORD=$password"
+          } >> "$GITHUB_ENV"
+
+      - name: The plan
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/run_red.py --platform web --lab-confirmed --target $TARGET --dry-run
+          python3 red/run_red.py --platform web --lab-confirmed --target "$TARGET" --dry-run
+
+      - name: The run
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/run_red.py --platform web --lab-confirmed --target $TARGET --out-dir ~/lab-web | tee ~/web-run.txt
+          set -o pipefail
+          python3 red/run_red.py --platform web --lab-confirmed --target "$TARGET" --out-dir "$HOME/lab-web" | tee "$HOME/web-run.txt"
+          echo "RUN_MARKER=$(awk '/^run marker:/ {print $3; exit}' "$HOME/web-run.txt")" >> "$GITHUB_ENV"
+
+      - name: The application's access log
+        working-directory: /home/runner
+        run: |
+          docker cp rasd-lab-app:/juice-shop/logs app-logs
+          cat app-logs/access.log* > access.log
+
+      - name: Export the requests of the run
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/web/export_access_log.py --input ~/access.log --marker $RUN_MARKER --out ~/web-export.jsonl
+          python3 red/web/export_access_log.py --input "$HOME/access.log" --marker "$RUN_MARKER" --out "$HOME/web-export.jsonl"
+          (cd "$HOME" && sha256sum web-export.jsonl > web-export.jsonl.sha256)
+
+      - name: Splunk alerts
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/lab/splunk_lab.py wait --url $SPLUNK_URL --results ~/lab-web/emulation-results.json
+          python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$HOME/lab-web/emulation-results.json"
+
+      - name: Splunk alert export
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: python3 red/lab/splunk_lab.py export --url $SPLUNK_URL --results ~/lab-web/emulation-results.json --out ~/siem-alerts.csv
+          python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$HOME/lab-web/emulation-results.json" --out "$HOME/siem-alerts.csv"
+
+      - name: Every saved search of the app, once
+        if: always()
+        working-directory: /home/runner/RASD
+        run: python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --show "RASD Health" --out "$HOME/siem-searches.json"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-web
+          path: |
+            /home/runner/lab-web
+            /home/runner/web-export.jsonl
+            /home/runner/web-export.jsonl.sha256
+            /home/runner/siem-*
+            /home/runner/siem.json*
+          if-no-files-found: warn
+
+  windows:
+    name: Windows lab host
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Prepare the machine
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          "rec-host: $env:COMPUTERNAME"
+          New-Item -ItemType Directory -Force -Path C:\lab, C:\Tools | Out-Null
+          Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Sysmon.zip' -OutFile C:\Tools\Sysmon.zip -UseBasicParsing
+          Expand-Archive -LiteralPath C:\Tools\Sysmon.zip -DestinationPath C:\Tools\Sysmon -Force
+
+      - name: Install Splunk Enterprise
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = Join-Path $env:RUNNER_TEMP 'splunk.msi'
+          curl.exe --silent --show-error --fail --location --output $msi $env:SPLUNK_MSI
+          if ($LASTEXITCODE -ne 0) { throw 'the Splunk Enterprise installer could not be downloaded' }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash.ToLower()
+          if ($hash -ne $env:SPLUNK_MSI_SHA256) { throw 'the installer is not the file this workflow pins by its SHA-256' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $msi
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Splunk') { throw 'the installer does not carry a valid signature of Splunk' }
+          $bytes = New-Object byte[] 16
+          [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+          $password = 'Lab-' + (($bytes | ForEach-Object { $_.ToString('x2') }) -join '')
+          Write-Output "::add-mask::$password"
+          "SPLUNK_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Add-MpPreference -ExclusionPath 'C:\Program Files\Splunk' -ErrorAction SilentlyContinue
+          $log = Join-Path $env:RUNNER_TEMP 'splunk-install.log'
+          $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @('/i', "`"$msi`"", '/quiet', '/norestart', '/l*v', "`"$log`"",
+            'AGREETOLICENSE=Yes', 'SPLUNKUSERNAME=admin', "SPLUNKPASSWORD=$password", 'INSTALL_SHORTCUT=0')
+          "msiexec ended with $($install.ExitCode)"
+          if ($install.ExitCode -ne 0) { Get-Content -LiteralPath $log -Tail 40; throw 'Splunk Enterprise did not install' }
+
+      - name: Let the lab host accept a WinRM session from itself
+        run: |
+          Enable-PSRemoting -Force -SkipNetworkProfileCheck | Out-Null
+          Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value $env:COMPUTERNAME -Force
+          New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name LocalAccountTokenFilterPolicy -Value 1 -PropertyType DWord -Force | Out-Null
+          try { Invoke-Command -ComputerName $env:COMPUTERNAME -ScriptBlock { "WinRM session on $env:COMPUTERNAME" } -ErrorAction Stop }
+          catch { Write-Warning "no WinRM session to this host: $($_.Exception.Message)" }
+
+      - name: git clone
+        working-directory: C:\lab
+        run: |
+          # cam: C:\lab
+          # show: git clone https://github.com/engziyad/RASD.git
+          git clone https://github.com/engziyad/RASD.git
+
+      - name: cd RASD
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab
+          # show: cd RASD
+          $null = 0
+
+      - name: Mark this machine as a lab host
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: [Environment]::SetEnvironmentVariable('RASD_LAB_HOST', $env:COMPUTERNAME, 'Machine')
+          [Environment]::SetEnvironmentVariable('RASD_LAB_HOST', $env:COMPUTERNAME, 'Machine')
+
+      - name: Sysmon with the RASD configuration
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: C:\Tools\Sysmon\Sysmon64.exe -accepteula -i red\lab\sysmon-rasd.xml
+          C:\Tools\Sysmon\Sysmon64.exe -accepteula -i red\lab\sysmon-rasd.xml
+
+      - name: The RASD apps into Splunk
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: Copy-Item -Recurse -Force queries\splunk_app\rasd, queries\splunk_app\rasd_fields, queries\splunk_app\rasd_forwarder 'C:\Program Files\Splunk\etc\apps\'
+          Copy-Item -Recurse -Force queries\splunk_app\rasd, queries\splunk_app\rasd_fields, queries\splunk_app\rasd_forwarder 'C:\Program Files\Splunk\etc\apps\'
+
+      - name: Restart Splunk
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: Restart-Service Splunkd
+          Restart-Service Splunkd
+
+      - name: What Splunk this is
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: python red\lab\splunk_lab.py about --url https://127.0.0.1:8089 --timeout 420 --terms "accepted by the lab owner" --out C:\lab\siem.json
+          python red\lab\splunk_lab.py about --url https://127.0.0.1:8089 --timeout 420 --terms "accepted by the lab owner" --out C:\lab\siem.json
+          if ($LASTEXITCODE -ne 0) { throw 'Splunk does not answer on its management port' }
+
+      - name: The Sysmon events of this host reach Splunk
+        working-directory: C:\lab\RASD
+        run: |
+          $probe = "rasd-siem-probe-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+          cmd.exe /c "echo $probe" | Out-Null
+          python red\lab\splunk_lab.py ready --url https://127.0.0.1:8089 --timeout 300 --search "index=sysmon source=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational EventCode=1 $probe"
+          if ($LASTEXITCODE -ne 0) { throw 'the Sysmon events of this host do not reach Splunk under the source and the fields the searches read' }
+
+      - name: The file decoys
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: .\deceive\Deploy-RasdDecoys.ps1 -LabConfirmed -Files
+          .\deceive\Deploy-RasdDecoys.ps1 -LabConfirmed -Files
+
+      - name: The plan
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -DryRun
+          .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -DryRun
+
+      - name: The run
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -OutDir C:\lab\lab-windows
+          $ProgressPreference = 'SilentlyContinue'
+          .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -OutDir C:\lab\lab-windows
+
+      - name: Splunk alerts
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: python red\lab\splunk_lab.py wait --url https://127.0.0.1:8089 --results C:\lab\lab-windows\emulation-results.json
+          python red\lab\splunk_lab.py wait --url https://127.0.0.1:8089 --results C:\lab\lab-windows\emulation-results.json
+
+      - name: Splunk alert export
+        working-directory: C:\lab\RASD
+        run: |
+          # cam: C:\lab\RASD
+          # show: python red\lab\splunk_lab.py export --url https://127.0.0.1:8089 --results C:\lab\lab-windows\emulation-results.json --out C:\lab\siem-alerts.csv
+          python red\lab\splunk_lab.py export --url https://127.0.0.1:8089 --results C:\lab\lab-windows\emulation-results.json --out C:\lab\siem-alerts.csv
+
+      - name: Every saved search of the app, once
+        if: always()
+        working-directory: C:\lab\RASD
+        run: python red\lab\splunk_lab.py searches --url https://127.0.0.1:8089 --show "RASD Health" --out C:\lab\siem-searches.json
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-windows
+          path: |
+            C:/lab/lab-windows.zip
+            C:/lab/lab-windows.zip.sha256
+            C:/lab/siem-*
+            C:/lab/siem.json*
+          if-no-files-found: warn
+
+  analyst:
+    name: Evidence and report
+    needs: [linux, web, windows]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN: ${{ github.run_id }}
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Prepare the machine
+        run: |
+          echo "rec-host: $(hostname -s)"
+
+      - name: git clone
+        working-directory: /home/runner
+        run: |
+          # cam: ~
+          # show: git clone https://github.com/engziyad/RASD.git
+          git clone https://github.com/engziyad/RASD.git
+
+      - name: cd RASD
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~
+          # show: cd RASD
+          true
+
+      - name: pip install
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: pip install -q -e .
+          pip install -q -e .
+
+      - name: The runs of the three lab hosts
+        working-directory: /home/runner/RASD
+        run: |
+          # cam: ~/RASD
+          # show: gh run download $RUN --dir ~/runs
+          gh run download "$RUN" --dir "$HOME/runs"
+
+      - name: cd ~/runs
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/RASD
+          # show: cd ~/runs
+          true
+
+      - name: What came back
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: ls *
+          ls *
+
+      - name: Evidence from the Windows lab host
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd evidence --run lab-windows/lab-windows.zip lab-windows/siem-alerts.csv lab-windows/siem.json lab-windows/siem-searches.json --strict --keep hosted-$RUN
+          rasd evidence --run lab-windows/lab-windows.zip lab-windows/siem-alerts.csv lab-windows/siem.json lab-windows/siem-searches.json --strict --keep "hosted-$RUN"
+
+      - name: Evidence from the Linux lab host
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd evidence --run lab-linux/lab-linux lab-linux/linux-export.jsonl lab-linux/canary-export.jsonl lab-linux/siem-alerts.csv lab-linux/siem.json lab-linux/siem-searches.json --keep hosted-$RUN
+          rasd evidence --run lab-linux/lab-linux lab-linux/linux-export.jsonl lab-linux/canary-export.jsonl lab-linux/siem-alerts.csv lab-linux/siem.json lab-linux/siem-searches.json --keep "hosted-$RUN"
+
+      - name: Evidence from the lab web application
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd evidence --run lab-web/lab-web lab-web/web-export.jsonl lab-web/siem-alerts.csv lab-web/siem.json lab-web/siem-searches.json --keep hosted-$RUN
+          rasd evidence --run lab-web/lab-web lab-web/web-export.jsonl lab-web/siem-alerts.csv lab-web/siem.json lab-web/siem-searches.json --keep "hosted-$RUN"
+
+      - name: Drop the kept run this one replaces
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd evidence --prune
+          rasd evidence --prune
+
+      - name: Rebuild every page and the status record
+        working-directory: /home/runner/runs
+        env:
+          CI: ""
+        run: |
+          # cam: ~/runs
+          # show: rasd build
+          script -qec "rasd build" /dev/null
+
+      - name: The record
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd status
+          rasd status
+
+      - name: One detection's record
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd status --detection T1059.001_powershell_encoded_command
+          rasd status --detection T1059.001_powershell_encoded_command
+
+      - name: The Windows run's telemetry
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: unzip -q lab-windows/lab-windows.zip lab-export.jsonl -d lab-windows/run
+          unzip -q lab-windows/lab-windows.zip lab-export.jsonl -d lab-windows/run
+
+      - name: The case
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: rasd replay lab-windows/run/lab-export.jsonl lab-linux/linux-export.jsonl lab-linux/canary-export.jsonl lab-web/web-export.jsonl --html case-report.html --case-dir cases
+          rasd replay lab-windows/run/lab-export.jsonl lab-linux/linux-export.jsonl lab-linux/canary-export.jsonl lab-web/web-export.jsonl --html case-report.html --case-dir cases
+
+      - name: Print the report
+        working-directory: /home/runner/runs
+        run: |
+          # cam: ~/runs
+          # show: google-chrome --headless --no-sandbox --log-level=3 --print-to-pdf=$PWD/case-report.pdf $PWD/case-report.html
+          google-chrome --headless --no-sandbox --log-level=3 --print-to-pdf="$PWD/case-report.pdf" "$PWD/case-report.html"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: report
+          path: |
+            /home/runner/runs/case-report.html
+            /home/runner/runs/case-report.pdf
+            /home/runner/runs/cases
+            /home/runner/RASD/status/status.json
+          if-no-files-found: warn
