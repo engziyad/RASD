@@ -11,10 +11,11 @@ NO_COLOR=1 prints it without colour. Uses 24-bit colour when the terminal
 advertises it (COLORTERM=truecolor), otherwise the nearest 256-colour shade.
 The text lines carry the framework name, its three layers (Foundation, Assurance, Decision) and the author credit.
 
-Under the banner, a knight rides the loading track from its left end to its right end: a horseman in
-ghutra, agal and a black bisht on a white Arabian horse, his sword raised. He is a picture (sixel), so a
-terminal that draws pictures, like Windows Terminal, sees him gallop; any other terminal sees the track
-fill. --force prints the track alone. The banner itself is the same with him or without him.
+Under the banner, a knight rides the loading track from its left end to its right end: a horseman
+masked in a red shemagh, with agal and a black bisht, his sword raised, on a grey Arabian mare. He
+is a picture (sixel), so a terminal that draws pictures, like Windows Terminal, sees him gallop; any
+other terminal sees the track fill. --force prints the track alone. The banner itself is the same
+with him or without him.
 """
 from __future__ import annotations
 
@@ -147,63 +148,121 @@ def render(color: bool = True) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# The knight on the loading track: a horseman in ghutra, agal and a black bisht
-# trimmed in gold, on a white Arabian horse, his sword raised. He is a picture,
-# not characters: two gallop poses of 100 x 80 pixels in 32 colours, sent as sixel
-# images. At the VT340's 10 x 20 pixel cell, which Windows Terminal draws sixel in,
-# he covers 10 x 4 cells. A terminal that does not draw sixel sees the track fill.
+# The knight on the loading track: a horseman masked in a red shemagh under his
+# agal, in a black bisht trimmed in gold, his sword raised, on a grey Arabian mare
+# in the colours told of Ubayyah, King Abdulaziz's mare: dappled grey, a dark mane
+# and tail, a white blaze. He is a picture, not characters: four gallop poses of
+# 100 x 100 pixels in 48 colours, sent as sixel images. At the VT340's 10 x 20
+# pixel cell, which Windows Terminal draws sixel in, he covers 10 x 5 cells. A
+# terminal that does not draw sixel sees the track fill.
 # --------------------------------------------------------------------------- #
 KNIGHT_PALETTE = (
-    "#fdfdfd", "#f5f6f3", "#f1f1ef", "#eaebeb", "#e3e4e5", "#d8dbdd", "#e5d4c3", "#cbcfd2",
-    "#c1c3c5", "#e1c69e", "#b8b7b8", "#e2b96b", "#a4a6a7", "#bc9e8f", "#cd9362", "#939596",
-    "#ac8071", "#c08a44", "#828484", "#a7773a", "#717172", "#a2493f", "#846636", "#5d5e5f",
-    "#4b4b4c", "#624d2d", "#8d2222", "#393633", "#5a1a16", "#222121", "#151515", "#08080a",
+    "#fcfcfc", "#f1f2f3", "#e4e7ea", "#dbdfe3", "#d2d6da", "#dbd0bf", "#c8ccd0", "#ead099",
+    "#bfc3c7", "#b4b7bb", "#cdb1a8", "#e5b965", "#a6abb0", "#b2a09d", "#c79583", "#999fa5",
+    "#8f9499", "#a08f86", "#ca9154", "#85898e", "#cf6461", "#977d73", "#787d83", "#af7b37",
+    "#6e7277", "#a16155", "#d03f47", "#806b5c", "#63666a", "#936d2f", "#ca232c", "#55575b",
+    "#745935", "#8f3c33", "#ab242b", "#484a4e", "#5a4629", "#7b1c20", "#393b40", "#682626",
+    "#701317", "#442f21", "#2f3034", "#27272a", "#2e271c", "#361615", "#1d1d1e", "#131314",
 )
-KNIGHT_SIZE = (100, 80)
+KNIGHT_SIZE = (100, 100)
 KNIGHT_POSES = (
-    (  # galloping with his legs stretched, and where he stops
-        "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"
-        "d/W9rP3O0rro9mY0xnu/uyX/BuO/u/4B1/ESTQ=="
+    (  # in the air, her legs gathered under her
+        "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"
     ),
-    (  # his legs gathered under him
-        "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"
+    (  # a hind hoof lands and her forehand rises: where she stops
+        "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"
+    ),
+    (  # her forelegs land
+        "eNrtmeuWqjoMgIHWTuugoCjiFRWpShXe/+k4aQuIOntAPexfO8ulzgj5mktjGvP8n/yTf1JJ2DnB9zpHEL9zAu6a4BhO1wjTXHVM"
+        "YAbp2gircz+5hhl0jKAGijr3E+2YEBh/IxRdbu31Ic9tw+p2V4y3ttF19ZiPh11H+zIbj9cdM7bn82HcLeIwW6+7NiM9ny9dI7Is"
+        "yztnpGn3ZqT5X3BVdr1eu3QYMM5HKZ0y0uNxtzsez90xsmy3AJlMdt0xjvuFYiznj59Eufdhr7jfbBaLDTxvFhoyeepQcup+Qog3"
+        "O21DxdgvHr8XqYPt/8NTp4qx2N9lghDJysbsU/3ST5vNPj5rxvH2CY+iiIvMt+xPCfEJJBewAxeTxb6GiEIpfIXQZ83WPtY+Udt8"
+        "3a+3C2HEExGGHhqwUHxcZ1KFkM+iZgUXCU9CQq3pCJNg9SFBKCvkU1LuBME5j7iDGMaYLYmB2EcmQO5oBjyLon0TSRKFvssQIAgZ"
+        "rVxkvK8f1GqCZmQFIwI3pcyQCEwou0b0jaNCqgE3QsHwC0TCAxsrBKaUhRl0qMEbBoBWIYRWL8qARHpfJMnKNBUCUZcytnXMV7q7"
+        "Qr8ilO+SKugyR0XEuc8sbYW1AgYdjbBpei8SpAmllwqEtgZSAHY3K6zAkE/SDrZkqKUhlQ3ZLQwVIhO2enNZi21PhxsYQT4nTBpi"
+        "903nT7mvRe9TkT1LWv1TGP1LKhnb8WxAMUIIopHnCyZluRwwe/XjsovqmSSJ0O3/5QEhblxufH9FQlzWh/FwNJ1ORzZFkGd7bciW"
+        "+fw5tUqAliSBvw/r2Wxb59QQWWh89yCloiFTNtABgA75ab/xCKXTreME/KdjYppwLWCHAAh0BvkWOKU9NUSa+V/fjPOAmKalQoGQ"
+        "Bal0PcZXjzLPW7puGP5MAO3gKXgnKUJ1B9nlsF7P1ttzeuc2+7sXcMcyLQuXor6/Ttf8vJwutyMveGKAXiE7zMJZkpJkcocFvgze"
+        "QRtUgdL+N0lXQKgYqJZIwWo5C5NHIzhPi3hrb8lSneY+RaYUzLxQWgWg9Vm2hxn//jJ8WzJQybiflT1lleDi5q1Ee0tELgAsLZIj"
+        "3X2K4/g096AcWqZh3JnRUM9TXnkrrXLLRyWgEIPESk59AxPQb5j1YFgNVVBob4nb/kiEV6pGJcscnQrITuuXT4TUI/47IudJ+YUD"
+        "+zxNI8hFJZhIl8u/KkZ8ivuGaQDEsAgtXNXQjaQ3RJoUhcSzsEbIMqG1mIOSAZSBhJiGiSlp5SoV9AKRVsNB0AoWkCptkFVjxKeh"
+        "9JRZGYKaaywvNsltnKNutAj6AwMsoVjGHSlDEG5Rxm+B0cOWSnVhj3y5Y8TxHIG3TCSjTpbNI4f07gXERnLlWGdNyWB3iPjUM9QH"
+        "ELHtlLVk1No72ceAgsLXxWamD4y53CRQcq3prvWI6YGBIG8xrgICsjvF9bAfoSKa8O/RcWK9M0xVzgFXIevGQNN4toOmWgEAtwOE"
+        "RazRbvjWBMjWDRnBuGYGGLKbzQCzgwdUxynEHLLtOOn33+nV3TvVNxnOJWUsH/MZjOFMcNRwYr01yAqsnxlfgOnT7z4dkt6Yga8G"
+        "20l/aL3X3v7BDr0bexgevUFP9lW9CUZvzi0pbhb5pYL6k3cPZ97Dyn8yS5Zd3Ue/h7gLB9TtABL5kRFFgUrxNjX3Wfx7hKp3DCos"
+        "qXOY6k7UPqKfJlWlwaEgpBDo0w5b6HBQy8L+NKa/83o9or6t2lnbdtxVPhqMRo6yzPoobQl+mn7IY7i2S4qtGK+OYZyKQWyH/ZL6"
+        "CqEuf/kcWxEYqPjtoK3s0Ga/eMRcqYKOqQ0E59cfaOQVvrb7xaC70AQQCCooaBhESUak4/di0G1KaB7K+5t2lq1cJQ0h6KWgO4zC"
+        "jaHjOo232eUy4HvmhZIV2DZTuoHRvBzXjooQ0vaJ5cFtevmu21yDXLcMmNueETpe4aGV22Lw6N3WYbO2ZTFwPa2ae57fhnF7azut"
+        "f8V3tYN932v+6TKsDXJ9x2k5FvNcvfrQ91uYUb9o5Xgtp7phcVMQ+M3u5XVGBIxWWwROT8WqfD9svDryA/8+lG3CXh7W4Ha/xS/J"
+        "wKitJHRdP2kBETdX8/xFQ4DCefJCQYnCNlcDhN+fxV5hJEmrKTCMCcSPfshfiUzjKZLn70radkWNzvkPy8N6eQ=="
+    ),
+    (  # she pushes off
+        "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"
+        "A+gxrRc="
     ),
 )
+KNIGHT_REST = 1
 CELL = (10, 20)
 TRACK, TRACK_AHEAD = SAND, "#4e4e4e"
 
@@ -358,7 +417,7 @@ def ride(color: bool = True, animate: bool = True, out: TextIO | None = None, im
         for x in range(end + 1):
             frame = f"\033[{rows + 1}A\r" + "\033[2K\n" * rows + f"\r  {track(x + cells, width, color)}\033[K\n"
             if images:
-                pose = 0 if x == end else (x // 3) % 2
+                pose = KNIGHT_REST if x == end else (x // 2) % len(KNIGHT_POSES)
                 frame += (f"\033[{rows + 1}A\r\033[{2 + x}C\0337{knight_sixel(pose, rows * ch - KNIGHT_SIZE[1])}\0338"
                           f"\033[{rows + 1}B\r")
             out.write(frame)
