@@ -59,22 +59,26 @@ Code checks can fail a detection, never verify one. A thousand passing tests do 
 
 ## 🚀 Quick start
 
-Requires Python 3.10+ and PyYAML. On Windows, create the environment with `py -m venv .venv` and activate it with `.venv\Scripts\activate`.
+Needs Python 3.10 or later.
 
 ```bash
-git clone https://github.com/engziyad/RASD.git && cd RASD
-python3 -m venv .venv && . .venv/bin/activate
+git clone https://github.com/engziyad/RASD.git
+cd RASD
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -e .
 rasd status
 ```
 
-| Command | What it answers |
+On Windows, make the environment with `py -m venv .venv` and turn it on with `.venv\Scripts\activate`.
+
+| Command | Shows |
 |---|---|
-| `rasd status` | The five questions, from the record every build writes |
-| `rasd status --gaps` | Every detection short of Verified, and why |
-| `rasd status --next` | What to do next, and the detections each action moves on |
-| `rasd status --detection <id>` | One detection, stage by stage, each stage with the file it rests on |
-| `rasd ci` | Everything the CI workflow proves, in order |
+| `rasd status` | Where every detection stands |
+| `rasd status --gaps` | What is missing, and why |
+| `rasd status --next` | What to do next |
+| `rasd status --detection <id>` | One detection, stage by stage |
+| `rasd ci` | Everything CI checks, in order |
 
 ## 🚪 Four doors
 
@@ -87,7 +91,14 @@ rasd status
 
 ## 🛡️ Scope and safety
 
-Offensive tests run only with an explicit lab confirmation, on disposable machines you own or on a hosted runner that exists for one run ([lab workflow](.github/workflows/lab-run.yml)), and a [lab guard](red/lab/README.md#lab-guard) checks the machine itself: a test refuses to run on any host its owner has not marked as a lab, so a script started by mistake on a work machine stops before it does anything. Credential access and Security-log clearing are opt-in and never run on a machine that is not yours, every artifact carries a run marker so cleanup can only touch what the test created, web tests refuse public targets, connect only to the address they checked and never follow a redirect, and the password-spray simulation cannot succeed by design and skips any account one more failure could lock. The lab Sysmon configuration is intentionally verbose for validation: do not deploy `red/lab/sysmon-rasd.xml` to production. Samples and replay data are synthetic; `purple/lab_runs` holds the raw files of lab runs made on machines that existed for the run; `datasets/extracts` holds reduced events from public attack datasets under their own licenses ([notice](datasets/NOTICE.md)); no production logs belong in this repository.
+**The offensive tests are for a lab. Nothing here belongs on a production machine.**
+
+- **Where they run:** a lab VM you own, or a [hosted runner](.github/workflows/lab-run.yml) that exists for one run. The [lab guard](red/lab/README.md#lab-guard) stops them on any other host.
+- **Opt-in:** credential access and Security-log clearing run only when you ask for them.
+- **Cleanup:** a test removes only what it created.
+- **No harm:** web tests refuse public targets, and the password spray can neither succeed nor lock an account.
+- **Lab Sysmon config:** verbose on purpose, so keep `red/lab/sysmon-rasd.xml` out of production.
+- **No real logs:** the samples are synthetic, and the public attack data keeps its own licences ([notice](datasets/NOTICE.md)).
 
 ## License
 
