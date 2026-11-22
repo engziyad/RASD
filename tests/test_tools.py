@@ -2612,22 +2612,90 @@ class Banner(unittest.TestCase):
         svg = banner.svg()
         self.assertTrue(svg.startswith("<svg") and svg.rstrip().endswith("</svg>"))
 
+    @staticmethod
+    def unsixel(image):
+        """The pixels a sixel image sets, as {(x, y): colour register}, read the way a terminal reads it."""
+        body = image[image.index("q") + 1:image.rindex("\033\\")]
+        body = re.sub(r"#\d+;2;\d+;\d+;\d+", "", re.sub(r'^"[\d;]+', "", body))
+        pixels, x, y, colour = {}, 0, 0, None
+        for token in re.finditer(r"#(\d+)|!(\d+)([?-~])|([?-~])|([$-])", body):
+            select, count, repeated, single, control = token.groups()
+            if select:
+                colour = int(select)
+            elif control == "$":
+                x = 0
+            elif control == "-":
+                x, y = 0, y + 6
+            else:
+                bits, n = ord(repeated or single) - 63, int(count or 1)
+                for i in range(n):
+                    for k in range(6):
+                        if bits >> k & 1:
+                            pixels[(x + i, y + k)] = colour
+                x += n
+        return pixels
+
+    def test_the_knight_is_a_picture(self):
+        width, height = banner.KNIGHT_SIZE
+        self.assertTrue(all(re.fullmatch(r"#[0-9a-f]{6}", c) for c in banner.KNIGHT_PALETTE))
+        for pose in range(len(banner.KNIGHT_POSES)):
+            pixels = banner.knight_pixels(pose)
+            self.assertEqual((len(pixels[0]), len(pixels)), (width, height))
+            used = {c for row in pixels for c in row}
+            self.assertIn(None, used)
+            self.assertLessEqual(used - {None}, set(range(len(banner.KNIGHT_PALETTE))))
+            image = banner.knight_sixel(pose)
+            self.assertTrue(image.startswith(f'\033P9;1q"1;1;{width};{height}') and image.endswith("\033\\"))
+            self.assertEqual(self.unsixel(image), {(x, y): c for y, row in enumerate(pixels)
+                                                   for x, c in enumerate(row) if c is not None})
+            lower = self.unsixel(banner.knight_sixel(pose, pad=7))
+            self.assertEqual(min(y for _, y in lower), min(y for _, y in self.unsixel(image)) + 7)
+
+    def test_only_a_terminal_that_draws_pictures_gets_the_knight(self):
+        self.assertTrue(banner.reports_sixel(b"\033[?62;4;6;22c"))
+        self.assertTrue(banner.reports_sixel(b"x\033[?64;1;2;4c"))
+        self.assertFalse(banner.reports_sixel(b"\033[?62;42;22c"))
+        self.assertFalse(banner.reports_sixel(b"\033[?1;2c"))
+        self.assertFalse(banner.reports_sixel(b""))
+        with mock.patch.dict(os.environ, {"WT_SESSION": "1"}), \
+                mock.patch.object(banner, "_ask_terminal", side_effect=AssertionError("Windows Terminal is not asked")):
+            self.assertTrue(banner.pictures())
+            self.assertEqual(banner.cell_size(), banner.CELL)
+        env = {k: v for k, v in os.environ.items() if k != "WT_SESSION"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with mock.patch.object(banner, "_ask_terminal", return_value=b"\033[?62;4;22c"):
+                self.assertTrue(banner.pictures())
+            with mock.patch.object(banner, "_ask_terminal", return_value=b""):
+                self.assertFalse(banner.pictures())
+
     def test_the_knight_rides_the_loading_track_from_left_to_right(self):
         width = banner.banner_width() - 2
-        end = width - banner.KNIGHT_WIDTH
-        for pose in banner.KNIGHT:
-            self.assertEqual({len(line) for line in pose}, {banner.KNIGHT_WIDTH})
-            self.assertLessEqual(set("".join(pose)), set(banner.KNIGHT_COLORS) | {"."})
-        start, finish = banner.knight_lines(0, 1, width, color=False), banner.knight_lines(end, 0, width, color=False)
-        self.assertEqual(len(start), banner.RIDE_LINES)
-        self.assertTrue(all(len(line) <= width for line in start + finish))
-        self.assertIn(" ", start[-1])                         # the track ahead of him is dotted
-        self.assertNotIn(" ", finish[-1])                     # at the end it lies whole behind him
-        self.assertNotIn("\033[", "".join(finish))
-        self.assertIn(";48;5;", "".join(banner.knight_lines(end, 0, width)))      # two colours in one cell
+        self.assertEqual(banner.track(3, 8, color=False), "▔▔▔ ▔ ▔")
+        self.assertEqual(banner.track(8, 8, color=False), "▔" * 8)
         out = io.StringIO()
         banner.ride(color=False, animate=False, out=out)
-        self.assertEqual(out.getvalue().count("\n"), banner.RIDE_LINES + 1)
+        self.assertEqual(out.getvalue(), f"  {'▔' * width}\n\n")
+        with mock.patch.dict(os.environ, {"COLUMNS": "120"}):
+            out = io.StringIO()
+            banner.ride(color=True, out=out, images=True, cell=banner.CELL, delay=0)
+            ride = out.getvalue()
+            plain = io.StringIO()
+            banner.ride(color=True, out=plain, images=False, delay=0)
+        cells, rows = banner.KNIGHT_SIZE[0] // 10, banner.KNIGHT_SIZE[1] // 20
+        frames = ride.split("\0337")[1:]
+        self.assertEqual(len(frames), width - cells + 1)
+        self.assertTrue(all(f.startswith("\033P") for f in frames))
+        self.assertEqual({f.count("\0338") for f in frames}, {1})
+        self.assertIn(banner.knight_sixel(1), ride)
+        self.assertTrue(frames[-1].startswith(banner.knight_sixel(0)))
+        self.assertIn(f"\033[{2 + width - cells}C\0337", ride)
+        up = sum(int(n) for n in re.findall(r"\033\[(\d+)A", ride))
+        down = sum(int(n) for n in re.findall(r"\033\[(\d+)B", ride)) + ride.count("\n")
+        self.assertEqual(down - up, rows + 2)
+        self.assertTrue(ride.endswith("\033[?25h\n"))
+        self.assertNotIn("\033P", plain.getvalue())
+        self.assertEqual(plain.getvalue().count("\033[1A"), width + 1)
+        self.assertIn(banner.track(width, width), plain.getvalue())
 
     def test_the_banner_is_the_same_with_the_knight(self):
         self.assertEqual(banner.svg(), (ROOT / "docs" / "assets" / "banner.svg").read_text(encoding="utf-8"))
