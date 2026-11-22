@@ -4,7 +4,9 @@
 
 <img src="docs/assets/banner.svg" alt="RASD - Continuous Detection Assurance Framework" width="760">
 
-**Is every detection really working, what proves it, and what is in the way?**
+**RASD // Offensive Validation • Detection Logic • Operational Evidence**
+
+*Attack simulated. Signals captured. Logic tested. Response ready.*
 
 [![Detection CI](https://github.com/engziyad/RASD/actions/workflows/detection-ci.yml/badge.svg)](https://github.com/engziyad/RASD/actions/workflows/detection-ci.yml)
 ![Backends](https://img.shields.io/badge/backends-KQL%20%7C%20SPL-87af87)
@@ -24,6 +26,8 @@
 </div>
 
 ## What RASD is
+
+**Is every detection really working, what proves it, and what is in the way?**
 
 **RASD (Resilient Adversary Signal Detection)** keeps one record of every detection's state: its rule and the telemetry it needs, what the build proves about it, the attack step that fired it in a lab, the alert a live SIEM raised for it, and whatever is in the way of the rest. Each detection gets one verdict, the reason for it and the next action, and every stage names the file it rests on.
 
@@ -80,8 +84,6 @@ rasd status
 | 📊 | **[Status](status/README.md)** | Every detection's verdict, its gaps and why, the next actions, and the conflicts checked |
 | 🧪 | **[Evidence](purple/lab_runs/README.md)** | The lab runs kept with their raw files, and the [plan](docs/EVIDENCE_PLAN.md) for every detection still waiting |
 | 📚 | **[Documentation](docs/README.md)** | Every page, module and command, by layer |
-
-[الدليل بالعربي](docs/GUIDE_AR.md)
 
 ## 🛡️ Scope and safety
 

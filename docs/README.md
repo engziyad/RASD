@@ -58,6 +58,6 @@ Rules of the house: [maturity model](RASD_MATURITY_MODEL.md) · [quality model](
 
 ## The project
 
-[Architecture](RASD_ARCHITECTURE.md) · [roadmap](RELEASE_ROADMAP.md) · [contributing](../CONTRIBUTING.md) · [الدليل بالعربي](GUIDE_AR.md)
+[Architecture](RASD_ARCHITECTURE.md) · [roadmap](RELEASE_ROADMAP.md) · [contributing](../CONTRIBUTING.md)
 
 <sub>RASD · Continuous Detection Assurance Framework</sub>
