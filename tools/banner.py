@@ -9,7 +9,7 @@ banner.py - the RASD signature, in the terminal and as an SVG for the README.
 Hidden automatically in CI, when output is piped, or with NO_BANNER=1.
 NO_COLOR=1 prints it without colour. Uses 24-bit colour when the terminal
 advertises it (COLORTERM=truecolor), otherwise the nearest 256-colour shade.
-The text lines carry the framework name, the five pillars of its chain (RASD-Deceive feeds Detect; RASD-Agent reads every link) and the author credit.
+The text lines carry the framework name, its three layers (Foundation, Assurance, Decision) and the author credit.
 """
 from __future__ import annotations
 
@@ -58,14 +58,14 @@ SWORD: list[list[list]] = [
     [["  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", "#bcbcbc"], ["▜▌▖▄▖▖▖▐▛", "#d7af87"]],
 ]
 
-TAGLINE = "Attack-to-Defense Validation Framework"
-PILLARS = ("Red", "Detect", "DFIR", "Intel", "Purple")
+TAGLINE = "Continuous Detection Assurance Framework"
+PILLARS = ("Foundation", "Assurance", "Decision")
 COL = 18          # text column, right of the emblem
 CREDIT = "By: @ZiyadSOC"
 
 
 def pillars() -> list[tuple[str, str | None]]:
-    """Red → Detect → DFIR → Intel → Purple, names in gray and arrows in sand."""
+    """Foundation → Assurance → Decision, names in gray and arrows in sand."""
     segs: list[tuple[str, str | None]] = []
     for i, name in enumerate(PILLARS):
         if i:
@@ -152,7 +152,7 @@ def svg() -> str:
         if run.strip():
             texts.append((run_x, y, run, run_col))
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W:.0f} {H:.0f}" width="{W:.0f}" height="{H:.0f}" '
-             f'role="img" aria-label="RASD - Attack-to-Defense Validation Framework">',
+             f'role="img" aria-label="RASD - Continuous Detection Assurance Framework">',
              '<rect width="100%" height="100%" rx="14" fill="#0d0d12"/>', '<g shape-rendering="crispEdges">']
     for py in sorted({p[1] for p in pixels}):
         xs = sorted(p[0] for p in pixels if p[1] == py)

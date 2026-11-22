@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 """
-RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
+RASD - Continuous Detection Assurance Framework. One command for the whole framework.
 
-  author      new        scaffold a detection that fails CI until it is complete
-  verify      lint       rules, contracts, tuning guides, evidence, deep static checks
-              sigma      the Sigma subset RASD supports, proven in the engine and RASD's SPL / KQL models; the rest refused
-              test       true-positive / true-negative samples
-              mutate     hand-written + generic evasion mutations
+Three layers. The Foundation is what a detection is made of: its rule, its telemetry contract, the offensive step
+that reaches it, its triage and response. The Assurance layer is everything that tests it, in code and in a lab.
+The Decision layer keeps one record per detection: its verdict, what proves it, the reason for every gap and the
+next action. Code checks can fail a detection; only a lab run with a live SIEM can verify one.
+
+  decision    status     where every detection stands, what proves it, and what to do next: one record
+                         (status/status.json) for its page, the front page and this command; --gaps, --critical,
+                         --next, --detection ID, --health FILE (production health), --as-of today, --json
+              advise     RASD-Agent: what to do next, computed from what the repository proves, for the analyst, the
+                         engineer, the purple team and the executive; --logs reads your own telemetry, --explain reads an
+                         alert, --propose drafts a verified change, --decide records what you decided (the agent learns),
+                         --ask answers a question; a language model is optional and everything it writes is gated
+
+  assurance   test       true-positive / true-negative samples
+   in code    mutate     hand-written + generic evasion mutations
               fuzz       automatic evasion fuzzing against a regression baseline
               prove      rule mutation testing: is every value, field and branch proven by a test?
               parity     the generated KQL / SPL return exactly what the tested rule returns (modelled semantics, not a live SIEM)
@@ -17,19 +27,20 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
               tune       security cost vs noise benefit of every tuning
               diff       semantic diff: which events change verdict vs a git ref
               overlap    detections that co-fire on the same events
-  understand  explain    why a rule matched (or did not) an event, field by field
+              explain    why a rule matched (or did not) an event, field by field
               score      Engineering Score and Operational Score
-  deploy      build      KQL + SPL (rules and correlations), Defender XDR queries, Splunk app, cards, views, coverage, scores,
-                         Sigma support page, banner, red docs, profiles README, public dataset pages, certify page, chain outputs
-              coverage   the ATT&CK Navigator layer and the coverage matrix
-              views      the audience views (SOC L1, incident response, purple team, GRC)
-              convert    print queries for one backend
-              doctor     check YOUR log export: READY / DEGRADED / BLIND per rule (--profile for ECS, CIM ...)
-              profiles   telemetry profiles: which one fits an export (--detect), what each covers
-              splunk     the detections as a Splunk app: scheduled alerts, indexes, forwarder inputs
-  operate     red        validate and render every offensive test from its test.yml
-              deceive    RASD-Deceive: the decoy inventory against the rules, tests, red tests and the decoy host's
-                         configuration; --rename adopts your own decoy identities, --gaps ranks the classes not built
+   in a lab   datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
+              evidence   turn a real lab run into verifiable evidence.md (fired / missed);
+                         --run reads the lab run's zip or folder (--strict: hashes and manifest required);
+                         --keep stores a run that may be public in purple/lab_runs, and --check recomputes the
+                         evidence of every kept run (--refresh rewrites it, --prune drops a run a later one replaced)
+              health     RASD-Health: is every detection still being fed? today's export against a baseline, a verdict
+                         per detection (healthy / degraded / blind / nothing to compare) and each break named once with
+                         the detections it takes with it; --sample runs the bundled day, --json FILE is what
+                         `rasd status --health` reads, --write generates the SPL and KQL watchdogs
+   in your    doctor     check YOUR log export: READY / DEGRADED / BLIND per rule (--profile for ECS, CIM ...)
+   logs       replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines,
+                         --case-dir: one case folder per storyline
               trace      RASD-Trace: for every detection, can the evidence an investigation needs be taken away, at what
                          cost, and does a rule see the attempt; --lost: what can still be proven once logs are gone
               silence    RASD-Silence: for every detection and host of an export, is its quiet evidence that nothing
@@ -39,24 +50,20 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
                          behaviours the rules claim to detect with no alert; every unseen step proven by a witness
                          the engine replays or by a sensor the export does not hold, and the fewest changes that
                          end it; with no export, on Windows, this host's own logs
-              replay     run every rule over logs: risk-ranked alerts, noise forecast, storylines,
-                         --case-dir: one case folder per storyline
               benchmark  events/s, memory, slowest rule and regex - on an export or N synthetic events
-              health     RASD-Health: is every detection still being fed? today's export against a baseline, a verdict
-                         per detection (healthy / degraded / blind / nothing to compare) and each break named once with
-                         the detections it takes with it; --sample runs the bundled day, --write generates the SPL and
-                         KQL watchdogs
-              evidence   turn a real lab run into verifiable evidence.md (fired / missed);
-                         --run reads the lab run's zip or folder (--strict: hashes and manifest required);
-                         --keep stores a run that may be public in purple/lab_runs, and --check recomputes the
-                         evidence of every kept run (--refresh rewrites it, --prune drops a run a later one replaced)
-              datasets   public attack datasets: fetch them pinned and hashed, replay every rule, record the result
               chain      the 20-point attack-to-defense map, maturity, matrices, metrics
-              links      every relative link in every Markdown file resolves
-  counsel     advise     RASD-Agent: what to do next, computed from what the repository proves, for the analyst, the
-                         engineer, the purple team and the executive; --logs reads your own telemetry, --explain reads an
-                         alert, --propose drafts a verified change, --decide records what you decided (the agent learns),
-                         --ask answers a question; a language model is optional and everything it writes is gated
+
+  foundation  new        scaffold a detection that fails CI until it is complete
+              lint       rules, contracts, tuning guides, evidence, deep static checks
+              sigma      the Sigma subset RASD supports, proven in the engine and RASD's SPL / KQL models; the rest refused
+              red        validate and render every offensive test from its test.yml
+              deceive    RASD-Deceive: the decoy inventory against the rules, tests, red tests and the decoy host's
+                         configuration; --rename adopts your own decoy identities, --gaps ranks the classes not built
+              convert    print queries for one backend
+              splunk     the detections as a Splunk app: scheduled alerts, indexes, forwarder inputs
+              profiles   telemetry profiles: which one fits an export (--detect), what each covers
+              views      the audience views (SOC L1, incident response, purple team, GRC)
+              coverage   the ATT&CK Navigator layer and the coverage matrix
               grow       RASD-Agent's own lane (detect/candidates): the whole ATT&CK matrix as a queue, each technique
                          drafted by the configured model and kept only when every gate accepts it, with the missing
                          tests computed; no person in the loop, and never counted with the core; --run drafts,
@@ -66,12 +73,22 @@ RASD - Attack-to-Defense Validation Framework. One command for the whole chain.
                          (--approve / --revise / --reject --by NAME) recorded against the exact rule text; --promote
                          moves an approved text into the core, --withdraw and --rollback undo, --audit reads the
                          hash-chained trail of every decision
-  all         ci         the full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check)
+
+  all         build      every generated file: KQL + SPL (rules and correlations), Defender XDR queries, Splunk app, cards,
+                         views, coverage, scores, Sigma support page, banner, red docs, profiles README, public dataset
+                         pages, certify page, chain outputs, the status record and its page
+              ci         the full pipeline, in order (the CI workflow adds ruff, mypy, script parse checks and the drift check)
+              links      every relative link in every Markdown file resolves
 
 Install the `rasd` command into a virtual environment with `pip install -e .` and run `rasd <command>`;
 without installing, `python rasd.py <command>` from a clone runs the same command.
 
 Examples
+  rasd status
+  rasd status --gaps
+  rasd status --next
+  rasd status --detection T1558.003_kerberoasting_rc4_tgs
+  rasd health my-export.jsonl --baseline last-week.jsonl --json health.json && rasd status --health health.json
   rasd ci
   rasd chain
   rasd advise --for engineer
@@ -134,17 +151,17 @@ COMMANDS = {
     "nearmiss": ["nearmiss.py"], "sigma": ["sigma_support.py"], "datasets": ["datasets.py"], "certify": ["certify.py"],
     "deceive": ["deceive.py"], "advise": ["advise.py"], "trace": ["survivability.py"], "silence": ["silence.py"],
     "blindpath": ["blindpath.py"], "grow": ["grow.py"], "health": ["health.py"],
-    "review": ["review.py"],
+    "review": ["review.py"], "status": ["status.py"],
 }
 BUILD = [["convert.py", "--all", "--out", "queries"], ["correlate.py", "--write"], ["generate_views.py"], ["coverage.py"], ["score.py"],
          ["sigma_support.py"],
          ["banner.py", "--svg", "docs/assets/banner.svg"], ["red.py"], ["deceive.py"], ["splunk_app.py"], ["profiles.py", "--readme"],
          ["datasets.py", "render"], ["certify.py", "--write"], ["survivability.py", "--write"], ["silence.py", "--write"], ["blindpath.py", "--write"], ["grow.py", "--write"], ["evidence.py", "--page"], ["health.py", "--write"], ["chain.py"],
-         ["advise.py", "--write"]]
+         ["status.py", "--write"], ["advise.py", "--write"]]
 CI = [["validate.py"], ["sigma_support.py", "--check"], ["-m", "unittest", "discover", "-s", "tests"], ["run_tests.py"], ["mutation_test.py"],
       ["fuzz.py", "--check"], ["prove.py"], ["parity.py"], ["certify.py", "--check"], ["correlate.py", "--check"], ["nearmiss.py", "--check"], ["tune.py", "--check"], ["red.py", "--check"], ["deceive.py", "--check"], ["survivability.py", "--check"], ["silence.py", "--check"], ["blindpath.py", "--check"], ["grow.py", "--check"], ["splunk_app.py", "--check"], ["profiles.py", "--check"],
       ["datasets.py", "check"], ["evidence.py", "--check"], ["health.py", "--check"], ["review.py", "--check"],
-      *BUILD, ["chain.py", "--check"], ["advise.py", "--check"], ["links.py"]]
+      *BUILD, ["chain.py", "--check"], ["status.py", "--check"], ["advise.py", "--check"], ["links.py"]]
 
 
 def run(argv: list[str], cwd: Path = ROOT) -> int:

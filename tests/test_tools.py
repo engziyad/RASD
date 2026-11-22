@@ -2176,6 +2176,17 @@ class Naming(unittest.TestCase):
                         found.append(f"{name}: base64 of {decoded[:60]!r}")
         self.assertEqual(found, [])
 
+    def test_the_repository_is_english_only_and_carries_one_framework_name(self):
+        arabic = re.compile("[\u0600-\u06ff\u0750-\u077f\u0870-\u089f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]")
+        earlier = re.compile("Attack-to-Defense " + "Validation Framework", re.I)
+        found = []
+        for name, text in self.tracked_text():
+            if arabic.search(name):
+                found.append(f"{name}: Arabic script in the path")
+            found += [f"{name}: Arabic script on line {text.count(chr(10), 0, m.start()) + 1}" for m in arabic.finditer(text)][:1]
+            found += [f"{name}: the earlier framework name" for _m in earlier.finditer(text)][:1]
+        self.assertEqual(found, [])
+
     def test_every_runner_and_script_checks_the_same_marker_format(self):
         from common import MARKER_RE
         sys.path.insert(0, str(ROOT / "red" / "web"))
@@ -2594,8 +2605,8 @@ class Deceive(unittest.TestCase):
 class Banner(unittest.TestCase):
     def test_plain_render_and_svg(self):
         text = banner.render(color=False)
-        self.assertIn("Attack-to-Defense Validation Framework", text)
-        self.assertIn("Red → Detect → DFIR → Intel → Purple", text)
+        self.assertIn("Continuous Detection Assurance Framework", text)
+        self.assertIn("Foundation → Assurance → Decision", text)
         self.assertNotIn("\033[", text)
         svg = banner.svg()
         self.assertTrue(svg.startswith("<svg") and svg.rstrip().endswith("</svg>"))

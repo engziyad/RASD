@@ -192,32 +192,49 @@ OPERATIONAL_LACKS = (
 )
 
 
+# what is in the way of a detection without evidence, as the status record names it (tools/status.py), and the lab it takes
+LAB_NEEDS = {
+    "domain": "a lab domain of your own",
+    "opt-in": "the opt-in steps, on a lab VM of your own",
+    "target": "a second lab host",
+    "lab": "the lab run",
+    "fix:Lab run": "the step again, after reading why it did not fire",
+}
+
+
 def evidence_findings(repo) -> list[Finding]:
-    """The lab runs that would validate the most detections first; the detections no red step reaches; and, for the
-    detections that have evidence, what their Operational Score still lacks, one finding per cause."""
-    from chain import OPERATIONAL_TARGET, WAVES, wave_of
-    waves: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
+    """The lab runs that would validate the most detections first, grouped by what the status record says is in the
+    way of each, in the words `rasd status --next` uses; the detections no red step reaches; and, for the detections
+    that have evidence, what their Operational Score still lacks, one finding per cause."""
+    from chain import OPERATIONAL_TARGET
+    from status import BLOCKER_TEXT
+    steps: dict[str, set[str]] = defaultdict(set)
     reached: set[str] = set()
     for t in repo.red:
         for step in t.get("steps") or []:
             for det_id in list(step.get("detections") or []) + list(step.get("correlations") or []):
-                if det_id not in repo.by_id:
-                    continue
-                reached.add(det_id)
-                if not repo.evidence[det_id]:
-                    waves[wave_of(t, step)][det_id].add(f"{t['id']} · {step['id']}")
+                if det_id in repo.by_id:
+                    reached.add(det_id)
+                    steps[det_id].add(f"{t['id']} · {step['id']}")
+    records = {r["id"]: r for r in repo.status["detections"]}
+    waves: dict[str, dict[str, dict]] = defaultdict(dict)
+    for det_id in sorted(reached):
+        if not repo.evidence[det_id]:
+            key = records[det_id]["next_key"]
+            waves[key if key in LAB_NEEDS else "lab"][det_id] = records[det_id]
     out = []
-    titles = {key: (title, machine, commands) for key, title, machine, commands in WAVES}
     ranked = sorted(waves.items(), key=lambda kv: (-len(kv[1]), kv[0]))
-    for n, (key, dets) in enumerate(ranked):
-        title, machine, commands = titles[key]
+    for n, (key, group) in enumerate(ranked):
+        action = next(r["next"] for r in group.values())
+        reason = BLOCKER_TEXT.get(key, "no kept lab run has run their steps yet")
         out.append(Finding(
-            id=f"evidence.wave.{key}", priority=1 if n == 0 else 2, pillar="evidence", roles=("purple", "executive"),
-            title=f"Lab run · {title}: validates {_n(len(dets), 'detection')} without evidence yet",
-            evidence=f"{machine} Detections it reaches: " + ", ".join(sorted(dets)) + ".",
-            action="\n".join(commands) + "\nThen: rasd evidence --run <the run's zip or folder> <exports> && rasd build",
-            proposal="commands", weight=len(dets),
-            data={"wave": key, "detections": {d: sorted(s) for d, s in sorted(dets.items())}, "commands": commands}))
+            id=f"evidence.wave.{key.replace(':', '-').replace(' ', '-').lower()}", priority=1 if n == 0 else 2,
+            pillar="evidence", roles=("purple", "executive"),
+            title=f"Lab run · {LAB_NEEDS[key]}: validates {_n(len(group), 'detection')} without evidence yet",
+            evidence=(f"{reason[0].upper()}{reason[1:]}, as the kept lab runs recorded ([status](../status/README.md)). "
+                      "Detections it moves on: " + ", ".join(sorted(group)) + "."),
+            action=action + "\nThen: rasd build", proposal="commands", weight=len(group),
+            data={"wave": key, "detections": {d: sorted(steps[d]) for d in sorted(group)}, "commands": [action]}))
     for d in repo.items:
         if d.id in reached:
             continue

@@ -21,7 +21,7 @@ Each finding carries a stable id, a priority, the roles it concerns, a title, th
 
 | Family | Measured by | Finding | Priority | Drafts |
 |---|---|---|---|---|
-| `evidence.wave.*` | the red tests' steps and `evidence.md` files | a lab wave (Windows VM, opt-in steps, domain controller, WinRM target, Linux, web) and the detections without evidence it would validate, with its commands | now for the largest wave, next for the others | the commands |
+| `evidence.wave.*` | the status record (`rasd status`), the red tests' steps and `evidence.md` files | what is in the way of the detections without evidence, as the status record names it from the kept lab runs (a lab domain, the opt-in steps, a second host, the lab run itself), the detections it would validate, and the same next action `rasd status --next` gives | now for the largest wave, next for the others | the commands |
 | `evidence.unreachable.*` | the red tests | a detection no offensive step names | next | - |
 | `evidence.operational.*` | the Operational Score of each `evidence.md` | what the evidence at hand still lacks, one finding per cause with the detections it holds back: no alert from a live SIEM, an alert that came late, no artifact collected, a cleanup not verified | next | - |
 | `tests.*` `proof.*` `fuzz.*` `parity.*` `correlate.*` `certify.failed.*` `score.*` `chain.*` `tune.broken.*` `tune.risky.*` | `rasd test`, `prove`, `fuzz`, `parity`, `correlate`, `certify`, `score`, `chain`, `tune` | anything not fully proven: a failing test, a surviving or stale rule mutant, an evasion bypass, a query divergence, a failed certificate, a score under 100, a missing chain item, a broken or risky tuning | now | a true positive or true negative for a survivor, when `prove --suggest` finds one |

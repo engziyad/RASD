@@ -39,4 +39,4 @@ RASD
 └── .github/    → CI, issue templates, PR template
 ```
 
-<sub>RASD · Attack-to-Defense Validation Framework</sub>
+<sub>RASD · Continuous Detection Assurance Framework</sub>

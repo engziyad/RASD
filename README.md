@@ -1,8 +1,8 @@
 <div align="center">
 
-# RASD: Attack-to-Defense Validation Framework
+# RASD: Continuous Detection Assurance Framework
 
-<img src="docs/assets/banner.svg" alt="RASD - Attack-to-Defense Validation Framework" width="760">
+<img src="docs/assets/banner.svg" alt="RASD - Continuous Detection Assurance Framework" width="760">
 
 **RASD // Offensive Validation • Detection Logic • Operational Evidence**
 
@@ -15,104 +15,75 @@
 
 <!-- rasd:status:start -->
 ![detections: 22](https://img.shields.io/badge/detections-22-87afaf)
-![engineering: 100/100](https://img.shields.io/badge/engineering-100%2F100-87af87)
-![operational: 86/100](https://img.shields.io/badge/operational-86%2F100-d7af87)
-![public data: 16/22](https://img.shields.io/badge/public%20data-16%2F22-87afaf)
-![validated: 15/22](https://img.shields.io/badge/validated-15%2F22-bcbcbc)
+![verified: 15/22](https://img.shields.io/badge/verified-15%2F22-bcbcbc)
+![blocked: 7](https://img.shields.io/badge/blocked-7-d7af87)
+![failed: 0](https://img.shields.io/badge/failed-0-87af87)
+![conflicts: 0](https://img.shields.io/badge/conflicts-0-87af87)
 
-**Status:** 15 of 22 detections Validated (lab evidence); the other 7 wait for a lab run ([evidence plan](docs/EVIDENCE_PLAN.md)).
+**Status:** 15 of 22 detections Verified: each fired on a real attack step in a lab and a live SIEM raised its alert; 7 Blocked, each with the reason and the next step ([status](status/README.md)).
 <!-- rasd:status:end -->
 
 </div>
 
 ## What RASD is
 
-**RASD (Resilient Adversary Signal Detection)** turns an attack technique into a detection that is proven at every step. The attack is run in a lab, its telemetry is captured, the rule is tested and mutated until no part of it is unproven, the SIEM query is shown to be the same rule, and the analyst gets the triage and response notes.
+**Is every detection really working, what proves it, and what is in the way?**
 
-Nothing on this page is typed by hand that the repository can count: every number below is computed on each build, and a detection is called **Validated** only when it fired on a real attack step.
+**RASD (Resilient Adversary Signal Detection)** keeps one record of every detection's state: its rule and the telemetry it needs, what the build proves about it, the attack step that fired it in a lab, the alert a live SIEM raised for it, and whatever is in the way of the rest. Each detection gets one verdict, the reason for it and the next action, and every stage names the file it rests on.
 
-## 🧭 How it works
+Code checks can fail a detection, never verify one. A thousand passing tests do not make up for a telemetry source that is missing or a SIEM that raised no alert: a detection is **Verified** only when its attack step fired in a lab and a live SIEM raised the alert.
 
-```text
- Attack step ─► Telemetry ─► Detection rule ─► KQL / SPL ─► Triage & response ─► Lab evidence
-```
+## ❓ The five questions
 
-| | Link of the chain | What makes it more than a claim |
-|:-:|---|---|
-| 🔴 | **Attack** | Offensive tests that run only on a machine its owner marked as a lab, and clean up after themselves |
-| 📡 | **Telemetry** | A contract per detection: the log source, the events and the fields the rule cannot work without |
-| 🎯 | **Detection** | True and false positives, attacker mutations, an evasion fuzzer, and every rule compiled to exact automata |
-| 🔁 | **SIEM query** | The generated KQL and SPL are parsed back and must return the rule's verdict on every event |
-| 🧑‍💻 | **Triage and response** | Cards, closure and escalation notes, and a DFIR playbook for every technique |
-| 🧪 | **Evidence** | Written only when the rule fired on telemetry bound to a real lab run, and recomputed from the raw run on every build |
+<!-- rasd:questions:start -->
+| | Question | Answer | Proof |
+|:-:|---|---|---|
+| 1 | **What can we detect?** | 22 detections (18 single-event rules, 4 correlations) across 17 ATT&CK techniques, each with its telemetry contract, triage and response | [open](detect/README.md) |
+| 2 | **What proves it?** | 15 Verified: each fired on a real attack step in a lab and Splunk Enterprise 10.4.5 raised its alert; 15 of them are recomputed from the raw run kept in the repository on every build. The code checks (22 of 22 pass) can fail a detection, never verify one | [open](purple/lab_runs/README.md) |
+| 3 | **Is it still working?** | In production: unknown until RASD reads its SIEM's numbers (`rasd health --json`, then `rasd status --health`). In the lab: the health watchdogs ran quiet beside the hosts of 15 Verified detections | [open](docs/HEALTH.md) |
+| 4 | **Where are the gaps, and why?** | 7 Blocked: 4 need a lab domain, 2 need an opt-in step on a lab VM of your own, 1 needs an offensive step that reaches it; 1 alerted in the lab with no step asking for it (T1003.001_lsass_memory_access); 1 with a documented miss on held-out public data (T1558.003_kerberoasting_rc4_tgs) | [open](status/README.md#gaps-and-why) |
+| 5 | **What should be fixed now?** | On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`. It moves 4 detections on, 3 of them critical | [open](status/README.md#next) |
 
-## ✅ What is proven today
+<sub>Answered by `rasd status` from the record every build writes: [status/status.json](status/status.json)</sub>
+<!-- rasd:questions:end -->
 
-<!-- rasd:readme-metrics:start -->
-| ✅ Proven by the build | |
-|---|---|
-| **Library** | 22 detections (18 single-event, 4 correlations) across 17 ATT&CK techniques |
-| **Tests** | 403 cases · 640 mutations · 1621 evasion variants, 0 bypasses |
-| **Rule logic** | 291/291 rule mutants killed or accepted · 22/22 rules as exact automata |
-| **SIEM queries** | 16284 parity verdicts per backend, 0 divergences (offline model of KQL and SPL) |
-| **Public attack data** | 16/22 detections fire on pinned public datasets |
-| **Engineering Score** | 100/100 |
+## 🧱 Three layers
 
-| 🧪 Proven in a lab | |
-|---|---|
-| **Validated** | 15 of 22 detections fired on a real attack step in a lab |
-| **Evidence** | 15 of 15 evidence files are recomputed from the raw lab runs kept in the repository on every build (3 parts of 1 run): a rule edited until it no longer fires on its run loses its evidence ([lab runs](purple/lab_runs/README.md)) |
-| **Operational Score** | 86/100 over 15 detections |
-| **Live SIEM** | 15 of 15 evidence files carry an alert raised by a live SIEM: Splunk Enterprise 10.4.5 beside 3 lab hosts, its own scheduler, the RASD apps and no vendor add-on · 1 detection also alerted there with no step asking for it ([which](purple/lab_runs/README.md)) |
-| **Waiting** | 7 detections, each with the lab machine and step it needs ([evidence plan](docs/EVIDENCE_PLAN.md)) |
+<img src="docs/assets/architecture.svg" alt="RASD's three layers: the Foundation, the Assurance layer and the Decision layer" width="760">
 
-<sub>Counted by `tools/chain.py` on every build · [every number](docs/RASD_METRICS.md)</sub>
-<!-- rasd:readme-metrics:end -->
+| | Layer | What it holds | Where |
+|:-:|---|---|---|
+| 🧱 | **Foundation** | What a detection is made of: the Sigma rule, its telemetry contract, the offensive step that reaches it, its triage, response and DFIR playbook, and the decoys it reads | [detect/](detect/) · [red/](red/) · [dfir/](dfir/) · [deceive/](deceive/) · [intel/](intel/) |
+| 🧪 | **Assurance** | Everything that tests it. In code: tests, mutations, the evasion fuzzer, query parity, exact automata. In a lab: public attack data, lab runs kept with their raw files, a live SIEM's alerts, the health watchdogs, the evidence | [proofs](docs/PROOFS.md) · [public data](docs/PUBLIC_DATA_VALIDATION.md) · [lab runs](purple/lab_runs/README.md) · [health](docs/HEALTH.md) |
+| 🧭 | **Decision** | One record per detection: its verdict, what proves it, the reason for every gap, the next action, and any contradiction between components | [status](status/README.md) · `rasd status` |
 
 ## 🚀 Quick start
 
-Requires Python 3.10+ and PyYAML.
+Requires Python 3.10+ and PyYAML. On Windows, create the environment with `py -m venv .venv` and activate it with `.venv\Scripts\activate`.
 
 ```bash
 git clone https://github.com/engziyad/RASD.git && cd RASD
-python3 -m venv .venv && . .venv/bin/activate     # Windows: py -m venv .venv, then .venv\Scripts\activate
+python3 -m venv .venv && . .venv/bin/activate
 pip install -e .
-rasd ci                  # everything the CI workflow proves, in order
-rasd health --sample     # a day the log pipeline breaks, and the detections it blinds
-rasd advise              # what to do next, and why that first
+rasd status
 ```
 
-[Every command](docs/COMMANDS.md) · [run the lab](red/lab/README.md) · [take it into your SIEM](docs/ENTERPRISE_ADOPTION.md) · [الدليل بالعربي](docs/GUIDE_AR.md)
+| Command | What it answers |
+|---|---|
+| `rasd status` | The five questions, from the record every build writes |
+| `rasd status --gaps` | Every detection short of Verified, and why |
+| `rasd status --next` | What to do next, and the detections each action moves on |
+| `rasd status --detection <id>` | One detection, stage by stage, each stage with the file it rests on |
+| `rasd ci` | Everything the CI workflow proves, in order |
 
-## 🗂️ Modules
+## 🚪 Four doors
 
-| | Module | The question it answers | Open |
-|:-:|---|---|---|
-| 🔴 | **RASD-Red** | Can the technique be run safely, repeatably, and cleaned up? | [red/](red/) · [lab kit](red/lab/README.md) |
-| 🎯 | **RASD-Detect** | Does the rule catch it in every form, and is the SIEM query the same rule? | [detect/](detect/) · [proofs](docs/PROOFS.md) |
-| 🧮 | **Correlations** | What about attacks no single event shows? | [CORRELATIONS](docs/CORRELATIONS.md) |
-| 🪤 | **RASD-Deceive** | Is the first touch of a decoy an alert? | [deceive/](deceive/) · [DECEPTION](docs/DECEPTION.md) |
-| 🔬 | **RASD-DFIR** | What does the analyst do when it fires? | [dfir/](dfir/) |
-| 🧾 | **RASD-Trace** | Can an intruder erase the evidence, and is the attempt seen? | [TRACE](docs/TRACE.md) |
-| 🤫 | **RASD-Silence** | When a rule stayed quiet, does that prove nothing happened? | [SILENCE](docs/SILENCE.md) |
-| 🕳️ | **RASD-Blindpath** | Can an intruder cross from host to host with no alert? | [BLINDPATH](docs/BLINDPATH.md) |
-| 🩺 | **RASD-Health** | Is every detection still being fed, today? | [HEALTH](docs/HEALTH.md) · [watchdogs](queries/health/README.md) |
-| 🧠 | **RASD-Intel** | Which technique should be covered next, and who uses it? | [intel/](intel/) |
-| 🟣 | **RASD-Purple** | Did the whole chain hold in a lab? | [purple/](purple/) · [lab runs](purple/lab_runs/README.md) |
-| 🤖 | **RASD-Agent** | What comes next, and what did the agent draft that a person still has to decide? | [AGENT](docs/AGENT.md) · [GOVERNANCE](docs/GOVERNANCE.md) |
-
-## 📚 Documentation
-
-| | Section | Pages |
+| | Door | Behind it |
 |:-:|---|---|
-| 🧭 | **Start** | [Overview](docs/RASD_OVERVIEW.md) · [Architecture](docs/RASD_ARCHITECTURE.md) · [What RASD proves](docs/PROOFS.md) · [Commands](docs/COMMANDS.md) · [Coverage and layout](docs/COVERAGE.md) · [Executive summary](docs/EXECUTIVE_SUMMARY.md) |
-| 📏 | **Rules of the house** | [Maturity model](docs/RASD_MATURITY_MODEL.md) · [Quality model](docs/QUALITY_MODEL.md) · [Acceptance criteria](docs/DETECTION_ACCEPTANCE_CRITERIA.md) · [Writing detections](docs/WRITING_DETECTIONS.md) · [Sigma support](docs/SIGMA_SUPPORT.md) · [The chain](docs/ATTACK_TO_DEFENSE_CHAIN.md) |
-| 🔐 | **Proofs** | [Certify](docs/CERTIFY.md) · [Certificates](docs/CERTIFICATES.md) · [Correlations](docs/CORRELATIONS.md) · [Public attack data](docs/PUBLIC_DATA_VALIDATION.md) |
-| 🧪 | **Lab** | [Operational validation](docs/OPERATIONAL_VALIDATION.md) · [Evidence plan](docs/EVIDENCE_PLAN.md) · [Lab runs](purple/lab_runs/README.md) · [SIEM scorecard](docs/SIEM_VALIDATION_SCORECARD.md) |
-| 🛰️ | **Operations** | [Health](docs/HEALTH.md) · [Silence](docs/SILENCE.md) · [Trace](docs/TRACE.md) · [Blindpath](docs/BLINDPATH.md) · [Deception](docs/DECEPTION.md) · [Enterprise adoption](docs/ENTERPRISE_ADOPTION.md) · [SIEM deployment](docs/SIEM_DEPLOYMENT_NOTES.md) |
-| 🤖 | **Agent** | [Agent](docs/AGENT.md) · [The lane it grows](docs/GROW.md) · [Governance](docs/GOVERNANCE.md) · [The counsel](agent/ADVICE.md) · [Candidates](detect/candidates/README.md) |
-| 📊 | **Numbers** | [Metrics](docs/RASD_METRICS.md) · [Data sources](docs/DATA_SOURCE_COVERAGE.md) · [Control evidence](docs/CONTROL_EVIDENCE.md) · [Role views](docs/views/) · [Detection backlog](intel/outputs/detection_backlog.md) |
-| 🗺️ | **Project** | [Roadmap](docs/RELEASE_ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [الدليل بالعربي](docs/GUIDE_AR.md) |
+| 🧭 | **[Overview](docs/RASD_OVERVIEW.md)** | What RASD is, the questions it answers and how the three layers fit together |
+| 📊 | **[Status](status/README.md)** | Every detection's verdict, its gaps and why, the next actions, and the conflicts checked |
+| 🧪 | **[Evidence](purple/lab_runs/README.md)** | The lab runs kept with their raw files, and the [plan](docs/EVIDENCE_PLAN.md) for every detection still waiting |
+| 📚 | **[Documentation](docs/README.md)** | Every page, module and command, by layer |
 
 ## 🛡️ Scope and safety
 

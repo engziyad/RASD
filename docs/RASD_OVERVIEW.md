@@ -1,12 +1,51 @@
 # RASD Overview
 
-**RASD: Resilient Adversary Signal Detection.** An attack-to-defense validation framework that turns adversary behaviour into tested detections, investigation workflows, CTI mappings and operational evidence.
+**RASD: Resilient Adversary Signal Detection.** A continuous detection assurance framework: one record of every detection's state, from its rule and the telemetry it needs to the attack step that fired it in a lab and the alert a live SIEM raised, with the reason for every gap and the next action.
 
-> RASD does not stop at detection logic. Each technique is mapped across offensive validation, telemetry, detection, triage, response and intelligence context, with a place for measurable operational evidence that stays pending until a lab run is committed.
+> A detection is not working because its tests pass. RASD calls a detection **Verified** only when its attack step fired in a lab and a live SIEM raised the alert, and it names everything short of that with the reason the lab recorded.
 
 ## The problem it answers
 
 Most detection repositories stop at a rule file. Nobody can say whether the rule fires on the real attack, whether the SIEM query behaves like the rule, whether the alert is actionable, or whether anyone ever ran the attack to check. RASD answers each of those questions with something a script can verify.
+
+## The five questions
+
+A head of cyber defence asks five questions of a detection library. RASD answers each from the record every build writes, and `rasd status` prints the same answers ([status](../status/README.md)).
+
+| Question | Where RASD answers it |
+|---|---|
+| What can we detect? | The library: rules and correlations, each with its telemetry contract, triage and response |
+| What proves it? | The code checks, which can fail a detection, and the lab run with a live SIEM beside it, which can verify one |
+| Is it still working? | RASD-Health on production telemetry (`rasd status --health`), and the freshness of the lab evidence |
+| Where are the gaps, and why? | `rasd status --gaps`: every detection short of Verified, with the reason its lab run recorded |
+| What should be fixed now? | `rasd status --next`: each action once, with the detections it moves on |
+
+## Three layers
+
+| Layer | What it holds | Modules |
+|---|---|---|
+| **Foundation** | What a detection is made of: the Sigma rule, its telemetry contract, the offensive step that reaches it, its triage, response and DFIR playbook, the decoys it reads, the intelligence that ranks what comes next | [RASD-Detect](../detect/) · [RASD-Red](../red/) · [RASD-DFIR](../dfir/) · [RASD-Deceive](DECEPTION.md) · [RASD-Intel](../intel/) · [RASD-Agent's lane](GROW.md) |
+| **Assurance** | Everything that tests it. In code: tests, mutations, the evasion fuzzer, query parity, exact automata. In a lab: public attack data, lab runs kept with their raw files, a live SIEM's alerts, evidence recomputed on every build. In your own logs: health, evidence survivability, evidence of absence, the unseen route | [Proofs](PROOFS.md) · [public data](PUBLIC_DATA_VALIDATION.md) · [RASD-Purple](../purple/) · [RASD-Health](HEALTH.md) · [RASD-Trace](TRACE.md) · [RASD-Silence](SILENCE.md) · [RASD-Blindpath](BLINDPATH.md) |
+| **Decision** | One record per detection: its verdict, what proves it stage by stage, the reason for every gap, the next action, and any contradiction between components | [status](../status/README.md) · [RASD-Agent's counsel](AGENT.md) |
+
+The Assurance layer tests what the Foundation holds, and the Decision layer reads both. Modules report what they measure; only the Decision layer gives a detection its verdict.
+
+## Eight verdicts
+
+| Verdict | Meaning |
+|---|---|
+| **Verified** | fired on a real attack step in a lab, and a live SIEM raised its alert; the evidence is fresh |
+| **Partially Verified** | fired on its attack step in a lab, but the SIEM alert or the verified cleanup is missing |
+| **Unverified** | passes its code checks; no lab run has fired it on its attack step yet |
+| **Failed** | a check it must pass did not: a test, a proof, its lab step or the SIEM |
+| **Blocked** | the lab could not run its attack step, for a reason the run recorded, or no step reaches it |
+| **Degraded** | proven in a lab, and production health now says its events are not arriving as they should |
+| **Stale** | its lab evidence is more than 90 days older than the record's date |
+| **Unknown** | its Foundation is incomplete (no tests, or no telemetry contract), so there is nothing to judge |
+
+The first rule that holds decides, failures first; the [status page](../status/README.md#how-a-verdict-is-reached) lists the rules in order.
+
+## Every question, and where it is answered
 
 | Question a CISO or auditor asks | Where RASD answers it |
 |---|---|
@@ -31,34 +70,20 @@ Most detection repositories stop at a rule file. Nobody can say whether the rule
 | Can the library grow without waiting for a person, and stay honest about it? | RASD-Agent's lane (`rasd grow`): the whole ATT&CK matrix as a queue; a language model drafts a rule and its tests for the next technique, every gate decides, the proof is computed from the exact automata, and what is kept lives in `detect/candidates`, apart from the core and outside its numbers, proven again on every run ([design](GROW.md)) |
 | Who decides that what the agent drafted is right? | A person, with `rasd review`: a verdict recorded against the exact rule text in a ledger the unattended run may not change, promotion only for an approved text, every decision of either side in a chained audit trail, and a run that can be rolled back ([GOVERNANCE](GOVERNANCE.md)) |
 
-## The seven pillars
-
-| Pillar | Folder | Purpose |
-|---|---|---|
-| RASD-Red | [`red/`](../red/) | Controlled offensive validation that produces measurable telemetry |
-| RASD-Detect | [`detect/`](../detect/) | Detection engineering: rules, contracts, tests, SIEM queries, quality |
-| RASD-DFIR | [`dfir/`](../dfir/) | Investigation playbooks, evidence, timelines, response, evidence survivability ([RASD-Trace](TRACE.md)) and evidence of absence ([RASD-Silence](SILENCE.md)) |
-| RASD-Intel | [`intel/`](../intel/) | CTI turned into detection opportunities and hunts |
-| RASD-Purple | [`purple/`](../purple/) | Attack-to-defense validation across the whole chain, and the unseen route through the covered behaviours ([RASD-Blindpath](BLINDPATH.md)) |
-| RASD-Deceive | [`deceive/`](../deceive/) | Decoys as tested detections: one inventory of honey accounts, a honey SPN, honey files and a decoy host, held in step with the rules that read them ([design](DECEPTION.md)) |
-| RASD-Agent | [`agent/`](../agent/) | The counsel: what to do next, computed from what the repository proves, learning from the decisions people take; an optional language model, gated by the proofs ([design](AGENT.md)); and the lane of candidate detections it grows with no person in the loop ([design](GROW.md)) |
-
 ## Workflow
 
 ```text
-Red behavior generates telemetry.
-Telemetry drives detection logic.
-Decoys turn the first touch into a signal.
-Detection triggers investigation.
-Investigation produces evidence.
-CTI gives context.
-Purple validation measures the full chain.
-The agent reads every measurement and says what comes next.
+A red step generates telemetry.
+The telemetry drives a tested rule.
+The rule and its SIEM query are proven to be the same rule.
+A lab run, with a live SIEM beside it, shows that the rule fires.
+The evidence is recomputed from the raw run on every build.
+The status record turns every check into one verdict, its reason and the next action.
 ```
 
 ## Two honest scores
 
-- **Engineering Score**: is the detection built right? Tests, contract, false-positive handling, evasion awareness, SIEM portability, response, documentation. It can reach 100 inside the repository.
+- **Engineering Score**: is the detection built right? Tests, contract, false-positive handling, evasion awareness, SIEM portability, response, documentation. It can reach 100 inside the repository, and it never makes a detection Verified.
 - **Operational Score**: was it proven in a real lab telemetry flow? Lab evidence, SIEM result, detection latency, DFIR evidence, cleanup. It stays **pending** until a real run is committed, and no detection reaches the *Validated* or *Reference* maturity level without it.
 
-Start with [ATTACK_TO_DEFENSE_CHAIN.md](ATTACK_TO_DEFENSE_CHAIN.md), then [RASD_ARCHITECTURE.md](RASD_ARCHITECTURE.md).
+Then: the [status](../status/README.md) of every detection, the [architecture](RASD_ARCHITECTURE.md), and [every page by layer](README.md).
