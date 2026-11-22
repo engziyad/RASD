@@ -2646,8 +2646,9 @@ class Banner(unittest.TestCase):
             self.assertLessEqual(used - {None}, set(range(len(banner.KNIGHT_PALETTE))))
             image = banner.knight_sixel(pose)
             self.assertTrue(image.startswith(f'\033P9;1q"1;1;{width};{height}') and image.endswith("\033\\"))
-            self.assertEqual(self.unsixel(image), {(x, y): c for y, row in enumerate(pixels)
+            self.assertEqual(self.unsixel(image), {(x, y): c + 1 for y, row in enumerate(pixels)
                                                    for x, c in enumerate(row) if c is not None})
+            self.assertNotIn("#0", image)
             lower = self.unsixel(banner.knight_sixel(pose, pad=7))
             self.assertEqual(min(y for _, y in lower), min(y for _, y in self.unsixel(image)) + 7)
 

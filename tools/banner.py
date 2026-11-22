@@ -233,10 +233,11 @@ def _rle(run: str) -> str:
 
 
 def sixel(pixels: tuple[tuple[int | None, ...], ...], palette: tuple[str, ...]) -> str:
-    """A sixel image of palette-indexed pixels with square pixels (P1=9), clear where a pixel is None (P2=1)."""
+    """A sixel image of palette-indexed pixels with square pixels (P1=9), clear where a pixel is None (P2=1).
+    Palette entry i goes in colour register i + 1: register 0 is the VT340's background."""
     height, width = len(pixels), len(pixels[0])
     out = [f'\033P9;1q"1;1;{width};{height}']
-    for i, colour in enumerate(palette):
+    for i, colour in enumerate(palette, start=1):
         r, g, b = (round(int(colour[k:k + 2], 16) * 100 / 255) for k in (1, 3, 5))
         out.append(f"#{i};2;{r};{g};{b}")
     bands = []
@@ -246,7 +247,7 @@ def sixel(pixels: tuple[tuple[int | None, ...], ...], palette: tuple[str, ...]) 
             for x, c in enumerate(row):
                 if c is not None:
                     bits.setdefault(c, [0] * width)[x] |= 1 << k
-        bands.append("$".join(f"#{c}" + _rle("".join(chr(63 + v) for v in bits[c]).rstrip("?")) for c in sorted(bits)))
+        bands.append("$".join(f"#{c + 1}" + _rle("".join(chr(63 + v) for v in bits[c]).rstrip("?")) for c in sorted(bits)))
     out.append("-".join(bands))
     out.append("\033\\")
     return "".join(out)
