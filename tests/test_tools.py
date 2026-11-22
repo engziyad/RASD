@@ -3,6 +3,7 @@ import copy
 import csv
 import dataclasses
 import hashlib
+import io
 import json
 import os
 import re
@@ -2610,6 +2611,26 @@ class Banner(unittest.TestCase):
         self.assertNotIn("\033[", text)
         svg = banner.svg()
         self.assertTrue(svg.startswith("<svg") and svg.rstrip().endswith("</svg>"))
+
+    def test_the_knight_rides_the_loading_track_from_left_to_right(self):
+        width = banner.banner_width() - 2
+        end = width - banner.KNIGHT_WIDTH
+        for pose in banner.KNIGHT:
+            self.assertEqual({len(line) for line in pose}, {banner.KNIGHT_WIDTH})
+            self.assertLessEqual(set("".join(pose)), set(banner.KNIGHT_COLORS) | {"."})
+        start, finish = banner.knight_lines(0, 1, width, color=False), banner.knight_lines(end, 0, width, color=False)
+        self.assertEqual(len(start), banner.RIDE_LINES)
+        self.assertTrue(all(len(line) <= width for line in start + finish))
+        self.assertIn(" ", start[-1])                         # the track ahead of him is dotted
+        self.assertNotIn(" ", finish[-1])                     # at the end it lies whole behind him
+        self.assertNotIn("\033[", "".join(finish))
+        self.assertIn(";48;5;", "".join(banner.knight_lines(end, 0, width)))      # two colours in one cell
+        out = io.StringIO()
+        banner.ride(color=False, animate=False, out=out)
+        self.assertEqual(out.getvalue().count("\n"), banner.RIDE_LINES + 1)
+
+    def test_the_banner_is_the_same_with_the_knight(self):
+        self.assertEqual(banner.svg(), (ROOT / "docs" / "assets" / "banner.svg").read_text(encoding="utf-8"))
 
 
 class FakeModel(agent_model.Model):
