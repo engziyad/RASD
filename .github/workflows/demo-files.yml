@@ -1,0 +1,33 @@
+name: RASD demo files
+
+# The report of the recorded run, out of its artifact and onto a branch of its own (demo-video-files), so it
+# can be read with git alone.
+
+on:
+  push:
+    branches: [demo-video]
+    paths: [.github/workflows/demo-files.yml]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  files:
+    name: The report of the recorded run, as a branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Push the report as a branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECORDED_RUN: "45048339581"
+        run: |
+          gh run download "$RECORDED_RUN" --repo "$GITHUB_REPOSITORY" -n report --dir report
+          cd report
+          find . -type f | sort
+          git init -q -b demo-video-files
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "The report of the recorded lab run $RECORDED_RUN"
+          git push -q "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/demo-video-files

@@ -12,6 +12,7 @@ name: RASD demo recording
 on:
   push:
     branches: [demo-video]
+    paths: [.github/workflows/demo-video.yml]
 
 permissions:
   contents: read
