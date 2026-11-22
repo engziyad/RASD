@@ -2594,8 +2594,8 @@ class Deceive(unittest.TestCase):
 class Banner(unittest.TestCase):
     def test_plain_render_and_svg(self):
         text = banner.render(color=False)
-        self.assertIn("Attack-to-Defense Validation Framework", text)
-        self.assertIn("Red → Detect → DFIR → Intel → Purple", text)
+        self.assertIn("Continuous Detection Assurance Framework", text)
+        self.assertIn("Foundation → Assurance → Decision", text)
         self.assertNotIn("\033[", text)
         svg = banner.svg()
         self.assertTrue(svg.startswith("<svg") and svg.rstrip().endswith("</svg>"))

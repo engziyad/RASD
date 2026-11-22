@@ -21,7 +21,7 @@ RASD answers one question for every attack technique it covers: would we detect 
 | **Analyst guidance** | 22 of 22 with triage, response, closure and escalation notes · 17 DFIR playbooks |
 | **Measured gaps** | 4 gaps without a detection (ldap_enumeration, privilege_escalation_checks, file_upload_testing, jwt_testing) · 1 posture check without a detection (security_headers_testing) |
 
-**Status:** 15 of 22 detections Validated (lab evidence); the other 7 wait for a lab run ([evidence plan](EVIDENCE_PLAN.md)).
+**Status:** 15 of 22 detections Verified: each fired on a real attack step in a lab and a live SIEM raised its alert; 7 Blocked, each with the reason and the next step ([status](../status/README.md)).
 
 <sub>Counted by `tools/chain.py` on every build.</sub>
 <!-- rasd:executive:end -->

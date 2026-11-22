@@ -110,4 +110,4 @@ Every review is a measurement of what the gates let through. `rasd review` print
 - The trail proves that nothing was changed after it was written. It cannot prove that something was written at all; that is why `rasd review --check` also requires every candidate and every review to have its line.
 - Candidates are not validated in a lab, whatever their review says. Lab evidence starts after promotion ([evidence plan](EVIDENCE_PLAN.md)).
 
-<sub>RASD · Attack-to-Defense Validation Framework</sub>
+<sub>RASD · Continuous Detection Assurance Framework</sub>

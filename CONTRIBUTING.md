@@ -26,10 +26,11 @@ Each step of a safe release maps to a check CI already enforces.
 | Release step | Enforced by |
 |---|---|
 | Verify base | the branch is up to date with `main`; the working tree is clean |
-| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, trace, silence, blindpath, grow, Splunk app, profiles, datasets, evidence, health, review, build, chain, advise, links |
+| Full CI | `rasd ci`: lint, unit tests, mutations, fuzz, rule proofs, parity, certify, correlate, nearmiss, tune, red, deceive, trace, silence, blindpath, grow, Splunk app, profiles, datasets, evidence, health, review, build, chain, status, advise, links |
 | Formal proofs and certificates | `rasd certify --check` (inside `rasd ci`): every rule compiles to exact automata, every behaviour spec gets its expected verdict, and the certificate pages are current |
 | Differential | `rasd parity` (the generated SPL and KQL match the engine) and `rasd diff --base origin/<base>` (the events whose verdict changes in this PR) and `rasd certify --equiv origin/main` (the rule's own meaning across the edit) |
 | Lab evidence still holds | `rasd evidence --check` (inside `rasd ci`): every `evidence.md` that cites a lab run kept in [`purple/lab_runs`](purple/lab_runs/README.md) is, byte for byte, what that run gives with the rules of this change. A rule edited until it no longer fires on its run fails here |
+| One status, no contradiction | `rasd status --check` (inside `rasd ci`): the record of every detection (`status/status.json`), its page and the front page are what this change gives, and no component contradicts another: a page that states a lab result the evidence does not hold, an alert credited to a search the SIEM says did not run, evidence a kept run contradicts, a contract that claims more than the repository proves |
 | No stale output | the "generated files are out of date" check fails the build until `rasd build` is committed |
 
 If any gate is red the release is blocked: fix it on the branch, never merge around it. An inconclusive result (a refused construct, a search that hit a limit) is not a pass.

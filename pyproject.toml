@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rasd"
-version = "1.7.0"
-description = "Attack-to-defense validation framework: lab emulation, tested Sigma detections, KQL and SPL checked against the rules, DFIR playbooks and lab evidence tooling."
+version = "2.0.0"
+description = "Continuous detection assurance framework: one record of every detection's state, from its tested Sigma rule and SIEM queries to the lab run and live SIEM alert that verify it, with the reason for every gap and the next action."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

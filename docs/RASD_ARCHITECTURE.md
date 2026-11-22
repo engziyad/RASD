@@ -2,10 +2,22 @@
 
 ## Design goals
 
-1. **Single source of truth.** A detection is written once, in Sigma; every SIEM query, card and matrix is generated from it.
+1. **Single source of truth.** A detection is written once, in Sigma, and its state is kept once, in the status record; every SIEM query, card, matrix and status line is generated from them.
 2. **Provable.** Every claim - "fires on the attack", "quiet on normal activity", "the query is the rule", "the test is needed", "it was validated" - is checked by a script.
 3. **Offline and portable.** The pipeline runs with Python and PyYAML. No SIEM licence, cloud account or network access is needed to test a rule.
 4. **Honest.** Coverage, maturity and scores are computed, never typed. What cannot be proven inside the repository is shown as *pending*, never estimated.
+
+## Three layers
+
+<img src="assets/architecture.svg" alt="RASD's three layers: the Foundation, the Assurance layer and the Decision layer" width="760">
+
+| Layer | What it holds | Tools |
+|---|---|---|
+| **Foundation** | What a detection is made of: the Sigma rule, its telemetry contract, the offensive step that reaches it, its triage, response and DFIR playbook, the decoys it reads, the intelligence that ranks what comes next, and the candidates RASD-Agent grows apart from the core | `validate.py` · `red.py` · `deceive.py` · `convert.py` · `splunk_app.py` · `profiles.py` · `generate_views.py` · `coverage.py` · `grow.py` · `review.py` |
+| **Assurance** | Everything that tests it. In code: tests, mutations, the evasion fuzzer, rule mutants, query parity, exact automata, correlation proofs. In a lab: public attack data, lab runs kept with their raw files, a live SIEM's alerts, evidence recomputed on every build. In your own logs: health, evidence survivability, evidence of absence, the unseen route | `run_tests.py` · `mutation_test.py` · `fuzz.py` · `prove.py` · `parity.py` · `certify.py` · `correlate.py` · `datasets.py` · `evidence.py` · `health.py` · `survivability.py` · `silence.py` · `blindpath.py` · `score.py` · `chain.py` |
+| **Decision** | One record per detection (`status/status.json`): its checks stage by stage, each naming the file it rests on, one verdict of eight, the reason for every gap, the next action, and every contradiction found between components. The status page, the front page, the executive summary and RASD-Agent's lab-run findings read it | `status.py` · `advise.py` |
+
+Modules report what they measure; only the Decision layer gives a detection its verdict. Code checks can fail a detection, never verify one: **Verified** takes a lab step that fired, the alert a live SIEM raised for it and a verified cleanup, with evidence younger than 90 days at the record's date. The rules, in the order they apply, are on the [status page](../status/README.md#how-a-verdict-is-reached).
 
 ## Repository layout
 
@@ -18,6 +30,7 @@ RASD
 ├── dfir/       Playbooks, investigation queries, templates, models
 ├── intel/      CTI templates, technique and actor maps, worked analysis, outputs
 ├── purple/     Scenarios and the generated validation, evidence and latency matrices
+├── status/     The Decision layer's record of every detection (status.json) and its page
 ├── profiles/   Telemetry profiles: ECS, CIM, ASIM, Defender field names to rule field names
 ├── datasets/   Public attack datasets: catalog, results, reduced extracts, licenses
 ├── docs/       Architecture, metrics, maturity, governance
@@ -61,7 +74,8 @@ flowchart TB
     SLM[silence model.yml] --> SL
     LOGS & R & SL --> BP[blindpath.py] --> BPR[certificate of the unseen route · purple/blindpath results]
     BPM[blindpath model.yml] --> BP
-    CH & TN & DC & SV --> AG[advise.py] --> ADV[agent/ADVICE.md · proposals · decisions]
+    CH & EVD & PA & HL[health.py] --> ST[status.py] --> STR[status/status.json · status page · front page · executive status]
+    CH & TN & DC & SV & ST --> AG[advise.py] --> ADV[agent/ADVICE.md · proposals · decisions]
     ATK[attack_enterprise.json] & E & FZ & PV & PA --> GW[grow.py] --> CAND[detect/candidates · agent/growth.yml]
     LM[language model] -. drafts .-> GW
 ```
@@ -101,7 +115,8 @@ flowchart TB
 | `evidence.py` | Joins a lab run's results with its telemetry export (and SIEM alerts) and writes verifiable evidence; `--run` reads the run's zip or folder and checks it against its hashes first |
 | `red.py` | Validates and renders every offensive test from its test.yml |
 | `sigma_support.py` | Which Sigma constructs are supported (same verdict in the engine, SPL and KQL on a probe matrix) and which are refused; writes SIGMA_SUPPORT.md |
-| `chain.py` | Builds the 20-point map, maturity levels, matrices (validation, executive, evidence, latency), the evidence plan, the detection backlog, metrics, README status badges and gates |
+| `chain.py` | Builds the 20-point map, maturity levels, matrices (validation, executive, evidence, latency), the evidence plan, the detection backlog, metrics and gates |
+| `status.py` | `rasd status`, the Decision layer: one record per detection from the chain's facts, the kept lab runs and their SIEM's own record, and optionally production health; the verdict, its reason, the blocker the run recorded, the next action and the contradictions between components; writes `status/status.json`, its page and the front page's status and five questions, and `--check` fails CI when they are stale or two components disagree |
 | `score.py` | Engineering Score and Operational Score |
 | `coverage.py`, `generate_views.py` | ATT&CK Navigator layer and coverage matrix; triage, response, closure and escalation notes, role views |
 | `links.py` | Every relative Markdown link resolves |
@@ -124,7 +139,7 @@ flowchart TB
    4. fuzz `--check` (no new bypass), prove (no surviving rule mutant), parity (no divergence), certify `--check` (every rule compiled exactly, both constructed events confirmed by the engine, every behaviour variant as its spec expects, pages current), correlate `--check` (every correlation proven, queries current), nearmiss `--check` (every boundary carrying replay traffic pinned by a true negative)
    5. evidence `--check` (each evidence file that cites a kept lab run is what the run gives today), health `--check` (the watchdogs match what the rules read), review `--check` (the review ledger and the audit trail hold together, no candidate deployed), tune `--check`, red `--check`, deceive `--check` (inventory, rules, tests, red tests and the decoy host's configuration agree), trace `--check` (the survivability model against the rules, the forwarder inputs and the engine; results page current), silence `--check` (the witnesses against the trace model, every cut's sample event against the engine; results page current), blindpath `--check` (every detection and every documented variant placed in the model, each witness routed to its rule and replayed through the engine, each pace exactly one under its threshold; results page current), grow `--check` (every candidate of RASD-Agent's lane through every gate again, each proof complete, the ledger and the lane's page current), Splunk app `--check`, profiles `--check`, datasets `check` (offline: results produced by the rules in the repository, extracts still fire as recorded)
    6. build, the steps listed in `BUILD`: queries (rules and correlations), views, coverage, scores, the Sigma support page, banner, red test documents, the decoy catalogue, the Splunk app, the profiles README, the public data pages, the certify pages, the lane's pages, chain (matrices, metrics, intel maps, facts blocks), the counsel page
-   7. chain `--check`, advise `--check` (the counsel page current, the decisions file valid) and link check
+   7. chain `--check`, status `--check` (the record and its pages current, no component contradicting another), advise `--check` (the counsel page current, the decisions file valid) and link check
 3. detection tests as JUnit, the PowerShell and shell parse checks of every red and deception script, the semantic diff against the base branch (pull requests), the benchmark, the Python runner's dry run, the replay and near-miss smoke tests
 4. **drift check**: any generated file that differs from what the sources produce fails the build
 

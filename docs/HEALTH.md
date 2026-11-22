@@ -62,4 +62,4 @@ Two of them wait before they speak, because a deployment is new exactly once. `s
 - A baseline taken while something was already broken makes the break normal. Take it from a period the detections were known to work: a lab run that fired them is the strongest one.
 - Volume is compared per host. A fleet that halves in size because half the hosts were retired is reported as silent hosts, which is true, and is yours to dismiss.
 
-<sub>RASD · Attack-to-Defense Validation Framework</sub>
+<sub>RASD · Continuous Detection Assurance Framework</sub>

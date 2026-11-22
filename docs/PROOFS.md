@@ -28,4 +28,4 @@ Each row is a claim a detection library usually makes in words, and the tool tha
 | The lab evidence still holds for today's rule | **Recomputed evidence** (`rasd evidence --check`): the raw files of a lab run that may be public are kept in the repository, and on every build each `evidence.md` that cites one must be, byte for byte, what `rasd evidence` writes from it with today's rules. A rule edited until it no longer fires on its run loses its evidence in the same build ([lab runs](../purple/lab_runs/README.md)) |
 | What the agent drafted is never mistaken for what a person approved | **Governance** (`rasd review`): a person's verdict on a candidate is recorded against the SHA-256 of the rule text, in a ledger the unattended run may not change; only an approved text can be promoted into the core; every decision of the agent or of a person is one line of a hash-chained audit trail; and hostile drafts, written as a model that was talked into them would write them, are refused by the gates in the tests ([GOVERNANCE](GOVERNANCE.md)) |
 
-<sub>RASD · Attack-to-Defense Validation Framework</sub>
+<sub>RASD · Continuous Detection Assurance Framework</sub>
