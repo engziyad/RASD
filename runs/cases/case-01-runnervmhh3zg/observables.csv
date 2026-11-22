@@ -1,0 +1,38 @@
+type,value,first_seen_utc,last_seen_utc,alerts,detections,fields
+host,runnervmhh3zg,2026-11-22T17:23:19.090Z,2026-11-22T17:25:30.937Z,24,T1003.001_lsass_memory_access T1021.006_wsmprovhost_suspicious_child T1053.005_powershell_scheduled_task_creation T1053.005_schtasks_suspicious_creation T1059.001_powershell_encoded_command T1218.011_rundll32_suspicious_execution T1547.001_registry_run_key_persistence T1552.001_honey_file_access T1569.002_suspicious_service_installation T1685.005_event_log_clearing T1685.005_system_log_cleared,Computer
+account,NT SERVICE\Splunkd,2026-11-22T17:23:19.090Z,2026-11-22T17:25:26.742Z,13,T1003.001_lsass_memory_access,SourceUser
+account,runnervmhh3zg\runneradmin,2026-11-22T17:24:53.741Z,2026-11-22T17:25:26.280Z,7,T1021.006_wsmprovhost_suspicious_child T1053.005_powershell_scheduled_task_creation T1053.005_schtasks_suspicious_creation T1059.001_powershell_encoded_command T1218.011_rundll32_suspicious_execution T1547.001_registry_run_key_persistence T1685.005_event_log_clearing,User
+account,runneradmin,2026-11-22T17:24:56.812Z,2026-11-22T17:24:59.446Z,3,T1552.001_honey_file_access T1685.005_system_log_cleared,SubjectUserName
+account,LocalSystem,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,AccountName
+process,C:\Windows\System32\cmd.exe,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Image
+process,C:\Windows\System32\wevtutil.exe,2026-11-22T17:24:56.786Z,2026-11-22T17:24:56.786Z,1,T1685.005_event_log_clearing,Image
+process,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,2026-11-22T17:25:02.358Z,2026-11-22T17:25:26.280Z,2,T1053.005_powershell_scheduled_task_creation T1059.001_powershell_encoded_command,Image
+process,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE,2026-11-22T17:25:05.020Z,2026-11-22T17:25:05.020Z,1,T1547.001_registry_run_key_persistence,Image
+process,C:\Windows\System32\rundll32.exe,2026-11-22T17:25:07.076Z,2026-11-22T17:25:07.076Z,1,T1218.011_rundll32_suspicious_execution,Image
+process,C:\Windows\System32\schtasks.exe,2026-11-22T17:25:24.203Z,2026-11-22T17:25:24.203Z,1,T1053.005_schtasks_suspicious_creation,Image
+parent_process,C:\Windows\System32\wsmprovhost.exe,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,ParentImage
+parent_process,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,2026-11-22T17:24:56.786Z,2026-11-22T17:25:07.076Z,2,T1218.011_rundll32_suspicious_execution T1685.005_event_log_clearing,ParentImage
+command_line,"""C:\Windows\system32\cmd.exe"" /c ""echo runnervmhh3zg rasd_63366b09""",2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,CommandLine
+command_line,"""C:\Windows\system32\wevtutil.exe"" cl R63366b09",2026-11-22T17:24:56.786Z,2026-11-22T17:24:56.786Z,1,T1685.005_event_log_clearing,CommandLine
+command_line,"""C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHIAYQBzAGQAXwA2ADMAMwA2ADYAYgAwADkAJwA=",2026-11-22T17:25:02.358Z,2026-11-22T17:25:02.358Z,1,T1059.001_powershell_encoded_command,CommandLine
+command_line,"""C:\Windows\system32\rundll32.exe"" javascript:""\..\mshtml,RunHTMLApplication "";var m='rasd_63366b09';close();",2026-11-22T17:25:07.076Z,2026-11-22T17:25:07.076Z,1,T1218.011_rundll32_suspicious_execution,CommandLine
+command_line,"""C:\Windows\system32\schtasks.exe"" /create /tn rasd_63366b09 /sc once /st 23:59 /f /tr ""cmd /c echo rasd_63366b09 > %%TEMP%%\rasd_63366b09.txt""",2026-11-22T17:25:24.203Z,2026-11-22T17:25:24.203Z,1,T1053.005_schtasks_suspicious_creation,CommandLine
+command_line,"""C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -Command ""Register-ScheduledTask -TaskName rasd_63366b09_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\rasd_63366b09.exe) | Out-Null""",2026-11-22T17:25:26.280Z,2026-11-22T17:25:26.280Z,1,T1053.005_powershell_scheduled_task_creation,CommandLine
+parent_command_line,C:\Windows\system32\wsmprovhost.exe -Embedding,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,ParentCommandLine
+parent_command_line,"""C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE"" -command "". 'D:\a\_temp\6c3283f3-360b-437e-8917-6644e269a5bc.ps1'""",2026-11-22T17:24:56.786Z,2026-11-22T17:25:07.076Z,2,T1218.011_rundll32_suspicious_execution T1685.005_event_log_clearing,ParentCommandLine
+source_process,C:\Program Files\Splunk\bin\splunkd.exe,2026-11-22T17:23:19.090Z,2026-11-22T17:25:26.742Z,13,T1003.001_lsass_memory_access,SourceImage
+target_process,C:\Windows\system32\lsass.exe,2026-11-22T17:23:19.090Z,2026-11-22T17:25:26.742Z,13,T1003.001_lsass_memory_access,TargetImage
+registry_key,HKU\S-1-5-21-688113535-2331092577-2868679288-500\Software\Microsoft\Windows\CurrentVersion\Run\rasd_63366b09,2026-11-22T17:25:05.020Z,2026-11-22T17:25:05.020Z,1,T1547.001_registry_run_key_persistence,TargetObject
+registry_data,C:\Users\runneradmin\AppData\Local\Temp\rasd_63366b09.exe,2026-11-22T17:25:05.020Z,2026-11-22T17:25:05.020Z,1,T1547.001_registry_run_key_persistence,Details
+service_name,rasd_63366b09,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,ServiceName
+service_path,cmd.exe /c echo rasd_63366b09,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,ImagePath
+imphash,d60b77062898dc6bfae7fe11a0f8806c,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Hashes
+imphash,90ef972ecd87758d72322f15db7a4b7f,2026-11-22T17:24:56.786Z,2026-11-22T17:24:56.786Z,1,T1685.005_event_log_clearing,Hashes
+imphash,afacf6dc9041114b198160aab4d0ae77,2026-11-22T17:25:02.358Z,2026-11-22T17:25:26.280Z,2,T1053.005_powershell_scheduled_task_creation T1059.001_powershell_encoded_command,Hashes
+imphash,a8a8e3395664ba9cfc8a096eb7ad9869,2026-11-22T17:25:07.076Z,2026-11-22T17:25:07.076Z,1,T1218.011_rundll32_suspicious_execution,Hashes
+imphash,99df5be39d83f06b74592d27a3668278,2026-11-22T17:25:24.203Z,2026-11-22T17:25:24.203Z,1,T1053.005_schtasks_suspicious_creation,Hashes
+sha256,90d120880614e1e2a94067baad1454b09e2be7a9da51b71e33c247077d9f9538,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Hashes
+sha256,4829351488b38e2a5b5ed884a3057dd5c2e1fa7d54418381c7def30ad1f539b1,2026-11-22T17:24:56.786Z,2026-11-22T17:24:56.786Z,1,T1685.005_event_log_clearing,Hashes
+sha256,38f4384643b3fa0de714d2367b712c2e0fa1c89e2cfd131ae6b831ad962b1033,2026-11-22T17:25:02.358Z,2026-11-22T17:25:26.280Z,2,T1053.005_powershell_scheduled_task_creation T1059.001_powershell_encoded_command,Hashes
+sha256,d2567424ddc7e03710c99d4ccd7c8d4ab36e12c83b79dc0d310b1426393927f3,2026-11-22T17:25:07.076Z,2026-11-22T17:25:07.076Z,1,T1218.011_rundll32_suspicious_execution,Hashes
+sha256,0b4910d54dc87a845ed4bf2295152074d9fef7713386fa4ebf365db648111278,2026-11-22T17:25:24.203Z,2026-11-22T17:25:24.203Z,1,T1053.005_schtasks_suspicious_creation,Hashes

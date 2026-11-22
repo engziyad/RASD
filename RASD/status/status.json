@@ -1,0 +1,2556 @@
+{
+ "rasd_status": 1,
+ "as_of": "2026-11-22",
+ "fresh_days": 90,
+ "production_health": null,
+ "counts": {
+  "Verified": 15,
+  "Partially Verified": 0,
+  "Unverified": 0,
+  "Failed": 0,
+  "Blocked": 7,
+  "Degraded": 0,
+  "Stale": 0,
+  "Unknown": 0
+ },
+ "library": {
+  "detections": 22,
+  "rules": 18,
+  "correlations": 4,
+  "techniques": 17
+ },
+ "detections": [
+  {
+   "id": "T1003.001_lsass_memory_access",
+   "kind": "rule",
+   "technique": "T1003.001",
+   "title": "Suspicious Process Access to LSASS Memory",
+   "level": "high",
+   "folder": "detect/detections/T1003.001_lsass_memory_access",
+   "verdict": "Blocked",
+   "why": "Its step is opt-in (it dumps LSASS memory), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45048339581/lab-windows recorded for lsass_memory_access/comsvcs_minidump: skipped, \"opt-in: add -IncludeCredentialAccess\".",
+   "critical": true,
+   "blocker": "opt-in",
+   "next": "On a lab VM of your own, from a snapshot: add `-IncludeCredentialAccess -IncludeSecurityLogClear` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and its SIEM alert export to `rasd evidence --run`",
+   "next_key": "opt-in",
+   "also": [
+    {
+     "key": "noise",
+     "text": "Decide on the lab alerts no step asked for and on the tuning proposed (`rasd tune --filter` with the detection's id shows what each proposal would silence)"
+    }
+   ],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/detections/T1003.001_lsass_memory_access/rule.yml",
+    "contract": [
+     "Sysmon Event ID 10 (ProcessAccess) with an include rule for TargetImage lsass.exe"
+    ],
+    "tests": 40,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "lsass_memory_access/comsvcs_minidump"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "27 true positives and 13 true negatives, all pass",
+     "proof": "detect/detections/T1003.001_lsass_memory_access/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1003.001_lsass_memory_access/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "101 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 680 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1003.001_lsass_memory_access.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 259 states over 4 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 25 of 27 public recordings; held-out files: 2 of 2 expectations met",
+     "proof": "detect/detections/T1003.001_lsass_memory_access/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "its step is opt-in (it dumps LSASS memory), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45048339581/lab-windows recorded for lsass_memory_access/comsvcs_minidump: skipped, \"opt-in: add -IncludeCredentialAccess\"",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "attention",
+     "detail": "13 true-negative tests quiet; 1 labelled false positive in the public lab captures; 2 alerts in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent, splunk_service_on_the_host",
+     "proof": "detect/detections/T1003.001_lsass_memory_access/tuning.yml"
+    }
+   ],
+   "gaps": [
+    "False positives: 13 true-negative tests quiet; 1 labelled false positive in the public lab captures; 2 alerts in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent, splunk_service_on_the_host"
+   ],
+   "conflicts": []
+  },
+  {
+   "id": "T1021.006_wsmprovhost_suspicious_child",
+   "kind": "rule",
+   "technique": "T1021.006",
+   "title": "Suspicious Child Process of a WinRM Session Host",
+   "level": "medium",
+   "folder": "detect/detections/T1021.006_wsmprovhost_suspicious_child",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1021.006_wsmprovhost_suspicious_child` 5 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
+   "next_key": "dfir",
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1021.006_wsmprovhost_suspicious_child/evidence.md",
+    "run_utc": "2026-11-22T17:24:53.383348Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 75
+   },
+   "foundation": {
+    "rule": "detect/detections/T1021.006_wsmprovhost_suspicious_child/rule.yml",
+    "contract": [
+     "Sysmon Event ID 1 (ProcessCreate) on the WinRM target - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName"
+    ],
+    "tests": 25,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "winrm_access_validation/invoke_command"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "18 true positives and 7 true negatives, all pass",
+     "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "7 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "193 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 1900 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1021.006_wsmprovhost_suspicious_child.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 204 states over 4 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 5 of 8 public recordings",
+     "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:24 UTC, step winrm_access_validation/invoke_command, bound by run token",
+     "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1021.006_wsmprovhost_suspicious_child` 5 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "7 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: management_script_share; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/tuning.yml"
+    }
+   ],
+   "gaps": [
+    "DFIR evidence: the lab run collected no artifact for the investigation (its closure note names what to collect)"
+   ],
+   "conflicts": []
+  },
+  {
+   "id": "T1046_decoy_service_interaction",
+   "kind": "rule",
+   "technique": "T1046",
+   "title": "Deception - Interaction With a Decoy Network Service",
+   "level": "high",
+   "folder": "detect/detections/T1046_decoy_service_interaction",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1046_decoy_service_interaction` 7 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
+   "next_key": "dfir",
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1046_decoy_service_interaction/evidence.md",
+    "run_utc": "2026-11-22T17:17:43.138000Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-linux",
+    "fresh_until": "2027-02-20",
+    "operational_score": 75
+   },
+   "foundation": {
+    "rule": "detect/detections/T1046_decoy_service_interaction/rule.yml",
+    "contract": [
+     "OpenCanary JSON records of the decoy host (opencanary.log, one JSON object per line) forwarded to the SIEM, for the modules the inventory enables (ftp, ssh, telnet, http, smb, mssql, rdp, vnc, portscan)"
+    ],
+    "tests": 35,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "decoy_service_probe/probe_decoy_services"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "23 true positives and 12 true negatives, all pass",
+     "proof": "detect/detections/T1046_decoy_service_interaction/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "11 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1046_decoy_service_interaction/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "0 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 274 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1046_decoy_service_interaction.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 59 states over 3 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "n/a",
+     "detail": "no public recording of this behaviour",
+     "proof": "detect/detections/T1046_decoy_service_interaction/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on ip-10-0-139-19 at 2026-11-22 17:17 UTC, step decoy_service_probe/probe_decoy_services, bound by run token; client address",
+     "proof": "detect/detections/T1046_decoy_service_interaction/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1046_decoy_service_interaction` 7 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-linux/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1046_decoy_service_interaction/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-linux/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "12 true-negative tests quiet; tuning proposed, not applied: monitoring_poller; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1046_decoy_service_interaction/tuning.yml"
+    }
+   ],
+   "gaps": [
+    "DFIR evidence: the lab run collected no artifact for the investigation (its closure note names what to collect)"
+   ],
+   "conflicts": []
+  },
+  {
+   "id": "T1053.003_crontab_noninteractive_install",
+   "kind": "rule",
+   "technique": "T1053.003",
+   "title": "Crontab Installed From Standard Input or a File",
+   "level": "medium",
+   "folder": "detect/detections/T1053.003_crontab_noninteractive_install",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1053.003_crontab_noninteractive_install` 7 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1053.003_crontab_noninteractive_install/evidence.md",
+    "run_utc": "2026-11-22T17:17:43.114000Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-linux",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1053.003_crontab_noninteractive_install/rule.yml",
+    "contract": [
+     "Sysmon for Linux Event ID 1 (ProcessCreate) - the generated KQL reads the SysmonForLinux parser function and the SPL reads sourcetype sysmon:linux; auditd EXECVE carries the same arguments but needs its own mapping in tools/mappings.yml"
+    ],
+    "tests": 12,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "cron_persistence/crontab_entry"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 true positives and 7 true negatives, all pass",
+     "proof": "detect/detections/T1053.003_crontab_noninteractive_install/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1053.003_crontab_noninteractive_install/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "29 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 120 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1053.003_crontab_noninteractive_install.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 67 states over 2 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 1 of 4 public recordings",
+     "proof": "detect/detections/T1053.003_crontab_noninteractive_install/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on ip-10-0-139-19 at 2026-11-22 17:17 UTC, step cron_persistence/crontab_entry, bound by host and time window",
+     "proof": "detect/detections/T1053.003_crontab_noninteractive_install/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.003_crontab_noninteractive_install` 7 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-linux/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1053.003_crontab_noninteractive_install/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-linux/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "7 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: configuration_management_parent; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1053.003_crontab_noninteractive_install/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1053.005_powershell_scheduled_task_creation",
+   "kind": "rule",
+   "technique": "T1053.005",
+   "title": "Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets",
+   "level": "medium",
+   "folder": "detect/detections/T1053.005_powershell_scheduled_task_creation",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1053.005_powershell_scheduled_task_creation` 10 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md",
+    "run_utc": "2026-11-22T17:25:26.255104Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1053.005_powershell_scheduled_task_creation/rule.yml",
+    "contract": [
+     "Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName",
+     "PowerShell Script Block Logging 4104 (investigation only, not read by the rule; shows cmdlets inside scripts)",
+     "Security 4698 (investigation only, not read by the rule; the registered task definition)"
+    ],
+    "tests": 20,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "scheduled_task_creation/register_scheduledtask"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "14 true positives and 6 true negatives, all pass",
+     "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "3 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "158 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 1772 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1053.005_powershell_scheduled_task_creation.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 159 states over 3 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 2 of 3 public recordings; held-out files: 1 of 1 expectations met",
+     "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:25 UTC, step scheduled_task_creation/register_scheduledtask, bound by run token",
+     "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.005_powershell_scheduled_task_creation` 10 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "6 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: sccm_client; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1053.005_schtasks_suspicious_creation",
+   "kind": "rule",
+   "technique": "T1053.005",
+   "title": "Scheduled Task Created With Suspicious Action",
+   "level": "medium",
+   "folder": "detect/detections/T1053.005_schtasks_suspicious_creation",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1053.005_schtasks_suspicious_creation` 10 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md",
+    "run_utc": "2026-11-22T17:25:24.153681Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1053.005_schtasks_suspicious_creation/rule.yml",
+    "contract": [
+     "Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName",
+     "Security 4698 (recommended, holds the task XML)"
+    ],
+    "tests": 30,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "scheduled_task_creation/schtasks"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "24 true positives and 6 true negatives, all pass",
+     "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "7 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "231 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 1865 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1053.005_schtasks_suspicious_creation.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 226 states over 3 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 10 of 11 public recordings; held-out files: 6 of 6 expectations met",
+     "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:25 UTC, step scheduled_task_creation/schtasks, bound by run token",
+     "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.005_schtasks_suspicious_creation` 10 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "6 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: office_click_to_run, sccm_client; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1059.001_powershell_encoded_command",
+   "kind": "rule",
+   "technique": "T1059.001",
+   "title": "PowerShell Execution With Encoded Command",
+   "level": "medium",
+   "folder": "detect/detections/T1059.001_powershell_encoded_command",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1059.001_powershell_encoded_command` 10 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1059.001_powershell_encoded_command/evidence.md",
+    "run_utc": "2026-11-22T17:25:02.295221Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1059.001_powershell_encoded_command/rule.yml",
+    "contract": [
+     "Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName",
+     "PowerShell Script Block Logging 4104 (recommended, holds the decoded script)"
+    ],
+    "tests": 19,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "powershell_encoded_command/encoded_command"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "13 true positives and 6 true negatives, all pass",
+     "proof": "detect/detections/T1059.001_powershell_encoded_command/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "8 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1059.001_powershell_encoded_command/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "224 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 1874 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1059.001_powershell_encoded_command.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 120 states over 4 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 8 of 13 public recordings; held-out files: 6 of 6 expectations met",
+     "proof": "detect/detections/T1059.001_powershell_encoded_command/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:25 UTC, step powershell_encoded_command/encoded_command, bound by run token",
+     "proof": "detect/detections/T1059.001_powershell_encoded_command/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1059.001_powershell_encoded_command` 10 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1059.001_powershell_encoded_command/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "6 true-negative tests quiet; 0 labelled false positives in the public lab captures; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1059.001_powershell_encoded_command/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1059.004_linux_suspicious_shell_execution",
+   "kind": "rule",
+   "technique": "T1059.004",
+   "title": "Linux Shell Executing Decoded Base64 or Code From a Temporary Directory",
+   "level": "high",
+   "folder": "detect/detections/T1059.004_linux_suspicious_shell_execution",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1059.004_linux_suspicious_shell_execution` 9 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
+   "next_key": "dfir",
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md",
+    "run_utc": "2026-11-22T17:20:47.720000Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-linux",
+    "fresh_until": "2027-02-20",
+    "operational_score": 75
+   },
+   "foundation": {
+    "rule": "detect/detections/T1059.004_linux_suspicious_shell_execution/rule.yml",
+    "contract": [
+     "Sysmon for Linux Event ID 1 (ProcessCreate) - the generated KQL reads the SysmonForLinux parser function and the SPL reads sourcetype sysmon:linux; auditd EXECVE carries the same arguments but needs its own mapping in tools/mappings.yml"
+    ],
+    "tests": 18,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "suspicious_shell_execution/shell_patterns"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "11 true positives and 7 true negatives, all pass",
+     "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "6 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "60 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 185 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1059.004_linux_suspicious_shell_execution.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 91 states over 2 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 1 of 5 public recordings",
+     "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on ip-10-0-139-19 at 2026-11-22 17:20 UTC, step suspicious_shell_execution/shell_patterns, bound by run token",
+     "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1059.004_linux_suspicious_shell_execution` 9 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-linux/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-linux/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "7 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: package_manager_helpers; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/tuning.yml"
+    }
+   ],
+   "gaps": [
+    "DFIR evidence: the lab run collected no artifact for the investigation (its closure note names what to collect)"
+   ],
+   "conflicts": []
+  },
+  {
+   "id": "T1078.002_honey_account_authentication",
+   "kind": "rule",
+   "technique": "T1078.002",
+   "title": "Deception - Authentication Attempt With a Honey Account",
+   "level": "high",
+   "folder": "detect/detections/T1078.002_honey_account_authentication",
+   "verdict": "Blocked",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for honey_account_use/bind_as_honey_account: error, \"The specified domain either does not exist or could not be contacted\".",
+   "critical": true,
+   "blocker": "domain",
+   "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
+   "next_key": "domain",
+   "also": [],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/detections/T1078.002_honey_account_authentication/rule.yml",
+    "contract": [
+     "Security Event ID 4624 and 4625 on domain controllers and member servers (Audit Logon, success and failure)",
+     "Security Event ID 4768 and 4771 on domain controllers (Audit Kerberos Authentication Service, success and failure)",
+     "Security Event ID 4776 on domain controllers (Audit Credential Validation, success and failure)"
+    ],
+    "tests": 23,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "honey_account_use/bind_as_honey_account"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "12 true positives and 11 true negatives, all pass",
+     "proof": "detect/detections/T1078.002_honey_account_authentication/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "11 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1078.002_honey_account_authentication/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "34 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 622 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1078.002_honey_account_authentication.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 43 states over 2 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "n/a",
+     "detail": "no public recording of this behaviour",
+     "proof": "detect/detections/T1078.002_honey_account_authentication/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for honey_account_use/bind_as_honey_account: error, \"The specified domain either does not exist or could not be contacted\"",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "11 true-negative tests quiet; tuning proposed, not applied: declared_audit_host; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1078.002_honey_account_authentication/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1218.011_rundll32_suspicious_execution",
+   "kind": "rule",
+   "technique": "T1218.011",
+   "title": "Rundll32 Proxy Execution From Suspicious Context",
+   "level": "high",
+   "folder": "detect/detections/T1218.011_rundll32_suspicious_execution",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1218.011_rundll32_suspicious_execution` 10 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
+   "next_key": "dfir",
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md",
+    "run_utc": "2026-11-22T17:25:07.046770Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 75
+   },
+   "foundation": {
+    "rule": "detect/detections/T1218.011_rundll32_suspicious_execution/rule.yml",
+    "contract": [
+     "Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName"
+    ],
+    "tests": 29,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "lsass_memory_access/comsvcs_minidump",
+     "rundll32_execution/javascript_proxy"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "21 true positives and 8 true negatives, all pass",
+     "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "4 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "178 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 1859 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1218.011_rundll32_suspicious_execution.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 379 states over 3 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 17 of 19 public recordings; held-out files: 2 of 2 expectations met",
+     "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:25 UTC, step rundll32_execution/javascript_proxy, bound by run token",
+     "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1218.011_rundll32_suspicious_execution` 10 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "8 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: msi_custom_actions; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/tuning.yml"
+    }
+   ],
+   "gaps": [
+    "DFIR evidence: the lab run collected no artifact for the investigation (its closure note names what to collect)"
+   ],
+   "conflicts": []
+  },
+  {
+   "id": "T1547.001_registry_run_key_persistence",
+   "kind": "rule",
+   "technique": "T1547.001",
+   "title": "Run Key Persistence Pointing to Suspicious Location",
+   "level": "medium",
+   "folder": "detect/detections/T1547.001_registry_run_key_persistence",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1547.001_registry_run_key_persistence` 10 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1547.001_registry_run_key_persistence/evidence.md",
+    "run_utc": "2026-11-22T17:25:04.997990Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1547.001_registry_run_key_persistence/rule.yml",
+    "contract": [
+     "Sysmon Event ID 13 (RegistryEvent value set) with includes for Run and RunOnce keys"
+    ],
+    "tests": 26,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "run_key_persistence/run_value"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "20 true positives and 6 true negatives, all pass",
+     "proof": "detect/detections/T1547.001_registry_run_key_persistence/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "4 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1547.001_registry_run_key_persistence/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "96 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 289 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1547.001_registry_run_key_persistence.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 447 states over 2 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 7 of 7 public recordings; held-out files: 2 of 2 expectations met",
+     "proof": "detect/detections/T1547.001_registry_run_key_persistence/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:25 UTC, step run_key_persistence/run_value, bound by run token",
+     "proof": "detect/detections/T1547.001_registry_run_key_persistence/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1547.001_registry_run_key_persistence` 10 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1547.001_registry_run_key_persistence/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "6 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: slack_per_user; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1547.001_registry_run_key_persistence/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1552.001_honey_file_access",
+   "kind": "rule",
+   "technique": "T1552.001",
+   "title": "Deception - Honey Credentials File Opened",
+   "level": "high",
+   "folder": "detect/detections/T1552.001_honey_file_access",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1552.001_honey_file_access` 5 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1552.001_honey_file_access/evidence.md",
+    "run_utc": "2026-11-22T17:24:59.286972Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1552.001_honey_file_access/rule.yml",
+    "contract": [
+     "Security Event ID 4663 on the file servers that hold the decoys (Audit File System, success), with a SACL on each decoy file that audits ReadData, WriteData, AppendData and DELETE for Everyone"
+    ],
+    "tests": 18,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "honey_file_access/read_honey_file"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "9 true positives and 9 true negatives, all pass",
+     "proof": "detect/detections/T1552.001_honey_file_access/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "13 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1552.001_honey_file_access/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "9 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 717 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1552.001_honey_file_access.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 156 states over 6 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "n/a",
+     "detail": "no public recording of this behaviour",
+     "proof": "detect/detections/T1552.001_honey_file_access/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:24 UTC, step honey_file_access/read_honey_file, bound by host and time window",
+     "proof": "detect/detections/T1552.001_honey_file_access/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1552.001_honey_file_access` 5 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1552.001_honey_file_access/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "9 true-negative tests quiet; tuning proposed, not applied: classification_agent_account; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1552.001_honey_file_access/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1558.003_honey_spn_ticket_request",
+   "kind": "rule",
+   "technique": "T1558.003",
+   "title": "Deception - Service Ticket Requested for a Honey SPN Account",
+   "level": "high",
+   "folder": "detect/detections/T1558.003_honey_spn_ticket_request",
+   "verdict": "Blocked",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for honey_account_use/request_honey_spn_ticket: error, \"The specified domain either does not exist or could not be contacted\".",
+   "critical": true,
+   "blocker": "domain",
+   "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
+   "next_key": "domain",
+   "also": [],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/detections/T1558.003_honey_spn_ticket_request/rule.yml",
+    "contract": [
+     "Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations, success and failure)"
+    ],
+    "tests": 14,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "honey_account_use/request_honey_spn_ticket"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "7 true positives and 7 true negatives, all pass",
+     "proof": "detect/detections/T1558.003_honey_spn_ticket_request/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "9 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1558.003_honey_spn_ticket_request/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "32 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 571 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1558.003_honey_spn_ticket_request.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 22 states over 2 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "n/a",
+     "detail": "no public recording of this behaviour",
+     "proof": "detect/detections/T1558.003_honey_spn_ticket_request/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for honey_account_use/request_honey_spn_ticket: error, \"The specified domain either does not exist or could not be contacted\"",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "7 true-negative tests quiet; tuning proposed, not applied: declared_assessment_host; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1558.003_honey_spn_ticket_request/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1558.003_kerberoasting_rc4_tgs",
+   "kind": "rule",
+   "technique": "T1558.003",
+   "title": "Kerberoasting - RC4 Service Ticket Requested for User Account",
+   "level": "medium",
+   "folder": "detect/detections/T1558.003_kerberoasting_rc4_tgs",
+   "verdict": "Blocked",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for kerberoasting/request_tgs: skipped, \"missing parameter: -Spn\".",
+   "critical": false,
+   "blocker": "domain",
+   "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
+   "next_key": "domain",
+   "also": [],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/detections/T1558.003_kerberoasting_rc4_tgs/rule.yml",
+    "contract": [
+     "Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations)"
+    ],
+    "tests": 20,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "kerberoasting/request_tgs"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "11 true positives and 9 true negatives, all pass",
+     "proof": "detect/detections/T1558.003_kerberoasting_rc4_tgs/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "6 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1558.003_kerberoasting_rc4_tgs/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "53 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 740 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1558.003_kerberoasting_rc4_tgs.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 46 states over 5 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "limit",
+     "detail": "fires on 3 of 3 public recordings; held-out files: 0 of 1 expectations met; missed: splunk/T1558.003/rubeus/windows-security.log (a documented limit, see the public data page)",
+     "proof": "detect/detections/T1558.003_kerberoasting_rc4_tgs/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for kerberoasting/request_tgs: skipped, \"missing parameter: -Spn\"",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "9 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: legacy_rc4_scanner; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1558.003_kerberoasting_rc4_tgs/tuning.yml"
+    }
+   ],
+   "gaps": [
+    "Public attack data: fires on 3 of 3 public recordings; held-out files: 0 of 1 expectations met; missed: splunk/T1558.003/rubeus/windows-security.log (a documented limit, see the public data page)"
+   ],
+   "conflicts": []
+  },
+  {
+   "id": "T1569.002_suspicious_service_installation",
+   "kind": "rule",
+   "technique": "T1569.002",
+   "title": "Suspicious Service Installation (PsExec-style / Command Services)",
+   "level": "high",
+   "folder": "detect/detections/T1569.002_suspicious_service_installation",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1569.002_suspicious_service_installation` 10 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1569.002_suspicious_service_installation/evidence.md",
+    "run_utc": "2026-11-22T17:25:30.909635Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1569.002_suspicious_service_installation/rule.yml",
+    "contract": [
+     "System Event ID 7045 (Service Control Manager)",
+     "Security 4697 (investigation only, not read by the rule)"
+    ],
+    "tests": 32,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "service_creation/create_service"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "24 true positives and 8 true negatives, all pass",
+     "proof": "detect/detections/T1569.002_suspicious_service_installation/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "4 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1569.002_suspicious_service_installation/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "87 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 459 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1569.002_suspicious_service_installation.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 275 states over 4 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 7 of 9 public recordings; held-out files: 2 of 2 expectations met",
+     "proof": "detect/detections/T1569.002_suspicious_service_installation/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:25 UTC, step service_creation/create_service, bound by run token",
+     "proof": "detect/detections/T1569.002_suspicious_service_installation/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1569.002_suspicious_service_installation` 10 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1569.002_suspicious_service_installation/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "8 true-negative tests quiet; 0 labelled false positives in the public lab captures; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1569.002_suspicious_service_installation/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1685.005_event_log_clearing",
+   "kind": "rule",
+   "technique": "T1685.005",
+   "title": "Windows Event Log Clearing via Command Line",
+   "level": "high",
+   "folder": "detect/detections/T1685.005_event_log_clearing",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1685.005_event_log_clearing` 5 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1685.005_event_log_clearing/evidence.md",
+    "run_utc": "2026-11-22T17:24:55.940897Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1685.005_event_log_clearing/rule.yml",
+    "contract": [
+     "Sysmon Event ID 1 (ProcessCreate) - the generated KQL and SPL read Sysmon; Security 4688 works only after remapping NewProcessName and ParentProcessName in tools/mappings.yml, and has no OriginalFileName"
+    ],
+    "tests": 23,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "event_log_clearing/clear_security_log",
+     "event_log_clearing/clear_test_log"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "15 true positives and 8 true negatives, all pass",
+     "proof": "detect/detections/T1685.005_event_log_clearing/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "4 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1685.005_event_log_clearing/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "127 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 1741 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1685.005_event_log_clearing.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 130 states over 3 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 1 of 1 public recordings; held-out files: 2 of 2 expectations met",
+     "proof": "detect/detections/T1685.005_event_log_clearing/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:24 UTC, step event_log_clearing/clear_test_log, bound by run token",
+     "proof": "detect/detections/T1685.005_event_log_clearing/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1685.005_event_log_clearing` 5 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1685.005_event_log_clearing/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "8 true-negative tests quiet; 0 labelled false positives in the public lab captures; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1685.005_event_log_clearing/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1685.005_security_log_cleared",
+   "kind": "rule",
+   "technique": "T1685.005",
+   "title": "Security Audit Log Cleared (Event 1102)",
+   "level": "high",
+   "folder": "detect/detections/T1685.005_security_log_cleared",
+   "verdict": "Blocked",
+   "why": "Its step is opt-in (it clears the Security log), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45048339581/lab-windows recorded for event_log_clearing/clear_security_log: skipped, \"opt-in: add -IncludeSecurityLogClear\".",
+   "critical": true,
+   "blocker": "opt-in",
+   "next": "On a lab VM of your own, from a snapshot: add `-IncludeCredentialAccess -IncludeSecurityLogClear` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and its SIEM alert export to `rasd evidence --run`",
+   "next_key": "opt-in",
+   "also": [],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/detections/T1685.005_security_log_cleared/rule.yml",
+    "contract": [
+     "Security Event ID 1102"
+    ],
+    "tests": 9,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "event_log_clearing/clear_security_log"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 true positives and 4 true negatives, all pass",
+     "proof": "detect/detections/T1685.005_security_log_cleared/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "2 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1685.005_security_log_cleared/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "4 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 494 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1685.005_security_log_cleared.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 6 states over 1 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 2 of 2 public recordings; held-out files: 1 of 1 expectations met",
+     "proof": "detect/detections/T1685.005_security_log_cleared/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "its step is opt-in (it clears the Security log), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45048339581/lab-windows recorded for event_log_clearing/clear_security_log: skipped, \"opt-in: add -IncludeSecurityLogClear\"",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "4 true-negative tests quiet; 0 labelled false positives in the public lab captures; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1685.005_security_log_cleared/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1685.005_system_log_cleared",
+   "kind": "rule",
+   "technique": "T1685.005",
+   "title": "Windows Event Log Cleared (System Event 104)",
+   "level": "high",
+   "folder": "detect/detections/T1685.005_system_log_cleared",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1685.005_system_log_cleared` 5 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/detections/T1685.005_system_log_cleared/evidence.md",
+    "run_utc": "2026-11-22T17:24:55.940897Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-windows",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/detections/T1685.005_system_log_cleared/rule.yml",
+    "contract": [
+     "System Event ID 104 (Microsoft-Windows-Eventlog)"
+    ],
+    "tests": 10,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "event_log_clearing/clear_test_log"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 true positives and 5 true negatives, all pass",
+     "proof": "detect/detections/T1685.005_system_log_cleared/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "3 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "proof": "detect/detections/T1685.005_system_log_cleared/tests/mutations.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 122 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/T1685.005_system_log_cleared.spl"
+    },
+    {
+     "stage": "Exact automaton",
+     "layer": "code",
+     "state": "passed",
+     "detail": "compiled to 33 states over 2 fields; a firing event and its nearest quiet event built and replayed",
+     "proof": "docs/CERTIFICATES.md"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 2 of 2 public recordings; held-out files: 1 of 1 expectations met",
+     "proof": "detect/detections/T1685.005_system_log_cleared/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmhh3zg at 2026-11-22 17:24 UTC, step event_log_clearing/clear_test_log, bound by run token",
+     "proof": "detect/detections/T1685.005_system_log_cleared/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1685.005_system_log_cleared` 5 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/detections/T1685.005_system_log_cleared/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "5 true-negative tests quiet; 0 labelled false positives in the public lab captures; no benign baseline of a real environment yet",
+     "proof": "detect/detections/T1685.005_system_log_cleared/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1110.003_password_spray_burst",
+   "kind": "correlation",
+   "technique": "T1110.003",
+   "title": "Password Spray - One Source Failing Authentication for Many Accounts",
+   "level": "high",
+   "folder": "detect/correlations/T1110.003_password_spray_burst",
+   "verdict": "Blocked",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for password_spray_simulation/spray: skipped, \"missing parameter: -UserList\".",
+   "critical": true,
+   "blocker": "domain",
+   "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
+   "next_key": "domain",
+   "also": [],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/correlations/T1110.003_password_spray_burst/correlation.yml",
+    "contract": [
+     "Security Event ID 4771 on domain controllers (Audit Kerberos Authentication Service = Failure)",
+     "Security Event ID 4768 failures on domain controllers (the same audit subcategory)",
+     "Security Event ID 4625 on domain controllers and on member servers that accept network or RDP logons (Audit Logon = Failure)"
+    ],
+    "tests": 19,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "password_spray_simulation/spray"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "11 true positives and 8 true negatives, all pass",
+     "proof": "detect/correlations/T1110.003_password_spray_burst/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "8 evasion mutations and 7 parameter mutants; 0 survive",
+     "proof": "detect/correlations/T1110.003_password_spray_burst/tests/mutations.yml"
+    },
+    {
+     "stage": "Scenarios",
+     "layer": "code",
+     "state": "passed",
+     "detail": "12 scenarios (6 that must fire, 1 documented limit); burst guarantee: 9",
+     "proof": "detect/correlations/T1110.003_password_spray_burst/tests/scenarios.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "35 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 424 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/correlations/T1110.003_password_spray_burst.spl"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 8 of 16 public recordings",
+     "proof": "detect/correlations/T1110.003_password_spray_burst/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45048339581/lab-windows recorded for password_spray_simulation/spray: skipped, \"missing parameter: -UserList\"",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-windows"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "8 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: citrix_broker; no benign baseline of a real environment yet",
+     "proof": "detect/correlations/T1110.003_password_spray_burst/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1190_object_id_enumeration",
+   "kind": "correlation",
+   "technique": "T1190",
+   "title": "Object ID Enumeration - One Client Walking Single-Owner Objects",
+   "level": "high",
+   "folder": "detect/correlations/T1190_object_id_enumeration",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1190_object_id_enumeration` 3 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/correlations/T1190_object_id_enumeration/evidence.md",
+    "run_utc": "2026-11-22T17:17:56.672000Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-web",
+    "fresh_until": "2027-02-20",
+    "operational_score": 95
+   },
+   "foundation": {
+    "rule": "detect/correlations/T1190_object_id_enumeration/correlation.yml",
+    "contract": [
+     "Web server or reverse-proxy access log with client address, method and path - the generated KQL reads W3CIISLog and the SPL reads sourcetype access_combined; other tables need their columns in tools/mappings.yml"
+    ],
+    "tests": 11,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "idor_testing/walk_object_ids"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 true positives and 6 true negatives, all pass",
+     "proof": "detect/correlations/T1190_object_id_enumeration/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 evasion mutations and 5 parameter mutants; 0 survive",
+     "proof": "detect/correlations/T1190_object_id_enumeration/tests/mutations.yml"
+    },
+    {
+     "stage": "Scenarios",
+     "layer": "code",
+     "state": "passed",
+     "detail": "10 scenarios (4 that must fire, 1 documented limit); burst guarantee: 5",
+     "proof": "detect/correlations/T1190_object_id_enumeration/tests/scenarios.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "0 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 80 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/correlations/T1190_object_id_enumeration.spl"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "n/a",
+     "detail": "no public recording of this behaviour",
+     "proof": "detect/correlations/T1190_object_id_enumeration/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmeozm8 at 2026-11-22 17:17 UTC, step idor_testing/walk_object_ids, bound by host and time window; client address",
+     "proof": "detect/correlations/T1190_object_id_enumeration/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1190_object_id_enumeration` 3 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-web/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/correlations/T1190_object_id_enumeration/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-web/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "6 true-negative tests quiet; tuning proposed, not applied: support_console; no benign baseline of a real environment yet",
+     "proof": "detect/correlations/T1190_object_id_enumeration/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1558.003_kerberoasting_volume",
+   "kind": "correlation",
+   "technique": "T1558.003",
+   "title": "Kerberoasting - One Client Requesting Tickets for Many Service Accounts",
+   "level": "high",
+   "folder": "detect/correlations/T1558.003_kerberoasting_volume",
+   "verdict": "Blocked",
+   "why": "No offensive step reaches it yet: a burst that reaches its threshold (>= 5 distinct ServiceName per IpAddress in 10m windows) from one lab host.",
+   "critical": true,
+   "blocker": "no step",
+   "next": "Add a red test step that names it (`red/<platform>/<test>/test.yml`, then `rasd red`)",
+   "next_key": "no step",
+   "also": [],
+   "evidence": null,
+   "foundation": {
+    "rule": "detect/correlations/T1558.003_kerberoasting_volume/correlation.yml",
+    "contract": [
+     "Security Event ID 4769 on domain controllers (Audit Kerberos Service Ticket Operations = Success)"
+    ],
+    "tests": 11,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": []
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "4 true positives and 7 true negatives, all pass",
+     "proof": "detect/correlations/T1558.003_kerberoasting_volume/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "6 evasion mutations and 7 parameter mutants; 0 survive",
+     "proof": "detect/correlations/T1558.003_kerberoasting_volume/tests/mutations.yml"
+    },
+    {
+     "stage": "Scenarios",
+     "layer": "code",
+     "state": "passed",
+     "detail": "10 scenarios (5 that must fire, 1 documented limit); burst guarantee: 9",
+     "proof": "detect/correlations/T1558.003_kerberoasting_volume/tests/scenarios.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "18 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 313 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/correlations/T1558.003_kerberoasting_volume.spl"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "passed",
+     "detail": "fires on 1 of 1 public recordings",
+     "proof": "detect/correlations/T1558.003_kerberoasting_volume/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "blocked",
+     "detail": "no offensive step reaches it yet: a burst that reaches its threshold (>= 5 distinct ServiceName per IpAddress in 10m windows) from one lab host",
+     "proof": "docs/EVIDENCE_PLAN.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "blocked",
+     "detail": "needs the lab step first",
+     "proof": null
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "docs/HEALTH.md"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "7 true-negative tests quiet; 0 labelled false positives in the public lab captures; tuning proposed, not applied: monitoring_server; no benign baseline of a real environment yet",
+     "proof": "detect/correlations/T1558.003_kerberoasting_volume/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  },
+  {
+   "id": "T1595.003_api_auth_probing",
+   "kind": "correlation",
+   "technique": "T1595.003",
+   "title": "API Probing - One Client Rejected on Many Distinct Paths",
+   "level": "medium",
+   "folder": "detect/correlations/T1595.003_api_auth_probing",
+   "verdict": "Verified",
+   "why": "Fired on its step in the lab on 2026-11-22; Splunk Enterprise 10.4.5 raised `RASD - T1595.003_api_auth_probing` 7 min after the step.",
+   "critical": false,
+   "blocker": null,
+   "next": null,
+   "next_key": null,
+   "also": [],
+   "evidence": {
+    "file": "detect/correlations/T1595.003_api_auth_probing/evidence.md",
+    "run_utc": "2026-11-22T17:17:52.024000Z",
+    "kept": "purple/lab_runs/hosted-45048339581/lab-web",
+    "fresh_until": "2027-02-20",
+    "operational_score": 90
+   },
+   "foundation": {
+    "rule": "detect/correlations/T1595.003_api_auth_probing/correlation.yml",
+    "contract": [
+     "Web server or reverse-proxy access log with client address, method, path and status - the generated KQL reads W3CIISLog and the SPL reads sourcetype access_combined; other tables need their columns in tools/mappings.yml"
+    ],
+    "tests": 10,
+    "response": [
+     "triage.md",
+     "response.md",
+     "closure.md"
+    ],
+    "steps": [
+     "api_auth_testing/unauthenticated_calls"
+    ]
+   },
+   "checks": [
+    {
+     "stage": "Tests",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 true positives and 5 true negatives, all pass",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/tests/"
+    },
+    {
+     "stage": "Mutations",
+     "layer": "code",
+     "state": "passed",
+     "detail": "5 evasion mutations and 5 parameter mutants; 0 survive",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/tests/mutations.yml"
+    },
+    {
+     "stage": "Scenarios",
+     "layer": "code",
+     "state": "passed",
+     "detail": "11 scenarios (3 that must fire, 1 documented limit); burst guarantee: 9",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/tests/scenarios.yml"
+    },
+    {
+     "stage": "Evasion fuzzer",
+     "layer": "code",
+     "state": "passed",
+     "detail": "0 generated evasions, resistance 100%",
+     "proof": "docs/PROOFS.md"
+    },
+    {
+     "stage": "Query parity",
+     "layer": "code",
+     "state": "passed",
+     "detail": "the generated KQL and SPL return the rule's verdict on 76 events (RASD's model of each language, not a SIEM)",
+     "proof": "queries/spl/correlations/T1595.003_api_auth_probing.spl"
+    },
+    {
+     "stage": "Public attack data",
+     "layer": "replay",
+     "state": "n/a",
+     "detail": "no public recording of this behaviour",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/public_evidence.md"
+    },
+    {
+     "stage": "Lab run",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "fired on runnervmeozm8 at 2026-11-22 17:17 UTC, step api_auth_testing/unauthenticated_calls, bound by host and time window; client address",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/evidence.md"
+    },
+    {
+     "stage": "Live SIEM",
+     "layer": "siem",
+     "state": "passed",
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1595.003_api_auth_probing` 7 min after the step",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-web/siem-alerts.csv"
+    },
+    {
+     "stage": "Cleanup",
+     "layer": "lab",
+     "state": "passed",
+     "detail": "the step undid what it did, and the run checked it",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/evidence.md"
+    },
+    {
+     "stage": "Telemetry health",
+     "layer": "health",
+     "state": "unknown",
+     "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
+     "proof": "purple/lab_runs/hosted-45048339581/lab-web/siem-searches.json"
+    },
+    {
+     "stage": "False positives",
+     "layer": "noise",
+     "state": "unknown",
+     "detail": "5 true-negative tests quiet; tuning proposed, not applied: approved_scanner; no benign baseline of a real environment yet",
+     "proof": "detect/correlations/T1595.003_api_auth_probing/tuning.yml"
+    }
+   ],
+   "gaps": [],
+   "conflicts": []
+  }
+ ],
+ "pages": []
+}

@@ -1,0 +1,23 @@
+type,value,first_seen_utc,last_seen_utc,alerts,detections,fields
+host,ip-10-0-139-19,2026-11-22T17:17:43.124Z,2026-11-22T17:20:47.731Z,3,T1053.003_crontab_noninteractive_install T1059.004_linux_suspicious_shell_execution,Computer
+host,runnervmhh3zg,2026-11-22T17:24:53.741Z,2026-11-22T17:25:30.937Z,2,T1021.006_wsmprovhost_suspicious_child T1569.002_suspicious_service_installation,Computer
+account,runner,2026-11-22T17:17:43.124Z,2026-11-22T17:20:47.731Z,3,T1053.003_crontab_noninteractive_install T1059.004_linux_suspicious_shell_execution,User
+account,runnervmhh3zg\runneradmin,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,User
+account,LocalSystem,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,AccountName
+process,/usr/bin/crontab,2026-11-22T17:17:43.124Z,2026-11-22T17:17:43.124Z,1,T1053.003_crontab_noninteractive_install,Image
+process,/usr/bin/dash,2026-11-22T17:20:47.729Z,2026-11-22T17:20:47.731Z,2,T1059.004_linux_suspicious_shell_execution,Image
+process,C:\Windows\System32\cmd.exe,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Image
+parent_process,/usr/bin/bash,2026-11-22T17:17:43.124Z,2026-11-22T17:20:47.731Z,3,T1053.003_crontab_noninteractive_install T1059.004_linux_suspicious_shell_execution,ParentImage
+parent_process,C:\Windows\System32\wsmprovhost.exe,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,ParentImage
+command_line,crontab -,2026-11-22T17:17:43.124Z,2026-11-22T17:17:43.124Z,1,T1053.003_crontab_noninteractive_install,CommandLine
+command_line,sh -c echo ZWNobyByYXNkX2I5OWEyM2Fm | base64 -d | sh # rasd_b99a23af,2026-11-22T17:20:47.729Z,2026-11-22T17:20:47.729Z,1,T1059.004_linux_suspicious_shell_execution,CommandLine
+command_line,/bin/sh /tmp/rasd_b99a23af.sh,2026-11-22T17:20:47.731Z,2026-11-22T17:20:47.731Z,1,T1059.004_linux_suspicious_shell_execution,CommandLine
+command_line,"""C:\Windows\system32\cmd.exe"" /c ""echo runnervmhh3zg rasd_63366b09""",2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,CommandLine
+parent_command_line,bash,2026-11-22T17:17:43.124Z,2026-11-22T17:20:47.731Z,3,T1053.003_crontab_noninteractive_install T1059.004_linux_suspicious_shell_execution,ParentCommandLine
+parent_command_line,C:\Windows\system32\wsmprovhost.exe -Embedding,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,ParentCommandLine
+service_name,rasd_63366b09,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,ServiceName
+service_path,cmd.exe /c echo rasd_63366b09,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,ImagePath
+imphash,d60b77062898dc6bfae7fe11a0f8806c,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Hashes
+sha256,d71b4e26034ec955cae7e7101a4b33f5923b3396a0e1e1893cd1274bbb51c3ec,2026-11-22T17:17:43.124Z,2026-11-22T17:17:43.124Z,1,T1053.003_crontab_noninteractive_install,Hashes
+sha256,86d31f6fb799e91fa21bad341484564510ca287703a16e9e46c53338776f4f42,2026-11-22T17:20:47.729Z,2026-11-22T17:20:47.731Z,2,T1059.004_linux_suspicious_shell_execution,Hashes
+sha256,90d120880614e1e2a94067baad1454b09e2be7a9da51b71e33c247077d9f9538,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Hashes

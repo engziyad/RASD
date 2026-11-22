@@ -1,0 +1,23 @@
+type,value,first_seen_utc,last_seen_utc,alerts,detections,fields
+host,runnervmhh3zg,2026-11-22T17:24:53.741Z,2026-11-22T17:25:30.937Z,2,T1021.006_wsmprovhost_suspicious_child T1569.002_suspicious_service_installation,Computer
+account,runnervmhh3zg\runneradmin,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,User
+account,LocalSystem,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,AccountName
+process,C:\Windows\System32\cmd.exe,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Image
+parent_process,C:\Windows\System32\wsmprovhost.exe,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,ParentImage
+command_line,"""C:\Windows\system32\cmd.exe"" /c ""echo runnervmhh3zg rasd_63366b09""",2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,CommandLine
+parent_command_line,C:\Windows\system32\wsmprovhost.exe -Embedding,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,ParentCommandLine
+service_name,rasd_63366b09,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,ServiceName
+service_path,cmd.exe /c echo rasd_63366b09,2026-11-22T17:25:30.937Z,2026-11-22T17:25:30.937Z,1,T1569.002_suspicious_service_installation,ImagePath
+url,/api/Cards,2026-11-22T17:17:52.000Z,2026-11-22T17:17:53.000Z,1,T1595.003_api_auth_probing,cs-uri-stem
+url,/rest/basket/1,2026-11-22T17:17:52.000Z,2026-11-22T17:17:56.000Z,2,T1190_object_id_enumeration T1595.003_api_auth_probing,cs-uri-stem
+url,/api/Addresss,2026-11-22T17:17:53.000Z,2026-11-22T17:17:54.000Z,1,T1595.003_api_auth_probing,cs-uri-stem
+url,/api/Users,2026-11-22T17:17:53.000Z,2026-11-22T17:17:53.000Z,1,T1595.003_api_auth_probing,cs-uri-stem
+url,/rest/wallet/balance,2026-11-22T17:17:54.000Z,2026-11-22T17:17:54.000Z,1,T1595.003_api_auth_probing,cs-uri-stem
+url,/rest/user/authentication-details,2026-11-22T17:17:55.000Z,2026-11-22T17:17:55.000Z,1,T1595.003_api_auth_probing,cs-uri-stem
+url,/rest/basket/2,2026-11-22T17:17:57.000Z,2026-11-22T17:17:57.000Z,1,T1190_object_id_enumeration,cs-uri-stem
+url,/rest/basket/3,2026-11-22T17:17:57.000Z,2026-11-22T17:17:57.000Z,1,T1190_object_id_enumeration,cs-uri-stem
+url,/rest/basket/4,2026-11-22T17:17:57.000Z,2026-11-22T17:17:57.000Z,1,T1190_object_id_enumeration,cs-uri-stem
+url,/rest/basket/5,2026-11-22T17:17:57.000Z,2026-11-22T17:17:57.000Z,1,T1190_object_id_enumeration,cs-uri-stem
+url,/rest/basket/6,2026-11-22T17:17:58.000Z,2026-11-22T17:17:58.000Z,2,T1190_object_id_enumeration T1595.003_api_auth_probing,cs-uri-stem
+imphash,d60b77062898dc6bfae7fe11a0f8806c,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Hashes
+sha256,90d120880614e1e2a94067baad1454b09e2be7a9da51b71e33c247077d9f9538,2026-11-22T17:24:53.741Z,2026-11-22T17:24:53.741Z,1,T1021.006_wsmprovhost_suspicious_child,Hashes

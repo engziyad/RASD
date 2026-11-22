@@ -1,0 +1,199 @@
+{
+  "rasd_case": 1,
+  "case": "case-03-ip-10-0-139-19",
+  "entity": "ip-10-0-139-19",
+  "start_utc": "2026-11-22T17:17:43.124Z",
+  "end_utc": "2026-11-22T17:20:47.731Z",
+  "minutes": 3.1,
+  "score": 16,
+  "techniques": [
+    "T1053.003",
+    "T1059.004"
+  ],
+  "tactics": [
+    "execution",
+    "persistence",
+    "stealth"
+  ],
+  "narrative": "On ip-10-0-139-19, within 3 minutes: Crontab Installed From Standard Input or a File (T1053.003) → Linux Shell Executing Decoded Base64 or Code From a Temporary Directory (T1059.004).",
+  "disposition": null,
+  "sources": [
+    {
+      "file": "lab-export.jsonl",
+      "sha256": "5fd9cf03de466bb51d9cd7f4bdd6547b0bc46c9b83c31765cd115f9d515c9d9d"
+    },
+    {
+      "file": "linux-export.jsonl",
+      "sha256": "0d37438d1a7fc2844b578cf085a8162b66edef469128ca171222b7cadd17aad6"
+    },
+    {
+      "file": "canary-export.jsonl",
+      "sha256": "518122c42cf1e48d4cea580407fd68339b534c610eaf7b6bb95b1afbabfeee91"
+    },
+    {
+      "file": "web-export.jsonl",
+      "sha256": "a6db69df41544f06293da7f0d4fbae036b139485b534db1511c51a39841d83f5"
+    }
+  ],
+  "alerts": [
+    {
+      "time_utc": "2026-11-22T17:17:43.124Z",
+      "rule": "T1053.003_crontab_noninteractive_install",
+      "title": "Crontab Installed From Standard Input or a File",
+      "technique": "T1053.003",
+      "tactics": [
+        "persistence",
+        "execution"
+      ],
+      "level": "medium",
+      "entity": "ip-10-0-139-19",
+      "host": "ip-10-0-139-19",
+      "user": "runner",
+      "risk": 45,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "crontab -",
+      "event": {
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:17:43.124139000Z",
+        "Channel": "Linux-Sysmon/Operational",
+        "Computer": "ip-10-0-139-19",
+        "UtcTime": "2026-11-22 17:17:43.128",
+        "Image": "/usr/bin/crontab",
+        "CommandLine": "crontab -",
+        "User": "runner"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:20:47.729Z",
+      "rule": "T1059.004_linux_suspicious_shell_execution",
+      "title": "Linux Shell Executing Decoded Base64 or Code From a Temporary Directory",
+      "technique": "T1059.004",
+      "tactics": [
+        "execution",
+        "stealth"
+      ],
+      "level": "high",
+      "entity": "ip-10-0-139-19",
+      "host": "ip-10-0-139-19",
+      "user": "runner",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if known vendor software?",
+        "-15 if approved change window?"
+      ],
+      "summary": "sh -c echo ZWNobyByYXNkX2I5OWEyM2Fm | base64 -d | sh # rasd_b99a23af",
+      "event": {
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:20:47.729173000Z",
+        "Channel": "Linux-Sysmon/Operational",
+        "Computer": "ip-10-0-139-19",
+        "UtcTime": "2026-11-22 17:20:47.733",
+        "Image": "/usr/bin/dash",
+        "CommandLine": "sh -c echo ZWNobyByYXNkX2I5OWEyM2Fm | base64 -d | sh # rasd_b99a23af",
+        "User": "runner"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:20:47.731Z",
+      "rule": "T1059.004_linux_suspicious_shell_execution",
+      "title": "Linux Shell Executing Decoded Base64 or Code From a Temporary Directory",
+      "technique": "T1059.004",
+      "tactics": [
+        "execution",
+        "stealth"
+      ],
+      "level": "high",
+      "entity": "ip-10-0-139-19",
+      "host": "ip-10-0-139-19",
+      "user": "runner",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if known vendor software?",
+        "-15 if approved change window?"
+      ],
+      "summary": "/bin/sh /tmp/rasd_b99a23af.sh",
+      "event": {
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:20:47.731619000Z",
+        "Channel": "Linux-Sysmon/Operational",
+        "Computer": "ip-10-0-139-19",
+        "UtcTime": "2026-11-22 17:20:47.735",
+        "Image": "/usr/bin/dash",
+        "CommandLine": "/bin/sh /tmp/rasd_b99a23af.sh",
+        "User": "runner"
+      }
+    }
+  ],
+  "other_hosts": [
+    {
+      "time_utc": "2026-11-22T17:24:53.741Z",
+      "rule": "T1021.006_wsmprovhost_suspicious_child",
+      "title": "Suspicious Child Process of a WinRM Session Host",
+      "technique": "T1021.006",
+      "tactics": [
+        "lateral-movement"
+      ],
+      "level": "medium",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 50,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_63366b09\"",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:24:53.7413206Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:53.740",
+        "Image": "C:\\Windows\\System32\\cmd.exe",
+        "OriginalFileName": "Cmd.Exe",
+        "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_63366b09\"",
+        "User": "runnervmhh3zg\\runneradmin",
+        "ParentImage": "C:\\Windows\\System32\\wsmprovhost.exe"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:30.937Z",
+      "rule": "T1569.002_suspicious_service_installation",
+      "title": "Suspicious Service Installation (PsExec-style / Command Services)",
+      "technique": "T1569.002",
+      "tactics": [
+        "execution",
+        "lateral-movement"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "LocalSystem",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "cmd.exe /c echo rasd_63366b09",
+      "event": {
+        "Channel": "System",
+        "Provider_Name": "Service Control Manager",
+        "EventID": 7045,
+        "TimeCreated": "2026-11-22T17:25:30.9376253Z",
+        "Computer": "runnervmhh3zg",
+        "ServiceName": "rasd_63366b09",
+        "ImagePath": "cmd.exe /c echo rasd_63366b09",
+        "AccountName": "LocalSystem"
+      }
+    }
+  ]
+}

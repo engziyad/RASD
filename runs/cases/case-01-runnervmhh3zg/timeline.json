@@ -1,0 +1,830 @@
+{
+  "rasd_case": 1,
+  "case": "case-01-runnervmhh3zg",
+  "entity": "runnervmhh3zg",
+  "start_utc": "2026-11-22T17:23:19.090Z",
+  "end_utc": "2026-11-22T17:25:30.937Z",
+  "minutes": 2.2,
+  "score": 100,
+  "techniques": [
+    "T1003.001",
+    "T1021.006",
+    "T1053.005",
+    "T1059.001",
+    "T1218.011",
+    "T1547.001",
+    "T1552.001",
+    "T1569.002",
+    "T1685.005"
+  ],
+  "tactics": [
+    "execution",
+    "persistence",
+    "privilege-escalation",
+    "stealth",
+    "defense-impairment",
+    "credential-access",
+    "discovery",
+    "lateral-movement"
+  ],
+  "narrative": "On runnervmhh3zg, within 2 minutes: Suspicious Process Access to LSASS Memory (T1003.001) → Suspicious Child Process of a WinRM Session Host (T1021.006) → Windows Event Log Clearing via Command Line (T1685.005) → Windows Event Log Cleared (System Event 104) (T1685.005) → Deception - Honey Credentials File Opened (T1552.001) → PowerShell Execution With Encoded Command (T1059.001) → Run Key Persistence Pointing to Suspicious Location (T1547.001) → Rundll32 Proxy Execution From Suspicious Context (T1218.011) → Scheduled Task Created With Suspicious Action (T1053.005) → Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets (T1053.005) → Suspicious Service Installation (PsExec-style / Command Services) (T1569.002).",
+  "disposition": null,
+  "sources": [
+    {
+      "file": "lab-export.jsonl",
+      "sha256": "5fd9cf03de466bb51d9cd7f4bdd6547b0bc46c9b83c31765cd115f9d515c9d9d"
+    },
+    {
+      "file": "linux-export.jsonl",
+      "sha256": "0d37438d1a7fc2844b578cf085a8162b66edef469128ca171222b7cadd17aad6"
+    },
+    {
+      "file": "canary-export.jsonl",
+      "sha256": "518122c42cf1e48d4cea580407fd68339b534c610eaf7b6bb95b1afbabfeee91"
+    },
+    {
+      "file": "web-export.jsonl",
+      "sha256": "a6db69df41544f06293da7f0d4fbae036b139485b534db1511c51a39841d83f5"
+    }
+  ],
+  "alerts": [
+    {
+      "time_utc": "2026-11-22T17:23:19.090Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:23:19.0900921Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:23:19.087",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:23:29.102Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:23:29.1025029Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:23:29.100",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:23:56.767Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:23:56.7671439Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:23:56.741",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:23:56.772Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:23:56.7721663Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:23:56.760",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215eddf|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:06.739Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:24:06.7396009Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:06.739",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:16.741Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:24:16.7414409Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:16.741",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:26.742Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:24:26.7424619Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:26.741",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:36.743Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:24:36.7431875Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:36.742",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:46.743Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:24:46.7435799Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:46.743",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:53.741Z",
+      "rule": "T1021.006_wsmprovhost_suspicious_child",
+      "title": "Suspicious Child Process of a WinRM Session Host",
+      "technique": "T1021.006",
+      "tactics": [
+        "lateral-movement"
+      ],
+      "level": "medium",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 50,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_63366b09\"",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:24:53.7413206Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:53.740",
+        "Image": "C:\\Windows\\System32\\cmd.exe",
+        "OriginalFileName": "Cmd.Exe",
+        "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_63366b09\"",
+        "User": "runnervmhh3zg\\runneradmin",
+        "ParentImage": "C:\\Windows\\System32\\wsmprovhost.exe"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:56.745Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:24:56.7456796Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:56.744",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:56.786Z",
+      "rule": "T1685.005_event_log_clearing",
+      "title": "Windows Event Log Clearing via Command Line",
+      "technique": "T1685.005",
+      "tactics": [
+        "defense-impairment"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-20 if approved change window?"
+      ],
+      "summary": "\"C:\\Windows\\system32\\wevtutil.exe\" cl R63366b09",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:24:56.7863077Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:24:56.782",
+        "Image": "C:\\Windows\\System32\\wevtutil.exe",
+        "OriginalFileName": "wevtutil.exe",
+        "CommandLine": "\"C:\\Windows\\system32\\wevtutil.exe\" cl R63366b09",
+        "User": "runnervmhh3zg\\runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:56.812Z",
+      "rule": "T1685.005_system_log_cleared",
+      "title": "Windows Event Log Cleared (System Event 104)",
+      "technique": "T1685.005",
+      "tactics": [
+        "defense-impairment"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runneradmin",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-20 if approved change window?"
+      ],
+      "summary": "",
+      "event": {
+        "Channel": "System",
+        "Provider_Name": "Microsoft-Windows-Eventlog",
+        "EventID": 104,
+        "TimeCreated": "2026-11-22T17:24:56.8127802Z",
+        "Computer": "runnervmhh3zg",
+        "SubjectUserName": "runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:59.280Z",
+      "rule": "T1685.005_system_log_cleared",
+      "title": "Windows Event Log Cleared (System Event 104)",
+      "technique": "T1685.005",
+      "tactics": [
+        "defense-impairment"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runneradmin",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-20 if approved change window?"
+      ],
+      "summary": "",
+      "event": {
+        "Channel": "System",
+        "Provider_Name": "Microsoft-Windows-Eventlog",
+        "EventID": 104,
+        "TimeCreated": "2026-11-22T17:24:59.2809700Z",
+        "Computer": "runnervmhh3zg",
+        "SubjectUserName": "runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:24:59.446Z",
+      "rule": "T1552.001_honey_file_access",
+      "title": "Deception - Honey Credentials File Opened",
+      "technique": "T1552.001",
+      "tactics": [
+        "credential-access",
+        "discovery"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runneradmin",
+      "risk": 80,
+      "risk_factors": [],
+      "risk_questions": [
+        "-40 if approved admin activity?"
+      ],
+      "summary": "C:\\Shares\\IT\\Passwords\\service_accounts.xlsx",
+      "event": {
+        "Channel": "Security",
+        "Provider_Name": "Microsoft-Windows-Security-Auditing",
+        "EventID": 4663,
+        "TimeCreated": "2026-11-22T17:24:59.4468706Z",
+        "Computer": "runnervmhh3zg",
+        "SubjectUserName": "runneradmin",
+        "ObjectType": "File",
+        "ObjectName": "C:\\Shares\\IT\\Passwords\\service_accounts.xlsx",
+        "AccessList": "%%4416\n\t\t\t\t",
+        "ProcessName": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:02.358Z",
+      "rule": "T1059.001_powershell_encoded_command",
+      "title": "PowerShell Execution With Encoded Command",
+      "technique": "T1059.001",
+      "tactics": [
+        "execution",
+        "stealth"
+      ],
+      "level": "medium",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 40,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHIAYQBzAGQAXwA2ADMAMwA2ADYAYgAwADkAJwA=",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:25:02.3587476Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:02.357",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "OriginalFileName": "PowerShell.EXE",
+        "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAHIAYQBzAGQAXwA2ADMAMwA2ADYAYgAwADkAJwA=",
+        "User": "runnervmhh3zg\\runneradmin",
+        "ParentImage": "-"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:05.020Z",
+      "rule": "T1547.001_registry_run_key_persistence",
+      "title": "Run Key Persistence Pointing to Suspicious Location",
+      "technique": "T1547.001",
+      "tactics": [
+        "persistence",
+        "privilege-escalation"
+      ],
+      "level": "medium",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 55,
+      "risk_factors": [
+        "+15 payload in user writable path"
+      ],
+      "risk_questions": [
+        "-25 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\rasd_63366b09.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 13,
+        "TimeCreated": "2026-11-22T17:25:05.0206262Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:05.019",
+        "TargetObject": "HKU\\S-1-5-21-688113535-2331092577-2868679288-500\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\rasd_63366b09",
+        "Details": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\rasd_63366b09.exe",
+        "User": "runnervmhh3zg\\runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:06.748Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:25:06.7480720Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:06.747",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:07.076Z",
+      "rule": "T1218.011_rundll32_suspicious_execution",
+      "title": "Rundll32 Proxy Execution From Suspicious Context",
+      "technique": "T1218.011",
+      "tactics": [
+        "stealth"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if known vendor software?"
+      ],
+      "summary": "\"C:\\Windows\\system32\\rundll32.exe\" javascript:\"\\..\\mshtml,RunHTMLApplication \";var m='rasd_63366b09';close(); ",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:25:07.0766154Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:07.074",
+        "Image": "C:\\Windows\\System32\\rundll32.exe",
+        "OriginalFileName": "RUNDLL32.EXE",
+        "CommandLine": "\"C:\\Windows\\system32\\rundll32.exe\" javascript:\"\\..\\mshtml,RunHTMLApplication \";var m='rasd_63366b09';close(); ",
+        "User": "runnervmhh3zg\\runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:16.750Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:25:16.7506081Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:16.750",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:24.203Z",
+      "rule": "T1053.005_schtasks_suspicious_creation",
+      "title": "Scheduled Task Created With Suspicious Action",
+      "technique": "T1053.005",
+      "tactics": [
+        "persistence",
+        "execution",
+        "privilege-escalation"
+      ],
+      "level": "medium",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 40,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_63366b09 /sc once /st 23:59 /f /tr \"cmd /c echo rasd_63366b09 > %%TEMP%%\\rasd_63366b09.txt\"",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:25:24.2035799Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:24.193",
+        "Image": "C:\\Windows\\System32\\schtasks.exe",
+        "OriginalFileName": "schtasks.exe",
+        "CommandLine": "\"C:\\Windows\\system32\\schtasks.exe\" /create /tn rasd_63366b09 /sc once /st 23:59 /f /tr \"cmd /c echo rasd_63366b09 > %%TEMP%%\\rasd_63366b09.txt\"",
+        "User": "runnervmhh3zg\\runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:26.280Z",
+      "rule": "T1053.005_powershell_scheduled_task_creation",
+      "title": "Scheduled Task Registered via PowerShell ScheduledTasks Cmdlets",
+      "technique": "T1053.005",
+      "tactics": [
+        "persistence",
+        "execution",
+        "privilege-escalation"
+      ],
+      "level": "medium",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "runnervmhh3zg\\runneradmin",
+      "risk": 40,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_63366b09_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_63366b09.exe) | Out-Null\"",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 1,
+        "TimeCreated": "2026-11-22T17:25:26.2800161Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:26.279",
+        "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "OriginalFileName": "PowerShell.EXE",
+        "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_63366b09_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_63366b09.exe) | Out-Null\"",
+        "User": "runnervmhh3zg\\runneradmin"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:26.742Z",
+      "rule": "T1003.001_lsass_memory_access",
+      "title": "Suspicious Process Access to LSASS Memory",
+      "technique": "T1003.001",
+      "tactics": [
+        "credential-access"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "NT SERVICE\\Splunkd",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-30 if known vendor software?",
+        "-20 if approved admin activity?"
+      ],
+      "summary": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+      "event": {
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "Provider_Name": "Microsoft-Windows-Sysmon",
+        "EventID": 10,
+        "TimeCreated": "2026-11-22T17:25:26.7429418Z",
+        "Computer": "runnervmhh3zg",
+        "UtcTime": "2026-11-22 17:25:26.742",
+        "SourceImage": "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+        "TargetImage": "C:\\Windows\\system32\\lsass.exe",
+        "GrantedAccess": "0x1fffff",
+        "CallTrace": "C:\\Windows\\SYSTEM32\\ntdll.dll+a0834|C:\\Windows\\System32\\KERNELBASE.dll+44d4e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215db5e|C:\\Program Files\\Splunk\\bin\\splunkd.exe+215c966|C:\\Program Files\\Splunk\\bin\\splunkd.exe+216c2b5|C:\\Program Files\\Splunk\\bin\\splunkd.exe+21580bd|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b33a7c|C:\\Program Files\\Splunk\\bin\\splunkd.exe+3b3424a|C:\\Windows\\System32\\ucrtbase.dll+26b4c|C:\\Windows\\System32\\KERNEL32.DLL+14f80|C:\\Windows\\SYSTEM32\\ntdll.dll+7edcb",
+        "SourceUser": "NT SERVICE\\Splunkd"
+      }
+    },
+    {
+      "time_utc": "2026-11-22T17:25:30.937Z",
+      "rule": "T1569.002_suspicious_service_installation",
+      "title": "Suspicious Service Installation (PsExec-style / Command Services)",
+      "technique": "T1569.002",
+      "tactics": [
+        "execution",
+        "lateral-movement"
+      ],
+      "level": "high",
+      "entity": "runnervmhh3zg",
+      "host": "runnervmhh3zg",
+      "user": "LocalSystem",
+      "risk": 60,
+      "risk_factors": [],
+      "risk_questions": [
+        "-25 if approved admin activity?",
+        "-20 if approved change window?"
+      ],
+      "summary": "cmd.exe /c echo rasd_63366b09",
+      "event": {
+        "Channel": "System",
+        "Provider_Name": "Service Control Manager",
+        "EventID": 7045,
+        "TimeCreated": "2026-11-22T17:25:30.9376253Z",
+        "Computer": "runnervmhh3zg",
+        "ServiceName": "rasd_63366b09",
+        "ImagePath": "cmd.exe /c echo rasd_63366b09",
+        "AccountName": "LocalSystem"
+      }
+    }
+  ],
+  "other_hosts": []
+}
