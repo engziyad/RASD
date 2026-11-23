@@ -1,7 +1,7 @@
 """Turn a pose from rig.py into SVG.
 
-Drawing order, back to front: dust, far legs, tail, scabbard, far arm, horse, mane, near legs, tack,
-cloak, rider, head, sword, sword arm, reins.
+Drawing order, back to front: dust, far legs, tail, far arm, horse, mane, near legs, tack, cloak, rifle,
+rider, belt and straps, scabbard, head, sword, sword arm, reins.
 """
 import math
 
@@ -134,7 +134,46 @@ def sword_shapes(at, ang, upto, ink, small):
     return out
 
 
-def draw(ps, coat="chestnut", lod="big", uid="k"):
+def rifle_shapes(butt, muzzle, outer, ink, small):
+    """A rifle from its butt plate to its muzzle, the barrel on the side `outer` points to.
+
+    Returns the shapes and the two points the sling is fastened to.
+    """
+    along = unit(sub(muzzle, butt))
+    length = gap(butt, muzzle)
+    k = length / 83.0
+
+    def rf(s, v):
+        return add(butt, add(mul(along, s * k), mul(outer, v)))
+
+    upper, lower = rf(64, -2.8), rf(7, -4.4)
+    wood, steel, shine = ink["wood"], ink["steel"], ink["steel_hi"]
+    if small:
+        return [line([rf(0, 0), rf(26, 0)], wood, 6.4, curve=False, cap="butt"),
+                line([rf(26, 0.4), rf(64, 0.4)], wood, 4.4, curve=False, cap="butt"),
+                line([rf(36, 1.0), rf(83, 1.0)], shine, 3.0, curve=False, cap="butt")], upper, lower
+    out = [path(poly([rf(0, -4.3), rf(0, 4.5), rf(21, 3.1), rf(27, 2.7), rf(27, -2.3), rf(21, -2.6), rf(9, -4.0)]), wood),
+           line([rf(1.5, 3.9), rf(21, 2.6)], ink["wood_hi"], 0.9, 0.9, curve=False),
+           line([rf(0, -4.5), rf(0, 4.7)], steel, 1.8, curve=False),
+           line([rf(28, -2.5), rf(30, -5.4), rf(34, -5.4), rf(35.5, -2.5)], steel, 0.9),
+           path(poly([rf(26, -2.6), rf(26, 3.1), rf(38, 3.0), rf(38, -2.4)]), steel),
+           line([rf(32.5, 3.0), rf(34.5, 5.6)], shine, 1.1, curve=False),
+           disc(rf(34.9, 6.1), 1.3, shine),
+           path(poly([rf(37, -2.4), rf(37, 0.8), rf(66, 0.6), rf(66, -1.9)]), wood),
+           line([rf(38, -1.6), rf(65, -1.3)], ink["wood_hi"], 0.7, 0.7, curve=False),
+           line([rf(66, 0.3), rf(79, 0.3)], steel, 0.7, curve=False),
+           line([rf(37, 1.8), rf(83, 1.5)], steel, 2.1, curve=False, cap="butt"),
+           line([rf(38, 2.4), rf(82, 2.1)], shine, 0.55, 0.9, curve=False)]
+    for s in (50, 64):
+        out.append(line([rf(s, -2.4), rf(s, 2.9)], ink["gold_lo"], 1.6, curve=False, cap="butt"))
+    out.append(line([rf(42, 3.2), rf(45, 3.2)], steel, 1.5, curve=False, cap="butt"))
+    out.append(line([rf(80, 2.4), rf(80, 4.6)], shine, 1.1, curve=False, cap="butt"))
+    out.append(disc(upper, 1.0, shine))
+    out.append(disc(lower, 1.0, shine))
+    return out, upper, lower
+
+
+def draw(ps, coat="chestnut", lod="big", uid="k", veil=False):
     c, ink = COATS[coat], INK
     body, legs, g, wind, phi = ps["body"], ps["legs"], ps["g"], ps["wind"], ps["phi"]
     w = body.w
@@ -194,28 +233,19 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
         tw = [x / 2 for x in spread(widths, 5)]
         out.append(path(ribbon(ts, tw, tw, t=0.5), col, 1.0 if col != c["mane_hi"] else 0.75))
 
-    # scabbard on the far hip, and the hilt while the sword rests in it
+    # the rider's frame: his seat, his shoulders, and where the sword hangs at his hip
     hip = w((6, 157))
     lean, nod, stage = ps["lean"], ps["nod"], ps["stage"]
-    sh = add(hip, polar(90 - lean, 55))
-    axis = 13 + 4.0 * math.sin(2 * math.pi * phi) * g + 8 * smooth(ps["r"])
-    mouth = add(hip, rot((14, 5), -lean * 0.3))
-    sc = [add(mouth, add(polar(axis + 180, k), (0, -0.0010 * k * k))) for k in (0, 20, 42, 64, 86)]
+    up = polar(90 - lean, 1)
+    back_n = perp(up)
+    sh = add(hip, mul(up, 55))
+    axis = 19 + 4.0 * math.sin(2 * math.pi * phi) * g + 8 * smooth(ps["r"])
+    mouth = add(hip, rot((13, 4), -lean * 0.3))
     grip0 = add(mouth, polar(axis, 5.5))
-    if stage <= 1.0:
-        out.extend(sword_shapes(mouth, axis + 180, 0, ink, small))
-    half = [3.4, 3.3, 3.1, 2.7, 1.6]
-    out.append(path(ribbon(sc, half, half, t=0.5), ink["scab"]))
-    out.append(line([add(p, mul(perp(polar(axis + 180, 1)), -1.2)) for p in sc[:4]], ink["scab_hi"], 1.4, 0.9))
-    for k in (0, 1):
-        out.append(line([add(sc[k], polar(axis + 90, 3.6)), add(sc[k], polar(axis - 90, 3.6))], ink["gold"], 4.4 if k == 0 else 3.0,
-                        cap="butt"))
-    out.append(line([add(sc[4], polar(axis + 180, -9)), add(sc[4], polar(axis + 180, 1))], ink["gold"], 4.6))
-    out.append(line([add(sc[1], (0, 3)), add(hip, (2, 16))], ink["red_lo"], 1.6))
 
     # far arm on the reins
     far_sh = add(sh, rot((5, -3), -lean))
-    left_hand = add(hip, add(rot((27, 9), -lean * 0.35), (0, 1.5 * math.sin(2 * math.pi * (phi - 0.1)) * g)))
+    left_hand = add(hip, add(rot((43, 11), -lean * 0.35), (0, 1.5 * math.sin(2 * math.pi * (phi - 0.1)) * g)))
     elbow, hand = ik(far_sh, left_hand, 32, 29, -1)
     out.append(path(capsule(far_sh, elbow, 12, 10), ink["bisht"]))
     out.append(path(capsule(elbow, hand, 9.5, 7.5), ink["thobe_lo"]))
@@ -373,22 +403,36 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     out.append(path(spline([w(p) for p in SEAT], closed=True, t=0.5), ink["leather"]))
     out.append(line([w((20, 153)), w((24, 158)), w((27, 151.5))], ink["gold"], 2.0))
 
-    # bisht behind the rider
-    flutter = [0, 0, 1.5, 3.0, 4.5, 4.5, 3.5, 2.0, 0]
-    hang_b = [add(sh, (6, 5)), add(sh, (-12, 4)), add(sh, (-22, -13)), add(hip, (-26, 12)), add(hip, (-40, -8)), add(hip, (-44, -30)),
-              add(hip, (-26, -42)), add(hip, (-8, -36)), add(hip, (2, -4))]
-    fly_b = [add(sh, (6, 5)), add(sh, (-12, 7)), add(sh, (-40, 11)), add(sh, (-74, 6)), add(sh, (-112, -14)), add(sh, (-96, -27)),
-             add(sh, (-72, -25)), add(sh, (-42, -40)), add(hip, (-9, 0))]
+    # the cloak: it falls from the shoulders over the saddle and the croup, and fills behind him when she runs
+    flutter = [0, 0, 1.0, 2.0, 3.5, 5.0, 4.0, 2.0, 0]
+    swell = 3.0 * wind * math.sin(2 * math.pi * (phi - 0.3))
+    hang_b = [add(sh, (6, 5)), add(sh, (-12, 4)), add(sh, (-22, -13)), add(hip, (-28, 14)), add(hip, (-44, -6)), add(hip, (-50, -28)),
+              add(hip, (-32, -42)), add(hip, (-10, -37)), add(hip, (2, -4))]
+    fly_b = [add(sh, (6, 5)), add(sh, (-11, 5)), add(sh, (-20, -13)), add(hip, (-32, 27 + swell)), add(hip, (-60, 12 + swell)),
+             add(hip, (-84, -10)), add(hip, (-64, -33)), add(hip, (-30, -38)), add(hip, (-2, -6))]
     cloak = []
     for i, (a, b) in enumerate(zip(hang_b, fly_b, strict=True)):
-        p = mix(a, b, wind)
-        cloak.append(add(p, (0, flutter[i] * wind * math.sin(2 * math.pi * (phi * 2 + i * 0.19)))))
-    out.append(path(spline(cloak, closed=True, t=0.5), ink["bisht"]))
+        q = mix(a, b, wind)
+        cloak.append(add(q, (0, flutter[i] * wind * math.sin(2 * math.pi * (phi * 2 + i * 0.19)))))
+    cloak_d = spline(cloak, closed=True, t=0.5)
+    defs.append(f'<clipPath id="{uid}cloak"><path d="{cloak_d}"/></clipPath>')
+    out.append(path(cloak_d, ink["bisht"]))
+    sheen = [mix(cloak[2], cloak[7], 0.14), mix(cloak[3], cloak[7], 0.16), mix(cloak[4], cloak[6], 0.2), mix(cloak[5], cloak[6], 0.32)]
+    out.append(f'<g clip-path="url(#{uid}cloak)">' + blur(line(sheen, ink["bisht_hi"], 7.5, 0.6), 4) + "</g>")
     out.append(line(cloak[1:5], ink["bisht_hi"], 1.6, 0.95))
     out.append(line(cloak[4:8], ink["gold"], 2.6 if not small else 3.4))
-    for a, b, k in ((2, 7, 0.5), (3, 6, 0.45), (3, 5, 0.6)):
+    for a, b, k in ((2, 7, 0.5), (3, 6, 0.45), (3, 5, 0.6), (4, 6, 0.5)):
         out.append(line([mix(cloak[1], cloak[a], 0.75), mix(cloak[a], cloak[b], k * 0.6), mix(cloak[a], cloak[b], k * 1.5)],
-                        ink["bisht_fold"], 2.6, 0.95))
+                        ink["bisht_fold"], 2.1, 0.9))
+
+    # the rifle slung on his back, muzzle up behind the shoulder, and the strap that runs up to the shoulder
+    sway_r = 1.2 * math.sin(2 * math.pi * (phi - 0.15)) * g + 0.25 * lean
+    butt = add(hip, add(mul(up, -6), mul(back_n, 12)))
+    muzzle = add(sh, add(mul(up, 17), mul(back_n, 31 + sway_r)))
+    gun, sling_up, sling_low = rifle_shapes(butt, muzzle, perp(unit(sub(muzzle, butt))), ink, small)
+    out.append(line([sling_low, add(hip, add(mul(up, 9), mul(back_n, 12.5)))], ink["strap"], 1.7, curve=False))
+    out.extend(gun)
+    out.append(line([sling_up, add(sh, rot((-7, 2.5), -lean))], ink["strap"], 1.9 if not small else 2.6, curve=False))
 
     # rider's near leg
     def lw(q):
@@ -407,17 +451,37 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     out.append(line([lw((37, 74.2)), lw((54, 74.2))], ink["gold"], 2.1, curve=False))
 
     # torso: the bisht over the thobe, its gold edge down the front
-    up = polar(90 - lean, 1)
-    back_n = perp(up)
     tsp = [hip, add(hip, mul(up, 18.5)), add(hip, mul(up, 37)), sh]
     fr = [13, 14, 13.5, 9.5]
     out.append(path(ribbon(tsp, [12, 13.5, 14, 12], fr, t=0.5), ink["bisht"]))
     front = [sub(p, mul(back_n, fr[i])) for i, p in enumerate(tsp)]
-    inner_f = [sub(p, mul(back_n, fr[i] - 7.5)) for i, p in enumerate(tsp)]
+    inner_f = [sub(p, mul(back_n, fr[i] - 10.0)) for i, p in enumerate(tsp)]
     out.append(path(spline(front + inner_f[::-1], closed=True, t=0.4), ink["thobe"]))
     out.append(line(inner_f, ink["gold"], 2.8 if not small else 3.6))
     out.append(line([add(p, mul(back_n, 12.4)) for p in tsp[1:]], ink["bisht_hi"], 1.4, 0.9))
-    out.append(line([add(sh, rot((-4, -2), -lean)), add(hip, rot((9, 12), -lean))], ink["red_lo"], 1.8, curve=False))
+    # the belt with its cartridges, the rifle's strap from the shoulder, the sword's from the collar
+    belt = add(hip, mul(up, 9.5))
+    out.append(line([sub(belt, mul(back_n, 3.4)), sub(belt, mul(back_n, 13.5))], ink["strap"], 3.6, curve=False, cap="butt"))
+    if not small:
+        for i in range(3):
+            q = sub(belt, mul(back_n, 11.6 - 3.1 * i))
+            out.append(line([add(q, mul(up, 1.5)), sub(q, mul(up, 1.5))], ink["gold"], 1.2, curve=False))
+    out.append(line([add(sh, rot((-5, 0.5), -lean)), add(hip, rot((11.5, 12.5), -lean))], ink["strap"], 2.2 if not small else 2.8,
+                    curve=False))
+    out.append(line([add(sh, rot((7.5, -6), -lean)), add(mouth, (-2, 3))], ink["red_lo"], 1.9 if not small else 2.6, curve=False))
+
+    # the sword at his near hip, in its scabbard until he draws it
+    sc = [add(mouth, add(polar(axis + 180, k), (0, -0.0010 * k * k))) for k in (0, 20, 42, 64, 86)]
+    if stage <= 1.0:
+        out.extend(sword_shapes(mouth, axis + 180, 0, ink, small))
+    half = [3.4, 3.3, 3.1, 2.7, 1.6]
+    out.append(path(ribbon(sc, half, half, t=0.5), ink["scab"]))
+    out.append(line([add(q, mul(perp(polar(axis + 180, 1)), -1.2)) for q in sc[:4]], ink["scab_hi"], 1.4, 0.9))
+    for k in (0, 1):
+        out.append(line([add(sc[k], polar(axis + 90, 3.6)), add(sc[k], polar(axis - 90, 3.6))], ink["gold"], 4.4 if k == 0 else 3.0,
+                        cap="butt"))
+    out.append(line([add(sc[4], polar(axis + 180, -9)), add(sc[4], polar(axis + 180, 1))], ink["gold"], 4.6))
+    out.append(line([add(sc[1], (0, 3)), add(belt, mul(back_n, 5))], ink["red_lo"], 1.6))
 
     # the sword arm: reins, hilt, the pull up out of the scabbard, the raise, the wave, the point forward, the salute
     sj = add(sh, rot((1, -3), -lean))
@@ -430,16 +494,16 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     target, ang = add(sj, mix(stops[i0][0], stops[i0 + 1][0], k)), lerp(stops[i0][1], stops[i0 + 1][1], k)
     visible = SWORD
     if 1.0 < stage <= 2.0:
-        target = quad(grip0, add(sj, (34, 0)), high, k)
+        target = quad(grip0, add(sj, (34, 0)), high, smooth(stage - 1.0))
         ang = angle(sub(mouth, target))
         visible = gap(target, mouth) - 5.5
     ang += 34 * ps["wave"]
     target = add(target, (5 * ps["wave"], 2.5 * abs(ps["wave"])))
     elbow, hand = ik(sj, target, 33, 29.5, -1)
 
-    # head: the shemagh lies over the crown under the agal, one end is drawn across the nose and mouth, and the
-    # fold behind falls to the middle of the back; in the wind that fold lifts and trails behind the neck
-    tilt = lean * 0.45 + nod
+    # head: the shemagh lies over the crown under the agal and falls to the shoulders, close to the neck; when she
+    # runs the fold behind fills a little and no more. The face is open unless `veil` draws an end across it
+    tilt = lean * 0.35 + nod - 4.0 * g
     hc = add(sh, polar(90 - lean - 0.4 * nod, 21.5))
 
     def hl(q):
@@ -456,18 +520,19 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
                 f'<rect width="{bar:.4f}" height="{cell:.4f}" fill="{ink["red"]}"/>'
                 f'<rect width="{cell:.4f}" height="{bar:.4f}" fill="{ink["red"]}"/></pattern>')
     chk = f"url(#{uid}chk)"
-    hang_d = [(-10.5, 7.0), (-15.5, -3), (-18.5, -15), (-19.5, -28), (-14.5, -40.5), (-8.5, -32), (-4.5, -21), (-3.5, -12), (-6, -4)]
-    fly_d = [(-10.5, 7.0), (-20, 5.5), (-31, 2.5), (-41, -2.5), (-49, -8.5), (-39, -10.8), (-28, -10.5), (-15, -13.5), (-5.5, -10)]
+    hang_d = [(-10.5, 7.0), (-14.5, -3), (-16.5, -15), (-17.0, -27), (-12.5, -37.5), (-7.0, -30), (-4.0, -20), (-3.5, -12), (-6, -4)]
+    fly_d = [(-10.5, 7.0), (-16.5, -1), (-21.5, -10), (-25.5, -20), (-24.0, -31), (-14.0, -27), (-7.5, -19), (-4.5, -12), (-6, -4)]
     hold = [1.0, 0.6, 0.25, 0.0, 0.0, 0.0, 0.25, 0.6, 1.0]
     drape = []
     for i, (a, b) in enumerate(zip(hang_d, fly_d, strict=True)):
         q = mix(a, b, wind)
         if 2 <= i <= 6:
-            q = add(q, (0, 2.6 * wind * math.sin(2 * math.pi * (phi * 2 + i * 0.23))))
+            q = add(q, (0, 2.0 * wind * math.sin(2 * math.pi * (phi * 2 + i * 0.23))))
         drape.append(add(hc, rot(mul(q, 1.08), -tilt * hold[i])))
     drape_d = spline(drape, closed=True, t=0.5)
-    sway = 6.0 * wind
-    panel = [hl(q) for q in ((-3.5, -11), (7.5, -11.5), (10.5 - sway * 0.3, -20), (8.5 - sway, -30), (1.5 - sway, -34.5),
+    sway = 5.0 * wind
+    front = (7.5, -11.5) if veil else (3.6, -10.5)
+    panel = [hl(q) for q in ((-3.5, -11), front, (8.5 - sway * 0.3, -20), (8.0 - sway, -30), (1.5 - sway, -34.5),
                              (-5 - sway * 0.6, -27), (-5.5, -19))]
     panel_d = spline(panel, closed=True, t=0.5)
     crown = [(11.0, 5.6), (11.4, 9.0), (9.4, 13.4), (4, 16.2), (-2.5, 16.6), (-8.6, 14.2), (-12.2, 9.0), (-13, 2.4), (-12, -4.5),
@@ -484,42 +549,50 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     out.append(path(drape_d, chk))
     hem = [drape[2], drape[3], drape[4], drape[5], drape[6]]
     out.append(f'<g clip-path="url(#{uid}drape)">' + line(hem, ink["white"], 6.0) + line(hem, ink["red"], 1.5 if not small else 2.8)
-               + blur(line([drape[1], mix(drape[2], drape[7], 0.5), mix(drape[3], drape[6], 0.5)], ink["white_lo"], 2.6, 0.8)
+               + blur(line([drape[1], mix(drape[2], drape[7], 0.5), mix(drape[3], drape[6], 0.5)], ink["fold"], 2.6, 0.3)
                       + line([mix(drape[0], drape[8], 0.5), mix(drape[1], drape[8], 0.6), mix(drape[2], drape[7], 0.8)],
-                             ink["white_lo"], 2.2, 0.7), 1) + "</g>")
-    if not small:
-        nrm = unit(sub(mix(drape[3], drape[5], 0.5), mix(drape[2], drape[6], 0.5)))
-        for kk in range(7):
-            q = quad(drape[3], drape[4], drape[5], kk / 6)
-            out.append(line([q, add(q, mul(nrm, 2.8))], ink["white"], 0.8, curve=False))
-    # the open part of the face: brow, eye, the bridge of the nose
-    face = [(11.0, 5.8), (11.7, 3.4), (12.9, 0.5), (11.2, -0.9), (4.6, -0.3), (2.4, 2.6), (4.2, 6.0)]
+                             ink["fold"], 2.2, 0.26), 1) + "</g>")
+    # the neck, then the face in profile: brow, eye, nose, moustache and a short beard
+    out.append(path(poly([hl((0.5, -9.5)), hl((8.6, -13.2)), hl((7.6, -23.0)), hl((-2.0, -23.0))]), ink["skin_lo"]))
     if small:
-        face = [(11.4, 6.2), (12.3, 3.4), (13.6, -0.6), (12.0, -4.6), (3.0, -4.0), (0.6, 2.4), (3.0, 6.6)]
-    out.append(path(spline([hl(q) for q in face], closed=True, t=0.45), ink["skin"]))
+        face = [(11.4, 6.2), (12.4, 3.4), (15.2, -2.4), (12.9, -4.2), (12.6, -11.8), (8.6, -14.6), (2.6, -12.2), (1.2, -5),
+                (1.0, 2.8), (3.2, 6.6)]
+    else:
+        face = [(11.0, 5.8), (12.0, 3.9), (11.9, 2.4), (13.3, 0.0), (14.5, -2.2), (13.9, -3.3), (12.5, -3.7), (13.0, -5.3),
+                (12.3, -6.4), (12.7, -7.6), (11.7, -8.8), (12.3, -11.8), (8.6, -14.4), (2.6, -12.0), (1.8, -6.5), (3.0, -1),
+                (2.4, 2.6), (4.2, 6.0)]
+    out.append(path(spline([hl(q) for q in face], closed=True, t=0.3), ink["skin"]))
+    beard = [(12.9, -7.7), (13.3, -10.6), (12.3, -13.3), (8.8, -15.6), (4.0, -14.4), (1.6, -10.0), (2.2, -5.6), (5.2, -6.6),
+             (8.2, -8.4), (10.8, -7.6)]
+    if not veil:
+        out.append(path(spline([hl(q) for q in beard], closed=True, t=0.4), ink["beard"]))
+        out.append(path(spline([hl(q) for q in ((9.8, -3.9), (12.9, -4.0), (13.3, -5.4), (10.6, -6.0))], closed=True, t=0.4),
+                        ink["beard"]))
     if small:
         out.append(oval(hl((8.8, 2.3)), 1.6, 1.3, -tilt, ink["agal"]))
     else:
-        out.append(blur(line([hl((4.2, 1.0)), hl((8.5, 0.2)), hl((11.4, -0.4))], ink["skin_lo"], 1.6, 0.8), 1))
+        out.append(blur(line([hl((3.6, -1.6)), hl((7.0, -4.2)), hl((9.4, -4.0))], ink["skin_lo"], 1.8, 0.7), 1))
+        out.append(line([hl((14.1, -3.0)), hl((12.6, -3.7))], ink["skin_lo"], 0.8, 0.9, curve=False))
         out.append(line([hl((5.2, 5.0)), hl((8.2, 5.5)), hl((11.0, 4.8))], ink["agal"], 1.7))
         out.append(oval(hl((8.5, 3.0)), 1.9, 1.15, -tilt, ink["agal"]))
         out.append(disc(hl((9.0, 3.3)), 0.45, "#ffffff", 0.85))
     out.append(path(crown_d, chk))
     out.append(f'<g clip-path="url(#{uid}crown)">'
-               + blur(line([hl((-10.5, 10)), hl((-14, -2)), hl((-10.5, -10))], ink["white_lo"], 4.6, 0.85)
-                      + line([hl((3.6, 5.6)), hl((2.8, 0)), hl((0, -8))], ink["white_lo"], 2.6, 0.7), 1) + "</g>")
-    out.append(path(mask_d, chk))
-    out.append(f'<g clip-path="url(#{uid}mask)">'
-               + blur(line([hl((12.4, -9.6)), hl((6, -14.4)), hl((-4, -13.4))], ink["white_lo"], 4.0, 0.9)
-                      + line([hl((13.6, -2.4)), hl((3, -3.6)), hl((-9, 1.0))], ink["white_lo"], 1.8, 0.85)
-                      + line([hl((13.6, -6.6)), hl((3, -8.4)), hl((-9, -3.5))], ink["white_lo"], 1.8, 0.8), 1)
-               + line([hl((12.9, brim[0])), hl((5.2, brim[1])), hl((-2, brim[2])), hl((-9.4, 3.4))], ink["red_lo"],
-                      0.9 if not small else 1.6, 0.9)
-               + "</g>")
+               + blur(line([hl((-10.5, 10)), hl((-14, -2)), hl((-10.5, -10))], ink["fold"], 4.6, 0.3)
+                      + line([hl((3.6, 5.6)), hl((2.8, 0)), hl((0, -8))], ink["fold"], 2.6, 0.3), 1) + "</g>")
+    if veil:
+        out.append(path(mask_d, chk))
+        out.append(f'<g clip-path="url(#{uid}mask)">'
+                   + blur(line([hl((12.4, -9.6)), hl((6, -14.4)), hl((-4, -13.4))], ink["white_lo"], 4.0, 0.9)
+                          + line([hl((13.6, -2.4)), hl((3, -3.6)), hl((-9, 1.0))], ink["white_lo"], 1.8, 0.85)
+                          + line([hl((13.6, -6.6)), hl((3, -8.4)), hl((-9, -3.5))], ink["white_lo"], 1.8, 0.8), 1)
+                   + line([hl((12.9, brim[0])), hl((5.2, brim[1])), hl((-2, brim[2])), hl((-9.4, 3.4))], ink["red_lo"],
+                          0.9 if not small else 1.6, 0.9)
+                   + "</g>")
     out.append(path(panel_d, chk))
     edge = [panel[2], panel[3], panel[4], panel[5]]
     out.append(f'<g clip-path="url(#{uid}panel)">' + line(edge, ink["white"], 5.5) + line(edge, ink["red"], 1.5 if not small else 2.6)
-               + blur(line([panel[0], mix(panel[1], panel[6], 0.5), mix(panel[3], panel[5], 0.5)], ink["white_lo"], 2.6, 0.8), 1)
+               + blur(line([panel[0], mix(panel[1], panel[6], 0.5), mix(panel[3], panel[5], 0.5)], ink["fold"], 2.6, 0.28), 1)
                + "</g>")
     if not small:
         out.append(path(peak_d, chk))
@@ -535,9 +608,17 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
 
     if stage > 1.0:
         out.extend(sword_shapes(add(hand, polar(ang, 5.5)), ang, visible, ink, small))
+    # the cloak's wide sleeve hangs open under the arm, and the wind takes it back
+    fall = unit((-0.15 - 0.55 * wind, -1.0))
+    s_a, s_c = mix(sj, elbow, 0.3), mix(elbow, hand, 0.4)
+    sleeve = [s_a, elbow, s_c, add(s_c, mul(fall, 7)), add(elbow, mul(fall, 15)), add(s_a, mul(fall, 11))]
+    out.append(path(spline(sleeve, closed=True, t=0.45), ink["bisht"]))
+    out.append(line(sleeve[3:], ink["gold"], 2.0 if not small else 3.0))
+    out.append(line([elbow, add(elbow, mul(fall, 11))], ink["bisht_fold"], 2.0, 0.95, curve=False))
     out.append(path(capsule(sj, elbow, 14.5, 12), ink["bisht"]))
-    cuff = perp(unit(sub(elbow, sj)))
-    out.append(line([add(elbow, mul(cuff, 5.5)), add(elbow, mul(cuff, -5.5))], ink["gold"], 2.4 if not small else 3.2, curve=False))
+    rim = perp(unit(sub(elbow, sj)))
+    out.append(line([add(mix(sj, elbow, 0.12), mul(rim, 6.2)), add(mix(sj, elbow, 0.9), mul(rim, 5.2))], ink["bisht_hi"], 1.4, 0.95,
+                    curve=False))
     out.append(path(capsule(elbow, hand, 10.8, 8.6), ink["thobe"]))
     out.append(disc(hand, 4.7, ink["skin"]))
 
@@ -546,9 +627,9 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     return "<defs>" + "".join(defs) + "</defs>" + "".join(out)
 
 
-def svg(ps, box, coat="chestnut", lod="big", uid="k", ground=None, size=None):
+def svg(ps, box, coat="chestnut", lod="big", uid="k", ground=None, size=None, veil=False):
     x, top, wdt, hgt = box
-    body = draw(ps, coat, lod, uid)
+    body = draw(ps, coat, lod, uid, veil)
     floor = f'<rect x="{x}" y="0" width="{wdt}" height="1.6" fill="{ground}"/>' if ground else ""
     dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {-top} {wdt} {hgt}"{dims}>{floor}{body}</svg>'
