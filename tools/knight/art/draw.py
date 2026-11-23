@@ -234,6 +234,11 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     def soft(shape, n):
         sh_out.append(blur(shape, n))
 
+    def crease(points, width, opacity):
+        """A furrow between two muscles: a soft shadow, and a finer, sharper line inside it."""
+        soft(line(points, c["deep"], width, opacity), 2)
+        soft(line(points, c["deep"], width * 0.36, min(0.9, opacity * 1.05)), 1)
+
     hipw, stw = legs["nh"]["top"], legs["nh"]["mid"]
     dq = unit(sub(stw, hipw))
     nq = perp(dq)
@@ -252,31 +257,27 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     for x in (16, 5, -6):
         soft(line([w((x, 135)), w((x - 4, 104))], c["shade"], 2.8, 0.26), 2)
     # shoulder, arm and breast
-    soft(line([w((38, 152)), w((51, 131)), w((62, 113))], c["deep"], 4.4, 0.62), 2)
-    soft(oval(add(mix(shw, elw, 0.42), mul(ns, 3)), 12, 20, angle(ds) + 90, c["hi"], 0.55), 4)
-    soft(line([add(shw, add(mul(ds, 8), mul(ns, -15))), add(shw, add(mul(ds, 28), mul(ns, -18))), add(elw, mul(ns, -10))],
-              c["deep"], 3.8, 0.58), 2)
-    soft(line([w((62, 115)), w((55, 100)), w((45, 90))], c["deep"], 3.8, 0.5), 2)
-    soft(oval(w((58, 108)), 6, 10, body.pitch - 20, c["light"], 0.5), 4)
+    crease([w((38, 152)), w((51, 131)), w((62, 113))], 4.4, 0.62)
+    soft(oval(add(mix(shw, elw, 0.42), mul(ns, 3)), 12, 20, angle(ds) + 90, c["hi"], 0.66), 4)
+    crease([add(shw, add(mul(ds, 8), mul(ns, -15))), add(shw, add(mul(ds, 28), mul(ns, -18))), add(elw, mul(ns, -10))], 3.8, 0.58)
+    crease([w((62, 115)), w((55, 100)), w((45, 90))], 3.8, 0.5)
+    soft(oval(w((58, 108)), 6, 10, body.pitch - 20, c["light"], 0.6), 4)
     # quarter, stifle and flank
-    soft(oval(add(hipw, mul(nq, 5)), 20, 18, 0, c["hi"], 0.62), 7)
-    soft(oval(add(hipw, add(mul(dq, -6), mul(nq, 2))), 9, 8, 0, c["hi"], 0.4), 4)
-    soft(line([add(hipw, add(mul(dq, -20), mul(nq, -17))), add(hipw, add(mul(dq, 4), mul(nq, -24))), add(stw, mul(nq, -14))],
-              c["deep"], 4.0, 0.55), 2)
-    soft(line([add(hipw, add(mul(dq, -10), mul(nq, -4))), add(hipw, add(mul(dq, 12), mul(nq, -11))), add(stw, mul(nq, -6))],
-              c["shade"], 3.0, 0.4), 2)
-    soft(line([add(hipw, add(mul(dq, 0), mul(nq, 24))), add(stw, mul(nq, 15)), add(stw, add(mul(dq, 7), mul(nq, 5)))],
-              c["deep"], 3.8, 0.55), 2)
+    soft(oval(add(hipw, add(mul(dq, 6), mul(nq, 6))), 25, 15, angle(dq), c["hi"], 0.6), 7)
+    soft(oval(add(hipw, add(mul(dq, -4), mul(nq, 3))), 11, 7, angle(dq), c["hi"], 0.45), 4)
+    crease([add(hipw, add(mul(dq, -20), mul(nq, -17))), add(hipw, add(mul(dq, 4), mul(nq, -24))), add(stw, mul(nq, -14))], 4.0, 0.55)
+    crease([add(hipw, add(mul(dq, -10), mul(nq, -4))), add(hipw, add(mul(dq, 12), mul(nq, -11))), add(stw, mul(nq, -6))], 3.0, 0.36)
+    crease([add(hipw, add(mul(dq, 0), mul(nq, 24))), add(stw, mul(nq, 15)), add(stw, add(mul(dq, 7), mul(nq, 5)))], 3.8, 0.55)
     # neck: the groove under it, the muscle from poll to shoulder, the crest
     under = [add(sp[i], mul(perp(nd[i]), -(nr[i] - 4.6))) for i in range(1, 6)]
-    soft(line(under, c["deep"], 3.8, 0.55), 2)
+    crease(under, 3.8, 0.55)
     middle = [add(sp[i], mul(perp(nd[i]), -1.5 + i * 0.5)) for i in range(6)]
     soft(line(middle, c["shade"], 3.0, 0.38), 2)
     soft(line(neck["crest"][1:6], c["hi"], 5.0, 0.62), 4)
     soft(line([sp[0], add(sp[0], mul(perp(neck["dir"]), -21))], c["deep"], 5.5, 0.38), 4)
     # head: muzzle, cheek, the ridge under the eye
     soft(path(spline([hw(p) for p in ((40, 3.5), (51, 1.2), (53.5, -3.5), (51, -8.5), (45, -11), (38, -6))]), c["muzzle"], 0.85), 2)
-    soft(line([hw(p) for p in ((8.5, -3), (17.5, -10.5), (13, -19))], c["deep"], 2.8, 0.55), 2)
+    crease([hw(p) for p in ((8.5, -3), (17.5, -10.5), (13, -19))], 2.8, 0.55)
     soft(line([hw(p) for p in ((20, 0), (30, -2.5), (41, -3.5))], c["hi"], 2.4, 0.6), 2)
     soft(line([hw(p) for p in ((8, 6.6), (19, 5.8), (30, 2.0))], c["hi"], 2.6, 0.6), 2)
     soft(oval(hw((11.5, -11)), 8, 6.5, head, c["light"], 0.5), 4)
@@ -436,7 +437,8 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     target = add(target, (5 * ps["wave"], 2.5 * abs(ps["wave"])))
     elbow, hand = ik(sj, target, 33, 29.5, -1)
 
-    # head: the shemagh over the crown, its end drawn across the nose and mouth, the agal over it
+    # head: the shemagh lies over the crown under the agal, one end is drawn across the nose and mouth, and the
+    # fold behind falls to the middle of the back; in the wind that fold lifts and trails behind the neck
     tilt = lean * 0.45 + nod
     hc = add(sh, polar(90 - lean - 0.4 * nod, 21.5))
 
@@ -445,59 +447,62 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
 
     if small:
         cell, bar = 3 / PX, 1 / PX
-        defs.append(f'<pattern id="{uid}chk" width="{cell:.4f}" height="{cell:.4f}" patternUnits="userSpaceOnUse">'
-                    f'<rect width="{cell:.4f}" height="{cell:.4f}" fill="{ink["white"]}"/>'
-                    f'<rect width="{bar:.4f}" height="{cell:.4f}" fill="{ink["red"]}"/>'
-                    f'<rect width="{cell:.4f}" height="{bar:.4f}" fill="{ink["red"]}"/></pattern>')
+        turn = ""
     else:
-        cell = 3.0
-        defs.append(f'<pattern id="{uid}chk" width="{cell}" height="{cell}" patternUnits="userSpaceOnUse" '
-                    f'patternTransform="rotate({tilt:.1f})"><rect width="{cell}" height="{cell}" fill="{ink["white"]}"/>'
-                    f'<path d="M0,0 L{cell},{cell} M{cell},0 L0,{cell}" stroke="{ink["red"]}" stroke-width="0.72"/></pattern>')
+        cell, bar = 4.2, 1.25
+        turn = f' patternTransform="rotate({tilt:.1f})"'
+    defs.append(f'<pattern id="{uid}chk" width="{cell:.4f}" height="{cell:.4f}" patternUnits="userSpaceOnUse"{turn}>'
+                f'<rect width="{cell:.4f}" height="{cell:.4f}" fill="{ink["white"]}"/>'
+                f'<rect width="{bar:.4f}" height="{cell:.4f}" fill="{ink["red"]}"/>'
+                f'<rect width="{cell:.4f}" height="{bar:.4f}" fill="{ink["red"]}"/></pattern>')
     chk = f"url(#{uid}chk)"
-    hang_d = [(-12.6, 5), (-16, -6), (-19.5, -20), (-20.5, -37), (-11, -45), (0, -42), (2.5, -27), (0.5, -14), (-5, -11.5)]
-    fly_d = [(-12.6, 5), (-26, 7.5), (-44, 6.5), (-62, 2), (-77, -7), (-66, -13.5), (-49, -9.5), (-29, -13), (-7, -12)]
+    hang_d = [(-10.5, 7.0), (-15.5, -3), (-18.5, -15), (-19.5, -28), (-14.5, -40.5), (-8.5, -32), (-4.5, -21), (-3.5, -12), (-6, -4)]
+    fly_d = [(-10.5, 7.0), (-20, 5.5), (-31, 2.5), (-41, -2.5), (-49, -8.5), (-39, -10.8), (-28, -10.5), (-15, -13.5), (-5.5, -10)]
+    hold = [1.0, 0.6, 0.25, 0.0, 0.0, 0.0, 0.25, 0.6, 1.0]
     drape = []
     for i, (a, b) in enumerate(zip(hang_d, fly_d, strict=True)):
         q = mix(a, b, wind)
         if 2 <= i <= 6:
-            q = add(q, (0, 3.2 * wind * math.sin(2 * math.pi * (phi * 2 + i * 0.23))))
-        drape.append(hl(q))
+            q = add(q, (0, 2.6 * wind * math.sin(2 * math.pi * (phi * 2 + i * 0.23))))
+        drape.append(add(hc, rot(mul(q, 1.08), -tilt * hold[i])))
     drape_d = spline(drape, closed=True, t=0.5)
-    sway = 7.0 * wind
-    panel = [hl(q) for q in ((-3.5, -11), (8.5, -11.5), (12 - sway * 0.3, -21), (10 - sway, -34), (2 - sway, -39.5),
-                             (-5 - sway * 0.6, -31), (-5.5, -20))]
+    sway = 6.0 * wind
+    panel = [hl(q) for q in ((-3.5, -11), (7.5, -11.5), (10.5 - sway * 0.3, -20), (8.5 - sway, -30), (1.5 - sway, -34.5),
+                             (-5 - sway * 0.6, -27), (-5.5, -19))]
     panel_d = spline(panel, closed=True, t=0.5)
-    crown = [(11.0, 5.6), (11.3, 8.6), (9.2, 12.8), (4, 15.4), (-2.5, 15.6), (-8.4, 13.3), (-12, 8.6), (-13, 2.4), (-12, -4.5),
+    crown = [(11.0, 5.6), (11.4, 9.0), (9.4, 13.4), (4, 16.2), (-2.5, 16.6), (-8.6, 14.2), (-12.2, 9.0), (-13, 2.4), (-12, -4.5),
              (-9, -10), (-4, -12.6), (2, -9), (4.6, 1.0), (5.0, 5.4)]
     crown_d = spline([hl(q) for q in crown], closed=True, t=0.5)
-    mask = [(12.9, 0.5), (14.8, -3.4), (13.2, -6.4), (12.4, -9.4), (9.6, -12.6), (4, -14.8), (-3, -13.6), (-8.5, -9.5), (-10.8, -3),
-            (-9.4, 3.4), (-2, 2.6), (5.2, -0.1), (11.3, -0.6)]
+    brim = (-3.0, -3.2, 0.8) if small else (0.5, -0.1, 2.6)
+    mask = [(12.9, brim[0]), (14.8, -3.8), (13.2, -6.6), (12.4, -9.4), (9.6, -12.6), (4, -14.8), (-3, -13.6), (-8.5, -9.5),
+            (-10.8, -3), (-9.4, 3.4), (-2, brim[2]), (5.2, brim[1]), (11.3, brim[0] - 1.1)]
     mask_d = spline([hl(q) for q in mask], closed=True, t=0.5)
-    peak_d = spline([hl(q) for q in ((6.5, 11.6), (10.6, 12.0), (13.2, 8.6), (11.2, 5.6), (7.5, 6.6))], closed=True, t=0.4)
+    peak_d = spline([hl(q) for q in ((7.6, 8.2), (11.4, 8.0), (13.5, 6.3), (12.7, 4.5), (9.0, 4.9))], closed=True, t=0.4)
     for name, d in (("drape", drape_d), ("panel", panel_d), ("crown", crown_d), ("mask", mask_d)):
         defs.append(f'<clipPath id="{uid}{name}"><path d="{d}"/></clipPath>')
 
     out.append(path(drape_d, chk))
     hem = [drape[2], drape[3], drape[4], drape[5], drape[6]]
-    out.append(f'<g clip-path="url(#{uid}drape)">' + line(hem, ink["white"], 7.5) + line(hem, ink["red"], 1.6 if not small else 2.8)
-               + blur(line([drape[1], mix(drape[2], drape[7], 0.5), mix(drape[3], drape[6], 0.5)], ink["white_lo"], 3.0, 0.85)
+    out.append(f'<g clip-path="url(#{uid}drape)">' + line(hem, ink["white"], 6.0) + line(hem, ink["red"], 1.5 if not small else 2.8)
+               + blur(line([drape[1], mix(drape[2], drape[7], 0.5), mix(drape[3], drape[6], 0.5)], ink["white_lo"], 2.6, 0.8)
                       + line([mix(drape[0], drape[8], 0.5), mix(drape[1], drape[8], 0.6), mix(drape[2], drape[7], 0.8)],
-                             ink["white_lo"], 2.4, 0.7), 1) + "</g>")
+                             ink["white_lo"], 2.2, 0.7), 1) + "</g>")
     if not small:
         nrm = unit(sub(mix(drape[3], drape[5], 0.5), mix(drape[2], drape[6], 0.5)))
-        for kk in range(9):
-            q = quad(drape[3], drape[4], drape[5], kk / 8)
-            out.append(line([q, add(q, mul(nrm, 3.2))], ink["white"], 0.8, curve=False))
+        for kk in range(7):
+            q = quad(drape[3], drape[4], drape[5], kk / 6)
+            out.append(line([q, add(q, mul(nrm, 2.8))], ink["white"], 0.8, curve=False))
     # the open part of the face: brow, eye, the bridge of the nose
     face = [(11.0, 5.8), (11.7, 3.4), (12.9, 0.5), (11.2, -0.9), (4.6, -0.3), (2.4, 2.6), (4.2, 6.0)]
     if small:
-        face = [(11.4, 6.2), (12.3, 3.4), (13.3, 0.2), (11.4, -2.2), (3.4, -1.4), (1.2, 2.8), (3.4, 6.6)]
+        face = [(11.4, 6.2), (12.3, 3.4), (13.6, -0.6), (12.0, -4.6), (3.0, -4.0), (0.6, 2.4), (3.0, 6.6)]
     out.append(path(spline([hl(q) for q in face], closed=True, t=0.45), ink["skin"]))
-    out.append(blur(line([hl((4.2, 1.0)), hl((8.5, 0.2)), hl((11.4, -0.4))], ink["skin_lo"], 1.6, 0.8), 1))
-    out.append(line([hl((5.2, 5.0)), hl((8.2, 5.5)), hl((11.0, 4.8))], ink["agal"], 1.7 if not small else 2.1))
-    out.append(oval(hl((8.5, 3.0)), 1.9 if not small else 2.2, 1.15 if not small else 1.5, -tilt, ink["agal"]))
-    if not small:
+    if small:
+        out.append(oval(hl((8.8, 2.3)), 1.6, 1.3, -tilt, ink["agal"]))
+    else:
+        out.append(blur(line([hl((4.2, 1.0)), hl((8.5, 0.2)), hl((11.4, -0.4))], ink["skin_lo"], 1.6, 0.8), 1))
+        out.append(line([hl((5.2, 5.0)), hl((8.2, 5.5)), hl((11.0, 4.8))], ink["agal"], 1.7))
+        out.append(oval(hl((8.5, 3.0)), 1.9, 1.15, -tilt, ink["agal"]))
         out.append(disc(hl((9.0, 3.3)), 0.45, "#ffffff", 0.85))
     out.append(path(crown_d, chk))
     out.append(f'<g clip-path="url(#{uid}crown)">'
@@ -506,22 +511,27 @@ def draw(ps, coat="chestnut", lod="big", uid="k"):
     out.append(path(mask_d, chk))
     out.append(f'<g clip-path="url(#{uid}mask)">'
                + blur(line([hl((12.4, -9.6)), hl((6, -14.4)), hl((-4, -13.4))], ink["white_lo"], 4.0, 0.9)
-                      + line([hl((13.6, -1.6)), hl((3, -3.4)), hl((-9, 1.0))], ink["white_lo"], 1.8, 0.85)
-                      + line([hl((13.6, -6.2)), hl((3, -8.2)), hl((-9, -3.5))], ink["white_lo"], 1.8, 0.8), 1)
-               + line([hl((12.9, 0.5)), hl((5.2, -0.1)), hl((-2, 2.6)), hl((-9.4, 3.4))], ink["red_lo"], 0.9 if not small else 1.6, 0.9)
+                      + line([hl((13.6, -2.4)), hl((3, -3.6)), hl((-9, 1.0))], ink["white_lo"], 1.8, 0.85)
+                      + line([hl((13.6, -6.6)), hl((3, -8.4)), hl((-9, -3.5))], ink["white_lo"], 1.8, 0.8), 1)
+               + line([hl((12.9, brim[0])), hl((5.2, brim[1])), hl((-2, brim[2])), hl((-9.4, 3.4))], ink["red_lo"],
+                      0.9 if not small else 1.6, 0.9)
                + "</g>")
     out.append(path(panel_d, chk))
     edge = [panel[2], panel[3], panel[4], panel[5]]
-    out.append(f'<g clip-path="url(#{uid}panel)">' + line(edge, ink["white"], 6.5) + line(edge, ink["red"], 1.5 if not small else 2.6)
+    out.append(f'<g clip-path="url(#{uid}panel)">' + line(edge, ink["white"], 5.5) + line(edge, ink["red"], 1.5 if not small else 2.6)
                + blur(line([panel[0], mix(panel[1], panel[6], 0.5), mix(panel[3], panel[5], 0.5)], ink["white_lo"], 2.6, 0.8), 1)
                + "</g>")
-    out.append(path(peak_d, chk))
-    out.append(line([hl((11.2, 5.5)), hl((13.2, 8.4))], ink["white_lo"], 1.0, 0.9, curve=False))
-    for dy in (0.0, 3.7):
-        band = [hl((11.4, 7.4 + dy)), hl((5, 9.4 + dy)), hl((-3, 9.6 + dy)), hl((-12.8, 5.6 + dy))]
-        out.append(line(band, ink["agal"], 3.0 if not small else 3.3))
+    if not small:
+        out.append(path(peak_d, chk))
+    # the agal: two black rings round the crown, with the top of the head showing above them
+    if small:
+        dome = [(10.6, 10.4), (9.4, 13.4), (4, 16.2), (-2.5, 16.6), (-8.6, 14.2), (-12.0, 8.0), (-3, 11.4), (5, 11.8)]
+        out.append(path(spline([hl(q) for q in dome], closed=True, t=0.4), ink["white"]))
+    for dy, width in (((1.3, 5.4),) if small else ((0.0, 2.4), (2.6, 2.4))):
+        band = [hl((10.4, 8.4 + dy)), hl((5, 9.7 + dy)), hl((-3, 9.3 + dy)), hl((-11.9, 5.4 + dy))]
+        out.append(line(band, ink["agal"], width))
         if not small:
-            out.append(line([hl((6, 9.5 + dy)), hl((1, 10.0 + dy)), hl((-5, 9.6 + dy))], ink["agal_hi"], 0.6, 0.8))
+            out.append(line([hl((6, 9.9 + dy)), hl((1, 10.3 + dy)), hl((-5, 9.6 + dy))], ink["agal_hi"], 0.5, 0.8))
 
     if stage > 1.0:
         out.extend(sword_shapes(add(hand, polar(ang, 5.5)), ang, visible, ink, small))
