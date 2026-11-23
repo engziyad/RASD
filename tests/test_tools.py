@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,7 @@ import unittest
 from unittest import mock
 import warnings
 import zipfile
+import zlib
 from typing import ClassVar
 from pathlib import Path
 
@@ -2635,24 +2637,74 @@ class Banner(unittest.TestCase):
                 x += n
         return pixels
 
-    def test_the_knight_is_a_picture(self):
-        width, height = banner.KNIGHT_SIZE
-        self.assertTrue(all(re.fullmatch(r"#[0-9a-f]{6}", c) for c in banner.KNIGHT_PALETTE))
-        for pose in range(len(banner.KNIGHT_POSES)):
-            pixels = banner.knight_pixels(pose)
-            self.assertEqual((len(pixels[0]), len(pixels)), (width, height))
-            used = {c for row in pixels for c in row}
-            self.assertIn(None, used)
-            self.assertLessEqual(used - {None}, set(range(len(banner.KNIGHT_PALETTE))))
-            image = banner.knight_sixel(pose)
-            self.assertTrue(image.startswith(f'\033P9;1q"1;1;{width};{height}') and image.endswith("\033\\"))
-            self.assertEqual(self.unsixel(image), {(x, y): c + 1 for y, row in enumerate(pixels)
-                                                   for x, c in enumerate(row) if c is not None})
-            self.assertNotIn("#0", image)
-            lower = self.unsixel(banner.knight_sixel(pose, pad=7))
-            self.assertEqual(min(y for _, y in lower), min(y for _, y in self.unsixel(image)) + 7)
+    @staticmethod
+    def png(rows, palette, kinds):
+        """An indexed PNG of `rows`, row i written with PNG filter kinds[i]."""
+        def chunk(kind, data):
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
 
-    def test_only_a_terminal_that_draws_pictures_gets_the_knight(self):
+        raw, prev = b"", bytes(len(rows[0]))
+        for row, kind in zip(rows, kinds, strict=True):
+            line = bytearray()
+            for i, v in enumerate(row):
+                left, up, corner = (row[i - 1] if i else 0), prev[i], (prev[i - 1] if i else 0)
+                base = left + up - corner
+                paeth = min((left, up, corner), key=lambda q: abs(base - q))
+                line.append((v - (0, left, up, (left + up) // 2, paeth)[kind]) & 255)
+            raw += bytes((kind,)) + bytes(line)
+            prev = row
+        head = struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, 3, 0, 0, 0)
+        return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", head) + chunk(b"PLTE", bytes(palette)) + chunk(b"IDAT", zlib.compress(raw))
+                + chunk(b"IEND", b""))
+
+    def test_read_png(self):
+        rows = [bytes((1, 2, 3, 250)), bytes((4, 4, 0, 9)), bytes((7, 0, 255, 1)), bytes((9, 200, 3, 3)), bytes((0, 0, 5, 6))]
+        palette = (0, 0, 0, 255, 128, 0, 16, 32, 48)
+        for kinds in ((0, 0, 0, 0, 0), (0, 1, 2, 3, 4), (4, 3, 2, 1, 0)):
+            width, height, colours, got = banner.read_png(self.png(rows, palette, kinds))
+            self.assertEqual((width, height, got), (4, 5, rows))
+            self.assertEqual(colours, ["#000000", "#ff8000", "#102030"])
+        with self.assertRaises(ValueError):
+            banner.read_png(b"not a png")
+
+    def test_ride_assets(self):
+        ride = banner.load_ride()
+        w, h = ride.size
+        self.assertEqual(len(ride.rows[0]), ride.columns * w)
+        self.assertGreaterEqual(len(ride.rows), -(-len(ride.x) // ride.columns) * h)
+        self.assertLessEqual(len(ride.palette), 256)
+        self.assertTrue(all(re.fullmatch(r"#[0-9a-f]{6}", c) for c in ride.palette))
+        self.assertEqual(list(ride.x), sorted(ride.x))
+        self.assertEqual((ride.x[0], ride.x[-1]), (0, (banner.banner_width() - 2) * banner.CELL[0] - w))
+        used = set()
+        for i in range(len(ride.x)):
+            frame = ride.frame(i)
+            self.assertEqual((len(frame[0]), len(frame)), (w, h))
+            used |= set(b"".join(frame))
+        self.assertIn(0, used)
+        self.assertLess(max(used), len(ride.palette))
+
+    def test_ride_timeline(self):
+        sys.path.insert(0, str(ROOT / "tools" / "knight" / "art"))
+        import rig
+        ride = banner.load_ride()
+        self.assertEqual((ride.size, len(ride.x), ride.rate), (rig.SPRITE, rig.FRAMES, rig.FPS))
+        xs = [round(rig.travelled(min(i / rig.FPS, rig.T_END)) * rig.PX) for i in range(rig.FRAMES)]
+        self.assertEqual(list(ride.x), xs[:-1] + [rig.TRACK_PX])
+
+    def test_sixel_roundtrip(self):
+        ride = banner.load_ride()
+        w, h = ride.size
+        for i, pad, top in ((0, 0, 0), (len(ride.x) // 2, 7, 0), (len(ride.x) - 1, 0, 4)):
+            rows = ride.frame(i)
+            image = banner.sixel(rows, ride.palette, pad=pad, top=top)
+            self.assertTrue(image.startswith(f'\033P9;1q"1;1;{w + pad};{h + top}') and image.endswith("\033\\"))
+            self.assertNotRegex(image, r"#0(?!\d)")
+            self.assertEqual(self.unsixel(image), {(x + pad, y + top): c for y, row in enumerate(rows) for x, c in enumerate(row) if c})
+        self.assertEqual(self.unsixel(banner.sixel([bytes((0, 3, 3, 3, 3, 3, 0)), bytes((1, 0, 0, 0, 0, 0, 2))], ["#000000"] * 4)),
+                         {(1, 0): 3, (2, 0): 3, (3, 0): 3, (4, 0): 3, (5, 0): 3, (0, 1): 1, (6, 1): 2})
+
+    def test_sixel_detection(self):
         self.assertTrue(banner.reports_sixel(b"\033[?62;4;6;22c"))
         self.assertTrue(banner.reports_sixel(b"x\033[?64;1;2;4c"))
         self.assertFalse(banner.reports_sixel(b"\033[?62;42;22c"))
@@ -2669,8 +2721,10 @@ class Banner(unittest.TestCase):
             with mock.patch.object(banner, "_ask_terminal", return_value=b""):
                 self.assertFalse(banner.pictures())
 
-    def test_the_knight_rides_the_loading_track_from_left_to_right(self):
+    def test_ride_output(self):
         width = banner.banner_width() - 2
+        knight = banner.load_ride()
+        rows, cells = knight.size[1] // banner.CELL[1], knight.size[0] // banner.CELL[0]
         self.assertEqual(banner.track(3, 8, color=False), "▔▔▔ ▔ ▔")
         self.assertEqual(banner.track(8, 8, color=False), "▔" * 8)
         out = io.StringIO()
@@ -2682,23 +2736,34 @@ class Banner(unittest.TestCase):
             ride = out.getvalue()
             plain = io.StringIO()
             banner.ride(color=True, out=plain, images=False, delay=0)
-        cells, rows = banner.KNIGHT_SIZE[0] // 10, banner.KNIGHT_SIZE[1] // 20
+            lost = io.StringIO()
+            with mock.patch.object(banner, "load_ride", side_effect=OSError("no sheet")):
+                banner.ride(color=True, out=lost, images=True, cell=banner.CELL, delay=0)
         frames = ride.split("\0337")[1:]
-        self.assertEqual(len(frames), width - cells + 1)
+        self.assertEqual(len(frames), len(knight.x))
         self.assertTrue(all(f.startswith("\033P") for f in frames))
         self.assertEqual({f.count("\0338") for f in frames}, {1})
-        self.assertTrue(all(banner.knight_sixel(pose) in ride for pose in range(len(banner.KNIGHT_POSES))))
-        self.assertTrue(frames[-1].startswith(banner.knight_sixel(banner.KNIGHT_REST)))
-        self.assertIn(f"\033[{2 + width - cells}C\0337", ride)
+        self.assertEqual((ride.count(banner.SYNC_ON), ride.count(banner.SYNC_OFF)), (len(frames), len(frames) + 1))
+        self.assertIn(f"\033[2C\0337{banner.sixel(knight.frame(0), knight.palette)}", ride)
+        self.assertIn(f"\033[{2 + width - cells}C\0337{banner.sixel(knight.frame(len(frames) - 1), knight.palette)}", ride)
+        self.assertEqual(ride.count(banner.track(width, width)), 1)
         up = sum(int(n) for n in re.findall(r"\033\[(\d+)A", ride))
         down = sum(int(n) for n in re.findall(r"\033\[(\d+)B", ride)) + ride.count("\n")
         self.assertEqual(down - up, rows + 2)
-        self.assertTrue(ride.endswith("\033[?25h\n"))
-        self.assertNotIn("\033P", plain.getvalue())
-        self.assertEqual(plain.getvalue().count("\033[1A"), width + 1)
-        self.assertIn(banner.track(width, width), plain.getvalue())
+        self.assertTrue(ride.endswith(f"{banner.SYNC_OFF}\033[?25h\n"))
+        with mock.patch.dict(os.environ, {"COLUMNS": "120", "LINES": str(rows + 2)}):
+            short = io.StringIO()
+            banner.ride(color=True, out=short, images=True, cell=banner.CELL, delay=0)
+        for text in (plain.getvalue(), lost.getvalue(), short.getvalue()):
+            self.assertNotIn("\033P", text)
+            self.assertEqual(text.count("\033[1A"), width + 1)
+            self.assertIn(banner.track(width, width), text)
+        with mock.patch.dict(os.environ, {"COLUMNS": "60"}):
+            narrow = io.StringIO()
+            banner.ride(color=True, out=narrow, images=True, cell=banner.CELL, delay=0)
+        self.assertEqual(narrow.getvalue(), "")
 
-    def test_the_banner_is_the_same_with_the_knight(self):
+    def test_banner_svg_unchanged(self):
         self.assertEqual(banner.svg(), (ROOT / "docs" / "assets" / "banner.svg").read_text(encoding="utf-8"))
 
 
