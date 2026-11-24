@@ -1,234 +1,53 @@
 name: RASD lab run
-# One measurement, on a branch that is not for merging: this copy of the workflow installs Splunk Enterprise on a
-# Windows runner and counts how often its service opens lsass.exe under four settings of its platform instrumentation.
-
-# The lab on machines that exist for one run. Each job takes a GitHub-hosted runner, marks it as a RASD lab
-# host (red/lab/README.md, Lab guard), installs Sysmon with the repository's configuration, runs the safe
-# default red steps and uploads the run: results, collected artifacts and the exported telemetry.
-# A last job turns the runs into evidence.md with `rasd evidence`, keeps the raw runs beside it in
-# purple/lab_runs (these machines hold nothing private), drops the kept runs this one replaces, rebuilds the
-# pages and pushes the result as a branch, lab-evidence/run-<id>, for a person to read and open as a pull
-# request. Nothing reaches main from here, and the workflow starts only when a person starts it.
-#
-# A live SIEM is the choice of the person who starts the run. Typing "accept" in the splunk input puts a
-# Splunk Enterprise beside each lab host for the length of the run (a container on the Linux hosts, the
-# service on the Windows host), with the RASD apps of queries/splunk_app in it and no vendor add-on. The
-# lab host's events reach it as they are written, its own scheduler raises the alerts, and red/lab/splunk_lab.py
-# waits for them and saves them as the --siem-alerts input of `rasd evidence`. Without that word the lab runs
-# as before, and the SIEM part of the Operational Score stays at zero for the evidence it makes.
-#
-# What a runner is not: joined to a domain. The Active Directory tests are skipped.
-# Credential access and the Security-log clear never run here. The WinRM test opens its session on the
-# lab host itself, and the decoy host is a container on the Linux lab host's own bridge network.
+# One run, on a branch that is not for merging: this copy of the workflow replays the pinned public datasets with
+# the rules of this commit and pushes the result onto the branch it ran from. The lab itself is the workflow of
+# the same name on main.
 
 on:
   workflow_dispatch:
-    inputs:
-      splunk:
-        description: "A live Splunk Enterprise beside each lab host. Type accept only if you have read the Splunk General Terms (https://www.splunk.com/en_us/legal/splunk-general-terms.html) and accept them."
-        required: false
-        default: ""
-        type: string
-      evidence_branch:
-        description: "Push the evidence as a branch (lab-evidence/run-<id>). Untick to read the runs and push nothing."
-        required: false
-        default: true
-        type: boolean
 
 permissions:
-  contents: read
-
-env:
-  # Starting Splunk Enterprise is accepting its licence and the Splunk General Terms. Only the person who
-  # starts a run can do that, by typing "accept" in the input above; anything else runs the lab without a SIEM.
-  SPLUNK_TERMS: ${{ inputs.splunk == 'accept' && 'accept' || '' }}
-  # One release of Splunk Enterprise on every host, each file pinned by its digest: the image on the Linux
-  # hosts, the installer on the Windows host (which must also carry a valid signature of Splunk).
-  SPLUNK_IMAGE: splunk/splunk:10.4.5@sha256:e8bd9fbd0c5f5dffc73d84fe62f60e69c1d811fd0c89b22a174a46ce99d2dc1b
-  SPLUNK_MSI: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-windows-x64.msi
-  SPLUNK_MSI_SHA256: 312a62e376393e6cb7ffda36822d67fbd772225f1330a409d614e064463a2fa3
+  contents: write
 
 concurrency:
-  group: rasd-lab-run-${{ github.ref }}
-  cancel-in-progress: true
+  group: rasd-datasets-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  measure:
-    name: Why Splunk opens LSASS (one measurement)
-    runs-on: windows-2022
+  datasets:
+    name: Public datasets, replayed with this commit's rules
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      NO_BANNER: "1"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
         with:
-          persist-credentials: false
+          python-version: "3.12"
+          cache: pip
 
-      - name: Install Sysmon with the repository's configuration
-        shell: powershell
+      - name: Install the rasd command with the dataset readers
+        run: pip install -e ".[datasets]"
+
+      - name: Fetch the pinned files and verify every hash
+        run: rasd datasets fetch
+
+      - name: Replay every rule over them and keep the result
+        run: rasd datasets run --write
+
+      - name: The result is what the repository's rules give
+        run: rasd datasets check
+
+      - name: Push the result onto this branch
         run: |
-          $zip = Join-Path $env:RUNNER_TEMP 'Sysmon.zip'
-          $dir = Join-Path $env:RUNNER_TEMP 'Sysmon'
-          Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Sysmon.zip' -OutFile $zip -UseBasicParsing
-          Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
-          & (Join-Path $dir 'Sysmon64.exe') -accepteula -i red\lab\sysmon-rasd.xml
-          Get-Service Sysmon64 | Format-Table -AutoSize
-
-      - name: Install Splunk Enterprise on the lab host
-        if: env.SPLUNK_TERMS == 'accept'
-        shell: powershell
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $msi = Join-Path $env:RUNNER_TEMP 'splunk.msi'
-          curl.exe --silent --show-error --fail --location --output $msi $env:SPLUNK_MSI
-          if ($LASTEXITCODE -ne 0) { throw 'the Splunk Enterprise installer could not be downloaded' }
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash.ToLower()
-          "installer: $env:SPLUNK_MSI ($([math]::Round((Get-Item -LiteralPath $msi).Length / 1MB)) MB), SHA-256 $hash"
-          if ($hash -ne $env:SPLUNK_MSI_SHA256) { throw 'the installer is not the file this workflow pins by its SHA-256' }
-          $signature = Get-AuthenticodeSignature -LiteralPath $msi
-          "signed by: $($signature.SignerCertificate.Subject) ($($signature.Status))"
-          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Splunk') { throw 'the installer does not carry a valid signature of Splunk' }
-
-          $bytes = New-Object byte[] 16
-          [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-          $password = 'Lab-' + (($bytes | ForEach-Object { $_.ToString('x2') }) -join '')
-          Write-Output "::add-mask::$password"
-          "SPLUNK_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $env:SPLUNK_PASSWORD = $password
-
-          $splunk = 'C:\Program Files\Splunk'
-          Add-MpPreference -ExclusionPath $splunk -ErrorAction SilentlyContinue
-          $log = Join-Path $env:RUNNER_TEMP 'splunk-install.log'
-          $started = Get-Date
-          $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @('/i', "`"$msi`"", '/quiet', '/norestart', '/l*v', "`"$log`"",
-            'AGREETOLICENSE=Yes', 'SPLUNKUSERNAME=admin', "SPLUNKPASSWORD=$password", 'INSTALL_SHORTCUT=0')
-          "msiexec ended with $($install.ExitCode) after $([int]((Get-Date) - $started).TotalSeconds) s"
-          if ($install.ExitCode -ne 0) { Get-Content -LiteralPath $log -Tail 40; throw 'Splunk Enterprise did not install' }
-          $url = 'https://127.0.0.1:8089'
-          python red\lab\splunk_lab.py about --url $url --timeout 420 --terms "accepted for this run by the person who started it" --out (Join-Path $env:RUNNER_TEMP 'siem.json')
-          if ($LASTEXITCODE -ne 0) { throw 'Splunk does not answer on its management port' }
-          "SPLUNK_URL=$url" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Measure who opens LSASS, with Splunk's instrumentation as installed, slowed, off and back
-        if: env.SPLUNK_URL != ''
-        shell: powershell
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $splunk = 'C:\Program Files\Splunk'
-          $conf = Join-Path $splunk 'etc\system\local\server.conf'
-          $usage = Join-Path $splunk 'var\log\introspection\resource_usage.log'
-          $out = Join-Path $env:RUNNER_TEMP 'lsass-measure'
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-          $plain = New-Object Text.UTF8Encoding($false)
-          $original = if (Test-Path -LiteralPath $conf) { [IO.File]::ReadAllText($conf) } else { '' }
-          & (Join-Path $splunk 'bin\splunk.exe') version
-          Get-CimInstance Win32_Service -Filter "Name='Splunkd'" | Select-Object Name, StartName, State | Format-List
-          if (Test-Path -LiteralPath $usage) {
-            $peek = New-Object IO.FileStream($usage, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
-            $peekReader = New-Object IO.StreamReader($peek)
-            $shown = 0
-            while ($shown -lt 2 -and $null -ne ($line = $peekReader.ReadLine())) {
-              if ($line -match '"component":"PerProcess"') { $line.Substring(0, [math]::Min(420, $line.Length)); $shown++ }
-            }
-            $peekReader.Dispose()
-            $peek.Dispose()
-          }
-
-          function Read-Opens([datetime]$from, [datetime]$to) {
-            $rows = @()
-            $events = Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Sysmon/Operational'; Id = 10; StartTime = $from; EndTime = $to } -ErrorAction SilentlyContinue
-            foreach ($e in $events) {
-              $x = [xml]$e.ToXml()
-              $d = @{}
-              foreach ($n in $x.Event.EventData.Data) { $d[$n.Name] = $n.'#text' }
-              if ($d.TargetImage -notlike '*\lsass.exe') { continue }
-              $modules = ($d.CallTrace -split '\|' | ForEach-Object { ($_ -split '\+')[0] }) -join '|'
-              $rows += [pscustomobject]@{ utc = $d.UtcTime; source = $d.SourceImage; access = $d.GrantedAccess; user = $d.SourceUser; modules = $modules }
-            }
-            @($rows | Sort-Object utc)
-          }
-
-          function Read-Collections([datetime]$from, [datetime]$to) {
-            if (-not (Test-Path -LiteralPath $usage)) { return @() }
-            $stamps = New-Object System.Collections.Generic.HashSet[string]
-            try {
-              $stream = New-Object IO.FileStream($usage, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
-              $reader = New-Object IO.StreamReader($stream)
-              while ($null -ne ($line = $reader.ReadLine())) {
-                if ($line -notmatch '"component":"PerProcess"') { continue }
-                if ($line -notmatch '"datetime":"(\d\d)-(\d\d)-(\d{4}) (\d\d:\d\d:\d\d)') { continue }
-                $when = [datetime]::ParseExact("$($Matches[3])-$($Matches[1])-$($Matches[2]) $($Matches[4])", 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal)
-                if ($when -ge $from.ToUniversalTime() -and $when -le $to.ToUniversalTime()) { [void]$stamps.Add($when.ToString('HH:mm:ss')) }
-              }
-              $reader.Dispose()
-              $stream.Dispose()
-            } catch {
-              Write-Host "resource_usage.log could not be read: $($_.Exception.Message)"
-              return @()
-            }
-            @($stamps | Sort-Object)
-          }
-
-          function Measure-Phase([string]$name, [string]$stanza, [int]$seconds, [bool]$restart) {
-            if ($restart) {
-              [IO.File]::WriteAllText($conf, $original + $stanza, $plain)
-              Restart-Service -Name Splunkd -Force
-              python red\lab\splunk_lab.py about --url $env:SPLUNK_URL --timeout 420 --terms "accepted for this run by the person who started it" --out (Join-Path $env:RUNNER_TEMP 'siem-again.json') | Out-Null
-              if ($LASTEXITCODE -ne 0) { throw "Splunk did not come back for the phase '$name'" }
-            }
-            Start-Sleep -Seconds 40
-            $from = Get-Date
-            Start-Sleep -Seconds $seconds
-            $to = Get-Date
-            Start-Sleep -Seconds 3
-            $opens = Read-Opens $from $to
-            $own = @($opens | Where-Object { $_.source -like '*\Splunk\bin\splunkd.exe' })
-            $times = @($own | ForEach-Object { [datetime]::ParseExact($_.utc, 'yyyy-MM-dd HH:mm:ss.fff', [Globalization.CultureInfo]::InvariantCulture) })
-            $gaps = @()
-            for ($i = 1; $i -lt $times.Count; $i++) { $gaps += [math]::Round(($times[$i] - $times[$i - 1]).TotalSeconds, 1) }
-            $others = @($opens | Where-Object { $_.source -notlike '*\Splunk\bin\splunkd.exe' } | Group-Object source, access, user | ForEach-Object { [pscustomobject]@{ what = $_.Name; count = $_.Count } })
-            $collections = Read-Collections $from $to
-            $result = [pscustomobject]@{
-              phase = $name
-              setting = $stanza.Trim()
-              window_seconds = $seconds
-              from_utc = $from.ToUniversalTime().ToString('o')
-              to_utc = $to.ToUniversalTime().ToString('o')
-              splunkd_opens = $own.Count
-              gaps_seconds = $gaps
-              masks = @($own | Select-Object -ExpandProperty access -Unique)
-              users = @($own | Select-Object -ExpandProperty user -Unique)
-              call_stacks = @($own | Select-Object -ExpandProperty modules -Unique)
-              open_times_utc = @($own | ForEach-Object { $_.utc })
-              per_process_collections = $collections.Count
-              per_process_collection_times_utc = $collections
-              other_sources = $others
-            }
-            Write-Host ("{0,-22} splunkd opened LSASS {1,2} times in {2,3} s   gaps: {3}   per-process collections logged: {4}" -f $name, $own.Count, $seconds, ($gaps -join ' '), $collections.Count)
-            $result
-          }
-
-          $period = "`r`n[introspection:generator:resource_usage]`r`ncollectionPeriodInSecs = 30`r`n"
-          $off = "`r`n[introspection:generator:resource_usage]`r`ndisabled = true`r`n"
-          $phases = @()
-          $phases += Measure-Phase 'as installed' '' 80 $false
-          $phases += Measure-Phase 'period 30 s' $period 130 $true
-          $phases += Measure-Phase 'resource usage off' $off 80 $true
-          $phases += Measure-Phase 'as installed, again' '' 80 $true
-          $doc = [pscustomobject]@{
-            what = 'Sysmon ProcessAccess events on lsass.exe from Splunk Enterprise own service, under four settings of its platform instrumentation'
-            splunk = (& (Join-Path $splunk 'bin\splunk.exe') version | Select-Object -First 1)
-            host_os = (Get-CimInstance Win32_OperatingSystem).Caption
-            phases = @($phases)
-          }
-          [IO.File]::WriteAllText((Join-Path $out 'lsass-opens.json'), ($doc | ConvertTo-Json -Depth 8), $plain)
-          Get-Content -LiteralPath (Join-Path $out 'lsass-opens.json') | Select-Object -First 200
-
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
-        if: always()
-        with:
-          name: lsass-measure
-          path: ${{ runner.temp }}/lsass-measure/
-          if-no-files-found: warn
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Nothing changed: the kept results already are what these rules give."
+            exit 0
+          fi
+          git status --short | head -n 40
+          git add --all
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "datasets: the public recordings replayed in workflow run $GITHUB_RUN_ID"
+          git push --quiet origin "HEAD:$GITHUB_REF_NAME"
