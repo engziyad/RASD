@@ -17,6 +17,9 @@ sources:
   - id: splunk-lsass
     title: Splunk Threat Research, You Bet Your Lsass (the masks dumping tools ask for, as Sysmon writes them, 0x1010, 0x1410, 0x1fffff)
     url: https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html
+  - id: splunk-instrumentation
+    title: Splunk Enterprise documentation, Configure platform instrumentation (on by default on every instance but a universal forwarder; per-process resource usage every 10 seconds)
+    url: https://help.splunk.com/en/splunk-enterprise/administer/troubleshoot/10.4/platform-instrumentation/configure-platform-instrumentation
 
 define:
   lsass: '.*\\{i:lsass.exe}'
@@ -26,19 +29,24 @@ define:
   defender: '{l:C:\ProgramData\Microsoft\Windows Defender\Platform\}(?:[^\\]+\\)+{l:MsMpEng.exe}'
   defender_root: '{l:C:\ProgramData\Microsoft\Windows Defender\Platform\MsMpEng.exe}'
   listers: '{l:C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe}|{l:C:\Windows\System32\wsmprovhost.exe}'
+  splunkd: '{l:C:\Program Files\Splunk\bin\splunkd.exe}'
+  splunk_account: '{l:NT SERVICE\Splunkd}'
+  # the call stack filter_splunk_service accepts, as its regular expression reads it: OpenProcess called from
+  # splunkd.exe's own code on a thread its runtime started, offsets free, no other module (a final newline as $ allows)
+  splunk_stack: '(?i:C:\\Windows\\System32\\ntdll\.dll\+[0-9a-f]+\|C:\\Windows\\System32\\KERNELBASE\.dll\+[0-9a-f]+(?:\|C:\\Program Files\\Splunk\\bin\\splunkd\.exe\+[0-9a-f]+)+\|C:\\Windows\\System32\\ucrtbase\.dll\+[0-9a-f]+\|C:\\Windows\\System32\\KERNEL32\.DLL\+[0-9a-f]+\|C:\\Windows\\System32\\ntdll\.dll\+[0-9a-f]+)\n?'
 
 variants:
   - name: Memory read access, hexadecimal as Sysmon writes it
     why: >-
       Any mask with PROCESS_VM_READ [access-rights], which MiniDumpWriteDump and the dumping tools ask for
       [minidump, splunk-lsass], in hexadecimal with the 0x prefix, any letter case, leading zeros allowed,
-      from any process outside the three exclusions below (paths as Windows reports them, without empty
+      from any process outside the exclusions below (paths as Windows reports them, without empty
       segments).
     sources: [access-rights, minidump, splunk-lsass]
     event:
       TargetImage: '{lsass}'
       GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}}
-      SourceImage: {match: '{path}', not: ['{os_components}', '{defender}', '{defender_root}', '{listers}'], missing: true}
+      SourceImage: {match: '{path}', not: ['{os_components}', '{defender}', '{defender_root}', '{listers}', '{splunkd}'], missing: true}
     counts:
       - what: access masks that include PROCESS_VM_READ (32-bit, written 0x with lowercase digits)
         number: {base: 16, prefix: '0x', set: [4], max: 4294967295, case: lower}
@@ -91,7 +99,7 @@ variants:
     event:
       TargetImage: '{lsass}'
       GrantedAccess: {number: {base: 10, set: [4], max: 4294967295}}
-      SourceImage: {match: '{path}', not: ['{os_components}', '{defender}', '{defender_root}', '{listers}'], missing: true}
+      SourceImage: {match: '{path}', not: ['{os_components}', '{defender}', '{defender_root}', '{listers}', '{splunkd}'], missing: true}
     counts:
       - what: access masks that include PROCESS_VM_READ, in decimal
         number: {base: 10, set: [4], max: 4294967295}
@@ -148,3 +156,73 @@ variants:
       SourceImage: '{listers}'
       GrantedAccess: '{l:0x1410}|5136'
       CallTrace: '[\s\S]*\\{l:System.ni.dll}\+[\s\S]*'
+
+  - name: Splunk's service path with any other access mask
+    why: >-
+      The exception for Splunk Enterprise's own service is for the one mask its resource usage sampling asks
+      for, 0x1fffff; any other mask that grants PROCESS_VM_READ from that path is not that sampling
+      [access-rights, splunk-instrumentation].
+    sources: [access-rights, splunk-instrumentation]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{splunkd}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}, not: '{l:0x1fffff}'}
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1010'
+        SourceImage: 'C:\Program Files\Splunk\bin\splunkd.exe'
+        SourceUser: 'NT SERVICE\Splunkd'
+
+  - name: splunkd.exe reading lsass memory under any other account
+    why: >-
+      Anyone may start the real splunkd.exe from its folder and run code in the process they started; only the
+      service's own account is excepted, and an event without the account is not excepted either
+      [access-rights, splunk-instrumentation].
+    sources: [access-rights, splunk-instrumentation]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{splunkd}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}}
+      SourceUser: {not: '{splunk_account}', missing: true}
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1fffff'
+        SourceImage: 'C:\Program Files\Splunk\bin\splunkd.exe'
+        SourceUser: 'LAB\Administrator'
+
+  - name: Any other call stack from Splunk's service
+    why: >-
+      Code injected into the service leaves a frame with no module, a dump through dbgcore or a side-loaded
+      library leaves that module's frame, and a pipeline without CallTrace shows no stack at all: none of them
+      is the stack of the service's own sampling thread [access-rights, splunk-lsass].
+    sources: [access-rights, splunk-lsass]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{splunkd}'
+      GrantedAccess: {number: {base: 16, prefix: ['0x', '0X'], set: [4], max: 4294967295, leading_zeros: true}}
+      CallTrace: {not: '{splunk_stack}', missing: true}
+    examples:
+      - TargetImage: 'C:\Windows\system32\lsass.exe'
+        GrantedAccess: '0x1fffff'
+        SourceImage: 'C:\Program Files\Splunk\bin\splunkd.exe'
+        SourceUser: 'NT SERVICE\Splunkd'
+        CallTrace: 'C:\Windows\SYSTEM32\ntdll.dll+a0834|C:\Windows\System32\KERNELBASE.dll+44d4e|UNKNOWN(000001E2A4B30F41)'
+
+  - name: Splunk Enterprise's own service sampling process resource usage
+    expect: quiet
+    why: >-
+      A full Splunk Enterprise instance logs per-process resource usage every 10 seconds by default
+      [splunk-instrumentation]; on Windows its service opens every process for that, lsass.exe among them,
+      with full rights.
+    reason: >-
+      filter_splunk_service excludes the service only when all four hold: splunkd.exe by its full path, the
+      account NT SERVICE\Splunkd, the mask 0x1fffff (2097151 in decimal) and a call stack of splunkd.exe's
+      own code and the Windows thread start, nothing else. An intruder who replaces that binary, or forges
+      this stack inside the service, is excluded with it.
+    sources: [splunk-instrumentation]
+    event:
+      TargetImage: '{lsass}'
+      SourceImage: '{splunkd}'
+      SourceUser: '{splunk_account}'
+      GrantedAccess: '{l:0x1fffff}|2097151'
+      CallTrace: '{splunk_stack}'

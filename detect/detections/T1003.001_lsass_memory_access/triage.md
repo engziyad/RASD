@@ -23,6 +23,7 @@ Confirm host, source process path, signer and user; check whether the source is 
 
 ### Escalate if
 - SourceImage is unsigned, renamed, or in a user-writable path
+- SourceImage is Splunk's splunkd.exe - its own sampling is excepted, so an alert means the account, the mask or the call stack is not the service's own
 - rundll32.exe with comsvcs.dll on the command line
 - Any dump file created near the access
 - Authentication anomalies from the host afterwards (NTLM or logon type 9)
@@ -42,7 +43,7 @@ Base score **60**.
 - PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
-- The SIEM's own service on the host: Splunk's splunkd.exe opens LSASS with full rights where it runs (seen on the lab's Windows host)
+- The SIEM's own service where the applied exception does not fit: a Splunk Enterprise under another account or folder, or a build with another call stack
 - Windows components outside the named list on builds not covered by public data (add them by full path)
 - Administrators creating LSASS dumps for a Microsoft support case
 
@@ -50,6 +51,7 @@ Base score **60**.
 - Never allow-list by process name alone (MsMpEng.exe, procdump.exe): a renamed copy in a writable folder would pass.
 - Never filter a whole folder such as System32: public data shows a dumper dropped into System32 (nanodump), a fresh services.exe dumping through dbgcore (PPLdump) and rundll32 and Task Manager dumps - all from that folder.
 - Never filter PowerShell without the access mask and the .NET frame: Invoke-Mimikatz runs inside powershell.exe.
+- Never except Splunk by its path or its folder alone: the real splunkd.exe can be started by anyone who can read LSASS, and code injected into it reports the same path. The account, the mask and the call stack stay in the filter.
 
 ### Close or escalate
 [Closure and escalation notes](../T1003.001_lsass_memory_access/closure.md) for this detection.

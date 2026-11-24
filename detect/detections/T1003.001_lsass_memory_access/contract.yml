@@ -24,7 +24,8 @@ data_contract:
   telemetry_risk:
     processaccess_not_collected: critical
     lsass_excluded_in_sysmon_config: critical
-    missing_calltrace: low          # without it PowerShell process listing is not filtered: more alerts, never fewer
+    missing_calltrace: low          # without it PowerShell process listing and Splunk's own service are not filtered: more alerts, never fewer
+    missing_sourceuser: low         # Sysmon before 13.30 has no SourceUser: Splunk's own service is then not filtered, more alerts, never fewer
 detection_logic:
   type: single-event
   confidence: high
@@ -34,6 +35,8 @@ detection_logic:
   - Handle duplication from another process never opens LSASS directly
   - Decimal access masks outside the listed values (hex masks are bit-tested for VM_READ)
   - Code injected into a named Windows component (csrss, wininit, WmiPrvSE) - its CallTrace shows a frame with no module (UNKNOWN)
+  - Code that runs as Splunk Enterprise's own service with that service's own call stack (its binary replaced, or the stack
+    forged inside it) - the exception for its resource usage sampling covers it
   - Credential Guard / RunAsPPL environments where the real control is prevention
   - ProcessAccess telemetry disabled or filtered for volume
 coverage_depth:
@@ -66,6 +69,7 @@ triage:
   - Check whether SourceImage is a known EDR, AV or backup agent in your environment
   escalate_if:
   - SourceImage is unsigned, renamed, or in a user-writable path
+  - SourceImage is Splunk's splunkd.exe - its own sampling is excepted, so an alert means the account, the mask or the call stack is not the service's own
   - rundll32.exe with comsvcs.dll on the command line
   - Any dump file created near the access
   - Authentication anomalies from the host afterwards (NTLM or logon type 9)
