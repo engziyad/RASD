@@ -124,6 +124,17 @@ jobs:
           $plain = New-Object Text.UTF8Encoding($false)
           $original = if (Test-Path -LiteralPath $conf) { [IO.File]::ReadAllText($conf) } else { '' }
           & (Join-Path $splunk 'bin\splunk.exe') version
+          Get-CimInstance Win32_Service -Filter "Name='Splunkd'" | Select-Object Name, StartName, State | Format-List
+          if (Test-Path -LiteralPath $usage) {
+            $peek = New-Object IO.FileStream($usage, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+            $peekReader = New-Object IO.StreamReader($peek)
+            $shown = 0
+            while ($shown -lt 2 -and $null -ne ($line = $peekReader.ReadLine())) {
+              if ($line -match '"component":"PerProcess"') { $line.Substring(0, [math]::Min(420, $line.Length)); $shown++ }
+            }
+            $peekReader.Dispose()
+            $peek.Dispose()
+          }
 
           function Read-Opens([datetime]$from, [datetime]$to) {
             $rows = @()
@@ -142,11 +153,20 @@ jobs:
           function Read-Collections([datetime]$from, [datetime]$to) {
             if (-not (Test-Path -LiteralPath $usage)) { return @() }
             $stamps = New-Object System.Collections.Generic.HashSet[string]
-            foreach ($line in [IO.File]::ReadAllLines($usage)) {
-              if ($line -notmatch '"component":"PerProcess"') { continue }
-              if ($line -notmatch '"datetime":"(\d\d)-(\d\d)-(\d{4}) (\d\d:\d\d:\d\d)') { continue }
-              $when = [datetime]::ParseExact("$($Matches[3])-$($Matches[1])-$($Matches[2]) $($Matches[4])", 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal)
-              if ($when -ge $from.ToUniversalTime() -and $when -le $to.ToUniversalTime()) { [void]$stamps.Add($when.ToString('HH:mm:ss')) }
+            try {
+              $stream = New-Object IO.FileStream($usage, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+              $reader = New-Object IO.StreamReader($stream)
+              while ($null -ne ($line = $reader.ReadLine())) {
+                if ($line -notmatch '"component":"PerProcess"') { continue }
+                if ($line -notmatch '"datetime":"(\d\d)-(\d\d)-(\d{4}) (\d\d:\d\d:\d\d)') { continue }
+                $when = [datetime]::ParseExact("$($Matches[3])-$($Matches[1])-$($Matches[2]) $($Matches[4])", 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal)
+                if ($when -ge $from.ToUniversalTime() -and $when -le $to.ToUniversalTime()) { [void]$stamps.Add($when.ToString('HH:mm:ss')) }
+              }
+              $reader.Dispose()
+              $stream.Dispose()
+            } catch {
+              Write-Host "resource_usage.log could not be read: $($_.Exception.Message)"
+              return @()
             }
             @($stamps | Sort-Object)
           }
