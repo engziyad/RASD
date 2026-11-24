@@ -1,10 +1,10 @@
 {
  "format": 1,
- "rasd": "1.0.0",
+ "rasd": "2.0.0",
  "fingerprints": {
   "reader": "5",
-  "rule:T1003.001_lsass_memory_access": "489d64240448f4455f3a6d64fd067fd83b7d7057ea39f90e933857790b421bf3",
-  "tuning:T1003.001_lsass_memory_access": "d0506d506905b4de6bb4e5721334fcf56658caaf8fccd10720a21d0d73b42f76",
+  "rule:T1003.001_lsass_memory_access": "c6a3489d05c5dd0aa6a5b886d87f414167c43d9d1f04eb31a5db3923f62f81e9",
+  "tuning:T1003.001_lsass_memory_access": "8224bdb540046ffb497515ed6b4debc8e317eba7c14121a01f960ac8fd30472b",
   "rule:T1021.006_wsmprovhost_suspicious_child": "cb68984b2b425e9f1e4c8e6e2981e87c64344142f980f15ca1bea4590a2dc069",
   "tuning:T1021.006_wsmprovhost_suspicious_child": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rule:T1046_decoy_service_interaction": "b878136022f55701cf17f80ca47ed789524111e675225f3e4a66333d920dc67b",
