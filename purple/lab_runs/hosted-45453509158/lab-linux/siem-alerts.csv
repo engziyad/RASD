@@ -1,0 +1,4 @@
+_time,ss_name,host,alert_hosts,result_count,first_event,last_event
+2026-11-24T18:05:00.000Z,RASD - T1059.004_linux_suspicious_shell_execution,runnervmeozm8,runnervmeozm8,2,1795543133.180637,1795543133.185133
+2026-11-24T18:05:01.000Z,RASD - T1053.003_crontab_noninteractive_install,runnervmeozm8,runnervmeozm8,1,1795543014.369112,1795543014.369112
+2026-11-24T18:05:02.000Z,RASD - T1046_decoy_service_interaction,runnervmeozm8,runnervmeozm8,2,1795543014.409676,1795543014.424390

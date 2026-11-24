@@ -1,0 +1,11 @@
+_time,ss_name,host,alert_hosts,result_count,first_event,last_event
+2026-11-24T18:10:01.000Z,RASD - T1685.005_event_log_clearing,runnervmhh3zg,runnervmhh3zg,1,1795543444.109,1795543444.109
+2026-11-24T18:10:02.000Z,RASD - T1218.011_rundll32_suspicious_execution,runnervmhh3zg,runnervmhh3zg,1,1795543453.137,1795543453.137
+2026-11-24T18:10:02.000Z,RASD - T1547.001_registry_run_key_persistence,runnervmhh3zg,runnervmhh3zg,1,1795543451.083,1795543451.083
+2026-11-24T18:10:02.000Z,RASD - T1053.005_powershell_scheduled_task_creation,runnervmhh3zg,runnervmhh3zg,1,1795543472.333,1795543472.333
+2026-11-24T18:10:02.000Z,RASD - T1552.001_honey_file_access,runnervmhh3zg,runnervmhh3zg,1,1795543446.392,1795543446.392
+2026-11-24T18:10:04.000Z,RASD - T1059.001_powershell_encoded_command,runnervmhh3zg,runnervmhh3zg,1,1795543448.462,1795543448.462
+2026-11-24T18:10:04.000Z,RASD - T1569.002_suspicious_service_installation,runnervmhh3zg,runnervmhh3zg,1,1795543477.013,1795543477.013
+2026-11-24T18:10:04.000Z,RASD - T1685.005_system_log_cleared,runnervmhh3zg,runnervmhh3zg,2,1795543444.130,1795543446.272
+2026-11-24T18:10:05.000Z,RASD - T1053.005_schtasks_suspicious_creation,runnervmhh3zg,runnervmhh3zg,1,1795543470.262,1795543470.262
+2026-11-24T18:10:06.000Z,RASD - T1021.006_wsmprovhost_suspicious_child,runnervmhh3zg,runnervmhh3zg,1,1795543441.846,1795543441.846

@@ -1,4 +1,0 @@
-_time,ss_name,host,alert_hosts,result_count,first_event,last_event
-2026-11-21T03:05:02.000Z,RASD - T1053.003_crontab_noninteractive_install,ip-10-0-135-155,ip-10-0-135-155,1,1795229774.124224,1795229774.124224
-2026-11-21T03:05:03.000Z,RASD - T1046_decoy_service_interaction,ip-10-0-135-155,ip-10-0-135-155,2,1795229774.148559,1795229774.159356
-2026-11-21T03:10:01.000Z,RASD - T1059.004_linux_suspicious_shell_execution,ip-10-0-135-155,ip-10-0-135-155,2,1795230021.161078,1795230021.163608

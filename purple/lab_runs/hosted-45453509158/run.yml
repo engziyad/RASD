@@ -1,0 +1,25 @@
+rasd_lab_run: 1
+note: GitHub-hosted runners (windows-2022 and ubuntu-24.04), each marked as a RASD lab host for one run and discarded after it. No domain. A Splunk Enterprise stood beside each lab host for the run, started by a person who accepted its terms, with the RASD apps in it and no vendor add-on; the siem.json of each part says which Splunk it was. Workflow run https://github.com/engziyad/RASD/actions/runs/45453509158 at commit 84e404e0219b02e76cd947807f0f9d54acff705a.
+parts:
+- name: lab-linux
+  run:
+  - lab-linux
+  - linux-export.jsonl
+  - canary-export.jsonl
+  - siem-alerts.csv
+  - siem.json
+  - siem-searches.json
+- name: lab-web
+  run:
+  - lab-web
+  - web-export.jsonl
+  - siem-alerts.csv
+  - siem.json
+  - siem-searches.json
+- name: lab-windows
+  run:
+  - lab-windows.zip
+  - siem-alerts.csv
+  - siem.json
+  - siem-searches.json
+  strict: true

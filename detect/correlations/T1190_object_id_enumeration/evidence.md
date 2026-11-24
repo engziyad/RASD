@@ -3,24 +3,24 @@ rasd_evidence: 1
 detection: T1190_object_id_enumeration
 technique: T1190
 result: fired
-run_utc: '2026-11-21T02:55:42.302000Z'
-host: ip-10-0-132-90
+run_utc: '2026-11-24T17:55:50.747000Z'
+host: ip-10-0-135-98
 test: idor_testing
 step: walk_object_ids
-marker: rasd_94463bdb
+marker: rasd_08bf2b09
 bound_by: host and time window; client address
-latency_seconds: 0.698
-matched_events: 9
+latency_seconds: 0.253
+matched_events: 11
 correlation:
   condition: '>= 3 distinct cs-uri-stem per c-ip in 1m windows'
-  window_start: '2026-11-21T02:55:00.000Z'
+  window_start: '2026-11-24T17:55:00.000Z'
   group:
     c-ip: ::ffff:127.0.0.1
   value_count: 6
-  event_count: 9
-  first_event: '2026-11-21T02:55:38.000Z'
-  last_event: '2026-11-21T02:55:44.000Z'
-  threshold_reached: '2026-11-21T02:55:43.000Z'
+  event_count: 11
+  first_event: '2026-11-24T17:55:46.000Z'
+  last_event: '2026-11-24T17:55:52.000Z'
+  threshold_reached: '2026-11-24T17:55:51.000Z'
   values:
   - /rest/basket/1
   - /rest/basket/2
@@ -31,28 +31,28 @@ correlation:
 cleanup: verified
 artifacts:
 - file: idor_testing-findings.json
-  sha256: a0dfe22c2f4695c266d5abf2e2ec4324e8f574d9f03f9f4c2d94c8768dba223f
+  sha256: 94f9c92a1019ae89e914bada3fcf866f0879beb66c095d868ab7a1d07829b0e3
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T02:59:00Z'
+  first_alert_utc: '2026-11-24T17:59:01Z'
   alert_name: RASD - T1190_object_id_enumeration
-  latency_seconds: 197.698
-  pipeline_seconds: 197.0
+  latency_seconds: 190.253
+  pipeline_seconds: 190.0
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 02a8201495d25fd38437c6fbd45994a5792d0e42a2afdea63b3d950321b77cc1
+    sha256: 426fb75e9d71ce8b096771c8b045fcdeb3b709ace446f2d9882e8db877d16c58
   telemetry:
   - file: web-export.jsonl
-    sha256: cdc0dabb4faf8dd876ce3847f515017d9a7c6d49a616cac21ecb9fff462094c0
+    sha256: 1875f0c936fdc5921e21a1cd13ee20c06d1ccf67834f064beeb3a6628cb19fff
   profile: sysmon-native
   siem:
   - file: siem-alerts.csv
-    sha256: d52e3065352f93d67f19190c456e67881c7aaa7433b4ec2301fa21622981a9fb
+    sha256: 5f0d5c28f02d64e9b80b9fd938b3ec92f6fdd6504b2008b48696256aea7c6ba7
   - file: siem.json
-    sha256: db7ba61dab2b362c94389bebfda6c58f745a9243859a45f8823debba55444824
+    sha256: 1316e3a5a8764abfc86ad1c6f3a4e051372a533253ccbfe388b46dc7ed1b5abc
 operational_score: 95
 ---
 
@@ -61,17 +61,17 @@ operational_score: 95
 | | |
 |---|---|
 | Emulation step | Read other users' objects with one account's token (IDs 1-5) |
-| Host · user | ip-10-0-132-90 · runner |
-| Step window (UTC) | 2026-11-21T02:55:42.302Z → 2026-11-21T02:55:43.641Z |
+| Host · user | ip-10-0-135-98 · runner |
+| Step window (UTC) | 2026-11-24T17:55:50.747Z → 2026-11-24T17:55:52.102Z |
 | Correlation | >= 3 distinct cs-uri-stem per c-ip in 1m windows |
-| Alert | 6 distinct cs-uri-stem from ::ffff:127.0.0.1 in the window from 2026-11-21T02:55:00.000Z |
-| Events counted | 9 (2026-11-21T02:55:38.000Z → 2026-11-21T02:55:44.000Z) |
-| Threshold reached (UTC) | 2026-11-21T02:55:43.000Z |
-| SIEM alert | RASD - T1190_object_id_enumeration at 2026-11-21T02:59:00Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none |
-| Telemetry latency | 0.7 s - step start → the event that reached the threshold |
-| SIEM alert latency | 198 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 197 s - threshold reached → alert: forwarding, indexing and the wait for the window to close |
+| Alert | 6 distinct cs-uri-stem from ::ffff:127.0.0.1 in the window from 2026-11-24T17:55:00.000Z |
+| Events counted | 11 (2026-11-24T17:55:46.000Z → 2026-11-24T17:55:52.000Z) |
+| Threshold reached (UTC) | 2026-11-24T17:55:51.000Z |
+| SIEM alert | RASD - T1190_object_id_enumeration at 2026-11-24T17:59:01Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none |
+| Telemetry latency | 0.3 s - step start → the event that reached the threshold |
+| SIEM alert latency | 190 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 190 s - threshold reached → alert: forwarding, indexing and the wait for the window to close |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 
@@ -86,52 +86,57 @@ operational_score: 95
 | Cleanup | 10 / 10 |
 | **Total** | **95 / 100** |
 
-## Events counted (first 9 of 9, fields the correlation reads)
+## Events counted (first 10 of 11, fields the correlation reads)
 
 ```json
 [
   {
-    "TimeCreated": "2026-11-21T02:55:38Z",
+    "TimeCreated": "2026-11-24T17:55:46Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:42Z",
+    "TimeCreated": "2026-11-24T17:55:46Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:42Z",
+    "TimeCreated": "2026-11-24T17:55:46Z",
+    "c-ip": "::ffff:127.0.0.1",
+    "cs-uri-stem": "/rest/basket/1"
+  },
+  {
+    "TimeCreated": "2026-11-24T17:55:51Z",
+    "c-ip": "::ffff:127.0.0.1",
+    "cs-uri-stem": "/rest/basket/1"
+  },
+  {
+    "TimeCreated": "2026-11-24T17:55:51Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/2"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:43Z",
+    "TimeCreated": "2026-11-24T17:55:51Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/3"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:43Z",
+    "TimeCreated": "2026-11-24T17:55:51Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/4"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:43Z",
+    "TimeCreated": "2026-11-24T17:55:51Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/5"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:43Z",
+    "TimeCreated": "2026-11-24T17:55:52Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/6"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:44Z",
-    "c-ip": "::ffff:127.0.0.1",
-    "cs-uri-stem": "/rest/basket/6"
-  },
-  {
-    "TimeCreated": "2026-11-21T02:55:44Z",
+    "TimeCreated": "2026-11-24T17:55:52Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/6"
   }

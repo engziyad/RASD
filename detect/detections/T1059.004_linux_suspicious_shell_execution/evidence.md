@@ -3,39 +3,39 @@ rasd_evidence: 1
 detection: T1059.004_linux_suspicious_shell_execution
 technique: T1059.004
 result: fired
-run_utc: '2026-11-21T03:00:21.151000Z'
-host: ip-10-0-135-155
+run_utc: '2026-11-24T17:58:53.166000Z'
+host: runnervmeozm8
 test: suspicious_shell_execution
 step: shell_patterns
-marker: rasd_df4a417d
+marker: rasd_700b7171
 bound_by: run token
-latency_seconds: 0.01
+latency_seconds: 0.015
 matched_events: 2
 cleanup: verified
 artifacts: []
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:10:01Z'
+  first_alert_utc: '2026-11-24T18:05:00Z'
   alert_name: RASD - T1059.004_linux_suspicious_shell_execution
-  latency_seconds: 579.849
-  pipeline_seconds: 579.839
+  latency_seconds: 366.834
+  pipeline_seconds: 366.819
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 4ecb45f17adbbf8fb0ab5550af5e80a053ac1598aa2c462f2613b9686d04be2b
+    sha256: 1000411694b44857cbff689ca7503fccf1a8af0a54aa220a4e5419bc8229a596
   telemetry:
   - file: linux-export.jsonl
-    sha256: e487670f8ac82ba25a2e4955754623fcc77b6cdbdf9140b9b6bab7b83fee360b
+    sha256: cba74b2f2a2c1c1cbf5c251c0dd515dc1f4721e238ba90c63bce415c3612c537
   - file: canary-export.jsonl
-    sha256: 598f49351dff4a245c6e405284c0be7bc63905039cdabf64a7930189787b75f9
+    sha256: 11a48ac7e854574f2169821dcc063214ad9f332f3097468917c7e9b46a8849d2
   profile: sysmon-native
   siem:
   - file: siem-alerts.csv
-    sha256: f10cdb6393e38f103d63f4617cf463a5f98e13f2642d0478266c63f801f481a5
+    sha256: 0d8f082692a27fd8758cd1fe98741957971a1c66006608ad042132dde36adeab
   - file: siem.json
-    sha256: db7ba61dab2b362c94389bebfda6c58f745a9243859a45f8823debba55444824
+    sha256: 1316e3a5a8764abfc86ad1c6f3a4e051372a533253ccbfe388b46dc7ed1b5abc
 operational_score: 75
 ---
 
@@ -44,19 +44,19 @@ operational_score: 75
 | | |
 |---|---|
 | Emulation step | Base64 command piped into sh, then a script executed from /tmp |
-| Host · user | ip-10-0-135-155 · runner |
-| Step window (UTC) | 2026-11-21T03:00:21.151Z → 2026-11-21T03:00:21.163Z |
-| First matching event (UTC) | 2026-11-21T03:00:21.161078 |
+| Host · user | runnervmeozm8 · runner |
+| Step window (UTC) | 2026-11-24T17:58:53.166Z → 2026-11-24T17:58:53.185Z |
+| First matching event (UTC) | 2026-11-24T17:58:53.180637 |
 | Matching events | 2 |
-| SIEM alert | RASD - T1059.004_linux_suspicious_shell_execution at 2026-11-21T03:10:01Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none |
+| SIEM alert | RASD - T1059.004_linux_suspicious_shell_execution at 2026-11-24T18:05:00Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none |
 | Telemetry latency | 0.0 s - step start → the event is logged on the host |
-| SIEM alert latency | 580 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 580 s - event → alert: forwarding, indexing and the wait for the scheduled search |
+| SIEM alert latency | 367 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 367 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 0 collected and hashed |
 | Cleanup | verified |
 | Alert user | runner |
-| Note | carries this run's token rasd_df4a417d |
+| Note | carries this run's token rasd_700b7171 |
 
 ## Operational Score
 
@@ -74,12 +74,12 @@ operational_score: 75
 ```json
 {
   "EventID": 1,
-  "TimeCreated": "2026-11-21T03:00:21.161078000Z",
+  "TimeCreated": "2026-11-24T17:58:53.180637000Z",
   "Channel": "Linux-Sysmon/Operational",
-  "Computer": "ip-10-0-135-155",
-  "UtcTime": "2026-11-21 03:00:21.161",
+  "Computer": "runnervmeozm8",
+  "UtcTime": "2026-11-24 17:58:53.183",
   "Image": "/usr/bin/dash",
-  "CommandLine": "sh -c echo ZWNobyByYXNkX2RmNGE0MTdk | base64 -d | sh # rasd_df4a417d",
+  "CommandLine": "sh -c echo ZWNobyByYXNkXzcwMGI3MTcx | base64 -d | sh # rasd_700b7171",
   "User": "runner"
 }
 ```
@@ -90,7 +90,7 @@ Hash the raw files and compare them with `inputs` above, then re-run:
 
 ```bash
 rasd evidence --results emulation-results.json --logs linux-export.jsonl canary-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
-rasd explain T1059.004_linux_suspicious_shell_execution --event '{"EventID": 1, "TimeCreated": "2026-11-21T03:00:21.161078000Z", "Channel": "Linux-Sysmon/Operational", "Computer": "ip-10-0-135-155", "UtcTime": "2026-11-21 03:00:21.161", "Image": "/usr/bin/dash", "CommandLine": "sh -c echo ZWNobyByYXNkX2RmNGE0MTdk | base64 -d | sh # rasd_df4a417d", "User": "runner"}'
+rasd explain T1059.004_linux_suspicious_shell_execution --event '{"EventID": 1, "TimeCreated": "2026-11-24T17:58:53.180637000Z", "Channel": "Linux-Sysmon/Operational", "Computer": "runnervmeozm8", "UtcTime": "2026-11-24 17:58:53.183", "Image": "/usr/bin/dash", "CommandLine": "sh -c echo ZWNobyByYXNkXzcwMGI3MTcx | base64 -d | sh # rasd_700b7171", "User": "runner"}'
 ```
 
 <sub>Generated by RASD · Continuous Detection Assurance Framework</sub>
