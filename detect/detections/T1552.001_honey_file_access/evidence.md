@@ -3,13 +3,13 @@ rasd_evidence: 1
 detection: T1552.001_honey_file_access
 technique: T1552.001
 result: fired
-run_utc: '2026-11-21T03:02:55.577123Z'
+run_utc: '2026-11-24T17:29:48.629821Z'
 host: runnervmhh3zg
 test: honey_file_access
 step: read_honey_file
-marker: rasd_1c373302
+marker: rasd_9e212e92
 bound_by: host and time window
-latency_seconds: 0.129
+latency_seconds: 0.133
 matched_events: 1
 cleanup: verified
 artifacts:
@@ -17,36 +17,36 @@ artifacts:
   sha256: 790015c2cef3692ceb69753f1376d0529d095151e92a9e588c3cdb19c526f240
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:10:04Z'
+  first_alert_utc: '2026-11-24T17:35:06Z'
   alert_name: RASD - T1552.001_honey_file_access
-  latency_seconds: 428.423
-  pipeline_seconds: 428.294
+  latency_seconds: 317.37
+  pipeline_seconds: 317.237
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 48f30ca10817ca52cfaab3b94fbd552f145770a47d1886dbbff8d392a7c74937
+    sha256: b7902c08da3d7b5b2de59e9c57d8c0e37bb5cbf77243334fcf641b9aee49a759
   telemetry:
   - file: lab-export.jsonl
-    sha256: 3988ac1e1cde6006ae01636cec3993adf8b79cee969a25dabc89d0fa200c30e4
+    sha256: 1a6278c5e92af34d3f3d06aefe57c75433210d8e6f24d747a89304218072d28e
   profile: sysmon-native
   manifest:
     file: lab-run-manifest.json
-    sha256: d09f7ea9df7b09460fb600a2e4a698c57c6924c6d8d51f07bf067894ca2ef0c0
+    sha256: e15514a1417483b098c1baa00d0af7fd327a7dcce25218f2460c64f1904d91ea
     verified:
     - emulation-results.json
     - lab-export.jsonl
   run:
     file: lab-windows.zip
-    sha256: 68646245c5f866ad13d358d39fcaa5516f2cf2689d00741535baaa163d605525
+    sha256: 829e4cc25e355ea74ff463d32209aa7ee4b2d8c4b1d9f9638a46caf5b69b884e
     sha256_file: matched
   verification: strict
   siem:
   - file: siem-alerts.csv
-    sha256: c2218c842f0fc6db131155759a5291edf884dd2ae3bafe5270bfbfe4a1aa095c
+    sha256: 63aeb713d77030416a5f2534236a193e87138f34767bb0fb3890c734e94b8235
   - file: siem.json
-    sha256: 5183932439989d0f625c2f3d0386a2f9f166bc42963626765cc7b2f66ae4da4a
+    sha256: a5babaf6452b4f056e491a8b5d464fefee8a04c5485c98b7c54eb8f7ce6b4740
 operational_score: 90
 ---
 
@@ -56,14 +56,14 @@ operational_score: 90
 |---|---|
 | Emulation step | Read the decoy service-accounts spreadsheet |
 | Host · user | runnervmhh3zg · runnervmhh3zg\runneradmin |
-| Step window (UTC) | 2026-11-21T03:02:55.5771237Z → 2026-11-21T03:02:55.7081779Z |
-| First matching event (UTC) | 2026-11-21T03:02:55.706063 |
+| Step window (UTC) | 2026-11-24T17:29:48.6298211Z → 2026-11-24T17:29:48.7657092Z |
+| First matching event (UTC) | 2026-11-24T17:29:48.763164 |
 | Matching events | 1 |
-| SIEM alert | RASD - T1552.001_honey_file_access at 2026-11-21T03:10:04Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none |
+| SIEM alert | RASD - T1552.001_honey_file_access at 2026-11-24T17:35:06Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none |
 | Telemetry latency | 0.1 s - step start → the event is logged on the host |
-| SIEM alert latency | 428 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 428 s - event → alert: forwarding, indexing and the wait for the scheduled search |
+| SIEM alert latency | 317 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 317 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 | Alert user | runneradmin |
@@ -86,7 +86,7 @@ operational_score: 90
   "Channel": "Security",
   "Provider_Name": "Microsoft-Windows-Security-Auditing",
   "EventID": 4663,
-  "TimeCreated": "2026-11-21T03:02:55.7060634Z",
+  "TimeCreated": "2026-11-24T17:29:48.7631646Z",
   "Computer": "runnervmhh3zg",
   "SubjectUserName": "runneradmin",
   "ObjectType": "File",
@@ -103,7 +103,7 @@ Hash the raw files and compare them with `inputs` above, then re-run:
 ```bash
 rasd evidence --run lab-windows.zip siem-alerts.csv siem.json siem-searches.json --strict --dry-run
 rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
-rasd explain T1552.001_honey_file_access --event '{"Channel": "Security", "Provider_Name": "Microsoft-Windows-Security-Auditing", "EventID": 4663, "TimeCreated": "2026-11-21T03:02:55.7060634Z", "Computer": "runnervmhh3zg", "SubjectUserName": "runneradmin", "ObjectType": "File", "ObjectName": "C:\\Shares\\IT\\Passwords\\service_accounts.xlsx", "AccessList": "%%4416\n\t\t\t\t", "ProcessName": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"}'
+rasd explain T1552.001_honey_file_access --event '{"Channel": "Security", "Provider_Name": "Microsoft-Windows-Security-Auditing", "EventID": 4663, "TimeCreated": "2026-11-24T17:29:48.7631646Z", "Computer": "runnervmhh3zg", "SubjectUserName": "runneradmin", "ObjectType": "File", "ObjectName": "C:\\Shares\\IT\\Passwords\\service_accounts.xlsx", "AccessList": "%%4416\n\t\t\t\t", "ProcessName": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"}'
 ```
 
 <sub>Generated by RASD · Continuous Detection Assurance Framework</sub>

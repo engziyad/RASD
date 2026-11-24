@@ -3,24 +3,24 @@ rasd_evidence: 1
 detection: T1595.003_api_auth_probing
 technique: T1595.003
 result: fired
-run_utc: '2026-11-21T02:55:37.708000Z'
-host: ip-10-0-132-90
+run_utc: '2026-11-24T17:23:41.844000Z'
+host: ip-10-0-143-53
 test: api_auth_testing
 step: unauthenticated_calls
-marker: rasd_94463bdb
+marker: rasd_a1a13fdc
 bound_by: host and time window; client address
-latency_seconds: 2.292
+latency_seconds: 2.156
 matched_events: 20
 correlation:
   condition: '>= 5 distinct cs-uri-stem per c-ip in 5m windows'
-  window_start: '2026-11-21T02:55:00.000Z'
+  window_start: '2026-11-24T17:20:00.000Z'
   group:
     c-ip: ::ffff:127.0.0.1
   value_count: 7
   event_count: 20
-  first_event: '2026-11-21T02:55:37.000Z'
-  last_event: '2026-11-21T02:55:44.000Z'
-  threshold_reached: '2026-11-21T02:55:40.000Z'
+  first_event: '2026-11-24T17:23:41.000Z'
+  last_event: '2026-11-24T17:23:48.000Z'
+  threshold_reached: '2026-11-24T17:23:44.000Z'
   values:
   - /api/Addresss
   - /api/Cards
@@ -32,28 +32,28 @@ correlation:
 cleanup: verified
 artifacts:
 - file: api_auth_testing-findings.json
-  sha256: 96b2a150cc4ec62106638b020ada847df3105d6973043a4d8f4c59b931ce81d5
+  sha256: fd5c2d1edc8537236e2d2e6b60c79812172314093873c07f36ee03c0bcc58f2f
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:05:03Z'
+  first_alert_utc: '2026-11-24T17:30:04Z'
   alert_name: RASD - T1595.003_api_auth_probing
-  latency_seconds: 565.292
-  pipeline_seconds: 563.0
+  latency_seconds: 382.156
+  pipeline_seconds: 380.0
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 02a8201495d25fd38437c6fbd45994a5792d0e42a2afdea63b3d950321b77cc1
+    sha256: 18803f3bddf25fccf789cd41fbbb444e898d269fd467ffc0846c961de74bde08
   telemetry:
   - file: web-export.jsonl
-    sha256: cdc0dabb4faf8dd876ce3847f515017d9a7c6d49a616cac21ecb9fff462094c0
+    sha256: 2d0a5d2d3ea72e4a655af808e862ae1ef8e94086d19ab946b7d5166a6119eb9c
   profile: sysmon-native
   siem:
   - file: siem-alerts.csv
-    sha256: d52e3065352f93d67f19190c456e67881c7aaa7433b4ec2301fa21622981a9fb
+    sha256: c7e3ed5602f2d0bfa0a0454e2b228021835353897b1f445a45d7d7814c4615bd
   - file: siem.json
-    sha256: db7ba61dab2b362c94389bebfda6c58f745a9243859a45f8823debba55444824
+    sha256: 1316e3a5a8764abfc86ad1c6f3a4e051372a533253ccbfe388b46dc7ed1b5abc
 operational_score: 90
 ---
 
@@ -62,17 +62,17 @@ operational_score: 90
 | | |
 |---|---|
 | Emulation step | Call protected endpoints with no token, a malformed token and a foreign-signed JWT |
-| Host · user | ip-10-0-132-90 · runner |
-| Step window (UTC) | 2026-11-21T02:55:37.708Z → 2026-11-21T02:55:41.425Z |
+| Host · user | ip-10-0-143-53 · runner |
+| Step window (UTC) | 2026-11-24T17:23:41.844Z → 2026-11-24T17:23:45.577Z |
 | Correlation | >= 5 distinct cs-uri-stem per c-ip in 5m windows |
-| Alert | 7 distinct cs-uri-stem from ::ffff:127.0.0.1 in the window from 2026-11-21T02:55:00.000Z |
-| Events counted | 20 (2026-11-21T02:55:37.000Z → 2026-11-21T02:55:44.000Z) |
-| Threshold reached (UTC) | 2026-11-21T02:55:40.000Z |
-| SIEM alert | RASD - T1595.003_api_auth_probing at 2026-11-21T03:05:03Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none |
-| Telemetry latency | 2.3 s - step start → the event that reached the threshold |
-| SIEM alert latency | 565 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 563 s - threshold reached → alert: forwarding, indexing and the wait for the window to close |
+| Alert | 7 distinct cs-uri-stem from ::ffff:127.0.0.1 in the window from 2026-11-24T17:20:00.000Z |
+| Events counted | 20 (2026-11-24T17:23:41.000Z → 2026-11-24T17:23:48.000Z) |
+| Threshold reached (UTC) | 2026-11-24T17:23:44.000Z |
+| SIEM alert | RASD - T1595.003_api_auth_probing at 2026-11-24T17:30:04Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none |
+| Telemetry latency | 2.2 s - step start → the event that reached the threshold |
+| SIEM alert latency | 382 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 380 s - threshold reached → alert: forwarding, indexing and the wait for the window to close |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 
@@ -92,52 +92,52 @@ operational_score: 90
 ```json
 [
   {
-    "TimeCreated": "2026-11-21T02:55:37Z",
+    "TimeCreated": "2026-11-24T17:23:41Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:37Z",
+    "TimeCreated": "2026-11-24T17:23:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:38Z",
+    "TimeCreated": "2026-11-24T17:23:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/rest/basket/1"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:38Z",
+    "TimeCreated": "2026-11-24T17:23:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Cards"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:38Z",
+    "TimeCreated": "2026-11-24T17:23:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Cards"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:38Z",
+    "TimeCreated": "2026-11-24T17:23:42Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Cards"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:38Z",
+    "TimeCreated": "2026-11-24T17:23:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Users"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:39Z",
+    "TimeCreated": "2026-11-24T17:23:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Users"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:39Z",
+    "TimeCreated": "2026-11-24T17:23:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Users"
   },
   {
-    "TimeCreated": "2026-11-21T02:55:39Z",
+    "TimeCreated": "2026-11-24T17:23:43Z",
     "c-ip": "::ffff:127.0.0.1",
     "cs-uri-stem": "/api/Addresss"
   }

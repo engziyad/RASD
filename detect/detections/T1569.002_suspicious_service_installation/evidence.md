@@ -3,50 +3,50 @@ rasd_evidence: 1
 detection: T1569.002_suspicious_service_installation
 technique: T1569.002
 result: fired
-run_utc: '2026-11-21T03:03:26.543414Z'
+run_utc: '2026-11-24T17:30:20.129591Z'
 host: runnervmhh3zg
 test: service_creation
 step: create_service
-marker: rasd_1c373302
+marker: rasd_9e212e92
 bound_by: run token
-latency_seconds: 0.029
+latency_seconds: 0.03
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: service-rasd_1c373302.json
-  sha256: 081386befc857789653a8fb1967314c0b1eacb9dbe0a8598516cfa7111c1824e
+- file: service-rasd_9e212e92.json
+  sha256: bd444e490c14ffcb7cc5bd778385624cb3d8b6aa877b3fa373431b0358fa1bce
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:10:06Z'
+  first_alert_utc: '2026-11-24T17:40:01Z'
   alert_name: RASD - T1569.002_suspicious_service_installation
-  latency_seconds: 399.457
-  pipeline_seconds: 399.428
+  latency_seconds: 580.87
+  pipeline_seconds: 580.84
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 48f30ca10817ca52cfaab3b94fbd552f145770a47d1886dbbff8d392a7c74937
+    sha256: b7902c08da3d7b5b2de59e9c57d8c0e37bb5cbf77243334fcf641b9aee49a759
   telemetry:
   - file: lab-export.jsonl
-    sha256: 3988ac1e1cde6006ae01636cec3993adf8b79cee969a25dabc89d0fa200c30e4
+    sha256: 1a6278c5e92af34d3f3d06aefe57c75433210d8e6f24d747a89304218072d28e
   profile: sysmon-native
   manifest:
     file: lab-run-manifest.json
-    sha256: d09f7ea9df7b09460fb600a2e4a698c57c6924c6d8d51f07bf067894ca2ef0c0
+    sha256: e15514a1417483b098c1baa00d0af7fd327a7dcce25218f2460c64f1904d91ea
     verified:
     - emulation-results.json
     - lab-export.jsonl
   run:
     file: lab-windows.zip
-    sha256: 68646245c5f866ad13d358d39fcaa5516f2cf2689d00741535baaa163d605525
+    sha256: 829e4cc25e355ea74ff463d32209aa7ee4b2d8c4b1d9f9638a46caf5b69b884e
     sha256_file: matched
   verification: strict
   siem:
   - file: siem-alerts.csv
-    sha256: c2218c842f0fc6db131155759a5291edf884dd2ae3bafe5270bfbfe4a1aa095c
+    sha256: 63aeb713d77030416a5f2534236a193e87138f34767bb0fb3890c734e94b8235
   - file: siem.json
-    sha256: 5183932439989d0f625c2f3d0386a2f9f166bc42963626765cc7b2f66ae4da4a
+    sha256: a5babaf6452b4f056e491a8b5d464fefee8a04c5485c98b7c54eb8f7ce6b4740
 operational_score: 90
 ---
 
@@ -56,18 +56,18 @@ operational_score: 90
 |---|---|
 | Emulation step | sc.exe create with a cmd.exe /c binary path (never started) |
 | Host · user | runnervmhh3zg · runnervmhh3zg\runneradmin |
-| Step window (UTC) | 2026-11-21T03:03:26.5434149Z → 2026-11-21T03:03:26.5744187Z |
-| First matching event (UTC) | 2026-11-21T03:03:26.572405 |
+| Step window (UTC) | 2026-11-24T17:30:20.1295910Z → 2026-11-24T17:30:20.1616000Z |
+| First matching event (UTC) | 2026-11-24T17:30:20.159583 |
 | Matching events | 1 |
-| SIEM alert | RASD - T1569.002_suspicious_service_installation at 2026-11-21T03:10:06Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none |
+| SIEM alert | RASD - T1569.002_suspicious_service_installation at 2026-11-24T17:40:01Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none |
 | Telemetry latency | 0.0 s - step start → the event is logged on the host |
-| SIEM alert latency | 399 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 399 s - event → alert: forwarding, indexing and the wait for the scheduled search |
+| SIEM alert latency | 581 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 581 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 1 collected and hashed |
 | Cleanup | verified |
 | Alert user | LocalSystem |
-| Note | carries this run's token rasd_1c373302 |
+| Note | carries this run's token rasd_9e212e92 |
 
 ## Operational Score
 
@@ -87,10 +87,10 @@ operational_score: 90
   "Channel": "System",
   "Provider_Name": "Service Control Manager",
   "EventID": 7045,
-  "TimeCreated": "2026-11-21T03:03:26.5724055Z",
+  "TimeCreated": "2026-11-24T17:30:20.1595837Z",
   "Computer": "runnervmhh3zg",
-  "ServiceName": "rasd_1c373302",
-  "ImagePath": "cmd.exe /c echo rasd_1c373302"
+  "ServiceName": "rasd_9e212e92",
+  "ImagePath": "cmd.exe /c echo rasd_9e212e92"
 }
 ```
 
@@ -101,7 +101,7 @@ Hash the raw files and compare them with `inputs` above, then re-run:
 ```bash
 rasd evidence --run lab-windows.zip siem-alerts.csv siem.json siem-searches.json --strict --dry-run
 rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
-rasd explain T1569.002_suspicious_service_installation --event '{"Channel": "System", "Provider_Name": "Service Control Manager", "EventID": 7045, "TimeCreated": "2026-11-21T03:03:26.5724055Z", "Computer": "runnervmhh3zg", "ServiceName": "rasd_1c373302", "ImagePath": "cmd.exe /c echo rasd_1c373302"}'
+rasd explain T1569.002_suspicious_service_installation --event '{"Channel": "System", "Provider_Name": "Service Control Manager", "EventID": 7045, "TimeCreated": "2026-11-24T17:30:20.1595837Z", "Computer": "runnervmhh3zg", "ServiceName": "rasd_9e212e92", "ImagePath": "cmd.exe /c echo rasd_9e212e92"}'
 ```
 
 <sub>Generated by RASD · Continuous Detection Assurance Framework</sub>

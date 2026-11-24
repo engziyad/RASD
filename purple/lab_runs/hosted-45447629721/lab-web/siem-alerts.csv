@@ -1,0 +1,3 @@
+_time,ss_name,host,alert_hosts,result_count,first_event,last_event
+2026-11-24T17:27:00.000Z,RASD - T1190_object_id_enumeration,::ffff:127.0.0.1,::ffff:127.0.0.1,11,1795541021,1795541028
+2026-11-24T17:30:04.000Z,RASD - T1595.003_api_auth_probing,::ffff:127.0.0.1,::ffff:127.0.0.1,20,1795541021,1795541028

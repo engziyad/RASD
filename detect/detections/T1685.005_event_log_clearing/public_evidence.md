@@ -24,7 +24,7 @@ Names from outside the mapping are kept as published, in ATT&CK v18 terms: `T107
 | Public datasets | fires on 1 of 1 recordings |
 | Held-out public files | fires on 2 of 2 |
 | Query parity on these events | `rasd parity` evaluates the generated KQL, SPL and Defender queries on every committed extract event of this log source, with RASD's model of each language's semantics (not on a SIEM) |
-| Validated (lab evidence) | fired on its attack step in a lab on 2026-11-21, and Splunk Enterprise 10.4.5 raised its alert ([evidence](evidence.md)) |
+| Validated (lab evidence) | fired on its attack step in a lab on 2026-11-24, and Splunk Enterprise 10.4.5 raised its alert ([evidence](evidence.md)) |
 | SIEM replay | pending ([replay checklist](../../../docs/PUBLIC_DATA_VALIDATION.md#siem-replay-checklist)) |
 | Production | pending |
 

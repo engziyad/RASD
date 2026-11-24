@@ -3,39 +3,39 @@ rasd_evidence: 1
 detection: T1046_decoy_service_interaction
 technique: T1046
 result: fired
-run_utc: '2026-11-21T02:56:14.140000Z'
-host: ip-10-0-135-155
+run_utc: '2026-11-24T17:25:16.021000Z'
+host: runnervmeozm8
 test: decoy_service_probe
 step: probe_decoy_services
-marker: rasd_df4a417d
+marker: rasd_f539fff3
 bound_by: run token; client address
-latency_seconds: 0.019
+latency_seconds: 0.028
 matched_events: 1
 cleanup: verified
 artifacts: []
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:05:03Z'
+  first_alert_utc: '2026-11-24T17:35:02Z'
   alert_name: RASD - T1046_decoy_service_interaction
-  latency_seconds: 528.86
-  pipeline_seconds: 528.841
+  latency_seconds: 585.979
+  pipeline_seconds: 585.951
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 4ecb45f17adbbf8fb0ab5550af5e80a053ac1598aa2c462f2613b9686d04be2b
+    sha256: 78730ceba4d3039cd35422b2785640d00b74d95a8152a33e01e667fa8a47e566
   telemetry:
   - file: linux-export.jsonl
-    sha256: e487670f8ac82ba25a2e4955754623fcc77b6cdbdf9140b9b6bab7b83fee360b
+    sha256: 87dcc444c04d0303e656ff20b08d9131ba487aec984e835730244d9c54103019
   - file: canary-export.jsonl
-    sha256: 598f49351dff4a245c6e405284c0be7bc63905039cdabf64a7930189787b75f9
+    sha256: 0169454c5da08f680bbd5e316980fb256933a750ec52cac2f3bf06026b02a70c
   profile: sysmon-native
   siem:
   - file: siem-alerts.csv
-    sha256: f10cdb6393e38f103d63f4617cf463a5f98e13f2642d0478266c63f801f481a5
+    sha256: 0e0ab477928d865d05a2f0487993ea655da6fe0bff059fe2a0ab017bc65c2a82
   - file: siem.json
-    sha256: db7ba61dab2b362c94389bebfda6c58f745a9243859a45f8823debba55444824
+    sha256: 1316e3a5a8764abfc86ad1c6f3a4e051372a533253ccbfe388b46dc7ed1b5abc
 operational_score: 75
 ---
 
@@ -44,19 +44,19 @@ operational_score: 75
 | | |
 |---|---|
 | Emulation step | TCP connection to the decoy's SSH port, then one login attempt on its web portal |
-| Host · user | ip-10-0-135-155 · runner |
-| Step window (UTC) | 2026-11-21T02:56:14.140Z → 2026-11-21T02:56:14.160Z |
-| First matching event (UTC) | 2026-11-21T02:56:14.159356 |
+| Host · user | runnervmeozm8 · runner |
+| Step window (UTC) | 2026-11-24T17:25:16.021Z → 2026-11-24T17:25:16.050Z |
+| First matching event (UTC) | 2026-11-24T17:25:16.048575 |
 | Matching events | 1 |
-| SIEM alert | RASD - T1046_decoy_service_interaction at 2026-11-21T03:05:03Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_lab_inputs 2026.11.21; vendor add-ons: none |
+| SIEM alert | RASD - T1046_decoy_service_interaction at 2026-11-24T17:35:02Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_lab_inputs 2026.11.24; vendor add-ons: none |
 | Telemetry latency | 0.0 s - step start → the event is logged on the host |
-| SIEM alert latency | 529 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 529 s - event → alert: forwarding, indexing and the wait for the scheduled search |
+| SIEM alert latency | 586 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 586 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 0 collected and hashed |
 | Cleanup | verified |
 | Alert user | - |
-| Note | logged on lab-canary-01; client address 172.17.0.1 is the emulation host; carries this run's token rasd_df4a417d |
+| Note | logged on lab-canary-01; client address 172.17.0.1 is the emulation host; carries this run's token rasd_f539fff3 |
 
 ## Operational Score
 
