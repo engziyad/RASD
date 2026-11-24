@@ -1,23 +1,437 @@
 name: RASD lab run
-# One run, on a branch that is not for merging: this copy of the workflow replays the pinned public datasets with
-# the rules of this commit and pushes the result onto the branch it ran from. The lab itself is the workflow of
-# the same name on main.
+
+# The lab on machines that exist for one run. Each job takes a GitHub-hosted runner, marks it as a RASD lab
+# host (red/lab/README.md, Lab guard), installs Sysmon with the repository's configuration, runs the safe
+# default red steps and uploads the run: results, collected artifacts and the exported telemetry.
+# A last job turns the runs into evidence.md with `rasd evidence`, keeps the raw runs beside it in
+# purple/lab_runs (these machines hold nothing private), drops the kept runs this one replaces, rebuilds the
+# pages and pushes the result as a branch, lab-evidence/run-<id>, for a person to read and open as a pull
+# request. Nothing reaches main from here, and the workflow starts only when a person starts it.
+#
+# A live SIEM is the choice of the person who starts the run. Typing "accept" in the splunk input puts a
+# Splunk Enterprise beside each lab host for the length of the run (a container on the Linux hosts, the
+# service on the Windows host), with the RASD apps of queries/splunk_app in it and no vendor add-on. The
+# lab host's events reach it as they are written, its own scheduler raises the alerts, and red/lab/splunk_lab.py
+# waits for them and saves them as the --siem-alerts input of `rasd evidence`. Without that word the lab runs
+# as before, and the SIEM part of the Operational Score stays at zero for the evidence it makes.
+#
+# What a runner is not: joined to a domain. The Active Directory tests are skipped.
+# Credential access and the Security-log clear never run here. The WinRM test opens its session on the
+# lab host itself, and the decoy host is a container on the Linux lab host's own bridge network.
 
 on:
   workflow_dispatch:
+    inputs:
+      splunk:
+        description: "A live Splunk Enterprise beside each lab host. Type accept only if you have read the Splunk General Terms (https://www.splunk.com/en_us/legal/splunk-general-terms.html) and accept them."
+        required: false
+        default: ""
+        type: string
+      evidence_branch:
+        description: "Push the evidence as a branch (lab-evidence/run-<id>). Untick to read the runs and push nothing."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  # Starting Splunk Enterprise is accepting its licence and the Splunk General Terms. Only the person who
+  # starts a run can do that, by typing "accept" in the input above; anything else runs the lab without a SIEM.
+  SPLUNK_TERMS: ${{ inputs.splunk == 'accept' && 'accept' || '' }}
+  # One release of Splunk Enterprise on every host, each file pinned by its digest: the image on the Linux
+  # hosts, the installer on the Windows host (which must also carry a valid signature of Splunk).
+  SPLUNK_IMAGE: splunk/splunk:10.4.5@sha256:e8bd9fbd0c5f5dffc73d84fe62f60e69c1d811fd0c89b22a174a46ce99d2dc1b
+  SPLUNK_MSI: https://download.splunk.com/products/splunk/releases/10.4.5/windows/splunk-10.4.5-de9225ad9740-windows-x64.msi
+  SPLUNK_MSI_SHA256: 312a62e376393e6cb7ffda36822d67fbd772225f1330a409d614e064463a2fa3
 
 concurrency:
-  group: rasd-datasets-${{ github.ref }}
-  cancel-in-progress: false
+  group: rasd-lab-run-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  datasets:
-    name: Public datasets, replayed with this commit's rules
+  windows:
+    name: Windows lab host
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Mark this runner as a RASD lab host
+        shell: powershell
+        run: |
+          [Environment]::SetEnvironmentVariable('RASD_LAB_HOST', $env:COMPUTERNAME, 'Machine')
+          "lab host: $env:COMPUTERNAME"
+
+      - name: Install Sysmon with the repository's configuration
+        shell: powershell
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'Sysmon.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'Sysmon'
+          Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Sysmon.zip' -OutFile $zip -UseBasicParsing
+          Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
+          & (Join-Path $dir 'Sysmon64.exe') -accepteula -i red\lab\sysmon-rasd.xml
+          Get-Service Sysmon64 | Format-Table -AutoSize
+
+      - name: Install Splunk Enterprise on the lab host
+        if: env.SPLUNK_TERMS == 'accept'
+        shell: powershell
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = Join-Path $env:RUNNER_TEMP 'splunk.msi'
+          curl.exe --silent --show-error --fail --location --output $msi $env:SPLUNK_MSI
+          if ($LASTEXITCODE -ne 0) { throw 'the Splunk Enterprise installer could not be downloaded' }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash.ToLower()
+          "installer: $env:SPLUNK_MSI ($([math]::Round((Get-Item -LiteralPath $msi).Length / 1MB)) MB), SHA-256 $hash"
+          if ($hash -ne $env:SPLUNK_MSI_SHA256) { throw 'the installer is not the file this workflow pins by its SHA-256' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $msi
+          "signed by: $($signature.SignerCertificate.Subject) ($($signature.Status))"
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Splunk') { throw 'the installer does not carry a valid signature of Splunk' }
+
+          $bytes = New-Object byte[] 16
+          [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+          $password = 'Lab-' + (($bytes | ForEach-Object { $_.ToString('x2') }) -join '')
+          Write-Output "::add-mask::$password"
+          "SPLUNK_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $env:SPLUNK_PASSWORD = $password
+
+          $splunk = 'C:\Program Files\Splunk'
+          Add-MpPreference -ExclusionPath $splunk -ErrorAction SilentlyContinue
+          $log = Join-Path $env:RUNNER_TEMP 'splunk-install.log'
+          $started = Get-Date
+          $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @('/i', "`"$msi`"", '/quiet', '/norestart', '/l*v', "`"$log`"",
+            'AGREETOLICENSE=Yes', 'SPLUNKUSERNAME=admin', "SPLUNKPASSWORD=$password", 'INSTALL_SHORTCUT=0')
+          "msiexec ended with $($install.ExitCode) after $([int]((Get-Date) - $started).TotalSeconds) s"
+          if ($install.ExitCode -ne 0) { Get-Content -LiteralPath $log -Tail 40; throw 'Splunk Enterprise did not install' }
+          foreach ($app in 'rasd', 'rasd_fields', 'rasd_forwarder') {
+            Copy-Item -Recurse -Force -LiteralPath "queries\splunk_app\$app" -Destination "$splunk\etc\apps\"
+          }
+          Restart-Service -Name Splunkd -Force
+          $url = 'https://127.0.0.1:8089'
+          python red\lab\splunk_lab.py about --url $url --timeout 420 --terms "accepted for this run by the person who started it" --out (Join-Path $env:RUNNER_TEMP 'siem.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Splunk does not answer on its management port' }
+          $probe = "rasd-siem-probe-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+          cmd.exe /c "echo $probe" | Out-Null
+          python red\lab\splunk_lab.py ready --url $url --timeout 300 --search "index=sysmon source=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational EventCode=1 $probe"
+          if ($LASTEXITCODE -ne 0) { throw 'the Sysmon events of this host do not reach Splunk under the source and the fields the searches read' }
+          "SPLUNK_URL=$url" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Plant the file decoys
+        shell: powershell
+        run: .\deceive\Deploy-RasdDecoys.ps1 -LabConfirmed -Files
+
+      - name: Let the lab host accept a WinRM session from itself
+        shell: powershell
+        run: |
+          Enable-PSRemoting -Force -SkipNetworkProfileCheck | Out-Null
+          Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value $env:COMPUTERNAME -Force
+          New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name LocalAccountTokenFilterPolicy -Value 1 -PropertyType DWord -Force | Out-Null
+          try { Invoke-Command -ComputerName $env:COMPUTERNAME -ScriptBlock { "WinRM session on $env:COMPUTERNAME" } -ErrorAction Stop }
+          catch { Write-Warning "no WinRM session to this host: $($_.Exception.Message)" }
+
+      - name: The plan
+        shell: powershell
+        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -DryRun
+
+      - name: Lab run
+        shell: powershell
+        run: .\red\lab\Invoke-RasdLabRun.ps1 -LabConfirmed -FixReadiness -SiemWaitMinutes 0 -Target $env:COMPUTERNAME -OutDir (Join-Path $env:RUNNER_TEMP 'lab-windows')
+
+      - name: What ran
+        if: always()
+        shell: powershell
+        run: |
+          $results = Join-Path $env:RUNNER_TEMP 'lab-windows\emulation-results.json'
+          if (Test-Path -LiteralPath $results) {
+            (Get-Content -LiteralPath $results -Raw | ConvertFrom-Json) | Format-Table -Property test, step, status, cleanup, error -AutoSize -Wrap | Out-String -Width 220
+          }
+
+      - name: Ask Splunk what it alerted on
+        if: always() && env.SPLUNK_URL != ''
+        shell: powershell
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          $results = Join-Path $env:RUNNER_TEMP 'lab-windows\emulation-results.json'
+          $status = 0
+          python red\lab\splunk_lab.py wait --url $env:SPLUNK_URL --results $results --out (Join-Path $env:RUNNER_TEMP 'siem-wait.txt')
+          if ($LASTEXITCODE -ne 0) { $status = $LASTEXITCODE }
+          python red\lab\splunk_lab.py export --url $env:SPLUNK_URL --results $results --out (Join-Path $env:RUNNER_TEMP 'siem-alerts.csv')
+          if ($LASTEXITCODE -ne 0) { $status = $LASTEXITCODE }
+          python red\lab\splunk_lab.py searches --url $env:SPLUNK_URL --show "RASD Health" --out (Join-Path $env:RUNNER_TEMP 'siem-searches.json')
+          if ($LASTEXITCODE -ne 0) { $status = $LASTEXITCODE }
+          python red\lab\splunk_lab.py feeds --url $env:SPLUNK_URL --sample --out (Join-Path $env:RUNNER_TEMP 'siem-feeds.json')
+          "SIEM_STATUS=$status" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          exit 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-windows
+          path: |
+            ${{ runner.temp }}/lab-windows.zip
+            ${{ runner.temp }}/lab-windows.zip.sha256
+            ${{ runner.temp }}/siem-*
+            ${{ runner.temp }}/siem.json*
+          if-no-files-found: warn
+
+      - name: An alert the run expected did not come, or Splunk refused a search
+        if: env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'
+        shell: powershell
+        run: |
+          Write-Output "::error::the live Splunk did not raise every alert the run expects, or a saved search failed: read 'Ask Splunk what it alerted on'."
+          exit 1
+
+  linux:
+    name: Linux lab host
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      OPENCANARY_IMAGE: thinkst/opencanary:0.9.10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Mark this runner as a RASD lab host
+        run: |
+          hostname -s | sudo tee /etc/rasd-lab-host >/dev/null
+          echo "lab host: $(cat /etc/rasd-lab-host)"
+
+      - name: Install Sysmon for Linux with the repository's configuration
+        run: |
+          if ! apt-cache show sysmonforlinux >/dev/null 2>&1; then
+            wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" -O "$RUNNER_TEMP/packages-microsoft-prod.deb"
+            sudo dpkg -i "$RUNNER_TEMP/packages-microsoft-prod.deb"
+            sudo apt-get update -qq
+          fi
+          sudo apt-get install -y -qq sysmonforlinux cron
+          sudo sysmon -accepteula -i red/lab/sysmon-rasd-linux.xml
+          probe="rasd-readiness-$(date +%s)"
+          /bin/echo "$probe" >/dev/null
+          sleep 5
+          sudo journalctl -t sysmon -o cat --since "-2min" | grep -c "$probe"
+
+      - name: Start Splunk Enterprise beside the lab host
+        if: env.SPLUNK_TERMS == 'accept'
+        run: |
+          set -o pipefail
+          feed="$RUNNER_TEMP/siem/feed"
+          mkdir -p "$feed/sysmon" "$feed/canary"
+          chmod -R 0777 "$RUNNER_TEMP/siem"
+          password="Lab-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SPLUNK_PASSWORD=$password" >> "$GITHUB_ENV"
+          export SPLUNK_PASSWORD="$password"
+          python3 red/lab/splunk_lab.py inputs --host "$(hostname -s)" --out "$RUNNER_TEMP/siem/rasd_lab_inputs" \
+            --monitor /lab/sysmon/sysmon.log:linux:sysmon:linux \
+            --monitor /lab/canary/opencanary.log:deception:opencanary
+          url=$(red/lab/start_splunk.sh "$SPLUNK_IMAGE" "$feed" "$RUNNER_TEMP/siem/rasd_lab_inputs" | tail -n 1)
+          python3 red/lab/splunk_lab.py about --url "$url" --terms "accepted for this run by the person who started it" --out "$RUNNER_TEMP/siem.json"
+          sudo nohup stdbuf -oL journalctl -t sysmon -f -o cat --since now < /dev/null > "$feed/sysmon/sysmon.log" 2>/dev/null &
+          sleep 2
+          probe="rasd-siem-probe-$(date +%s)"
+          /bin/echo "$probe" >/dev/null
+          python3 red/lab/splunk_lab.py ready --url "$url" --search "index=linux sourcetype=\"sysmon:linux\" EventID=1 $probe"
+          echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Start the decoy host with the repository's OpenCanary configuration
+        continue-on-error: true      # without a decoy the other Linux steps still run; the decoy probe is skipped
+        run: |
+          docker pull --quiet "$OPENCANARY_IMAGE"
+          docker run --detach --name rasd-decoy ${SPLUNK_URL:+--volume "$RUNNER_TEMP/siem/feed/canary:/var/tmp"} \
+            --volume "$PWD/deceive/opencanary/settings.json:/etc/opencanaryd/opencanary.conf:ro" "$OPENCANARY_IMAGE"
+          decoy=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rasd-decoy)
+          for _ in $(seq 1 30); do
+            if timeout 2 bash -c "exec 3<>/dev/tcp/$decoy/80" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          docker logs rasd-decoy 2>&1 | tail -n 25
+          timeout 2 bash -c "exec 3<>/dev/tcp/$decoy/80"
+          echo "DECOY=http://$decoy" >> "$GITHUB_ENV"
+          echo "decoy host: $decoy"
+
+      - name: The plan
+        run: python3 red/run_red.py --platform linux --lab-confirmed ${DECOY:+--target "$DECOY"} --dry-run
+
+      - name: Lab run
+        run: |
+          set -o pipefail
+          python3 red/run_red.py --platform linux --lab-confirmed ${DECOY:+--target "$DECOY"} --out-dir "$RUNNER_TEMP/lab-linux" | tee "$RUNNER_TEMP/linux-run.txt"
+
+      - name: Export the Sysmon events of the run
+        if: always()
+        run: |
+          since=$(awk '/^started:/ {print $2; exit}' "$RUNNER_TEMP/linux-run.txt")
+          sleep 5
+          sudo journalctl -t sysmon -o cat --since "-60min" | python3 red/linux/export_sysmon_linux.py --input - --since "$since" --out "$RUNNER_TEMP/linux-export.jsonl"
+          sha256sum "$RUNNER_TEMP/linux-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/linux-export.jsonl.sha256"
+
+      - name: Copy the decoy's records out
+        if: always()
+        run: |
+          if docker cp rasd-decoy:/var/tmp/opencanary.log "$RUNNER_TEMP/canary-export.jsonl"; then
+            sha256sum "$RUNNER_TEMP/canary-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/canary-export.jsonl.sha256"
+            wc -l "$RUNNER_TEMP/canary-export.jsonl"
+          else
+            echo "the decoy kept no records"
+          fi
+
+      - name: Ask Splunk what it alerted on
+        if: always() && env.SPLUNK_URL != ''
+        run: |
+          results="$RUNNER_TEMP/lab-linux/emulation-results.json"
+          status=0
+          python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-wait.txt" || status=$?
+          python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-alerts.csv" || status=$?
+          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --show "RASD Health" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
+          python3 red/lab/splunk_lab.py feeds --url "$SPLUNK_URL" --sample --out "$RUNNER_TEMP/siem-feeds.json" || true
+          echo "SIEM_STATUS=$status" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-linux
+          path: |
+            ${{ runner.temp }}/lab-linux
+            ${{ runner.temp }}/linux-export.jsonl
+            ${{ runner.temp }}/linux-export.jsonl.sha256
+            ${{ runner.temp }}/canary-export.jsonl
+            ${{ runner.temp }}/canary-export.jsonl.sha256
+            ${{ runner.temp }}/linux-run.txt
+            ${{ runner.temp }}/siem-*
+            ${{ runner.temp }}/siem.json*
+          if-no-files-found: warn
+
+      - name: An alert the run expected did not come, or Splunk refused a search
+        if: env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'
+        run: |
+          echo "::error::the live Splunk did not raise every alert the run expects, or a saved search failed: read 'Ask Splunk what it alerted on'."
+          exit 1
+
+  web:
+    name: Lab web application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      JUICE_SHOP_IMAGE: bkimminich/juice-shop:v17.1.1
+      TARGET: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Mark this runner as a RASD lab host
+        run: |
+          hostname -s | sudo tee /etc/rasd-lab-host >/dev/null
+          echo "lab host: $(cat /etc/rasd-lab-host)"
+
+      - name: Start Splunk Enterprise beside the lab application
+        if: env.SPLUNK_TERMS == 'accept'
+        run: |
+          set -o pipefail
+          feed="$RUNNER_TEMP/siem/feed"
+          mkdir -p "$feed/web"
+          chmod -R 0777 "$RUNNER_TEMP/siem"
+          password="Lab-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SPLUNK_PASSWORD=$password" >> "$GITHUB_ENV"
+          export SPLUNK_PASSWORD="$password"
+          python3 red/lab/splunk_lab.py inputs --host "$(hostname -s)" --out "$RUNNER_TEMP/siem/rasd_lab_inputs" \
+            --monitor "/lab/web/access.log*:web:access_combined"
+          url=$(red/lab/start_splunk.sh "$SPLUNK_IMAGE" "$feed" "$RUNNER_TEMP/siem/rasd_lab_inputs" | tail -n 1)
+          python3 red/lab/splunk_lab.py about --url "$url" --terms "accepted for this run by the person who started it" --out "$RUNNER_TEMP/siem.json"
+          echo "SPLUNK_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Start the lab application on localhost
+        run: |
+          docker pull --quiet "$JUICE_SHOP_IMAGE"
+          docker run --detach --name rasd-lab-app --network host ${SPLUNK_URL:+--volume "$RUNNER_TEMP/siem/feed/web:/juice-shop/logs"} "$JUICE_SHOP_IMAGE"
+          for _ in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null "$TARGET/rest/admin/application-version"; then break; fi
+            sleep 2
+          done
+          curl --silent --fail "$TARGET/rest/admin/application-version"
+          if [ -n "${SPLUNK_URL:-}" ]; then
+            probe="rasd-siem-probe-$(date +%s)"
+            curl --silent --output /dev/null "$TARGET/$probe" || true
+            python3 red/lab/splunk_lab.py ready --url "$SPLUNK_URL" --search "index=web sourcetype=access_combined $probe"
+          fi
+
+      - name: Create the lab test account
+        run: |
+          email="lab.user01@lab.local"
+          password="Lab-$(openssl rand -hex 12)"
+          echo "::add-mask::$password"
+          curl --silent --fail --output /dev/null --request POST "$TARGET/api/Users" \
+            --header 'Content-Type: application/json' \
+            --data "{\"email\":\"$email\",\"password\":\"$password\",\"passwordRepeat\":\"$password\"}"
+          {
+            echo "RASD_LAB_EMAIL=$email"
+            echo "RASD_LAB_PASSWORD=$password"
+          } >> "$GITHUB_ENV"
+
+      - name: The plan
+        run: python3 red/run_red.py --platform web --lab-confirmed --target "$TARGET" --dry-run
+
+      - name: Lab run
+        run: |
+          set -o pipefail
+          python3 red/run_red.py --platform web --lab-confirmed --target "$TARGET" --out-dir "$RUNNER_TEMP/lab-web" | tee "$RUNNER_TEMP/web-run.txt"
+
+      - name: Export the access log of the run
+        if: always()
+        run: |
+          marker=$(awk '/^run marker:/ {print $3; exit}' "$RUNNER_TEMP/web-run.txt")
+          docker cp rasd-lab-app:/juice-shop/logs "$RUNNER_TEMP/app-logs"
+          cat "$RUNNER_TEMP"/app-logs/access.log* > "$RUNNER_TEMP/access.log"
+          python3 red/web/export_access_log.py --input "$RUNNER_TEMP/access.log" --marker "$marker" --out "$RUNNER_TEMP/web-export.jsonl"
+          sha256sum "$RUNNER_TEMP/web-export.jsonl" | sed "s#$RUNNER_TEMP/##" > "$RUNNER_TEMP/web-export.jsonl.sha256"
+
+      - name: Ask Splunk what it alerted on
+        if: always() && env.SPLUNK_URL != ''
+        run: |
+          results="$RUNNER_TEMP/lab-web/emulation-results.json"
+          status=0
+          python3 red/lab/splunk_lab.py wait --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-wait.txt" || status=$?
+          python3 red/lab/splunk_lab.py export --url "$SPLUNK_URL" --results "$results" --out "$RUNNER_TEMP/siem-alerts.csv" || status=$?
+          python3 red/lab/splunk_lab.py searches --url "$SPLUNK_URL" --show "RASD Health" --out "$RUNNER_TEMP/siem-searches.json" || status=$?
+          python3 red/lab/splunk_lab.py feeds --url "$SPLUNK_URL" --sample --out "$RUNNER_TEMP/siem-feeds.json" || true
+          echo "SIEM_STATUS=$status" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        if: always()
+        with:
+          name: lab-web
+          path: |
+            ${{ runner.temp }}/lab-web
+            ${{ runner.temp }}/web-export.jsonl
+            ${{ runner.temp }}/web-export.jsonl.sha256
+            ${{ runner.temp }}/web-run.txt
+            ${{ runner.temp }}/siem-*
+            ${{ runner.temp }}/siem.json*
+          if-no-files-found: warn
+
+      - name: An alert the run expected did not come, or Splunk refused a search
+        if: env.SIEM_STATUS != '' && env.SIEM_STATUS != '0'
+        run: |
+          echo "::error::the live Splunk did not raise every alert the run expects, or a saved search failed: read 'Ask Splunk what it alerted on'."
+          exit 1
+
+  evidence:
+    name: Evidence from the runs
+    needs: [windows, linux, web]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write          # the evidence is pushed as a branch of its own, never to the branch it ran from
+      actions: read            # the runs are read from this run's artifacts
     env:
       NO_BANNER: "1"
     steps:
@@ -28,26 +442,80 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install the rasd command with the dataset readers
-        run: pip install -e ".[datasets]"
+      - name: Install the rasd command
+        run: pip install -e .
 
-      - name: Fetch the pinned files and verify every hash
-        run: rasd datasets fetch
+      - name: Read the runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --dir "$RUNNER_TEMP/runs"
+          find "$RUNNER_TEMP/runs" -maxdepth 3 -type f | sed "s#$RUNNER_TEMP/##" | sort
 
-      - name: Replay every rule over them and keep the result
-        run: rasd datasets run --write
+      - name: Turn each run into evidence
+        id: evidence
+        run: |
+          runs="$RUNNER_TEMP/runs"
+          keep="hosted-$GITHUB_RUN_ID"
+          siem_note="No domain and no SIEM."
+          if [ -n "$(find "$runs" -maxdepth 2 -name siem.json -size +0c | head -n 1)" ]; then
+            siem_note="No domain. A Splunk Enterprise stood beside each lab host for the run, started by a person who accepted its terms, with the RASD apps in it and no vendor add-on; the siem.json of each part says which Splunk it was."
+          fi
+          note="GitHub-hosted runners (windows-2022 and ubuntu-24.04), each marked as a RASD lab host for one run and discarded after it. $siem_note Workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA."
+          echo "siem_note=$siem_note" >> "$GITHUB_OUTPUT"
+          missed=0
+          siem() {      # what the live SIEM left beside a run: the alerts it raised, its own description, what it said of every saved search
+            for f in "$1/siem-alerts.csv" "$1/siem.json" "$1/siem-searches.json"; do if [ -s "$f" ]; then echo "$f"; fi; done
+          }
+          if [ -f "$runs/lab-windows/lab-windows.zip" ]; then
+            mapfile -t beside < <(siem "$runs/lab-windows")
+            rasd evidence --run "$runs/lab-windows/lab-windows.zip" "${beside[@]}" --strict --keep "$keep" --note "$note" || missed=1
+          fi
+          if [ -d "$runs/lab-linux/lab-linux" ]; then
+            exports=("$runs/lab-linux/linux-export.jsonl")
+            if [ -s "$runs/lab-linux/canary-export.jsonl" ]; then exports+=("$runs/lab-linux/canary-export.jsonl"); fi
+            mapfile -t beside < <(siem "$runs/lab-linux")
+            exports+=("${beside[@]}")
+            rasd evidence --run "$runs/lab-linux/lab-linux" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
+          fi
+          if [ -d "$runs/lab-web/lab-web" ]; then
+            exports=("$runs/lab-web/web-export.jsonl")
+            mapfile -t beside < <(siem "$runs/lab-web")
+            exports+=("${beside[@]}")
+            rasd evidence --run "$runs/lab-web/lab-web" "${exports[@]}" --keep "$keep" --note "$note" || missed=1
+          fi
+          echo "missed=$missed" >> "$GITHUB_OUTPUT"
 
-      - name: The result is what the repository's rules give
-        run: rasd datasets check
+      - name: Drop the kept runs this one replaces
+        run: rasd evidence --prune
 
-      - name: Push the result onto this branch
+      - name: Rebuild the pages
+        run: rasd build
+
+      - name: The evidence is what the kept runs give
+        run: rasd evidence --check
+
+      - name: Push the evidence as a branch
+        if: inputs.evidence_branch
+        env:
+          SIEM_NOTE: ${{ steps.evidence.outputs.siem_note }}
         run: |
           if [ -z "$(git status --porcelain)" ]; then
-            echo "Nothing changed: the kept results already are what these rules give."
+            echo "No evidence was written: nothing to push."
             exit 0
           fi
-          git status --short | head -n 40
+          branch="lab-evidence/run-$GITHUB_RUN_ID"
+          fired=$(git status --porcelain -- detect | grep -c 'evidence.md' || true)
+          git checkout --quiet -b "$branch"
           git add --all
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit --quiet -m "datasets: the public recordings replayed in workflow run $GITHUB_RUN_ID"
-          git push --quiet origin "HEAD:$GITHUB_REF_NAME"
+            commit --quiet -m "evidence: $fired detections fired in lab run $GITHUB_RUN_ID" \
+            -m "Written by rasd evidence from the runs of workflow run $GITHUB_RUN_ID on GitHub-hosted runners marked as lab hosts. $SIEM_NOTE The Active Directory detections are not covered. The raw runs are kept in purple/lab_runs/hosted-$GITHUB_RUN_ID, and rasd evidence --check recomputes this evidence from them."
+          git push --quiet origin "$branch"
+          echo "pushed $branch" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: A detection whose step ran did not fire
+        if: steps.evidence.outputs.missed == '1'
+        run: |
+          echo "::error::rasd evidence reported a MISSED detection or refused a run: read the step above."
+          exit 1
