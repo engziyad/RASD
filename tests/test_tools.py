@@ -17,6 +17,8 @@ from unittest import mock
 import warnings
 import zipfile
 import zlib
+from datetime import datetime, timedelta
+from types import SimpleNamespace
 from typing import ClassVar
 from pathlib import Path
 
@@ -117,6 +119,77 @@ class Replay(unittest.TestCase):
     def test_benign_noise_does_not_alert(self):
         noisy = [a for a in self.alerts if a["technique"] in ("T1059.001", "T1003.001", "T1547.001")]
         self.assertTrue(all(a["entity"] == "WS07.corp.lab" for a in noisy), "SCCM, Defender and OneDrive must stay silent")
+
+    @staticmethod
+    def volume(span, counts, limit=20):
+        """The volume table for alerts counted per rule over logs that span the given time."""
+        start = datetime(2026, 11, 21, 2, 55, 37, 123456)
+        stats = {"events": 100, "routed": 100, "unrouted": 0, "start": start, "end": start + span} if span is not None else \
+                {"events": 100, "routed": 100, "unrouted": 0, "start": None, "end": None}
+        dets = [SimpleNamespace(id=rule, title=rule, level="high") for rule in counts]
+        alerts = [{"rule": rule, "entity": "host-a"} for rule, n in counts.items() for _ in range(n)]
+        return {r["rule"]: r for r in replay.forecast(alerts, stats, dets, limit)}, stats
+
+    def test_a_short_capture_is_never_stretched_to_a_day(self):
+        """Eight minutes of a lab run: one alert is one alert, not twenty-four a day and not noise."""
+        rows, stats = self.volume(timedelta(minutes=8), {"once": 1, "thirteen": 13, "flood": 21, "never": 0})
+        self.assertTrue(all(r["per_day"] is None for r in rows.values()))
+        self.assertEqual([rows[r]["verdict"] for r in ("once", "thirteen", "never")], ["fired", "fired", "silent"])
+        self.assertEqual(rows["flood"]["verdict"], replay.NOISY, "more alerts than the daily limit in under a day is noise already")
+        note = replay.volume_note(stats, 20)
+        self.assertIn("span 8 minutes", note)
+        self.assertIn("too short for a per-day figure", note)
+        self.assertEqual(replay.span_text({"start": stats["start"], "end": stats["start"] + timedelta(hours=11, minutes=57)}), "11 h 57 min")
+        self.assertEqual(replay.span_text({"start": stats["start"], "end": stats["start"] + timedelta(seconds=20)}), "under a minute")
+
+    def test_a_day_or_more_of_logs_gives_the_average_per_day(self):
+        rows, stats = self.volume(timedelta(days=2), {"busy": 50, "calm": 10, "never": 0})
+        self.assertEqual([(rows[r]["per_day"], rows[r]["verdict"]) for r in ("busy", "calm", "never")],
+                         [(25.0, replay.NOISY), (5.0, "ok"), (0.0, "silent")])
+        self.assertEqual(replay.volume_note(stats, 20), "Per-day figures are averages over the 2.0 days replayed.")
+        edge, _ = self.volume(timedelta(hours=24), {"one": 1})
+        self.assertEqual(edge["one"]["per_day"], 1.0, "exactly a day is a day")
+
+    def test_events_without_a_time_get_no_per_day_figure(self):
+        rows, stats = self.volume(None, {"once": 1, "flood": 21})
+        self.assertEqual([(rows[r]["per_day"], rows[r]["verdict"]) for r in ("once", "flood")], [(None, "fired"), (None, replay.NOISY)])
+        self.assertIn("carry no time", replay.volume_note(stats, 20))
+        self.assertEqual(replay.when_text(stats), "no timestamps")
+
+    def test_the_sample_day_is_under_a_day_and_says_so(self):
+        fc = replay.forecast(self.alerts, self.stats, load_detections(), 20)
+        self.assertTrue(all(r["per_day"] is None and r["verdict"] in ("fired", "silent") for r in fc))
+        self.assertEqual(replay.when_text(self.stats), "2026-10-05 07:00:00 → 18:57:26 UTC")
+
+    def test_a_storyline_inside_one_minute_reads_as_a_minute(self):
+        t = datetime(2026, 11, 21, 3, 2, 51)
+        alert = lambda rule, tactic, dt: {"time": t + dt, "entity": "host-a", "rule": rule, "title": rule, "level": "high",
+                                          "technique": rule, "tactics": [tactic], "summary": ""}
+        fast = replay.storylines([alert("T1", "execution", timedelta()), alert("T2", "persistence", timedelta(seconds=9))], 60)
+        self.assertTrue(fast[0]["narrative"].startswith("On host-a, within a minute: "))
+        one = replay.storylines([alert("T1", "execution", timedelta()), alert("T2", "persistence", timedelta(seconds=62))], 60)
+        self.assertTrue(one[0]["narrative"].startswith("On host-a, within 1 minute: "))
+        slow = replay.storylines([alert("T1", "execution", timedelta()), alert("T2", "persistence", timedelta(minutes=20))], 60)
+        self.assertTrue(slow[0]["narrative"].startswith("On host-a, within 20 minutes: "))
+
+    def test_the_html_report_prints_clean_and_claims_no_daily_rate_it_did_not_measure(self):
+        fc = replay.forecast(self.alerts, self.stats, load_detections(), 20)
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "report.html"
+            replay.write_html(str(page), self.alerts, self.stats, fc, self.stories, "samples/replay/lab-day.jsonl", 20)
+            text = page.read_text(encoding="utf-8")
+            self.assertIn("lab-day.jsonl · 2026-10-05 07:00:00 → 18:57:26 UTC", text)
+            self.assertNotIn("Per day", text)
+            self.assertNotIn("Projected", text)
+            self.assertIn("too short for a per-day figure", text)
+            for box in ("@top-left", "@top-center", "@top-right", "@bottom-left", "@bottom-center", "@bottom-right"):
+                self.assertIn(box, text, "every margin box is the report's own, so a browser prints no address or date of its own")
+            self.assertIn("@media print", text)
+            week = dict(self.stats, end=self.stats["start"] + timedelta(days=7))
+            replay.write_html(str(page), self.alerts, week, replay.forecast(self.alerts, week, load_detections(), 20), self.stories, "week.jsonl", 20)
+            text = page.read_text(encoding="utf-8")
+            self.assertIn('<th class="n">Per day</th>', text)
+            self.assertIn("Per-day figures are averages over the 7.0 days replayed.", text)
 
 
 class ReplayCases(unittest.TestCase):

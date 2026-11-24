@@ -6,7 +6,8 @@ What it answers
   1. What would have fired?           every alert, with the rule, host, user and time - including
                                       the correlation detections (a password spray, a burst of
                                       service tickets), timed at the event that reached the threshold
-  2. How noisy will each rule be?     alert volume forecast per rule and per day
+  2. How noisy will each rule be?     alerts per rule, and per day when the logs span a day
+                                      or more: a shorter capture is never stretched to a day
   3. What actually happened?          alerts are correlated per entity into attack
                                       storylines, ordered along the ATT&CK kill chain,
                                       scored, and narrated in one sentence an analyst
@@ -46,6 +47,9 @@ Usage
 
 Event times are compared in UTC; --hours are local business hours, so pass --utc-offset
 for the off-hours risk condition to use the right clock.
+
+The HTML report prints to paper or PDF as it stands: it writes its own footer on every page,
+so a browser adds no file address or date of its own.
 """
 from __future__ import annotations
 
@@ -330,10 +334,51 @@ def replay(events: list[dict], dets, assets: dict, risk: RiskContext | None = No
     return alerts, stats
 
 
+DAY = 86400.0
+NOISY = "noisy - tune before deploying"
+
+
+def replayed_days(stats: dict) -> float | None:
+    """The days the replayed events span when they span one or more, else None: a per-day figure is an
+    average over the logs, never a short capture stretched to a day."""
+    if not (stats.get("start") and stats.get("end")):
+        return None
+    seconds = (stats["end"] - stats["start"]).total_seconds()
+    return seconds / DAY if seconds >= DAY else None
+
+
+def span_text(stats: dict) -> str:
+    """How long the replayed events span, in words: '8 minutes', '11 h 57 min', '3.2 days'."""
+    if not (stats.get("start") and stats.get("end")):
+        return "no time"
+    seconds = (stats["end"] - stats["start"]).total_seconds()
+    if seconds >= DAY:
+        return f"{seconds / DAY:.1f} days"
+    minutes = round(seconds / 60)
+    if minutes >= 60:
+        return f"{minutes // 60} h {minutes % 60:02d} min"
+    if minutes >= 1:
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+    return "under a minute"
+
+
+def volume_note(stats: dict, noisy_per_day: float) -> str:
+    """One sentence on what the volume table can and cannot say for these logs."""
+    if replayed_days(stats) is not None:
+        return f"Per-day figures are averages over the {span_text(stats)} replayed."
+    limit = f"{noisy_per_day:g}"
+    if not (stats.get("start") and stats.get("end")):
+        return (f"The events carry no time, so no per-day figure is given; a rule is called noisy here only when "
+                f"its alerts already pass {limit}.")
+    return (f"The replayed events span {span_text(stats)}: too short for a per-day figure, which takes a day or more "
+            f"of logs. A rule is called noisy here only when its alerts already pass {limit}.")
+
+
 def forecast(alerts: list[dict], stats: dict, dets, noisy_per_day: float) -> list[dict]:
-    span_days = 1.0
-    if stats["start"] and stats["end"]:
-        span_days = max((stats["end"] - stats["start"]).total_seconds() / 86400, 1 / 24)
+    """Alert volume per rule. per_day is the average over logs of a day or more and None for anything
+    shorter. The verdict is silent, ok or noisy when a day was replayed; on a shorter capture a rule that
+    alerted is 'fired', and noisy only when the alerts counted already pass the daily limit."""
+    days = replayed_days(stats)
     counts = Counter(a["rule"] for a in alerts)
     entities = defaultdict(set)
     for a in alerts:
@@ -341,10 +386,15 @@ def forecast(alerts: list[dict], stats: dict, dets, noisy_per_day: float) -> lis
     rows = []
     for d in dets:
         n = counts.get(d.id, 0)
-        per_day = n / span_days
-        verdict = "silent" if n == 0 else ("noisy - tune before deploying" if per_day > noisy_per_day else "ok")
+        per_day = round(n / days, 1) if days else None
+        if n == 0:
+            verdict = "silent"
+        elif (n / days if days else n) > noisy_per_day:
+            verdict = NOISY
+        else:
+            verdict = "ok" if days else "fired"
         rows.append({"rule": d.id, "title": d.title, "level": d.level, "alerts": n,
-                     "per_day": round(per_day, 1), "entities": len(entities[d.id]), "verdict": verdict})
+                     "per_day": per_day, "entities": len(entities[d.id]), "verdict": verdict})
     return sorted(rows, key=lambda r: -r["alerts"])
 
 
@@ -398,7 +448,8 @@ def _story(ent: str, group: list[dict]) -> dict:
         if a["rule"] not in seen:
             seen.add(a["rule"])
             steps.append(a)
-    narrative = (f"On {ent}, within {minutes:.0f} minutes: "
+    span = "a minute" if minutes < 1 else (f"{minutes:.0f} minutes" if round(minutes) != 1 else "1 minute")
+    narrative = (f"On {ent}, within {span}: "
                  + " → ".join(f"{s['title']} ({s['technique']})" for s in steps) + ".")
     return {"entity": ent, "start": group[0]["time"], "end": group[-1]["time"], "minutes": round(minutes, 1),
             "alerts": len(group), "techniques": len(techniques), "tactics": tactics, "score": score,
@@ -408,8 +459,17 @@ def _story(ent: str, group: list[dict]) -> dict:
 # --------------------------------------------------------------------------- #
 # output
 # --------------------------------------------------------------------------- #
-def print_report(alerts, stats, fc, stories):
-    span = f"{stats['start']} → {stats['end']}" if stats["start"] else "no timestamps"
+def when_text(stats: dict) -> str:
+    """The replayed span as a reader wants it: to the second, the date once when both ends share it, in UTC."""
+    start, end = stats.get("start"), stats.get("end")
+    if not (start and end):
+        return "no timestamps"
+    last = f"{end:%H:%M:%S}" if start.date() == end.date() else f"{end:%Y-%m-%d %H:%M:%S}"
+    return f"{start:%Y-%m-%d %H:%M:%S} → {last} UTC"
+
+
+def print_report(alerts, stats, fc, stories, noisy_per_day: float = 20):
+    span = when_text(stats)
     print(f"{BOLD}Replayed {stats['events']} events{RESET} ({stats['routed']} routed, {stats['unrouted']} unrouted)  {DIM}{span}{RESET}")
     print(f"{BOLD}{len(alerts)} alerts{RESET} from {sum(1 for r in fc if r['alerts'])} of {len(fc)} detections\n")
     print(f"{BOLD}Attack storylines{RESET}")
@@ -428,16 +488,18 @@ def print_report(alerts, stats, fc, stories):
             when = f"{a['time']:%H:%M}" if a["time"] else "--:--"
             why = ", ".join(a["risk_factors"]) or "base score"
             print(f"  {colour}{a['risk']:3d}{RESET}  {when}  {a['entity']:<20} {a['technique']:<10} {DIM}{why}{RESET}")
-    print(f"\n{BOLD}Alert volume forecast{RESET}")
+    print(f"\n{BOLD}Alert volume{RESET}")
     for r in fc:
         colour = RED if r["verdict"].startswith("noisy") else (DIM if r["verdict"] == "silent" else GREEN)
-        print(f"  {r['alerts']:4d} alerts  {r['per_day']:6.1f}/day  {r['entities']:3d} entities  "
+        per_day = "" if r["per_day"] is None else f"{r['per_day']:6.1f}/day  "
+        print(f"  {r['alerts']:4d} alerts  {per_day}{r['entities']:3d} entities  "
               f"{colour}{r['verdict']:<32}{RESET} {r['rule']}")
-    print(f"  {DIM}per-day figures are projected from the replayed time span{RESET}")
+    print(f"  {DIM}{volume_note(stats, noisy_per_day)}{RESET}")
 
 
-def write_html(path: str, alerts, stats, fc, stories, source: str):
+def write_html(path: str, alerts, stats, fc, stories, source: str, noisy_per_day: float = 20):
     e = lambda x: html.escape(str(x))
+    daily = any(r["per_day"] is not None for r in fc)
     lvl = {"high": "var(--high)", "critical": "var(--high)", "medium": "var(--med)", "low": "var(--low)"}
     story_html = "".join(f"""
       <article class="story"><header><span class="score" style="--s:{s['score']}">{s['score']}</span>
@@ -447,11 +509,11 @@ def write_html(path: str, alerts, stats, fc, stories, source: str):
         <ol class="timeline">{''.join(f"<li><time>{a['time']:%H:%M:%S}</time><b style='color:{lvl.get(a['level'],'inherit')}'>{e(a['technique'])}</b> {e(a['title'])}<code>{e(a['summary'][:140])}</code></li>" for a in s['steps'])}</ol>
       </article>""" for s in stories) or "<p class='muted'>No multi-technique storylines in this window.</p>"
     fc_rows = "".join(f"<tr><td>{e(r['rule'])}</td><td>{e(r['level'])}</td><td class='n'>{r['alerts']}</td>"
-                      f"<td class='n'>{r['per_day']}</td><td class='n'>{r['entities']}</td>"
+                      + (f"<td class='n'>{r['per_day']}</td>" if daily else "") + f"<td class='n'>{r['entities']}</td>"
                       f"<td class='{ 'bad' if r['verdict'].startswith('noisy') else ('muted' if r['verdict']=='silent' else 'ok') }'>{e(r['verdict'])}</td></tr>" for r in fc)
-    alert_rows = "".join(f"<tr><td>{a['time']:%H:%M:%S}</td><td class='n'>{'' if a.get('risk') is None else a['risk']}</td>"
+    alert_rows = "".join(f"<tr><td class='t'>{a['time']:%H:%M:%S}</td><td class='n'>{'' if a.get('risk') is None else a['risk']}</td>"
                          f"<td>{e(a['entity'])}</td><td>{e(a['user'])}</td>"
-                         f"<td><b style='color:{lvl.get(a['level'],'inherit')}'>{e(a['technique'])}</b></td><td>{e(a['title'])}"
+                         f"<td class='t'><b style='color:{lvl.get(a['level'],'inherit')}'>{e(a['technique'])}</b></td><td>{e(a['title'])}"
                          f"<code>{e(', '.join(a.get('risk_factors') or []))}</code></td></tr>" for a in alerts if a['time'])
     doc = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RASD Replay Report</title><style>
@@ -467,17 +529,25 @@ background:conic-gradient(var(--high) calc(var(--s)*1%),var(--line) 0)}}.narrati
 .timeline{{margin:0;padding-left:18px}}.timeline li{{margin:6px 0}}time{{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:8px}}
 code{{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}}.table-wrap{{overflow-x:auto}}
 table{{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}}
-th,td{{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:14px}}th{{color:var(--muted);font-weight:500}}.n{{text-align:right;font-variant-numeric:tabular-nums}}
-.bad{{color:var(--high)}}.ok{{color:var(--sage)}}footer{{margin-top:40px;color:var(--muted);font-size:13px}}
+th,td{{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:14px}}th{{color:var(--muted);font-weight:500;white-space:nowrap}}
+.n{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}}.t{{white-space:nowrap;font-variant-numeric:tabular-nums}}
+.bad{{color:var(--high)}}.ok{{color:var(--sage)}}.note{{color:var(--muted);font-size:14px;margin:0 0 12px}}footer{{margin-top:40px;color:var(--muted);font-size:13px}}
+@page{{margin:14mm 12mm 16mm;@top-left{{content:""}}@top-center{{content:""}}@top-right{{content:""}}@bottom-center{{content:""}}
+@bottom-left{{content:"RASD replay report";font:9pt system-ui,sans-serif;color:#6b6862}}@bottom-right{{content:counter(page) " / " counter(pages);font:9pt system-ui,sans-serif;color:#6b6862}}}}
+@media print{{:root{{--bg:#fff;--fg:#1d1c1a;--muted:#5f5c56;--card:#fff;--line:#d9d5cc;--gold:#7d6233;--sage:#3f663f;--high:#a5351f;--med:#8a5f12;--low:#3f663f}}
+body{{font-size:11pt}}main{{max-width:none;padding:0}}h2{{break-after:avoid}}.kpi,.story header,.timeline li,tr{{break-inside:avoid}}
+.table-wrap{{overflow:visible}}table{{border-radius:0;overflow:visible}}th,td{{font-size:9.5pt;padding:5px 7px}}td{{overflow-wrap:break-word}}thead{{display:table-header-group}}
+.score,.kpi,.story{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}footer{{margin-top:18px}}}}
 </style></head><body><main>
-<h1>RASD Replay Report</h1><p class="muted">{e(", ".join(Path(x).name for x in source.split(", ")))} · {e(stats['start'])} → {e(stats['end'])}</p>
+<h1>RASD Replay Report</h1><p class="muted">{e(", ".join(Path(x).name for x in source.split(", ")))} · {e(when_text(stats))}</p>
 <div class="kpis"><div class="kpi"><span class="muted">Events</span><b>{stats['events']}</b></div>
 <div class="kpi"><span class="muted">Alerts</span><b>{len(alerts)}</b></div>
 <div class="kpi"><span class="muted">Storylines</span><b>{len(stories)}</b></div>
 <div class="kpi"><span class="muted">Rules fired</span><b>{sum(1 for r in fc if r['alerts'])}/{len(fc)}</b></div></div>
 <h2>Attack storylines</h2>{story_html}
-<h2>Alert volume forecast</h2><div class="table-wrap"><table><tr><th>Detection</th><th>Level</th><th class="n">Alerts</th><th class="n">Projected / day</th><th class="n">Entities</th><th>Verdict</th></tr>{fc_rows}</table></div>
-<h2>All alerts</h2><div class="table-wrap"><table><tr><th>Time</th><th class="n">Risk</th><th>Entity</th><th>User</th><th>Technique</th><th>Detection · risk factors</th></tr>{alert_rows}</table></div>
+<h2>Alert volume</h2><p class="note">{e(volume_note(stats, noisy_per_day))}</p>
+<div class="table-wrap"><table><thead><tr><th>Detection</th><th>Level</th><th class="n">Alerts</th>{'<th class="n">Per day</th>' if daily else ''}<th class="n">Entities</th><th>Verdict</th></tr></thead><tbody>{fc_rows}</tbody></table></div>
+<h2>All alerts</h2><div class="table-wrap"><table><thead><tr><th>Time</th><th class="n">Risk</th><th>Entity</th><th>User</th><th>Technique</th><th>Detection · risk factors</th></tr></thead><tbody>{alert_rows}</tbody></table></div>
 <footer>Generated by RASD · Continuous Detection Assurance Framework</footer></main></body></html>"""
     write_output(path, doc)
 
@@ -774,7 +844,9 @@ def main() -> int:
     ap.add_argument("--utc-offset", type=float, default=0.0,
                     help="hours between UTC and the business hours' local time, e.g. 3 for UTC+3 (default 0)")
     ap.add_argument("--window", type=int, default=60, help="storyline correlation window in minutes (default 60)")
-    ap.add_argument("--noisy", type=float, default=20, help="alerts/day above which a rule is flagged noisy")
+    ap.add_argument("--noisy", type=float, default=20,
+                    help="alerts a day above which a rule is called noisy; judged per day on logs of a day or more, "
+                         "on a shorter capture only by the alerts it already holds (default 20)")
     ap.add_argument("--filter", help="only replay detections matching this text")
     ap.add_argument("--html", help="write a self-contained HTML report")
     ap.add_argument("--json", help="write alerts, forecast and storylines as JSON")
@@ -798,9 +870,9 @@ def main() -> int:
                            RiskContext(assets, load_users(args.users), (start, end), args.utc_offset), corrs)
     fc = forecast(alerts, stats, [*dets, *corrs], args.noisy)
     stories = storylines(alerts, args.window)
-    print_report(alerts, stats, fc, stories)
+    print_report(alerts, stats, fc, stories, args.noisy)
     if args.html:
-        write_html(args.html, alerts, stats, fc, stories, ", ".join(args.logs))
+        write_html(args.html, alerts, stats, fc, stories, ", ".join(args.logs), args.noisy)
         print(f"\n[+] HTML report: {args.html}")
     if args.json:
         clean = lambda o: o.isoformat() if isinstance(o, datetime) else str(o)

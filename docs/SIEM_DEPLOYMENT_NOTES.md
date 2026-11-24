@@ -45,6 +45,6 @@ Not shown by any of it: the vendor add-ons in place of `rasd_fields`, a forwarde
 
 ## Before going live
 1. `rasd doctor <export from your SIEM> --profile auto` - the [telemetry profile](../profiles/README.md) that fits the export (ECS, CIM, ASIM, Defender), fields present, command lines not truncated.
-2. `rasd replay <export> --profile auto --assets assets.csv` - alert volume forecast per rule and the risk ranking; `rasd benchmark <export>` - rule cost on your data volume.
+2. `rasd replay <export> --profile auto --assets assets.csv` - alerts per rule and the risk ranking; export a day or more, because the per-day figure is an average over the logs and a shorter capture is never stretched to a day; `rasd benchmark <export>` - rule cost on your data volume.
 3. `rasd tune` - measure every tuning proposal before adding it; never add a filter that hides an attack variant.
 4. Record each rule's deployment (SIEM, rule name, schedule) in your change system; name SIEM rules after the detection id so `rasd evidence --siem-alerts` can match their alerts.
