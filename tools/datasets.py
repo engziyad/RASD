@@ -2358,7 +2358,12 @@ def _scalars(value: Any) -> Iterator[str]:
 
 _OS_PATH = re.compile(r"(\\\\\?\\)?(c:\\windows\\|c:\\program files( \(x86\))?\\|%systemroot%|%windir%|\\systemroot\\)")
 _PLACEHOLDER = re.compile(r"(user|test|admin|guest|lab|demo)[._-]?\d{1,3}")
-_KNOWN_KEY = re.compile(r"hk[a-z_]*\\software\\(wow6432node\\)?microsoft\\windows\\currentversion\\run(once)?\\?")
+# registry keys the operating system defines and the ATT&CK pages name: writing one down copies nothing from a file.
+# The Run keys, and the debugger key of the seven accessibility programs of T1546.008; the data set under them is
+# still a value like any other
+_KNOWN_KEY = re.compile(r"hk[a-z_]*\\software\\(wow6432node\\)?microsoft\\windows\\currentversion\\run(once)?\\?"
+                        r"|hk[a-z_]*\\software\\(wow6432node\\)?microsoft\\windows nt\\currentversion\\image file execution options"
+                        r"\\(sethc|utilman|osk|magnify|narrator|displayswitch|atbroker)\.exe(\\debugger)?")
 
 
 def _distinctive(v: str) -> bool:

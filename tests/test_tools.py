@@ -1492,6 +1492,20 @@ class PublicDatasets(unittest.TestCase):
         self.assertEqual(sorted({h.split(":")[0] for h in hits}), ["copied.jsonl", "frame.yml", "host.md"])
         self.assertTrue(any("x_tool77.exe" in h for h in hits) and any("ntdll.dll+abc12" in h for h in hits))
 
+    def test_a_registry_key_the_technique_page_names_is_not_a_copied_value(self):
+        """The debugger key of an accessibility program is how ATT&CK describes T1546.008: a test that writes
+        it copied nothing. The data set under it, and the same key for any other program, still count."""
+        ifeo = "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\"
+        for known in (ifeo + "sethc.exe\\Debugger", ifeo + "AtBroker.exe\\Debugger", ifeo + "utilman.exe",
+                      "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\osk.exe\\Debugger",
+                      "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\"):
+            _ident, whole = datasets._record_values({"TargetObject": known})
+            self.assertEqual(whole, set(), known)
+        for copied in (ifeo + "x_tool77.exe\\Debugger", ifeo + "sethc.exe\\Debugger\\x_tool77",
+                       "C:\\Users\\Public\\x_tool77.exe -run 77"):
+            _ident, whole = datasets._record_values({"TargetObject": copied, "Details": copied})
+            self.assertEqual(whole, {copied.lower()}, copied)
+
     def test_a_file_whose_hash_differs_from_the_catalog_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             ds = self._dataset(Path(tmp), "a.json", b'{"EventID": 1}\n', sha256="0" * 64)
