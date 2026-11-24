@@ -5,9 +5,10 @@ description: |
   Detects a process opening a handle to lsass.exe with access rights commonly
   required to read its memory (credential dumping via MiniDumpWriteDump,
   procdump, comsvcs.dll, Mimikatz-style tooling). Only named Windows components,
-  PowerShell listing processes through .NET and the Defender scanner are
-  excluded - never a whole folder, because dumpers are dropped into System32 and
-  System32 binaries are abused to dump.
+  PowerShell listing processes through .NET, the Defender scanner and Splunk
+  Enterprise's own service (its path, its account, one mask and its own call
+  stack together) are excluded - never a whole folder, because dumpers are
+  dropped into System32 and System32 binaries are abused to dump.
 references:
   - https://attack.mitre.org/techniques/T1003/001/
   - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
@@ -51,6 +52,14 @@ detection:
   filter_defender:
     SourceImage|startswith: 'C:\ProgramData\Microsoft\Windows Defender\Platform\'
     SourceImage|endswith: '\MsMpEng.exe'
+  filter_splunk_service:     # Splunk Enterprise's own service reading every process for its resource usage log: all four must hold
+    SourceImage: 'C:\Program Files\Splunk\bin\splunkd.exe'
+    SourceUser: 'NT SERVICE\Splunkd'
+    GrantedAccess:
+      - '0x1fffff'
+      - '2097151'
+    # the whole call stack: OpenProcess called from splunkd.exe's own code on a thread its runtime started, and no other module
+    CallTrace|re: '(?i)^C:\\Windows\\System32\\ntdll\.dll\+[0-9a-f]+\|C:\\Windows\\System32\\KERNELBASE\.dll\+[0-9a-f]+(?:\|C:\\Program Files\\Splunk\\bin\\splunkd\.exe\+[0-9a-f]+)+\|C:\\Windows\\System32\\ucrtbase\.dll\+[0-9a-f]+\|C:\\Windows\\System32\\KERNEL32\.DLL\+[0-9a-f]+\|C:\\Windows\\System32\\ntdll\.dll\+[0-9a-f]+$'
   condition: selection_target and 1 of selection_access_* and not 1 of filter_*
 falsepositives:
   - EDR / AV / backup agents not covered by filters (tune by signed path)

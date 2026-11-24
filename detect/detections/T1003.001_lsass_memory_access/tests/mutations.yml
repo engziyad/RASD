@@ -28,3 +28,28 @@ mutations:
   set:
     GrantedAccess: '0x1000'
   should_match: false
+- name: splunk_stack_from_another_image
+  description: The exception names splunkd.exe by its full path; the same account, mask and call stack reported for another image alert
+  base: 28
+  set:
+    GrantedAccess: '0x1fffff'
+    SourceImage: C:\Program Files\Splunk\bin\splunk-optimize.exe
+  should_match: true
+- name: splunk_service_under_local_system
+  description: A Splunk that runs as Local System is not the account the lab recorded; an estate names its own account in a local tuning
+  base: 29
+  set:
+    SourceUser: NT AUTHORITY\SYSTEM
+  should_match: true
+- name: splunk_library_frame_on_the_stack
+  description: Only splunkd.exe's own code is excepted; a library in Splunk's folder is what a side-load replaces
+  base: 30
+  set:
+    CallTrace: 'C:\Windows\SYSTEM32\ntdll.dll+a0834|C:\Windows\System32\KERNELBASE.dll+44d4e|C:\Program Files\Splunk\bin\splunkd.exe+215db5e|C:\Program Files\Splunk\bin\libxml2.dll+1a2b3|C:\Program Files\Splunk\bin\splunkd.exe+215c966|C:\Program Files\Splunk\bin\splunkd.exe+216c2b5|C:\Program Files\Splunk\bin\splunkd.exe+21580bd|C:\Program Files\Splunk\bin\splunkd.exe+3b33a7c|C:\Program Files\Splunk\bin\splunkd.exe+3b3424a|C:\Windows\System32\ucrtbase.dll+26b4c|C:\Windows\System32\KERNEL32.DLL+14f80|C:\Windows\SYSTEM32\ntdll.dll+7edcb'
+  should_match: true
+- name: splunk_service_without_call_stack
+  description: A pipeline that drops CallTrace cannot show the stack, so the exception does not apply (more alerts, never fewer)
+  base: 30
+  set:
+    CallTrace: ''
+  should_match: true

@@ -18,7 +18,7 @@ Checked:      1. Identify SourceImage, its signer, parent and user -> <result>
               3. Check whether SourceImage is a known EDR, AV or backup agent in your environment -> <result>
 Benign:       <which known source below> - confirmed by <change record, owner or ticket>
 Disposition:  Benign Positive
-Tuning:       none | windows_components (applied) | powershell_process_listing (applied) | defender_engine (applied) | edr_agent_by_full_path (proposed) | defender_program_files (proposed) | azure_guest_agent (proposed) | splunk_service_on_the_host (proposed)
+Tuning:       none | windows_components (applied) | powershell_process_listing (applied) | defender_engine (applied) | edr_agent_by_full_path (proposed) | defender_program_files (proposed) | azure_guest_agent (proposed) | splunk_service_on_the_host (applied)
 ```
 
 Known benign sources for this detection:
@@ -28,7 +28,7 @@ Known benign sources for this detection:
 - PowerShell 7 (pwsh.exe) Get-Process: its .NET runtime has no System.ni.dll frame, so the process-listing filter does not apply
 - VMware Tools, configuration managers (SCCM) and other management agents
 - Cloud virtual machine agents (the Azure guest agent's log collector)
-- The SIEM's own service on the host: Splunk's splunkd.exe opens LSASS with full rights where it runs (seen on the lab's Windows host)
+- The SIEM's own service where the applied exception does not fit: a Splunk Enterprise under another account or folder, or a build with another call stack
 - Windows components outside the named list on builds not covered by public data (add them by full path)
 - Administrators creating LSASS dumps for a Microsoft support case
 
@@ -36,6 +36,7 @@ Never tune:
 - Never allow-list by process name alone (MsMpEng.exe, procdump.exe): a renamed copy in a writable folder would pass.
 - Never filter a whole folder such as System32: public data shows a dumper dropped into System32 (nanodump), a fresh services.exe dumping through dbgcore (PPLdump) and rundll32 and Task Manager dumps - all from that folder.
 - Never filter PowerShell without the access mask and the .NET frame: Invoke-Mimikatz runs inside powershell.exe.
+- Never except Splunk by its path or its folder alone: the real splunkd.exe can be started by anyone who can read LSASS, and code injected into it reports the same path. The account, the mask and the call stack stay in the filter.
 
 ## False Positive
 
@@ -67,9 +68,10 @@ Recommended:  Treat as credential theft: isolate the host, reset every credentia
 
 Escalate when any of these holds:
 1. SourceImage is unsigned, renamed, or in a user-writable path
-2. rundll32.exe with comsvcs.dll on the command line
-3. Any dump file created near the access
-4. Authentication anomalies from the host afterwards (NTLM or logon type 9)
+2. SourceImage is Splunk's splunkd.exe - its own sampling is excepted, so an alert means the account, the mask or the call stack is not the service's own
+3. rundll32.exe with comsvcs.dll on the command line
+4. Any dump file created near the access
+5. Authentication anomalies from the host afterwards (NTLM or logon type 9)
 
 Risk conditions: host is critical +20 · payload in user writable path +15 · user is privileged +10 · known vendor software -30 · approved admin activity -20.
 

@@ -1,0 +1,226 @@
+{
+  "tuning": "splunk_service_on_the_host",
+  "question": "Why does Splunk Enterprise's own service open lsass.exe, and how often?",
+  "method": "On one Windows host with Sysmon (red/lab/sysmon-rasd.xml) and a Splunk Enterprise installed with its defaults, count the Sysmon ProcessAccess events (Event ID 10) from C:\\Program Files\\Splunk\\bin\\splunkd.exe on lsass.exe in a fixed window, four times: as installed, with the resource usage collection of Splunk's platform instrumentation slowed to 30 seconds, with it turned off, and as installed again. Each change is a stanza added to etc\\system\\local\\server.conf and a restart of the service; each window starts 40 seconds after Splunk answers on its management port. Beside each count, the per-process records Splunk wrote to var\\log\\introspection\\resource_usage.log in the same window.",
+  "measured_on": "2026-11-24",
+  "host": "A GitHub-hosted windows-2022 runner, marked as a lab host for one run and discarded after it",
+  "host_os": "Microsoft Windows Server 2022 Datacenter",
+  "splunk": "Splunk Enterprise 10.4.5 (build de9225ad9740), service account NT SERVICE\\Splunkd, no app added",
+  "workflow_run": "https://github.com/engziyad/RASD/actions/runs/45440179424",
+  "result": "The opens follow the per-process resource usage collection: one open of lsass.exe per collection, at the collection's period, none with the collection off. Every open had the mask 0x1fffff, the account NT SERVICE\\Splunkd and one call stack: OpenProcess called from splunkd.exe's own code on a thread the C runtime started.",
+  "phases": [
+    {
+      "phase": "as installed",
+      "server_conf_added": null,
+      "window_seconds": 80,
+      "window_utc": [
+        "2026-11-24T16:49:51Z",
+        "2026-11-24T16:51:11Z"
+      ],
+      "splunkd_opens_of_lsass": 8,
+      "seconds_between_opens": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "granted_access": [
+        "0x1fffff"
+      ],
+      "source_user": [
+        "NT SERVICE\\Splunkd"
+      ],
+      "call_stack_modules": [
+        [
+          "C:\\Windows\\SYSTEM32\\ntdll.dll",
+          "C:\\Windows\\System32\\KERNELBASE.dll",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Windows\\System32\\ucrtbase.dll",
+          "C:\\Windows\\System32\\KERNEL32.DLL",
+          "C:\\Windows\\SYSTEM32\\ntdll.dll"
+        ]
+      ],
+      "open_times_utc": [
+        "2026-11-24 16:50:00.797",
+        "2026-11-24 16:50:10.796",
+        "2026-11-24 16:50:20.801",
+        "2026-11-24 16:50:30.800",
+        "2026-11-24 16:50:40.799",
+        "2026-11-24 16:50:50.801",
+        "2026-11-24 16:51:00.802",
+        "2026-11-24 16:51:10.802"
+      ],
+      "per_process_collections_logged": 8,
+      "collection_times_utc": [
+        "16:49:52",
+        "16:50:02",
+        "16:50:11",
+        "16:50:21",
+        "16:50:31",
+        "16:50:41",
+        "16:50:51",
+        "16:51:01"
+      ],
+      "other_processes_opening_lsass": []
+    },
+    {
+      "phase": "period 30 s",
+      "server_conf_added": [
+        "[introspection:generator:resource_usage]",
+        "collectionPeriodInSecs = 30"
+      ],
+      "window_seconds": 130,
+      "window_utc": [
+        "2026-11-24T16:53:09Z",
+        "2026-11-24T16:55:19Z"
+      ],
+      "splunkd_opens_of_lsass": 4,
+      "seconds_between_opens": [
+        30,
+        30,
+        30
+      ],
+      "granted_access": [
+        "0x1fffff"
+      ],
+      "source_user": [
+        "NT SERVICE\\Splunkd"
+      ],
+      "call_stack_modules": [
+        [
+          "C:\\Windows\\SYSTEM32\\ntdll.dll",
+          "C:\\Windows\\System32\\KERNELBASE.dll",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Windows\\System32\\ucrtbase.dll",
+          "C:\\Windows\\System32\\KERNEL32.DLL",
+          "C:\\Windows\\SYSTEM32\\ntdll.dll"
+        ]
+      ],
+      "open_times_utc": [
+        "2026-11-24 16:53:28.036",
+        "2026-11-24 16:53:58.025",
+        "2026-11-24 16:54:28.025",
+        "2026-11-24 16:54:58.026"
+      ],
+      "per_process_collections_logged": 4,
+      "collection_times_utc": [
+        "16:53:29",
+        "16:53:59",
+        "16:54:29",
+        "16:54:59"
+      ],
+      "other_processes_opening_lsass": [
+        {
+          "source_image, granted_access, source_user": "C:\\Windows\\system32\\svchost.exe, 0x1000, NT AUTHORITY\\SYSTEM",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "phase": "resource usage off",
+      "server_conf_added": [
+        "[introspection:generator:resource_usage]",
+        "disabled = true"
+      ],
+      "window_seconds": 80,
+      "window_utc": [
+        "2026-11-24T16:57:16Z",
+        "2026-11-24T16:58:36Z"
+      ],
+      "splunkd_opens_of_lsass": 0,
+      "seconds_between_opens": [],
+      "granted_access": [],
+      "source_user": [],
+      "call_stack_modules": [],
+      "open_times_utc": [],
+      "per_process_collections_logged": 0,
+      "collection_times_utc": [],
+      "other_processes_opening_lsass": [
+        {
+          "source_image, granted_access, source_user": "C:\\Windows\\system32\\svchost.exe, 0x1000, NT AUTHORITY\\SYSTEM",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "phase": "as installed, again",
+      "server_conf_added": null,
+      "window_seconds": 80,
+      "window_utc": [
+        "2026-11-24T17:00:32Z",
+        "2026-11-24T17:01:52Z"
+      ],
+      "splunkd_opens_of_lsass": 8,
+      "seconds_between_opens": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "granted_access": [
+        "0x1fffff"
+      ],
+      "source_user": [
+        "NT SERVICE\\Splunkd"
+      ],
+      "call_stack_modules": [
+        [
+          "C:\\Windows\\SYSTEM32\\ntdll.dll",
+          "C:\\Windows\\System32\\KERNELBASE.dll",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Program Files\\Splunk\\bin\\splunkd.exe",
+          "C:\\Windows\\System32\\ucrtbase.dll",
+          "C:\\Windows\\System32\\KERNEL32.DLL",
+          "C:\\Windows\\SYSTEM32\\ntdll.dll"
+        ]
+      ],
+      "open_times_utc": [
+        "2026-11-24 17:00:40.809",
+        "2026-11-24 17:00:50.811",
+        "2026-11-24 17:01:00.812",
+        "2026-11-24 17:01:10.814",
+        "2026-11-24 17:01:20.804",
+        "2026-11-24 17:01:30.805",
+        "2026-11-24 17:01:40.807",
+        "2026-11-24 17:01:50.809"
+      ],
+      "per_process_collections_logged": 8,
+      "collection_times_utc": [
+        "17:00:41",
+        "17:00:51",
+        "17:01:01",
+        "17:01:11",
+        "17:01:21",
+        "17:01:32",
+        "17:01:42",
+        "17:01:52"
+      ],
+      "other_processes_opening_lsass": [
+        {
+          "source_image, granted_access, source_user": "C:\\Windows\\system32\\svchost.exe, 0x1000, NT AUTHORITY\\SYSTEM",
+          "count": 4
+        }
+      ]
+    }
+  ]
+}

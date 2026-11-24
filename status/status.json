@@ -45,7 +45,7 @@
     "contract": [
      "Sysmon Event ID 10 (ProcessAccess) with an include rule for TargetImage lsass.exe"
     ],
-    "tests": 40,
+    "tests": 47,
     "response": [
      "triage.md",
      "response.md",
@@ -60,35 +60,35 @@
      "stage": "Tests",
      "layer": "code",
      "state": "passed",
-     "detail": "27 true positives and 13 true negatives, all pass",
+     "detail": "32 true positives and 15 true negatives, all pass",
      "proof": "detect/detections/T1003.001_lsass_memory_access/tests/"
     },
     {
      "stage": "Mutations",
      "layer": "code",
      "state": "passed",
-     "detail": "5 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "detail": "9 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
      "proof": "detect/detections/T1003.001_lsass_memory_access/tests/mutations.yml"
     },
     {
      "stage": "Evasion fuzzer",
      "layer": "code",
      "state": "passed",
-     "detail": "101 generated evasions, resistance 100%",
+     "detail": "121 generated evasions, resistance 100%",
      "proof": "docs/PROOFS.md"
     },
     {
      "stage": "Query parity",
      "layer": "code",
      "state": "passed",
-     "detail": "the generated KQL and SPL return the rule's verdict on 680 events (RASD's model of each language, not a SIEM)",
+     "detail": "the generated KQL and SPL return the rule's verdict on 790 events (RASD's model of each language, not a SIEM)",
      "proof": "queries/spl/T1003.001_lsass_memory_access.spl"
     },
     {
      "stage": "Exact automaton",
      "layer": "code",
      "state": "passed",
-     "detail": "compiled to 259 states over 4 fields; a firing event and its nearest quiet event built and replayed",
+     "detail": "compiled to 551 states over 5 fields; a firing event and its nearest quiet event built and replayed",
      "proof": "docs/CERTIFICATES.md"
     },
     {
@@ -123,12 +123,12 @@
      "stage": "False positives",
      "layer": "noise",
      "state": "attention",
-     "detail": "13 true-negative tests quiet; 1 labelled false positive in the public lab captures; 1 alert in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent, splunk_service_on_the_host",
+     "detail": "15 true-negative tests quiet; 1 labelled false positive in the public lab captures; 1 alert in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent",
      "proof": "detect/detections/T1003.001_lsass_memory_access/tuning.yml"
     }
    ],
    "gaps": [
-    "False positives: 13 true-negative tests quiet; 1 labelled false positive in the public lab captures; 1 alert in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent, splunk_service_on_the_host"
+    "False positives: 15 true-negative tests quiet; 1 labelled false positive in the public lab captures; 1 alert in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent"
    ],
    "conflicts": []
   },
