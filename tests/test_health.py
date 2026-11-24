@@ -534,6 +534,20 @@ class Watchdogs(unittest.TestCase):
         self.assertIn("earliest=-24h@h latest=@h", self.spl["volume"], "a day and the same day a week earlier, hour for hour")
         self.assertIn("earliest=-8d@h latest=-7d@h", self.spl["volume"])
 
+    def test_the_volume_watchdog_counts_for_last_week_only_what_arrived_then(self):
+        """A host Splunk has just begun to read brings its history with it: the events an image was built with a
+        week ago are not what the host sent a week ago. Every leg of the earlier day asks for what had been
+        indexed by the day after it, and no leg of the last day does."""
+        legs = [line.strip() for line in self.spl["volume"].splitlines() if line.strip().startswith("[search ")]
+        earlier = [leg for leg in legs if 'period="week_ago"' in leg]
+        today = [leg for leg in legs if 'period="now"' in leg]
+        self.assertEqual(len(earlier), len(today))
+        self.assertGreater(len(earlier), 0)
+        for leg in earlier:
+            self.assertIn("earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed=", leg)
+        for leg in today:
+            self.assertNotIn("_index_", leg)
+
     def test_the_splunk_app_schedules_the_five_watchdogs(self):
         import configparser
         files = splunk_app.render(load_detections(), load_correlations())

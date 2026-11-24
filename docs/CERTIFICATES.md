@@ -9,11 +9,11 @@ Each detection with a behaviour spec (`behavior.yml` beside its rule) lists the 
 
 CI fails when a gap appears that the spec does not list, when a listed gap closes (the spec must then say `fires`), and when an exclusion fires.
 
-**81 variants over 16 detections: 37 proven for every event, 18 known gaps, 26 exclusions proven quiet.**
+**85 variants over 16 detections: 40 proven for every event, 18 known gaps, 27 exclusions proven quiet.**
 
 | Detection | Variants | Proven | Known gaps | Exclusions proven quiet |
 |---|---:|---:|---:|---:|
-| [T1003.001_lsass_memory_access](#t1003001-suspicious-process-access-to-lsass-memory) | 8 | 3 | 2 | 3 |
+| [T1003.001_lsass_memory_access](#t1003001-suspicious-process-access-to-lsass-memory) | 12 | 6 | 2 | 4 |
 | [T1046_decoy_service_interaction](#t1046-deception---interaction-with-a-decoy-network-service) | 7 | 3 | 0 | 4 |
 | [T1053.005_powershell_scheduled_task_creation](#t1053005-scheduled-task-registered-via-powershell-scheduledtasks-cmdlets) | 6 | 2 | 4 | 0 |
 | [T1059.001_powershell_encoded_command](#t1059001-powershell-execution-with-encoded-command) | 7 | 2 | 4 | 1 |
@@ -46,6 +46,10 @@ CI fails when a gap appears that the spec does not list, when a listed gap close
 | Windows components named in the exclusion | stays quiet | **proven** for every event |
 | Defender's engine from its platform folder | stays quiet | **proven** for every event |
 | PowerShell or the WinRM host listing processes | stays quiet | **proven** for every event |
+| Splunk's service path with any other access mask | fires | **proven** for every event |
+| splunkd.exe reading lsass memory under any other account | fires | **proven** for every event |
+| Any other call stack from Splunk's service | fires | **proven** for every event |
+| Splunk Enterprise's own service sampling process resource usage | stays quiet | **proven** for every event |
 
 Events found, each replayed through the engine and checked against its variant:
 
@@ -67,7 +71,7 @@ TargetImage:   C:\Windows\system32\lsass.exe
 
 <details><summary>Why each variant, the gaps and the planned fixes</summary>
 
-- **Memory read access, hexadecimal as Sysmon writes it.** Any mask with PROCESS_VM_READ [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)], which MiniDumpWriteDump and the dumping tools ask for [[minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump), [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html)], in hexadecimal with the 0x prefix, any letter case, leading zeros allowed, from any process outside the three exclusions below (paths as Windows reports them, without empty segments). *Exact sizes:* 2,147,483,648 access masks that include PROCESS_VM_READ (32-bit, written 0x with lowercase digits).
+- **Memory read access, hexadecimal as Sysmon writes it.** Any mask with PROCESS_VM_READ [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)], which MiniDumpWriteDump and the dumping tools ask for [[minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump), [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html)], in hexadecimal with the 0x prefix, any letter case, leading zeros allowed, from any process outside the exclusions below (paths as Windows reports them, without empty segments). *Exact sizes:* 2,147,483,648 access masks that include PROCESS_VM_READ (32-bit, written 0x with lowercase digits).
 - **A copy of an excluded Windows component elsewhere.** The exclusions name full paths, so a csrss.exe, wininit.exe or WmiPrvSE.exe outside its Windows folder is any other process [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)].
 - **PowerShell or the WinRM host reading lsass memory.** The process-listing exclusion needs the mask 0x1410 (or 5136) and System.ni.dll on the call stack; any other read from these two processes, such as a dumping tool loaded into PowerShell, is not a process listing [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights), [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html)].
 - **Memory read access written in decimal.** A pipeline that turns the mask into a number writes it in decimal; 1040 is 0x410, PROCESS_QUERY_INFORMATION with PROCESS_VM_READ, exactly what MiniDumpWriteDump asks for [[minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump), [access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights)]. *Exact sizes:* 2,147,483,648 access masks that include PROCESS_VM_READ, in decimal. *Gap:* The decimal branch lists eight masks seen from dumping tools; every other decimal mask that grants PROCESS_VM_READ passes. *Fix:* Normalize GrantedAccess to hexadecimal in the pipeline, or test the bit in decimal: a mask grants PROCESS_VM_READ exactly when its value modulo 32 is between 16 and 31.
@@ -75,6 +79,10 @@ TargetImage:   C:\Windows\system32\lsass.exe
 - **Windows components named in the exclusion.** csrss.exe, wininit.exe and WMI's WmiPrvSE.exe read lsass memory in normal operation. *Why quiet:* filter_os_components excludes exactly these four paths, in any letter case.
 - **Defender's engine from its platform folder.** Microsoft Defender's MsMpEng.exe scans lsass from its versioned folder under the Platform directory. *Why quiet:* filter_defender excludes MsMpEng.exe only under C:\ProgramData\Microsoft\Windows Defender\Platform\.
 - **PowerShell or the WinRM host listing processes.** Get-Process in Windows PowerShell or a remote session opens every process with 0x1410 through System.ni.dll. *Why quiet:* filter_process_listing excludes that mask from these two processes when System.ni.dll is on the call stack.
+- **Splunk's service path with any other access mask.** The exception for Splunk Enterprise's own service is for the one mask its resource usage sampling asks for, 0x1fffff; any other mask that grants PROCESS_VM_READ from that path is not that sampling [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights), [splunk-instrumentation](https://help.splunk.com/en/splunk-enterprise/administer/troubleshoot/10.4/platform-instrumentation/configure-platform-instrumentation)].
+- **splunkd.exe reading lsass memory under any other account.** Anyone may start the real splunkd.exe from its folder and run code in the process they started; only the service's own account is excepted, and an event without the account is not excepted either [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights), [splunk-instrumentation](https://help.splunk.com/en/splunk-enterprise/administer/troubleshoot/10.4/platform-instrumentation/configure-platform-instrumentation)].
+- **Any other call stack from Splunk's service.** Code injected into the service leaves a frame with no module, a dump through dbgcore or a side-loaded library leaves that module's frame, and a pipeline without CallTrace shows no stack at all: none of them is the stack of the service's own sampling thread [[access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights), [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html)].
+- **Splunk Enterprise's own service sampling process resource usage.** A full Splunk Enterprise instance logs per-process resource usage every 10 seconds by default [[splunk-instrumentation](https://help.splunk.com/en/splunk-enterprise/administer/troubleshoot/10.4/platform-instrumentation/configure-platform-instrumentation)]; on Windows its service opens every process for that, lsass.exe among them, with full rights. *Why quiet:* filter_splunk_service excludes the service only when all four hold: splunkd.exe by its full path, the account NT SERVICE\Splunkd, the mask 0x1fffff (2097151 in decimal) and a call stack of splunkd.exe's own code and the Windows thread start, nothing else. An intruder who replaces that binary, or forges this stack inside the service, is excluded with it.
 
 </details>
 
@@ -83,6 +91,7 @@ Sources:
 - [access-rights](https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights): Microsoft Learn, Process Security and Access Rights (PROCESS_VM_READ is 0x0010, required to read a process's memory)
 - [minidump](https://learn.microsoft.com/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump): Microsoft Learn, MiniDumpWriteDump (the handle needs PROCESS_QUERY_INFORMATION and PROCESS_VM_READ)
 - [splunk-lsass](https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html): Splunk Threat Research, You Bet Your Lsass (the masks dumping tools ask for, as Sysmon writes them, 0x1010, 0x1410, 0x1fffff)
+- [splunk-instrumentation](https://help.splunk.com/en/splunk-enterprise/administer/troubleshoot/10.4/platform-instrumentation/configure-platform-instrumentation): Splunk Enterprise documentation, Configure platform instrumentation (on by default on every instance but a universal forwarder; per-process resource usage every 10 seconds)
 
 ## T1046 Deception - Interaction With a Decoy Network Service
 

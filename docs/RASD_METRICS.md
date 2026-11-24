@@ -9,16 +9,16 @@ Every number below is counted by `tools/chain.py` from the repository on each bu
 | Detections | 22 (18 single-event rules, 4 correlations) |
 | ATT&CK techniques detected | 17 |
 | Offensive tests (red) | 22 (17 mapped to current detections, 5 gap or posture tests reserved for future coverage) |
-| Test cases | 403 (264 true positive, 139 true negative) + 51 for correlation base rules |
-| Mutation cases | 640 + 24 technique mutations for correlation base rules |
-| Evasion fuzzer variants | 1621 (0 bypasses) + 53 for correlation base rules |
-| Rule mutants (proof) | 291 (289 killed, 2 accepted as equivalent, 0 surviving) |
-| Query parity verdicts | 16284 per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
+| Test cases | 410 (269 true positive, 141 true negative) + 51 for correlation base rules |
+| Mutation cases | 654 + 24 technique mutations for correlation base rules |
+| Evasion fuzzer variants | 1641 (0 bypasses) + 53 for correlation base rules |
+| Rule mutants (proof) | 298 (296 killed, 2 accepted as equivalent, 0 surviving) |
+| Query parity verdicts | 16394 per backend (0 divergences) · Defender advanced hunting: 7 rules on 11300 events, each in both FolderPath forms (0 divergences) |
 | Correlation scenarios | 43 event sequences (18 must fire, 4 pinned known limits) |
 | Correlation mutants | 24 parameter mutants (24 killed) · 45 base-rule mutants |
 | Aggregation parity | 4502 SPL and KQL sequence runs identical to the engine |
-| Exact automata (certify) | 22/22 Sigma rules compiled to exact automata over every Unicode code point (2883 states) · 44 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](CERTIFY.md)) |
-| Behaviour proofs (certify) | 81 variants of documented attacker behaviour over 16 detections: 37 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 26 exclusions proven quiet ([certificates](CERTIFICATES.md)) |
+| Exact automata (certify) | 22/22 Sigma rules compiled to exact automata over every Unicode code point (3175 states) · 44 constructed events, a firing event and its nearest quiet event per rule, each replayed through the engine ([certify](CERTIFY.md)) |
+| Behaviour proofs (certify) | 85 variants of documented attacker behaviour over 16 detections: 40 proven for every event, 18 known gaps (each shown by an engine-confirmed event), 27 exclusions proven quiet ([certificates](CERTIFICATES.md)) |
 | Edit equivalence (certify) | `rasd certify --equiv REF` compares every rule with its version at a git ref and proves the edit preserves every event's verdict, or shows the event it changes ([CERTIFY](CERTIFY.md#comparing-two-versions-of-a-rule)) |
 | Deception (deceive) | 7 decoys (2 account, 1 spn, 3 file, 1 service) read by 4 deception detections and touched by 3 red tests · inventory, rules, tests, red tests and the decoy host's configuration agree · 5 decoy classes planned ([DECEPTION](../docs/DECEPTION.md), [inventory](../deceive/)) |
 | Evidence survivability (trace) | 94 detection-question pairs over 18 detections: 38 out of reach, 0 evident, 56 exposed to a sequence that raises no alert · 3 rules on anti-forensic traces would leave 0 exposed · 31 artifacts, 16 anti-forensic actions, documented behaviour pending lab runs ([TRACE](../docs/TRACE.md), [results](../dfir/trace/)) |

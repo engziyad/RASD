@@ -1,0 +1,151 @@
+[
+  {
+    "technique": "T1595.003",
+    "test": "api_auth_testing",
+    "step": "unauthenticated_calls",
+    "name": "Call protected endpoints with no token, a malformed token and a foreign-signed JWT",
+    "detections": [],
+    "correlations": [
+      "T1595.003_api_auth_probing"
+    ],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-135-98",
+    "host_ips": [
+      "10.0.135.98",
+      "127.0.0.1",
+      "::1"
+    ],
+    "user": "runner",
+    "marker": "rasd_08bf2b09",
+    "bind": {},
+    "utc_start": "2026-11-24T17:55:46.148Z",
+    "utc_end": "2026-11-24T17:55:49.871Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-web/api_auth_testing/api_auth_testing-findings.json",
+        "sha256": "a71f5f7be2e7dbda1bfe2bfcc9edffd6d2f5a080027419f18e739cf758e21233"
+      }
+    ]
+  },
+  {
+    "technique": "T1505.003",
+    "test": "file_upload_testing",
+    "step": "restricted_uploads",
+    "name": "Upload .exe, .pdf.exe, spoofed-type and oversized text files",
+    "detections": [],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-135-98",
+    "host_ips": [
+      "10.0.135.98",
+      "127.0.0.1",
+      "::1"
+    ],
+    "user": "runner",
+    "marker": "rasd_08bf2b09",
+    "bind": {},
+    "utc_start": "2026-11-24T17:55:49.873Z",
+    "utc_end": "2026-11-24T17:55:50.745Z",
+    "error": null,
+    "cleanup": "manual",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-web/file_upload_testing/file_upload_testing-findings.json",
+        "sha256": "cc5ce551854868add23bb9b4f79d302cd81f2636ccc28db72dbb1b51cbcebfce"
+      }
+    ]
+  },
+  {
+    "technique": "T1190",
+    "test": "idor_testing",
+    "step": "walk_object_ids",
+    "name": "Read other users' objects with one account's token (IDs 1-5)",
+    "detections": [],
+    "correlations": [
+      "T1190_object_id_enumeration"
+    ],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-135-98",
+    "host_ips": [
+      "10.0.135.98",
+      "127.0.0.1",
+      "::1"
+    ],
+    "user": "runner",
+    "marker": "rasd_08bf2b09",
+    "bind": {},
+    "utc_start": "2026-11-24T17:55:50.747Z",
+    "utc_end": "2026-11-24T17:55:52.102Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-web/idor_testing/idor_testing-findings.json",
+        "sha256": "94f9c92a1019ae89e914bada3fcf866f0879beb66c095d868ab7a1d07829b0e3"
+      }
+    ]
+  },
+  {
+    "technique": "T1606",
+    "test": "jwt_testing",
+    "step": "forged_tokens",
+    "name": "Replay the genuine token, an alg none token and a tampered token",
+    "detections": [],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-135-98",
+    "host_ips": [
+      "10.0.135.98",
+      "127.0.0.1",
+      "::1"
+    ],
+    "user": "runner",
+    "marker": "rasd_08bf2b09",
+    "bind": {},
+    "utc_start": "2026-11-24T17:55:52.104Z",
+    "utc_end": "2026-11-24T17:55:52.992Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-web/jwt_testing/jwt_testing-findings.json",
+        "sha256": "430ae38d9ab767a54fe3a474a09379f0c11986ee44271edcfaf08726dd11c57b"
+      }
+    ]
+  },
+  {
+    "technique": null,
+    "test": "security_headers_testing",
+    "step": "header_review",
+    "name": "Fetch the start page and review security headers and cookie flags",
+    "detections": [],
+    "correlations": [],
+    "status": "executed",
+    "reason": null,
+    "host": "ip-10-0-135-98",
+    "host_ips": [
+      "10.0.135.98",
+      "127.0.0.1",
+      "::1"
+    ],
+    "user": "runner",
+    "marker": "rasd_08bf2b09",
+    "bind": {},
+    "utc_start": "2026-11-24T17:55:52.994Z",
+    "utc_end": "2026-11-24T17:55:53.258Z",
+    "error": null,
+    "cleanup": "verified",
+    "artifacts": [
+      {
+        "path": "/home/runner/work/_temp/lab-web/security_headers_testing/security_headers_testing-findings.json",
+        "sha256": "6aaae7780956effd738e967f3502ec16c31a71fa903f2167a0a82e45969f4c43"
+      }
+    ]
+  }
+]

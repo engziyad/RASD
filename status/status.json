@@ -1,6 +1,6 @@
 {
  "rasd_status": 1,
- "as_of": "2026-11-21",
+ "as_of": "2026-11-24",
  "fresh_days": 90,
  "production_health": null,
  "counts": {
@@ -28,7 +28,7 @@
    "level": "high",
    "folder": "detect/detections/T1003.001_lsass_memory_access",
    "verdict": "Blocked",
-   "why": "Its step is opt-in (it dumps LSASS memory), so it runs only on a lab VM of your own, from a snapshot; the run hosted-44858268614/lab-windows recorded for lsass_memory_access/comsvcs_minidump: skipped, \"opt-in: add -IncludeCredentialAccess\".",
+   "why": "Its step is opt-in (it dumps LSASS memory), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45453509158/lab-windows recorded for lsass_memory_access/comsvcs_minidump: skipped, \"opt-in: add -IncludeCredentialAccess\".",
    "critical": true,
    "blocker": "opt-in",
    "next": "On a lab VM of your own, from a snapshot: add `-IncludeCredentialAccess -IncludeSecurityLogClear` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and its SIEM alert export to `rasd evidence --run`",
@@ -45,7 +45,7 @@
     "contract": [
      "Sysmon Event ID 10 (ProcessAccess) with an include rule for TargetImage lsass.exe"
     ],
-    "tests": 40,
+    "tests": 47,
     "response": [
      "triage.md",
      "response.md",
@@ -60,35 +60,35 @@
      "stage": "Tests",
      "layer": "code",
      "state": "passed",
-     "detail": "27 true positives and 13 true negatives, all pass",
+     "detail": "32 true positives and 15 true negatives, all pass",
      "proof": "detect/detections/T1003.001_lsass_memory_access/tests/"
     },
     {
      "stage": "Mutations",
      "layer": "code",
      "state": "passed",
-     "detail": "5 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
+     "detail": "9 evasion mutations caught; every value, field and branch of the rule proven by a test (100%)",
      "proof": "detect/detections/T1003.001_lsass_memory_access/tests/mutations.yml"
     },
     {
      "stage": "Evasion fuzzer",
      "layer": "code",
      "state": "passed",
-     "detail": "101 generated evasions, resistance 100%",
+     "detail": "121 generated evasions, resistance 100%",
      "proof": "docs/PROOFS.md"
     },
     {
      "stage": "Query parity",
      "layer": "code",
      "state": "passed",
-     "detail": "the generated KQL and SPL return the rule's verdict on 680 events (RASD's model of each language, not a SIEM)",
+     "detail": "the generated KQL and SPL return the rule's verdict on 790 events (RASD's model of each language, not a SIEM)",
      "proof": "queries/spl/T1003.001_lsass_memory_access.spl"
     },
     {
      "stage": "Exact automaton",
      "layer": "code",
      "state": "passed",
-     "detail": "compiled to 259 states over 4 fields; a firing event and its nearest quiet event built and replayed",
+     "detail": "compiled to 551 states over 5 fields; a firing event and its nearest quiet event built and replayed",
      "proof": "docs/CERTIFICATES.md"
     },
     {
@@ -102,8 +102,8 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "blocked",
-     "detail": "its step is opt-in (it dumps LSASS memory), so it runs only on a lab VM of your own, from a snapshot; the run hosted-44858268614/lab-windows recorded for lsass_memory_access/comsvcs_minidump: skipped, \"opt-in: add -IncludeCredentialAccess\"",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows"
+     "detail": "its step is opt-in (it dumps LSASS memory), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45453509158/lab-windows recorded for lsass_memory_access/comsvcs_minidump: skipped, \"opt-in: add -IncludeCredentialAccess\"",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows"
     },
     {
      "stage": "Live SIEM",
@@ -123,12 +123,12 @@
      "stage": "False positives",
      "layer": "noise",
      "state": "attention",
-     "detail": "13 true-negative tests quiet; 1 labelled false positive in the public lab captures; 1 alert in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent, splunk_service_on_the_host",
+     "detail": "15 true-negative tests quiet; 1 labelled false positive in the public lab captures; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent",
      "proof": "detect/detections/T1003.001_lsass_memory_access/tuning.yml"
     }
    ],
    "gaps": [
-    "False positives: 13 true-negative tests quiet; 1 labelled false positive in the public lab captures; 1 alert in the lab with no step asking for it; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent, splunk_service_on_the_host"
+    "False positives: 15 true-negative tests quiet; 1 labelled false positive in the public lab captures; tuning proposed, not applied: edr_agent_by_full_path, defender_program_files, azure_guest_agent"
    ],
    "conflicts": []
   },
@@ -140,7 +140,7 @@
    "level": "medium",
    "folder": "detect/detections/T1021.006_wsmprovhost_suspicious_child",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1021.006_wsmprovhost_suspicious_child` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1021.006_wsmprovhost_suspicious_child` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
@@ -148,9 +148,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1021.006_wsmprovhost_suspicious_child/evidence.md",
-    "run_utc": "2026-11-21T03:02:50.720317Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:01.508640Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 75
    },
    "foundation": {
@@ -215,15 +215,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:02 UTC, step winrm_access_validation/invoke_command, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step winrm_access_validation/invoke_command, bound by run token",
      "proof": "detect/detections/T1021.006_wsmprovhost_suspicious_child/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1021.006_wsmprovhost_suspicious_child` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1021.006_wsmprovhost_suspicious_child` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -237,7 +237,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -260,7 +260,7 @@
    "level": "high",
    "folder": "detect/detections/T1046_decoy_service_interaction",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1046_decoy_service_interaction` 9 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1046_decoy_service_interaction` 8 min after the step.",
    "critical": false,
    "blocker": null,
    "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
@@ -268,9 +268,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1046_decoy_service_interaction/evidence.md",
-    "run_utc": "2026-11-21T02:56:14.140000Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-linux",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T17:56:54.395000Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-linux",
+    "fresh_until": "2027-02-22",
     "operational_score": 75
    },
    "foundation": {
@@ -335,15 +335,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on ip-10-0-135-155 at 2026-11-21 02:56 UTC, step decoy_service_probe/probe_decoy_services, bound by run token; client address",
+     "detail": "fired on runnervmeozm8 at 2026-11-24 17:56 UTC, step decoy_service_probe/probe_decoy_services, bound by run token; client address",
      "proof": "detect/detections/T1046_decoy_service_interaction/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1046_decoy_service_interaction` 9 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-linux/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1046_decoy_service_interaction` 8 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-linux/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -357,7 +357,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-linux/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-linux/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -380,7 +380,7 @@
    "level": "medium",
    "folder": "detect/detections/T1053.003_crontab_noninteractive_install",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1053.003_crontab_noninteractive_install` 9 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1053.003_crontab_noninteractive_install` 8 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -388,9 +388,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1053.003_crontab_noninteractive_install/evidence.md",
-    "run_utc": "2026-11-21T02:56:14.113000Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-linux",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T17:56:54.354000Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-linux",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -455,15 +455,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on ip-10-0-135-155 at 2026-11-21 02:56 UTC, step cron_persistence/crontab_entry, bound by host and time window",
+     "detail": "fired on runnervmeozm8 at 2026-11-24 17:56 UTC, step cron_persistence/crontab_entry, bound by host and time window",
      "proof": "detect/detections/T1053.003_crontab_noninteractive_install/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.003_crontab_noninteractive_install` 9 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-linux/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.003_crontab_noninteractive_install` 8 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-linux/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -477,7 +477,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-linux/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-linux/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -498,7 +498,7 @@
    "level": "medium",
    "folder": "detect/detections/T1053.005_powershell_scheduled_task_creation",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1053.005_powershell_scheduled_task_creation` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1053.005_powershell_scheduled_task_creation` 5 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -506,9 +506,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md",
-    "run_utc": "2026-11-21T03:03:21.727439Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:32.309265Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -575,15 +575,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:03 UTC, step scheduled_task_creation/register_scheduledtask, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step scheduled_task_creation/register_scheduledtask, bound by run token",
      "proof": "detect/detections/T1053.005_powershell_scheduled_task_creation/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.005_powershell_scheduled_task_creation` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.005_powershell_scheduled_task_creation` 5 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -597,7 +597,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -618,7 +618,7 @@
    "level": "medium",
    "folder": "detect/detections/T1053.005_schtasks_suspicious_creation",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1053.005_schtasks_suspicious_creation` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1053.005_schtasks_suspicious_creation` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -626,9 +626,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md",
-    "run_utc": "2026-11-21T03:03:19.621443Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:30.208812Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -694,15 +694,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:03 UTC, step scheduled_task_creation/schtasks, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step scheduled_task_creation/schtasks, bound by run token",
      "proof": "detect/detections/T1053.005_schtasks_suspicious_creation/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.005_schtasks_suspicious_creation` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1053.005_schtasks_suspicious_creation` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -716,7 +716,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -737,7 +737,7 @@
    "level": "medium",
    "folder": "detect/detections/T1059.001_powershell_encoded_command",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1059.001_powershell_encoded_command` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1059.001_powershell_encoded_command` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -745,9 +745,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1059.001_powershell_encoded_command/evidence.md",
-    "run_utc": "2026-11-21T03:02:57.748290Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:08.434467Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -813,15 +813,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:02 UTC, step powershell_encoded_command/encoded_command, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step powershell_encoded_command/encoded_command, bound by run token",
      "proof": "detect/detections/T1059.001_powershell_encoded_command/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1059.001_powershell_encoded_command` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1059.001_powershell_encoded_command` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -835,7 +835,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -856,7 +856,7 @@
    "level": "high",
    "folder": "detect/detections/T1059.004_linux_suspicious_shell_execution",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1059.004_linux_suspicious_shell_execution` 10 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1059.004_linux_suspicious_shell_execution` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
@@ -864,9 +864,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md",
-    "run_utc": "2026-11-21T03:00:21.151000Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-linux",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T17:58:53.166000Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-linux",
+    "fresh_until": "2027-02-22",
     "operational_score": 75
    },
    "foundation": {
@@ -931,15 +931,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on ip-10-0-135-155 at 2026-11-21 03:00 UTC, step suspicious_shell_execution/shell_patterns, bound by run token",
+     "detail": "fired on runnervmeozm8 at 2026-11-24 17:58 UTC, step suspicious_shell_execution/shell_patterns, bound by run token",
      "proof": "detect/detections/T1059.004_linux_suspicious_shell_execution/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1059.004_linux_suspicious_shell_execution` 10 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-linux/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1059.004_linux_suspicious_shell_execution` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-linux/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -953,7 +953,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-linux/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-linux/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -976,7 +976,7 @@
    "level": "high",
    "folder": "detect/detections/T1078.002_honey_account_authentication",
    "verdict": "Blocked",
-   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for honey_account_use/bind_as_honey_account: error, \"The specified domain either does not exist or could not be contacted\".",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for honey_account_use/bind_as_honey_account: error, \"The specified domain either does not exist or could not be contacted\".",
    "critical": true,
    "blocker": "domain",
    "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
@@ -1047,8 +1047,8 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "blocked",
-     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for honey_account_use/bind_as_honey_account: error, \"The specified domain either does not exist or could not be contacted\"",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows"
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for honey_account_use/bind_as_honey_account: error, \"The specified domain either does not exist or could not be contacted\"",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows"
     },
     {
      "stage": "Live SIEM",
@@ -1083,7 +1083,7 @@
    "level": "high",
    "folder": "detect/detections/T1218.011_rundll32_suspicious_execution",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1218.011_rundll32_suspicious_execution` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1218.011_rundll32_suspicious_execution` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": "Collect the artifacts its closure note names at the next lab run: the evidence holds none for the investigation",
@@ -1091,9 +1091,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md",
-    "run_utc": "2026-11-21T03:03:02.493239Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:13.110369Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 75
    },
    "foundation": {
@@ -1159,15 +1159,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:03 UTC, step rundll32_execution/javascript_proxy, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step rundll32_execution/javascript_proxy, bound by run token",
      "proof": "detect/detections/T1218.011_rundll32_suspicious_execution/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1218.011_rundll32_suspicious_execution` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1218.011_rundll32_suspicious_execution` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -1181,7 +1181,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -1204,7 +1204,7 @@
    "level": "medium",
    "folder": "detect/detections/T1547.001_registry_run_key_persistence",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1547.001_registry_run_key_persistence` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1547.001_registry_run_key_persistence` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -1212,9 +1212,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1547.001_registry_run_key_persistence/evidence.md",
-    "run_utc": "2026-11-21T03:03:00.443769Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:11.062099Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -1279,15 +1279,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:03 UTC, step run_key_persistence/run_value, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step run_key_persistence/run_value, bound by run token",
      "proof": "detect/detections/T1547.001_registry_run_key_persistence/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1547.001_registry_run_key_persistence` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1547.001_registry_run_key_persistence` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -1301,7 +1301,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -1322,7 +1322,7 @@
    "level": "high",
    "folder": "detect/detections/T1552.001_honey_file_access",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1552.001_honey_file_access` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1552.001_honey_file_access` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -1330,9 +1330,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1552.001_honey_file_access/evidence.md",
-    "run_utc": "2026-11-21T03:02:55.577123Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:06.277906Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -1397,15 +1397,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:02 UTC, step honey_file_access/read_honey_file, bound by host and time window",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step honey_file_access/read_honey_file, bound by host and time window",
      "proof": "detect/detections/T1552.001_honey_file_access/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1552.001_honey_file_access` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1552.001_honey_file_access` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -1419,7 +1419,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -1440,7 +1440,7 @@
    "level": "high",
    "folder": "detect/detections/T1558.003_honey_spn_ticket_request",
    "verdict": "Blocked",
-   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for honey_account_use/request_honey_spn_ticket: error, \"The specified domain either does not exist or could not be contacted\".",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for honey_account_use/request_honey_spn_ticket: error, \"The specified domain either does not exist or could not be contacted\".",
    "critical": true,
    "blocker": "domain",
    "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
@@ -1509,8 +1509,8 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "blocked",
-     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for honey_account_use/request_honey_spn_ticket: error, \"The specified domain either does not exist or could not be contacted\"",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows"
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for honey_account_use/request_honey_spn_ticket: error, \"The specified domain either does not exist or could not be contacted\"",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows"
     },
     {
      "stage": "Live SIEM",
@@ -1545,7 +1545,7 @@
    "level": "medium",
    "folder": "detect/detections/T1558.003_kerberoasting_rc4_tgs",
    "verdict": "Blocked",
-   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for kerberoasting/request_tgs: skipped, \"missing parameter: -Spn\".",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for kerberoasting/request_tgs: skipped, \"missing parameter: -Spn\".",
    "critical": false,
    "blocker": "domain",
    "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
@@ -1614,8 +1614,8 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "blocked",
-     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for kerberoasting/request_tgs: skipped, \"missing parameter: -Spn\"",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows"
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for kerberoasting/request_tgs: skipped, \"missing parameter: -Spn\"",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows"
     },
     {
      "stage": "Live SIEM",
@@ -1652,7 +1652,7 @@
    "level": "high",
    "folder": "detect/detections/T1569.002_suspicious_service_installation",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1569.002_suspicious_service_installation` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1569.002_suspicious_service_installation` 5 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -1660,9 +1660,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1569.002_suspicious_service_installation/evidence.md",
-    "run_utc": "2026-11-21T03:03:26.543414Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:36.984429Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -1728,15 +1728,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:03 UTC, step service_creation/create_service, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step service_creation/create_service, bound by run token",
      "proof": "detect/detections/T1569.002_suspicious_service_installation/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1569.002_suspicious_service_installation` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1569.002_suspicious_service_installation` 5 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -1750,7 +1750,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -1771,7 +1771,7 @@
    "level": "high",
    "folder": "detect/detections/T1685.005_event_log_clearing",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1685.005_event_log_clearing` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1685.005_event_log_clearing` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -1779,9 +1779,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1685.005_event_log_clearing/evidence.md",
-    "run_utc": "2026-11-21T03:02:53.279572Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:04.030839Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -1847,15 +1847,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:02 UTC, step event_log_clearing/clear_test_log, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step event_log_clearing/clear_test_log, bound by run token",
      "proof": "detect/detections/T1685.005_event_log_clearing/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1685.005_event_log_clearing` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1685.005_event_log_clearing` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -1869,7 +1869,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -1890,7 +1890,7 @@
    "level": "high",
    "folder": "detect/detections/T1685.005_security_log_cleared",
    "verdict": "Blocked",
-   "why": "Its step is opt-in (it clears the Security log), so it runs only on a lab VM of your own, from a snapshot; the run hosted-44858268614/lab-windows recorded for event_log_clearing/clear_security_log: skipped, \"opt-in: add -IncludeSecurityLogClear\".",
+   "why": "Its step is opt-in (it clears the Security log), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45453509158/lab-windows recorded for event_log_clearing/clear_security_log: skipped, \"opt-in: add -IncludeSecurityLogClear\".",
    "critical": true,
    "blocker": "opt-in",
    "next": "On a lab VM of your own, from a snapshot: add `-IncludeCredentialAccess -IncludeSecurityLogClear` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and its SIEM alert export to `rasd evidence --run`",
@@ -1959,8 +1959,8 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "blocked",
-     "detail": "its step is opt-in (it clears the Security log), so it runs only on a lab VM of your own, from a snapshot; the run hosted-44858268614/lab-windows recorded for event_log_clearing/clear_security_log: skipped, \"opt-in: add -IncludeSecurityLogClear\"",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows"
+     "detail": "its step is opt-in (it clears the Security log), so it runs only on a lab VM of your own, from a snapshot; the run hosted-45453509158/lab-windows recorded for event_log_clearing/clear_security_log: skipped, \"opt-in: add -IncludeSecurityLogClear\"",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows"
     },
     {
      "stage": "Live SIEM",
@@ -1995,7 +1995,7 @@
    "level": "high",
    "folder": "detect/detections/T1685.005_system_log_cleared",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1685.005_system_log_cleared` 7 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1685.005_system_log_cleared` 6 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -2003,9 +2003,9 @@
    "also": [],
    "evidence": {
     "file": "detect/detections/T1685.005_system_log_cleared/evidence.md",
-    "run_utc": "2026-11-21T03:02:53.279572Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-windows",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T18:04:04.030839Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-windows",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -2070,15 +2070,15 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on runnervmhh3zg at 2026-11-21 03:02 UTC, step event_log_clearing/clear_test_log, bound by run token",
+     "detail": "fired on runnervmhh3zg at 2026-11-24 18:04 UTC, step event_log_clearing/clear_test_log, bound by run token",
      "proof": "detect/detections/T1685.005_system_log_cleared/evidence.md"
     },
     {
      "stage": "Live SIEM",
      "layer": "siem",
      "state": "passed",
-     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1685.005_system_log_cleared` 7 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-alerts.csv"
+     "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1685.005_system_log_cleared` 6 min after the step",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -2092,7 +2092,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -2113,7 +2113,7 @@
    "level": "high",
    "folder": "detect/correlations/T1110.003_password_spray_burst",
    "verdict": "Blocked",
-   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for password_spray_simulation/spray: skipped, \"missing parameter: -UserList\".",
+   "why": "Its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for password_spray_simulation/spray: skipped, \"missing parameter: -UserList\".",
    "critical": true,
    "blocker": "domain",
    "next": "On a lab domain of your own: join the lab VM to it, set the DC's audit policy (`red/lab/Test-LabReadiness.ps1 -Fix`), add `-Spn <lab SPN> -UserList <file of lab accounts>` to `red/lab/Invoke-RasdLabRun.ps1 -LabConfirmed`, then give the run and the DC's Security export (`red/Export-LabTelemetry.ps1 -LogName Security`) to `rasd evidence --run`",
@@ -2184,8 +2184,8 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "blocked",
-     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-44858268614/lab-windows recorded for password_spray_simulation/spray: skipped, \"missing parameter: -UserList\"",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-windows"
+     "detail": "its step needs a lab domain: a lab host joined to it, and its domain controller; the run hosted-45453509158/lab-windows recorded for password_spray_simulation/spray: skipped, \"missing parameter: -UserList\"",
+     "proof": "purple/lab_runs/hosted-45453509158/lab-windows"
     },
     {
      "stage": "Live SIEM",
@@ -2220,7 +2220,7 @@
    "level": "high",
    "folder": "detect/correlations/T1190_object_id_enumeration",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1190_object_id_enumeration` 3 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1190_object_id_enumeration` 3 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -2228,9 +2228,9 @@
    "also": [],
    "evidence": {
     "file": "detect/correlations/T1190_object_id_enumeration/evidence.md",
-    "run_utc": "2026-11-21T02:55:42.302000Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-web",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T17:55:50.747000Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-web",
+    "fresh_until": "2027-02-22",
     "operational_score": 95
    },
    "foundation": {
@@ -2295,7 +2295,7 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on ip-10-0-132-90 at 2026-11-21 02:55 UTC, step idor_testing/walk_object_ids, bound by host and time window; client address",
+     "detail": "fired on ip-10-0-135-98 at 2026-11-24 17:55 UTC, step idor_testing/walk_object_ids, bound by host and time window; client address",
      "proof": "detect/correlations/T1190_object_id_enumeration/evidence.md"
     },
     {
@@ -2303,7 +2303,7 @@
      "layer": "siem",
      "state": "passed",
      "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1190_object_id_enumeration` 3 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-web/siem-alerts.csv"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-web/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -2317,7 +2317,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-web/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-web/siem-searches.json"
     },
     {
      "stage": "False positives",
@@ -2441,7 +2441,7 @@
    "level": "medium",
    "folder": "detect/correlations/T1595.003_api_auth_probing",
    "verdict": "Verified",
-   "why": "Fired on its step in the lab on 2026-11-21; Splunk Enterprise 10.4.5 raised `RASD - T1595.003_api_auth_probing` 9 min after the step.",
+   "why": "Fired on its step in the lab on 2026-11-24; Splunk Enterprise 10.4.5 raised `RASD - T1595.003_api_auth_probing` 9 min after the step.",
    "critical": false,
    "blocker": null,
    "next": null,
@@ -2449,9 +2449,9 @@
    "also": [],
    "evidence": {
     "file": "detect/correlations/T1595.003_api_auth_probing/evidence.md",
-    "run_utc": "2026-11-21T02:55:37.708000Z",
-    "kept": "purple/lab_runs/hosted-44858268614/lab-web",
-    "fresh_until": "2027-02-19",
+    "run_utc": "2026-11-24T17:55:46.148000Z",
+    "kept": "purple/lab_runs/hosted-45453509158/lab-web",
+    "fresh_until": "2027-02-22",
     "operational_score": 90
    },
    "foundation": {
@@ -2516,7 +2516,7 @@
      "stage": "Lab run",
      "layer": "lab",
      "state": "passed",
-     "detail": "fired on ip-10-0-132-90 at 2026-11-21 02:55 UTC, step api_auth_testing/unauthenticated_calls, bound by host and time window; client address",
+     "detail": "fired on ip-10-0-135-98 at 2026-11-24 17:55 UTC, step api_auth_testing/unauthenticated_calls, bound by host and time window; client address",
      "proof": "detect/correlations/T1595.003_api_auth_probing/evidence.md"
     },
     {
@@ -2524,7 +2524,7 @@
      "layer": "siem",
      "state": "passed",
      "detail": "Splunk Enterprise 10.4.5 raised `RASD - T1595.003_api_auth_probing` 9 min after the step",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-web/siem-alerts.csv"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-web/siem-alerts.csv"
     },
     {
      "stage": "Cleanup",
@@ -2538,7 +2538,7 @@
      "layer": "health",
      "state": "unknown",
      "detail": "the 5 health watchdogs ran beside its lab host with no row, as a lab in order should; production: unknown until its SIEM's numbers are read (`rasd health --json`, then `rasd status --health`)",
-     "proof": "purple/lab_runs/hosted-44858268614/lab-web/siem-searches.json"
+     "proof": "purple/lab_runs/hosted-45453509158/lab-web/siem-searches.json"
     },
     {
      "stage": "False positives",

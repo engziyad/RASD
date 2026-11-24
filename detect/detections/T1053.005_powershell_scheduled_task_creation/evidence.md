@@ -3,52 +3,52 @@ rasd_evidence: 1
 detection: T1053.005_powershell_scheduled_task_creation
 technique: T1053.005
 result: fired
-run_utc: '2026-11-21T03:03:21.727439Z'
+run_utc: '2026-11-24T18:04:32.309265Z'
 host: runnervmhh3zg
 test: scheduled_task_creation
 step: register_scheduledtask
-marker: rasd_1c373302
+marker: rasd_eba891c8
 bound_by: run token
-latency_seconds: 0.051
+latency_seconds: 0.025
 matched_events: 1
 cleanup: verified
 artifacts:
-- file: rasd_1c373302.xml
-  sha256: 2977f5cf190b9bdf2b6b502d250562f43aa1d582d9b0c03395e44055fe22fb89
-- file: rasd_1c373302_ps.xml
-  sha256: a657f7530fe3a62f822b018c69ce714e8f443c5859f237430840924c8d5e2734
+- file: rasd_eba891c8.xml
+  sha256: 13c4c4cdd613852aecce55fecbf6d93530e731a0c39dbf5f2b6abe489ed2c0d4
+- file: rasd_eba891c8_ps.xml
+  sha256: 1f8b72e33b1e06fdf125ad14e7377c950893e4cb3001d25b68054c47275fd693
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:10:06Z'
+  first_alert_utc: '2026-11-24T18:10:02Z'
   alert_name: RASD - T1053.005_powershell_scheduled_task_creation
-  latency_seconds: 404.273
-  pipeline_seconds: 404.222
+  latency_seconds: 329.691
+  pipeline_seconds: 329.666
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 48f30ca10817ca52cfaab3b94fbd552f145770a47d1886dbbff8d392a7c74937
+    sha256: e1306cfb662684e045c6ba8c7e66eb75b73a50a7ac0fa853636feed0f687c53d
   telemetry:
   - file: lab-export.jsonl
-    sha256: 3988ac1e1cde6006ae01636cec3993adf8b79cee969a25dabc89d0fa200c30e4
+    sha256: bc0137112d75e216682731ef4f7cadad0743f8fdc603f7feac6c7ab9b493a1e8
   profile: sysmon-native
   manifest:
     file: lab-run-manifest.json
-    sha256: d09f7ea9df7b09460fb600a2e4a698c57c6924c6d8d51f07bf067894ca2ef0c0
+    sha256: ca89e7f07fc6cb93882d9af39222ac2b52e30e38330d44367197a8d20c64c817
     verified:
     - emulation-results.json
     - lab-export.jsonl
   run:
     file: lab-windows.zip
-    sha256: 68646245c5f866ad13d358d39fcaa5516f2cf2689d00741535baaa163d605525
+    sha256: 4723267923c7cf8a4a35b588d44ef3e1d5987dd969e7896b8dfad5bcaccabe0a
     sha256_file: matched
   verification: strict
   siem:
   - file: siem-alerts.csv
-    sha256: c2218c842f0fc6db131155759a5291edf884dd2ae3bafe5270bfbfe4a1aa095c
+    sha256: d2e070c1ca2c1df51728843dbdb3ab40e234697d32a4ecf984a56e62da92363e
   - file: siem.json
-    sha256: 5183932439989d0f625c2f3d0386a2f9f166bc42963626765cc7b2f66ae4da4a
+    sha256: a5babaf6452b4f056e491a8b5d464fefee8a04c5485c98b7c54eb8f7ce6b4740
 operational_score: 90
 ---
 
@@ -58,18 +58,18 @@ operational_score: 90
 |---|---|
 | Emulation step | Register-ScheduledTask with an inline action in $env:TEMP |
 | Host · user | runnervmhh3zg · runnervmhh3zg\runneradmin |
-| Step window (UTC) | 2026-11-21T03:03:21.7274399Z → 2026-11-21T03:03:22.4373156Z |
-| First matching event (UTC) | 2026-11-21T03:03:21.778403 |
+| Step window (UTC) | 2026-11-24T18:04:32.3092651Z → 2026-11-24T18:04:32.9809767Z |
+| First matching event (UTC) | 2026-11-24T18:04:32.333896 |
 | Matching events | 1 |
-| SIEM alert | RASD - T1053.005_powershell_scheduled_task_creation at 2026-11-21T03:10:06Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none |
-| Telemetry latency | 0.1 s - step start → the event is logged on the host |
-| SIEM alert latency | 404 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 404 s - event → alert: forwarding, indexing and the wait for the scheduled search |
+| SIEM alert | RASD - T1053.005_powershell_scheduled_task_creation at 2026-11-24T18:10:02Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none |
+| Telemetry latency | 0.0 s - step start → the event is logged on the host |
+| SIEM alert latency | 330 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 330 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 2 collected and hashed |
 | Cleanup | verified |
 | Alert user | runnervmhh3zg\runneradmin |
-| Note | carries this run's token rasd_1c373302 |
+| Note | carries this run's token rasd_eba891c8 |
 
 ## Operational Score
 
@@ -89,12 +89,12 @@ operational_score: 90
   "Channel": "Microsoft-Windows-Sysmon/Operational",
   "Provider_Name": "Microsoft-Windows-Sysmon",
   "EventID": 1,
-  "TimeCreated": "2026-11-21T03:03:21.7784032Z",
+  "TimeCreated": "2026-11-24T18:04:32.3338962Z",
   "Computer": "runnervmhh3zg",
-  "UtcTime": "2026-11-21 03:03:21.777",
+  "UtcTime": "2026-11-24 18:04:32.333",
   "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   "OriginalFileName": "PowerShell.EXE",
-  "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_1c373302_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_1c373302.exe) | Out-Null\"",
+  "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_eba891c8_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_eba891c8.exe) | Out-Null\"",
   "User": "runnervmhh3zg\\runneradmin"
 }
 ```
@@ -106,7 +106,7 @@ Hash the raw files and compare them with `inputs` above, then re-run:
 ```bash
 rasd evidence --run lab-windows.zip siem-alerts.csv siem.json siem-searches.json --strict --dry-run
 rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
-rasd explain T1053.005_powershell_scheduled_task_creation --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-21T03:03:21.7784032Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-21 03:03:21.777", "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "OriginalFileName": "PowerShell.EXE", "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_1c373302_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_1c373302.exe) | Out-Null\"", "User": "runnervmhh3zg\\runneradmin"}'
+rasd explain T1053.005_powershell_scheduled_task_creation --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-24T18:04:32.3338962Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-24 18:04:32.333", "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "OriginalFileName": "PowerShell.EXE", "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -Command \"Register-ScheduledTask -TaskName rasd_eba891c8_ps -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date).AddYears(1)) -Action (New-ScheduledTaskAction -Execute $env:TEMP\\rasd_eba891c8.exe) | Out-Null\"", "User": "runnervmhh3zg\\runneradmin"}'
 ```
 
 <sub>Generated by RASD · Continuous Detection Assurance Framework</sub>

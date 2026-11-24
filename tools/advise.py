@@ -770,9 +770,10 @@ def environment_counsel(logs: list[Path], profile: str | None, noisy_per_day: fl
             safe = [t for t in analyse_tuning(d, logs) if t["verdict"] == "SAFE" and t["status"] == "proposed" and t["removed"]]
         quiet = "; ".join(f"proposed tuning {t['id']} would remove {t['removed']} of {t['alerts']} alerts and hide no attack variant"
                           for t in safe)
+        rate = f"{row['per_day']}/day" if row["per_day"] is not None else f"in {replay.span_text(stats)}"
         out.append(Finding(
             id=f"noise.{row['rule']}", priority=2, pillar="dfir", roles=("analyst",),
-            title=f"{row['rule']}: {row['alerts']} alerts ({row['per_day']}/day) on {row['entities']} entities - tune before deploying",
+            title=f"{row['rule']}: {row['alerts']} alerts ({rate}) on {row['entities']} entities - tune before deploying",
             evidence=f"Replay of {stats['events']} events ({stats['routed']} routed). " + (quiet or "No proposed tuning removes them."),
             action=(f"rasd advise --propose tune.proposed.{row['rule']}.{slug(safe[0]['id'])}" if safe else
                     f"rasd tune --filter {row['rule']} --logs {label}; add a proposed tuning to tuning.yml and measure it there."),
@@ -1891,7 +1892,8 @@ def main() -> int:
     ap.add_argument("--logs", nargs="*", help="your own telemetry (JSONL exports): add what it says")
     ap.add_argument("--profile", help="telemetry profile the exports are written in (or 'auto')")
     ap.add_argument("--learn", action="store_true", help="with --logs: remember the environment's counts in agent/environment.yml")
-    ap.add_argument("--noisy", type=float, default=NOISY_PER_DAY, help="alerts/day above which a rule is flagged noisy (default 20)")
+    ap.add_argument("--noisy", type=float, default=NOISY_PER_DAY,
+                    help="alerts a day above which a rule is called noisy; on logs shorter than a day, only by the alerts they hold (default 20)")
     ap.add_argument("--explain", metavar="DETECTION", help="explain an alert of this detection")
     ap.add_argument("--event", help="the event: a JSON object, or a .json / .jsonl file (first record)")
     ap.add_argument("--tp", type=int, help="with --explain: the n-th true positive sample")

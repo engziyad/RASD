@@ -7,10 +7,10 @@
 | **Severity** | `high` |
 | **Maturity** | **SIEM-Ready** ([model](../../../docs/RASD_MATURITY_MODEL.md)) |
 | **Engineering Score** | 100/100 · operational pending - [run the lab](../../../docs/OPERATIONAL_VALIDATION.md) |
-| **Tests** | 27 true positive · 13 true negative · 5 technique mutations |
-| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 101 variants |
-| **Behaviour proof** | 3 of 8 variants proven for every event · 2 known gaps, each with an engine-confirmed event · 3 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1003001-suspicious-process-access-to-lsass-memory)) |
-| **Parity** | KQL and SPL identical to the rule on 680 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
+| **Tests** | 32 true positive · 15 true negative · 9 technique mutations |
+| **Proof** | 100% of rule mutants killed · fuzzer resistance 100% over 121 variants |
+| **Behaviour proof** | 6 of 12 variants proven for every event · 2 known gaps, each with an engine-confirmed event · 4 exclusions proven quiet ([certificate](../../../docs/CERTIFICATES.md#t1003001-suspicious-process-access-to-lsass-memory)) |
+| **Parity** | KQL and SPL identical to the rule on 790 events (RASD's offline KQL / SPL model, not yet a live SIEM) |
 | **Public data** | fires on 25 of 27 public recordings of its behaviour · held-out: 2 of 2 · 103 alerts · 1 labelled false positive · in-sample (changed after replaying them) · [evidence](public_evidence.md) |
 | **Rule** | [`rule.yml`](rule.yml) · [KQL](../../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../../queries/spl/T1003.001_lsass_memory_access.spl) |
 | **Operations** | [triage](triage.md) · [response](response.md) · [closure](closure.md) · [tuning](tuning.yml) · [contract](contract.yml) |
@@ -31,9 +31,12 @@ LSASS holds credential material (NTLM hashes, Kerberos tickets, sometimes cleart
 
 The interesting part is the filter design: no folder is excluded, only named components. An earlier version excluded `System32` except `rundll32.exe` and `taskmgr.exe`; replaying public attack data ([public evidence](public_evidence.md)) showed what that folder filter hid - Invoke-Mimikatz inside `powershell.exe`, a Meterpreter session migrated into `svchost.exe`, nanodump dropped into `System32`, and PPLdump starting a fresh `services.exe` that writes the dump through `dbgcore.dll`. The rule now excludes only `csrss.exe`, `wininit.exe` and the WMI provider host by full path, Windows PowerShell and its remoting host (`wsmprovhost.exe`) listing processes through .NET (`0x1410` with a `System.ni.dll` frame in `CallTrace`, which `Get-Process` produces and Invoke-Mimikatz does not), and the Defender scanner in its platform folder.
 
+One exception is not a Windows component: Splunk Enterprise's own service. A full Splunk Enterprise instance on Windows reads every process for its resource usage log, `lsass.exe` among them, with full rights and every 10 seconds by default. On the lab's Windows host that was this alert again and again with no credential step run, and [the measurement](tuning_evidence/splunk_service_on_the_host.json) shows the opens following that collection: 8 in 80 seconds as installed, 4 in 130 seconds with the period at 30 seconds, none with the collection off. `filter_splunk_service` excludes it only when four things hold together: `splunkd.exe` by its full path, the account `NT SERVICE\Splunkd`, the mask `0x1fffff`, and a call stack of `OpenProcess` called from `splunkd.exe`'s own code on a thread the C runtime started, with no other module on it. The path alone would be a way in, because whoever can read LSASS can also start the real `splunkd.exe` from its folder and run code in that process. The account tells the service from such a copy; the stack tells its sampling from injected code (a frame with no module), a dump through `dbgcore.dll` and a side-loaded library. `rasd certify` proves both sides for every event: that exact combination is quiet, and any other mask, account or call stack from the same path alerts.
+
 ## Evasion & coverage gaps
 - **Handle duplication / PPL bypass:** tools that duplicate an existing LSASS handle from another process (e.g. via `NtDuplicateObject`) never generate EID 10 against LSASS directly.
 - **Code injected into a named Windows component** (`csrss.exe`, `wininit.exe`, the WMI provider host): the component is excluded by full path, so its access is not alerted; its `CallTrace` then shows a frame with no module (`UNKNOWN`), which a hunt can look for.
+- **Code that runs as Splunk's own service with that service's own call stack:** an intruder who replaces `C:\Program Files\Splunk\bin\splunkd.exe`, or forges that stack from inside the service, is covered by the exception for its sampling. Both need SYSTEM and both change the SIEM's own service, so watch the hash of that binary and the restarts of the service.
 - **Credential Guard / RunAsPPL** is the real control: detection here is a backstop, not the primary defense.
 - A mask a pipeline stores in **decimal** is matched only when it is on the list of known masks; hex masks are bit-tested.
 - If ProcessAccess telemetry is disabled or filtered, this detection does not work.
@@ -41,6 +44,8 @@ The interesting part is the filter design: no folder is excluded, only named com
 
 ## False positives & tuning
 Expect medium noise until the rule is tuned for an estate. Security agents (EDR sensors, AV, Defender running from `C:\Program Files\Windows Defender` on builds without platform updates), backup and management agents (VMware Tools, SCCM), and on some builds svchost-hosted services, Task Manager, WerFault and the Malicious Software Removal Tool open LSASS with the masks this rule reads; so does `Get-Process` in PowerShell 7, whose .NET runtime has no `System.ni.dll` frame for the process-listing filter to recognise. Tune by **full signed path**, never by filename alone, and use `SourceImage` + signer allow-listing in your SIEM. Public data cannot measure this: its labs run few agents.
+
+The SIEM's own service is the one agent tuned in the rule itself, because the lab measured it: `splunk_service_on_the_host` in [`tuning.yml`](tuning.yml) records the cause, what the exception leaves open and the ways around it. Where Splunk Enterprise does not run on Windows hosts, delete `filter_splunk_service`, which excludes nothing there. Where it does, the noise can also be removed at its source with a longer `collectionPeriodInSecs` under `[introspection:generator:resource_usage]` in `server.conf`, at the price of that data in the Monitoring Console. A Splunk under another account, in another folder or of a build with another call stack is not excepted and will alert: read the new events before widening anything, and never widen to the Splunk folder. Every lab run with a live Splunk checks the exception again: the service's opens are in the Windows host's export, and an LSASS alert that no step asked for would be named on the [kept run's page](../../../purple/lab_runs/README.md).
 
 Every tuning - applied, proposed or rejected - is recorded in [`tuning.yml`](tuning.yml). `rasd tune --filter T1003.001` measures each proposal before it is applied: how many attack variants it would hide against how many corpus alerts it would remove.
 

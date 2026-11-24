@@ -8,7 +8,7 @@ Every row below is backed by artifacts in this repository and re-verified by CI 
 
 | Detection | Technique | Maturity | Owner | TP / TN tests | Mutations | Coverage depth | SIEM queries |
 |---|---|---|---|---|---|---|---|
-| [Suspicious Process Access to LSASS Memory](../../detect/detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | SIEM-Ready | detection-engineering | 27 / 13 | 5 | **medium** | [KQL](../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../queries/spl/T1003.001_lsass_memory_access.spl) |
+| [Suspicious Process Access to LSASS Memory](../../detect/detections/T1003.001_lsass_memory_access/) | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | SIEM-Ready | detection-engineering | 32 / 15 | 9 | **medium** | [KQL](../../queries/kql/T1003.001_lsass_memory_access.kql) · [SPL](../../queries/spl/T1003.001_lsass_memory_access.spl) |
 | [Suspicious Child Process of a WinRM Session Host](../../detect/detections/T1021.006_wsmprovhost_suspicious_child/) | [T1021.006](https://attack.mitre.org/techniques/T1021/006/) | SIEM-Ready | detection-engineering | 18 / 7 | 7 | **medium** | [KQL](../../queries/kql/T1021.006_wsmprovhost_suspicious_child.kql) · [SPL](../../queries/spl/T1021.006_wsmprovhost_suspicious_child.spl) |
 | [Deception - Interaction With a Decoy Network Service](../../detect/detections/T1046_decoy_service_interaction/) | [T1046](https://attack.mitre.org/techniques/T1046/) | SIEM-Ready | detection-engineering | 23 / 12 | 11 | **medium** | [KQL](../../queries/kql/T1046_decoy_service_interaction.kql) · [SPL](../../queries/spl/T1046_decoy_service_interaction.spl) |
 | [Crontab Installed From Standard Input or a File](../../detect/detections/T1053.003_crontab_noninteractive_install/) | [T1053.003](https://attack.mitre.org/techniques/T1053/003/) | SIEM-Ready | detection-engineering | 5 / 7 | 5 | **partial** | [KQL](../../queries/kql/T1053.003_crontab_noninteractive_install.kql) · [SPL](../../queries/spl/T1053.003_crontab_noninteractive_install.spl) |
@@ -46,6 +46,7 @@ Coverage claims are only as strong as the telemetry they depend on. These limita
 - Handle duplication from another process never opens LSASS directly
 - Decimal access masks outside the listed values (hex masks are bit-tested for VM_READ)
 - Code injected into a named Windows component (csrss, wininit, WmiPrvSE) - its CallTrace shows a frame with no module (UNKNOWN)
+- Code that runs as Splunk Enterprise's own service with that service's own call stack (its binary replaced, or the stack forged inside it) - the exception for its resource usage sampling covers it
 - Credential Guard / RunAsPPL environments where the real control is prevention
 - ProcessAccess telemetry disabled or filtered for volume
 
