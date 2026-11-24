@@ -4,8 +4,9 @@ Every frame of the timeline in rig.py is drawn by draw.py, rendered by headless 
 final size, shrunk to the sprite size, and mapped to one palette shared by all frames. Run it after changing
 the drawing or the timeline:
 
-    python tools/knight/art/bake.py            chestnut horse (the default)
-    python tools/knight/art/bake.py grey       grey horse
+    python tools/knight/art/bake.py                 chestnut horse, the rider's face open (the default)
+    python tools/knight/art/bake.py grey            grey horse
+    python tools/knight/art/bake.py chestnut veil   an end of the shemagh drawn across his nose and mouth
 
 It needs Chrome or Chromium, Pillow and numpy. The banner that plays the result needs none of them.
 """
@@ -59,7 +60,7 @@ def frame_times():
     return [min(i / rig.FPS, rig.T_END) for i in range(rig.FRAMES)]
 
 
-def render_frames(coat):
+def render_frames(coat, veil):
     w, h = rig.SPRITE
     tile = (w * OVER, h * OVER)
     times = frame_times()
@@ -67,7 +68,8 @@ def render_frames(coat):
     with tempfile.TemporaryDirectory() as folder:
         for start in range(0, len(times), PER_PAGE):
             part = times[start:start + PER_PAGE]
-            svgs = [draw.svg(rig.pose(t), rig.BOX, coat=coat, lod="sprite", uid=f"f{start + i}", size=tile) for i, t in enumerate(part)]
+            svgs = [draw.svg(rig.pose(t), rig.BOX, coat=coat, lod="sprite", uid=f"f{start + i}", size=tile, veil=veil)
+                    for i, t in enumerate(part)]
             page = render_page(svgs, tile, 6, folder)
             for i in range(len(part)):
                 x0, y0 = (i % 6) * tile[0], (i // 6) * tile[1]
@@ -128,8 +130,8 @@ def positions():
     return xs
 
 
-def bake(coat="chestnut", colours=60, out=OUT):
-    frames = render_frames(coat)
+def bake(coat="chestnut", veil=False, colours=60, out=OUT):
+    frames = render_frames(coat, veil)
     palette, indexed = shared_palette(frames, colours)
     w, h = rig.SPRITE
     rows = -(-len(indexed) // COLUMNS)
@@ -143,5 +145,5 @@ def bake(coat="chestnut", colours=60, out=OUT):
 
 
 if __name__ == "__main__":
-    size, count, colours = bake(sys.argv[1] if len(sys.argv) > 1 else "chestnut")
+    size, count, colours = bake(sys.argv[1] if len(sys.argv) > 1 else "chestnut", veil="veil" in sys.argv[2:])
     print(f"ride.png: {size} bytes, {count} frames, {colours} colours")

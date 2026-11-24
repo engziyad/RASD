@@ -32,6 +32,7 @@ INK = {
     "gold": "#d8a83e", "gold_lo": "#99732a", "skin": "#bf8759", "skin_lo": "#8f5f3b",
     "white": "#f7f5f0", "white_lo": "#d7d2c7", "red": "#c2262c", "red_lo": "#8c151b", "agal": "#0b0b0b", "agal_hi": "#3d3d3d",
     "blade": "#e9eef2", "blade_lo": "#97a2ab", "leather": "#4a2414", "scab": "#5c1c1a", "scab_hi": "#8a2d28",
+    "strap": "#7d4c27", "wood": "#8a5a2e", "wood_hi": "#bd8a52", "steel": "#5f656e", "steel_hi": "#aeb5be", "beard": "#33241b", "fold": "#6b5a52",
     "cloth": "#a4252a", "cloth_lo": "#6e1418", "dust": "#c9a47a",
 }
 
@@ -305,9 +306,9 @@ def pose(t):
     arch = lerp(lerp(11.0, 15.0, e), 7.0, g)
     head = lerp(lerp(-57.0, -80.0, e), -30.0 + 3.0 * swing, g)
 
-    lean = lerp(2.0 + 9.0 * e, 12.0 + 2.5 * math.sin(2 * math.pi * (phi - 0.2)), g)
-    lean += keys(t, [(3.66, 0.0), (3.90, 15.0), (4.80, 15.0), (5.15, 0.0)])
-    nod = keys(t, [(3.66, 0.0), (3.90, 20.0), (4.14, 12.0), (4.80, 12.0), (5.15, 0.0)])
+    lean = lerp(2.0 + 9.0 * e, 5.0 + 2.5 * math.sin(2 * math.pi * (phi - 0.2)), g)
+    lean += keys(t, [(3.66, 0.0), (3.90, 9.0), (4.80, 9.0), (5.15, 0.0)])
+    nod = keys(t, [(3.66, 0.0), (3.90, 17.0), (4.14, 9.0), (4.80, 9.0), (5.15, 0.0)])
     stage = keys(t, [(2.28, 0.0), (2.60, 1.0), (2.96, 2.0), (3.18, 3.0), (3.70, 3.0), (3.86, 4.0), (4.12, 5.0), (4.85, 5.0),
                      (5.42, 6.0)])
     wave = math.sin(2 * math.pi * (t - 3.18) / 0.28) * ramp(t, 3.14, 3.24) * (1 - ramp(t, 3.62, 3.74))
