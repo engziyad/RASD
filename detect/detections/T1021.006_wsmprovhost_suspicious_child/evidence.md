@@ -3,48 +3,48 @@ rasd_evidence: 1
 detection: T1021.006_wsmprovhost_suspicious_child
 technique: T1021.006
 result: fired
-run_utc: '2026-11-21T03:02:50.720317Z'
+run_utc: '2026-11-24T18:04:01.508640Z'
 host: runnervmhh3zg
 test: winrm_access_validation
 step: invoke_command
-marker: rasd_1c373302
+marker: rasd_eba891c8
 bound_by: run token
-latency_seconds: 0.311
+latency_seconds: 0.338
 matched_events: 1
 cleanup: verified
 artifacts: []
 siem:
   alerts: 1
-  first_alert_utc: '2026-11-21T03:10:06Z'
+  first_alert_utc: '2026-11-24T18:10:06Z'
   alert_name: RASD - T1021.006_wsmprovhost_suspicious_child
-  latency_seconds: 435.28
-  pipeline_seconds: 434.969
+  latency_seconds: 364.491
+  pipeline_seconds: 364.154
   platform: 'Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd
-    1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none'
+    2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none'
 inputs:
   results:
     file: emulation-results.json
-    sha256: 48f30ca10817ca52cfaab3b94fbd552f145770a47d1886dbbff8d392a7c74937
+    sha256: e1306cfb662684e045c6ba8c7e66eb75b73a50a7ac0fa853636feed0f687c53d
   telemetry:
   - file: lab-export.jsonl
-    sha256: 3988ac1e1cde6006ae01636cec3993adf8b79cee969a25dabc89d0fa200c30e4
+    sha256: bc0137112d75e216682731ef4f7cadad0743f8fdc603f7feac6c7ab9b493a1e8
   profile: sysmon-native
   manifest:
     file: lab-run-manifest.json
-    sha256: d09f7ea9df7b09460fb600a2e4a698c57c6924c6d8d51f07bf067894ca2ef0c0
+    sha256: ca89e7f07fc6cb93882d9af39222ac2b52e30e38330d44367197a8d20c64c817
     verified:
     - emulation-results.json
     - lab-export.jsonl
   run:
     file: lab-windows.zip
-    sha256: 68646245c5f866ad13d358d39fcaa5516f2cf2689d00741535baaa163d605525
+    sha256: 4723267923c7cf8a4a35b588d44ef3e1d5987dd969e7896b8dfad5bcaccabe0a
     sha256_file: matched
   verification: strict
   siem:
   - file: siem-alerts.csv
-    sha256: c2218c842f0fc6db131155759a5291edf884dd2ae3bafe5270bfbfe4a1aa095c
+    sha256: d2e070c1ca2c1df51728843dbdb3ab40e234697d32a4ecf984a56e62da92363e
   - file: siem.json
-    sha256: 5183932439989d0f625c2f3d0386a2f9f166bc42963626765cc7b2f66ae4da4a
+    sha256: a5babaf6452b4f056e491a8b5d464fefee8a04c5485c98b7c54eb8f7ce6b4740
 operational_score: 75
 ---
 
@@ -54,18 +54,18 @@ operational_score: 75
 |---|---|
 | Emulation step | Invoke-Command on the target over WinRM (cmd.exe echoes hostname and marker) |
 | Host · user | runnervmhh3zg · runnervmhh3zg\runneradmin |
-| Step window (UTC) | 2026-11-21T03:02:50.7203172Z → 2026-11-21T03:02:51.2660048Z |
-| First matching event (UTC) | 2026-11-21T03:02:51.031412 |
+| Step window (UTC) | 2026-11-24T18:04:01.5086403Z → 2026-11-24T18:04:02.0181687Z |
+| First matching event (UTC) | 2026-11-24T18:04:01.846206 |
 | Matching events | 1 |
-| SIEM alert | RASD - T1021.006_wsmprovhost_suspicious_child at 2026-11-21T03:10:06Z |
-| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 1.7.0, rasd_fields 1.7.0, rasd_forwarder 1.7.0; vendor add-ons: none |
+| SIEM alert | RASD - T1021.006_wsmprovhost_suspicious_child at 2026-11-24T18:10:06Z |
+| SIEM | Splunk Enterprise 10.4.5 (build de9225ad9740), Trial licence; apps: rasd 2.0.0, rasd_fields 2.0.0, rasd_forwarder 2.0.0; vendor add-ons: none |
 | Telemetry latency | 0.3 s - step start → the event is logged on the host |
-| SIEM alert latency | 435 s - step start → the SIEM alert (scored) |
-| SIEM pipeline delay | 435 s - event → alert: forwarding, indexing and the wait for the scheduled search |
+| SIEM alert latency | 364 s - step start → the SIEM alert (scored) |
+| SIEM pipeline delay | 364 s - event → alert: forwarding, indexing and the wait for the scheduled search |
 | DFIR artifacts | 0 collected and hashed |
 | Cleanup | verified |
 | Alert user | runnervmhh3zg\runneradmin |
-| Note | carries this run's token rasd_1c373302 |
+| Note | carries this run's token rasd_eba891c8 |
 
 ## Operational Score
 
@@ -85,12 +85,12 @@ operational_score: 75
   "Channel": "Microsoft-Windows-Sysmon/Operational",
   "Provider_Name": "Microsoft-Windows-Sysmon",
   "EventID": 1,
-  "TimeCreated": "2026-11-21T03:02:51.0314123Z",
+  "TimeCreated": "2026-11-24T18:04:01.8462064Z",
   "Computer": "runnervmhh3zg",
-  "UtcTime": "2026-11-21 03:02:51.030",
+  "UtcTime": "2026-11-24 18:04:01.845",
   "Image": "C:\\Windows\\System32\\cmd.exe",
   "OriginalFileName": "Cmd.Exe",
-  "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_1c373302\"",
+  "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_eba891c8\"",
   "User": "runnervmhh3zg\\runneradmin",
   "ParentImage": "C:\\Windows\\System32\\wsmprovhost.exe"
 }
@@ -103,7 +103,7 @@ Hash the raw files and compare them with `inputs` above, then re-run:
 ```bash
 rasd evidence --run lab-windows.zip siem-alerts.csv siem.json siem-searches.json --strict --dry-run
 rasd evidence --results emulation-results.json --logs lab-export.jsonl --siem-alerts siem-alerts.csv siem.json --dry-run
-rasd explain T1021.006_wsmprovhost_suspicious_child --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-21T03:02:51.0314123Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-21 03:02:51.030", "Image": "C:\\Windows\\System32\\cmd.exe", "OriginalFileName": "Cmd.Exe", "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_1c373302\"", "User": "runnervmhh3zg\\runneradmin", "ParentImage": "C:\\Windows\\System32\\wsmprovhost.exe"}'
+rasd explain T1021.006_wsmprovhost_suspicious_child --event '{"Channel": "Microsoft-Windows-Sysmon/Operational", "Provider_Name": "Microsoft-Windows-Sysmon", "EventID": 1, "TimeCreated": "2026-11-24T18:04:01.8462064Z", "Computer": "runnervmhh3zg", "UtcTime": "2026-11-24 18:04:01.845", "Image": "C:\\Windows\\System32\\cmd.exe", "OriginalFileName": "Cmd.Exe", "CommandLine": "\"C:\\Windows\\system32\\cmd.exe\" /c \"echo runnervmhh3zg rasd_eba891c8\"", "User": "runnervmhh3zg\\runneradmin", "ParentImage": "C:\\Windows\\System32\\wsmprovhost.exe"}'
 ```
 
 <sub>Generated by RASD · Continuous Detection Assurance Framework</sub>

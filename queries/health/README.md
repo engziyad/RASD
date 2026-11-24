@@ -16,7 +16,7 @@ The Splunk app schedules the five SPL searches as `RASD Health - <name>` and wri
 
 > **Run on a live Splunk, in the lab.** The table is what Splunk Enterprise 10.4.5 answered when each SPL search was run once beside 3 lab hosts, after the attack steps ([kept runs](../../purple/lab_runs/README.md); the record is each part's `siem-searches.json`). It shows that Splunk accepts the searches as generated, and what they return over a lab that is in order: a row there would be a false alarm. It does not show a watchdog catching its fault. No feed was broken on purpose, and `silent` and `volume` compare with a week that a host made for one run has not lived. The KQL searches have not run on a live Sentinel.
 
-| Watchdog | `hosted-44858268614/lab-linux` | `hosted-44858268614/lab-web` | `hosted-44858268614/lab-windows` |
+| Watchdog | `hosted-45453509158/lab-linux` | `hosted-45453509158/lab-web` | `hosted-45453509158/lab-windows` |
 |---|---|---|---|
 | **silent** | ran: 0 rows | ran: 0 rows | ran: 0 rows |
 | **volume** | ran: 0 rows | ran: 0 rows | ran: 0 rows |

@@ -7,27 +7,27 @@ Measured from the start of the emulation step. *Telemetry* is the time until the
 | Detection | Telemetry latency | SIEM alert latency | SIEM pipeline delay | Latency points |
 |---|---|---|---|---|
 | T1003.001_lsass_memory_access | pending | pending | - | - |
-| T1021.006_wsmprovhost_suspicious_child | 0.311 s | 435.28 s | 434.969 s | 5/15 |
-| T1046_decoy_service_interaction | 0.019 s | 528.86 s | 528.841 s | 5/15 |
-| T1053.003_crontab_noninteractive_install | 0.011 s | 527.887 s | 527.876 s | 5/15 |
-| T1053.005_powershell_scheduled_task_creation | 0.051 s | 404.273 s | 404.222 s | 5/15 |
-| T1053.005_schtasks_suspicious_creation | 0.056 s | 404.379 s | 404.323 s | 5/15 |
-| T1059.001_powershell_encoded_command | 0.033 s | 428.252 s | 428.219 s | 5/15 |
-| T1059.004_linux_suspicious_shell_execution | 0.01 s | 579.849 s | 579.839 s | 5/15 |
+| T1021.006_wsmprovhost_suspicious_child | 0.338 s | 364.491 s | 364.154 s | 5/15 |
+| T1046_decoy_service_interaction | 0.029 s | 487.605 s | 487.576 s | 5/15 |
+| T1053.003_crontab_noninteractive_install | 0.015 s | 486.646 s | 486.631 s | 5/15 |
+| T1053.005_powershell_scheduled_task_creation | 0.025 s | 329.691 s | 329.666 s | 5/15 |
+| T1053.005_schtasks_suspicious_creation | 0.054 s | 334.791 s | 334.737 s | 5/15 |
+| T1059.001_powershell_encoded_command | 0.028 s | 355.566 s | 355.537 s | 5/15 |
+| T1059.004_linux_suspicious_shell_execution | 0.015 s | 366.834 s | 366.819 s | 5/15 |
 | T1078.002_honey_account_authentication | pending | pending | - | - |
-| T1218.011_rundll32_suspicious_execution | 0.036 s | 423.507 s | 423.47 s | 5/15 |
-| T1547.001_registry_run_key_persistence | 0.024 s | 421.556 s | 421.533 s | 5/15 |
-| T1552.001_honey_file_access | 0.129 s | 428.423 s | 428.294 s | 5/15 |
+| T1218.011_rundll32_suspicious_execution | 0.027 s | 348.89 s | 348.863 s | 5/15 |
+| T1547.001_registry_run_key_persistence | 0.022 s | 350.938 s | 350.916 s | 5/15 |
+| T1552.001_honey_file_access | 0.114 s | 355.722 s | 355.608 s | 5/15 |
 | T1558.003_honey_spn_ticket_request | pending | pending | - | - |
 | T1558.003_kerberoasting_rc4_tgs | pending | pending | - | - |
-| T1569.002_suspicious_service_installation | 0.029 s | 399.457 s | 399.428 s | 5/15 |
-| T1685.005_event_log_clearing | 0.107 s | 430.72 s | 430.614 s | 5/15 |
+| T1569.002_suspicious_service_installation | 0.029 s | 327.016 s | 326.987 s | 5/15 |
+| T1685.005_event_log_clearing | 0.079 s | 356.969 s | 356.89 s | 5/15 |
 | T1685.005_security_log_cleared | pending | pending | - | - |
-| T1685.005_system_log_cleared | 0.128 s | 430.72 s | 430.592 s | 5/15 |
+| T1685.005_system_log_cleared | 0.1 s | 359.969 s | 359.869 s | 5/15 |
 | T1110.003_password_spray_burst | pending | pending | - | - |
-| T1190_object_id_enumeration | 0.698 s | 197.698 s | 197.0 s | 10/15 |
+| T1190_object_id_enumeration | 0.253 s | 190.253 s | 190.0 s | 10/15 |
 | T1558.003_kerberoasting_volume | pending | pending | - | - |
-| T1595.003_api_auth_probing | 2.292 s | 565.292 s | 563.0 s | 5/15 |
+| T1595.003_api_auth_probing | 1.852 s | 557.852 s | 556.0 s | 5/15 |
 
 Targets: ≤ 60 s earns 15 points, ≤ 5 min 10, ≤ 15 min 5 (see [QUALITY_MODEL.md](../docs/QUALITY_MODEL.md)). For a correlation, telemetry latency runs to the event that made it reach its threshold, and its Splunk alert runs once per window, after the window closes.
 

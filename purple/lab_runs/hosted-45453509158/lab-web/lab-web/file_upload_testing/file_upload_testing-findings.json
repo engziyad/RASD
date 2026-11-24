@@ -1,0 +1,53 @@
+{
+  "test": "file_upload_testing",
+  "marker": "rasd_08bf2b09",
+  "target": "http://127.0.0.1:3000",
+  "findings": [
+    {
+      "check": "upload rasd_08bf2b09.exe (disallowed extension, 51 bytes)",
+      "result": "FINDING",
+      "detail": "HTTP 204"
+    },
+    {
+      "check": "upload rasd_08bf2b09.pdf.exe (double extension, 51 bytes)",
+      "result": "FINDING",
+      "detail": "HTTP 204"
+    },
+    {
+      "check": "upload rasd_08bf2b09.html (content type spoofed as PDF, 51 bytes)",
+      "result": "FINDING",
+      "detail": "HTTP 204"
+    },
+    {
+      "check": "upload rasd_08bf2b09.pdf (over the size limit, 100062 bytes)",
+      "result": "FINDING",
+      "detail": "HTTP 204"
+    }
+  ],
+  "requests": [
+    {
+      "time": "2026-11-24T17:55:49Z",
+      "method": "POST",
+      "path": "/file-upload",
+      "status": 204
+    },
+    {
+      "time": "2026-11-24T17:55:50Z",
+      "method": "POST",
+      "path": "/file-upload",
+      "status": 204
+    },
+    {
+      "time": "2026-11-24T17:55:50Z",
+      "method": "POST",
+      "path": "/file-upload",
+      "status": 204
+    },
+    {
+      "time": "2026-11-24T17:55:50Z",
+      "method": "POST",
+      "path": "/file-upload",
+      "status": 204
+    }
+  ]
+}
