@@ -7,14 +7,14 @@
     [search index=web sourcetype=access_combined earliest=-24h@h latest=@h | eval feed="webserver", period="now"]
     [search index=wineventlog source="XmlWinEventLog:Security" EventCode IN (1102, 4624, 4625, 4663, 4768, 4769, 4771, 4776) earliest=-24h@h latest=@h | eval feed="windows/security#".EventCode, period="now"]
     [search index=wineventlog source="XmlWinEventLog:System" EventCode IN (104, 7045) earliest=-24h@h latest=@h | eval feed="windows/system#".EventCode, period="now"]
-    [search index=linux sourcetype="sysmon:linux" EventID=1 earliest=-8d@h latest=-7d@h | eval feed="linux/process_creation", period="week_ago"]
-    [search index=deception sourcetype=opencanary earliest=-8d@h latest=-7d@h | eval feed="opencanary/honeypot", period="week_ago"]
-    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 earliest=-8d@h latest=-7d@h | eval feed="process_access", period="week_ago"]
-    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 earliest=-8d@h latest=-7d@h | eval feed="process_creation", period="week_ago"]
-    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13 earliest=-8d@h latest=-7d@h | eval feed="registry_set", period="week_ago"]
-    [search index=web sourcetype=access_combined earliest=-8d@h latest=-7d@h | eval feed="webserver", period="week_ago"]
-    [search index=wineventlog source="XmlWinEventLog:Security" EventCode IN (1102, 4624, 4625, 4663, 4768, 4769, 4771, 4776) earliest=-8d@h latest=-7d@h | eval feed="windows/security#".EventCode, period="week_ago"]
-    [search index=wineventlog source="XmlWinEventLog:System" EventCode IN (104, 7045) earliest=-8d@h latest=-7d@h | eval feed="windows/system#".EventCode, period="week_ago"]
+    [search index=linux sourcetype="sysmon:linux" EventID=1 earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="linux/process_creation", period="week_ago"]
+    [search index=deception sourcetype=opencanary earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="opencanary/honeypot", period="week_ago"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=10 earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="process_access", period="week_ago"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="process_creation", period="week_ago"]
+    [search index=sysmon source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=13 earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="registry_set", period="week_ago"]
+    [search index=web sourcetype=access_combined earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="webserver", period="week_ago"]
+    [search index=wineventlog source="XmlWinEventLog:Security" EventCode IN (1102, 4624, 4625, 4663, 4768, 4769, 4771, 4776) earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="windows/security#".EventCode, period="week_ago"]
+    [search index=wineventlog source="XmlWinEventLog:System" EventCode IN (104, 7045) earliest=-8d@h latest=-7d@h _index_latest=-6d@h | eval feed="windows/system#".EventCode, period="week_ago"]
 | stats count(eval(period=="now")) as last_24h, count(eval(period=="week_ago")) as week_ago by feed, host
 | eval state=case(week_ago >= 20 AND last_24h == 0, "silent", week_ago >= 50 AND last_24h < 0.25 * week_ago, "volume fell")
 | where isnotnull(state)

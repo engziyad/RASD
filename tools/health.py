@@ -856,7 +856,10 @@ def spl_watchdogs(wanted: list[Need]) -> dict[str, str]:
     out["volume"] = "\n".join([
         "| multisearch",
         *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-24h@h latest=@h", ', period="now"')),
-        *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-8d@h latest=-7d@h", ', period="week_ago"')),
+        # Of the day a week back, only what had reached Splunk by the day after it. A host Splunk has just begun to
+        # read brings its history with it, and a machine made from an image a week old was named as one that fell
+        # silent on the events of the image's own build. The lab's own Splunk showed it, on the Windows lab host.
+        *(f"    {leg}" for leg in spl_feeds(wanted, "earliest=-8d@h latest=-7d@h _index_latest=-6d@h", ', period="week_ago"')),
         '| stats count(eval(period=="now")) as last_24h, count(eval(period=="week_ago")) as week_ago by feed, host',
         f'| eval state=case(week_ago >= {MIN_EXPECTED} AND last_24h == 0, "silent", '
         f'week_ago >= {MIN_VOLUME} AND last_24h < {DROP} * week_ago, "volume fell")',
