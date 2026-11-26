@@ -1,11 +1,14 @@
 """Governance of RASD-Agent's lane: a person's review bound to the rule text, the audit trail, promotion,
 rollback, what an unattended run may touch, and drafts written to get past the gates."""
+import contextlib
 import copy
+import io
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 import uuid
 from pathlib import Path
@@ -181,6 +184,69 @@ class Reviews(Governed):
         bad = [{"candidate": CANDIDATE, "rule_sha256": "abc", "verdict": "maybe", "by": "RASD-Agent", "date": "yesterday"}]
         governance.save_reviews(self.lane.reviews, bad)
         self.assertEqual(len(governance.review_problems(bad)), 4)
+
+
+class OnLogs(Governed):
+    """A reviewer's own telemetry put through the lane: what fires, what the core already says, and nothing written."""
+
+    def export(self, *events) -> str:
+        path = self.tmp / "export.jsonl"
+        path.write_text("".join(json.dumps(ev) + "\n" for ev in events), encoding="utf-8", newline="\n")
+        return str(path)
+
+    def seen(self, *events, core=()) -> dict:
+        return review.on_logs(grow.load_candidates(self.lane), [self.export(*events)], core=list(core))
+
+    def test_a_candidate_fires_on_its_technique_and_stays_quiet_on_the_rest(self):
+        logs = self.seen(tg.proc("trusts listed", "nltest /domain_trusts"), tg.proc("controllers listed", "nltest /dclist:lab.local"))
+        seen = logs["candidates"][CANDIDATE]
+        self.assertEqual([ev["CommandLine"] for ev in seen["events"]], ["nltest /domain_trusts"])
+        self.assertEqual((logs["events"], logs["routed"], seen["read"], seen["alerted"]), (2, 2, 2, []))
+        self.assertEqual(review.fires_text(seen), "fires on 1 event; the core is silent on it")
+
+    def test_an_event_a_core_detection_alerts_on_is_counted_apart(self):
+        rule = grow.load_candidates(self.lane)[0].rule
+        logs = self.seen(tg.proc("trusts listed", "nltest /domain_trusts"), tg.proc("every trust", "nltest /domain_trusts /all_trusts"),
+                         core=[types.SimpleNamespace(rule={**rule, "detection": {"selection": {"CommandLine|contains": "all_trusts"},
+                                                                                   "condition": "selection"}})])
+        seen = logs["candidates"][CANDIDATE]
+        self.assertEqual((len(seen["events"]), [ev["_case"] for ev in seen["alerted"]]), (2, ["every trust"]))
+        self.assertEqual(review.fires_text(seen), "fires on 2 events; the core alerts on 1 of them")
+
+    def test_a_quiet_candidate_says_how_much_it_read(self):
+        logs = self.seen(tg.proc("controllers listed", "nltest /dclist:lab.local"), {"EventID": 4625, "TargetUserName": "lab.user01"})
+        text = review.dossier(self.lane, review.find(self.lane, CANDIDATE), logs)
+        self.assertEqual(review.fires_text(logs["candidates"][CANDIDATE]), "quiet")
+        self.assertIn("quiet: none of the 1 events of its log source makes the rule fire", text)
+
+    def test_the_dossier_lists_the_events_and_the_board_puts_what_fires_first(self):
+        logs = self.seen(tg.proc("trusts listed", "nltest /domain_trusts", Computer="LAB-DC01.lab.local",
+                                 UtcTime="2026-11-26 19:56:40.101"))
+        text = review.dossier(self.lane, review.find(self.lane, CANDIDATE), logs)
+        self.assertIn("fires on 1 event; the core is silent on it", text)
+        self.assertIn("2026-11-26 19:56:40  LAB-DC01.lab.local  LAB\\lab.user01  nltest /domain_trusts", text)
+        self.assertIn("a rule that fires here is still a candidate", text)
+        self.assertLess(text.index("On your telemetry"), text.index("What only a person can judge"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            review.print_board(review.board(self.lane), logs)
+        self.assertIn("1 of 1 candidates fire, on 1 event; the core library is silent on all of them", out.getvalue())
+        self.assertIn(f"next: rasd review {CANDIDATE} --logs {logs['sources'][0]}", out.getvalue())
+
+    def test_reading_logs_writes_nothing(self):
+        export = self.export(tg.proc("trusts listed", "nltest /domain_trusts"))
+        before = {p: p.read_bytes() for p in sorted(self.tmp.rglob("*")) if p.is_file()}
+        logs = review.on_logs(grow.load_candidates(self.lane), [export], core=[])
+        review.dossier(self.lane, review.find(self.lane, CANDIDATE), logs)
+        with contextlib.redirect_stdout(io.StringIO()):
+            review.print_board(review.board(self.lane), logs)
+        self.assertEqual({p: p.read_bytes() for p in sorted(self.tmp.rglob("*")) if p.is_file()}, before)
+        self.assertEqual(self.stand(), "unreviewed")
+
+    def test_an_export_that_is_not_there_is_refused(self):
+        with self.assertRaises(review.ReviewError) as caught:
+            review.on_logs(grow.load_candidates(self.lane), [str(self.tmp / "nothing.jsonl")], core=[])
+        self.assertIn("no such export", str(caught.exception))
 
 
 class Trail(Governed):

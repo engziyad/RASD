@@ -11,6 +11,11 @@ passing through here.
   rasd review                          the board: every candidate and where it stands with people
   rasd review CANDIDATE                the dossier: the rule, what it will never alert on, its tests,
                                        what the gates measured, and what only a person can judge
+  rasd review --logs EXPORT [EXPORT ...]
+                                       the board beside your own telemetry: the candidates that fire on it
+                                       first, with the events the core library says nothing about
+  rasd review CANDIDATE --logs EXPORT [EXPORT ...]
+                                       the dossier with those events: what the rule would have told you
   rasd review CANDIDATE --approve --by NAME [--rate logic=5 telemetry=4 noise=4 mapping=5] [--note TEXT]
   rasd review CANDIDATE --revise  --by NAME --note "what to change"
   rasd review CANDIDATE --reject  --by NAME --note "why it is wrong"
@@ -26,6 +31,10 @@ passing through here.
   rasd review --backfill               record the candidates that were in the lane before the trail was kept
   rasd review --check                  the records hold together (CI)
 
+--logs reads and reports: a JSON lines export (red/Export-LabTelemetry.ps1, or your SIEM's) goes through each
+candidate exactly as `rasd replay` puts it through the core. Nothing is written, and a candidate that fires
+on your logs is still a candidate: it is evidence for the reviewer, not a verdict.
+
 A review is bound to the SHA-256 of the rule text it judged: change the rule and the review no longer
 stands. The unattended run of the lane may not change the review ledger, so the agent cannot approve
 its own work (docs/GOVERNANCE.md).
@@ -38,6 +47,7 @@ import json
 import shutil
 import sys
 import uuid
+from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -45,10 +55,12 @@ from typing import Any
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BOLD, DETECTIONS, DIM, GREEN, RED, RESET, ROOT, VERSION, YELLOW
+from common import BOLD, DETECTIONS, DIM, GREEN, RED, RESET, ROOT, VERSION, YELLOW, load_detections, load_jsonl
+from convert import logsource_key
 import governance
 import grow
 import new_detection
+from sigma_engine import SigmaError, compile_rule
 
 QUERIES = ROOT / "queries"
 BEFORE_TRAIL = "in the lane before the trail was kept: what drafted it was not recorded"
@@ -257,7 +269,74 @@ def check(lane: grow.Lane, detections: Path = DETECTIONS, queries: Path = QUERIE
     return problems
 
 
-def dossier(lane: grow.Lane, cand: grow.Candidate) -> str:
+def on_logs(cands: Sequence[grow.Candidate], paths: Sequence[str], profile: str | None = None, core=None) -> dict[str, Any]:
+    """What each candidate says on a log export: the events its rule fires on, routed and normalised as
+    `rasd replay` does it, and how many of them a core detection alerts on as well. Reads, writes nothing."""
+    import profiles
+    from replay import route
+    raw = []
+    for path in paths:
+        if not Path(path).is_file():
+            raise ReviewError(f"{path}: no such export")
+        raw += load_jsonl(Path(path))
+    events, used = profiles.apply(raw, profile)
+    by_source: dict[str, list[dict]] = defaultdict(list)
+    for ev in events:
+        source = route(ev)
+        if source:
+            by_source[source].append(ev)
+    guards: dict[str, list] = defaultdict(list)
+    for det in load_detections() if core is None else core:
+        try:
+            guards[logsource_key(det.rule)].append(compile_rule(det.rule))
+        except SigmaError:
+            continue
+    fires: dict[str, dict[str, Any]] = {}
+    for cand in cands:
+        try:
+            test, source = compile_rule(cand.rule), logsource_key(cand.rule)
+        except SigmaError:
+            continue
+        hits = [ev for ev in by_source.get(source, []) if test(ev)]
+        fires[cand.id] = {"events": hits, "read": len(by_source.get(source, [])),
+                          "alerted": [ev for ev in hits if any(guard(ev) for guard in guards.get(source, []))]}
+    return {"sources": [Path(p).as_posix() for p in paths], "profile": used, "events": len(events),
+            "routed": sum(len(v) for v in by_source.values()), "candidates": fires}
+
+
+def fires_text(seen: Mapping[str, Any]) -> str:
+    """One candidate's standing on the logs, in a clause: 'fires on 2 events, none of which the core alerts on'."""
+    n, core = len(seen["events"]), len(seen["alerted"])
+    if not n:
+        return "quiet"
+    beside = "the core alerts on none of them" if not core else "the core alerts on all of them" if core == n else f"the core alerts on {core} of them"
+    return f"fires on {n} event{'' if n == 1 else 's'}; " + (beside if n > 1 else "the core is silent on it" if not core else "the core alerts on it too")
+
+
+def event_line(ev: Mapping[str, Any]) -> str:
+    from replay import first, parse_time, summary
+    when = parse_time(dict(ev))
+    who = first(dict(ev), ("User", "SubjectUserName", "TargetUserName", "cs-username"))
+    return (f"{when:%Y-%m-%d %H:%M:%S}  " if when else "") + f"{first(dict(ev), ('Computer', 'host', 'node_id'))}  " \
+        + (f"{who}  " if who != "-" else "") + summary(dict(ev))[:160]
+
+
+def logs_section(cand: grow.Candidate, logs: Mapping[str, Any], limit: int = 8) -> list[str]:
+    seen = logs["candidates"].get(cand.id)
+    out = ["", f"{BOLD}On your telemetry{RESET} {DIM}({', '.join(logs['sources'])} · {logs['events']} events, {logs['routed']} of a "
+               f"log source RASD reads){RESET}"]
+    if seen is None:
+        return out + ["  the rule does not compile: nothing was read through it"]
+    if not seen["events"]:
+        return out + [f"  quiet: none of the {seen['read']} events of its log source makes the rule fire"]
+    out += [f"  {fires_text(seen)}"]
+    out += [f"  {event_line(ev)}" for ev in seen["events"][:limit]]
+    if len(seen["events"]) > limit:
+        out += [f"  {DIM}and {len(seen['events']) - limit} more{RESET}"]
+    return out + [f"  {DIM}a rule that fires here is still a candidate: whether these events are the technique is yours to say{RESET}"]
+
+
+def dossier(lane: grow.Lane, cand: grow.Candidate, logs: Mapping[str, Any] | None = None) -> str:
     """What a reviewer needs on one page."""
     stand = stand_of(lane, cand)
     rule, record, proof = cand.rule, cand.record, cand.record.get("proof") or {}
@@ -285,6 +364,8 @@ def dossier(lane: grow.Lane, cand: grow.Candidate) -> str:
             "", f"{BOLD}What it says about itself{RESET}"]
     for title, key in (("False positives", "false_positives"), ("Does not see", "blind_spots"), ("First checks", "first_checks")):
         out += [f"  {title}"] + [f"    - {item}" for item in record.get(key) or []]
+    if logs is not None:
+        out += logs_section(cand, logs)
     out += ["", f"{BOLD}What only a person can judge{RESET}"]
     out += [f"  [ ] {key:<10} {text}" for key, text in governance.CRITERIA.items()]
     out += ["  [ ] every exclusion above is one you would write yourself" if never else "  [ ] it needs no exclusion in your environment",
@@ -303,16 +384,28 @@ def board(lane: grow.Lane) -> dict[str, Any]:
     return {"quality": st["reviews"], "candidates": [{**r, "groups": getattr(techs.get(r["technique"]), "groups", 0)} for r in rows]}
 
 
-def print_board(doc: Mapping[str, Any]) -> None:
+def print_board(doc: Mapping[str, Any], logs: Mapping[str, Any] | None = None) -> None:
     q = doc["quality"]
     print(f"{BOLD}RASD-Agent's lane · {q['candidates']} candidates · reviewed by a person: {q['approved'] + q['revise']} "
-          f"({q['approved']} approved, {q['revise']} to revise) · {q['unreviewed'] + q['stale']} not reviewed{RESET}\n")
+          f"({q['approved']} approved, {q['revise']} to revise) · {q['unreviewed'] + q['stale']} not reviewed{RESET}")
+    rows = list(doc["candidates"])
+    seen = (logs or {}).get("candidates", {})
+    if logs is not None:
+        firing = [r for r in rows if seen.get(r["id"], {}).get("events")]
+        events = len({id(ev) for r in firing for ev in seen[r["id"]]["events"]})
+        silent = events - len({id(ev) for r in firing for ev in seen[r["id"]]["alerted"]})
+        print(f"{DIM}On {', '.join(logs['sources'])}: {logs['events']} events, {logs['routed']} of a log source RASD reads · {RESET}"
+              f"{len(firing)} of {len(rows)} candidates fire, on {events} event{'' if events == 1 else 's'}"
+              + (f"; the core library is silent on {'all of them' if silent == events else f'{silent} of them'}" if events else ""))
+        rows = firing + [r for r in rows if r not in firing]
+    print()
     colour = {"approved": GREEN, "revise": YELLOW}
     label = {"approved": "approved", "revise": "to revise", "stale": "not reviewed*", "unreviewed": "not reviewed"}
-    for r in doc["candidates"]:
+    for r in rows:
         who = f" · {r['reviewed_by']} {r['reviewed_on']}" if r.get("reviewed_by") and r["review"] != "unreviewed" else ""
+        told = f"{RESET} · {fires_text(seen[r['id']])}" if seen.get(r["id"], {}).get("events") else ""
         print(f"  {colour.get(r['review'], DIM)}{label[r['review']]:<13}{RESET} {r['id']:<50} {DIM}{r['level']} · "
-              f"{r['groups']} groups{who}{RESET}")
+              f"{r['groups']} groups{who}{told}{RESET}")
     if q["stale"]:
         print(f"\n{DIM}* an earlier text of the rule was reviewed; the one in the lane now was not{RESET}")
     if q["reviewed_ever"]:
@@ -323,9 +416,9 @@ def print_board(doc: Mapping[str, Any]) -> None:
             print("  mean rating: " + " · ".join(f"{k} {v}" for k, v in q["ratings"].items()))
         if q["second_opinions"]:
             print(f"  {q['second_opinions']} rule texts seen by more than one reviewer, {q['second_opinions_agree']} with the same verdict")
-    first = next((r["id"] for r in doc["candidates"] if r["review"] in ("unreviewed", "stale")), None)
+    first = next((r["id"] for r in rows if r["review"] in ("unreviewed", "stale")), None)
     if first:
-        print(f"\n{DIM}next: rasd review {first}{RESET}")
+        print(f"\n{DIM}next: rasd review {first}{' --logs ' + ' '.join(logs['sources']) if logs is not None else ''}{RESET}")
 
 
 def print_audit(lane: grow.Lane, last: int) -> int:
@@ -358,6 +451,8 @@ def main() -> int:
     ap.add_argument("--audit", nargs="?", const=20, type=int, metavar="N", help="the last N lines of the audit trail (20), and its chain")
     ap.add_argument("--backfill", action="store_true", help="record the candidates that were in the lane before the trail was kept")
     ap.add_argument("--check", action="store_true", help="fail when the records do not hold together (CI)")
+    ap.add_argument("--logs", nargs="+", metavar="EXPORT", help="JSON lines exports of your own telemetry: what each candidate says on them")
+    ap.add_argument("--profile", help="with --logs: telemetry profile from profiles/ (or 'auto') the exports are written in")
     ap.add_argument("--json", action="store_true", help="the board as JSON")
     args = ap.parse_args()
     lane = grow.Lane()
@@ -406,14 +501,19 @@ def main() -> int:
             withdraw(lane, cand, args.by, args.note or "")
             print(f"{cand.id} taken out of the lane; its technique returns to the queue with your reason")
             return 0
+        logs = on_logs(grow.load_candidates(lane), args.logs, args.profile) if args.logs else None
         if args.candidate:
-            print(dossier(lane, find(lane, args.candidate)))
+            print(dossier(lane, find(lane, args.candidate), logs))
             return 0
         doc = board(lane)
         if args.json:
+            if logs is not None:
+                doc = {**doc, "logs": {**{k: v for k, v in logs.items() if k != "candidates"},
+                                       "candidates": {cid: {"fires": len(seen["events"]), "core_alerts": len(seen["alerted"]), "read": seen["read"]}
+                                                      for cid, seen in logs["candidates"].items()}}}
             print(json.dumps(doc, indent=2, ensure_ascii=False))
         else:
-            print_board(doc)
+            print_board(doc, logs)
         return 0
     except (ReviewError, governance.GovernanceError) as e:
         print(f"{RED}rasd review{RESET}: {e}", file=sys.stderr)
