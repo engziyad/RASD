@@ -497,58 +497,136 @@ def print_report(alerts, stats, fc, stories, noisy_per_day: float = 20):
     print(f"  {DIM}{volume_note(stats, noisy_per_day)}{RESET}")
 
 
-def write_html(path: str, alerts, stats, fc, stories, source: str, noisy_per_day: float = 20):
+REPORT_CSS = """
+:root{--bg:#fff;--fg:#111;--dim:#666;--line:#d0d0d0;--soft:#f2f2f2}
+@media (prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#e9e9e9;--dim:#9c9c9c;--line:#343434;--soft:#1c1c1c}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header,main,footer,nav{max-width:1360px;margin:0 auto;padding:0 22px}
+header{padding-top:26px;padding-bottom:12px}
+nav{position:sticky;top:0;z-index:2;background:var(--bg);padding-top:9px;padding-bottom:9px;border-bottom:2px solid var(--fg)}
+section{scroll-margin-top:56px}details.alert{scroll-margin-top:43px}
+h1{font-size:21px;margin:0}h2{font-size:15px;margin:34px 0 10px;text-transform:uppercase;letter-spacing:.08em}
+h3{font-size:16px;margin:0}a{color:inherit}
+.src,.note,.meta,time,small{color:var(--dim)}.src{margin:2px 0 12px}
+.counts{margin:0;font-size:16px}.counts b{font-size:19px}.counts i{font-style:normal;color:var(--dim);margin:0 9px}
+nav a{margin-right:18px}
+.story{border-left:3px solid var(--fg);padding:2px 0 2px 16px;margin-bottom:22px}.meta{font-weight:400;font-size:14px;margin-left:10px}
+.narrative{margin:8px 0 10px;max-width:1000px}.steps{margin:0;padding-left:22px}.steps li{margin:3px 0}
+.steps a{text-decoration:none}.steps a:hover b,.steps a:focus b{text-decoration:underline}
+time,.n,.fields,code{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;font-size:13px}
+time{margin-right:10px}code{display:block;color:var(--dim);overflow-wrap:anywhere}
+.tools{display:flex;gap:12px;align-items:center;margin:0 0 10px}
+#q{flex:0 1 420px;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--dim);padding:6px 9px}
+#all{font:inherit;color:inherit;background:var(--soft);border:1px solid var(--dim);padding:6px 12px;cursor:pointer}
+.row{display:grid;grid-template-columns:16px 78px 44px 70px 140px 230px 100px 1fr;gap:12px;padding:7px 8px;border-bottom:1px solid var(--line);align-items:baseline}
+.head{font-size:13px;color:var(--dim);border-bottom:1px solid var(--fg)}
+summary.row{cursor:pointer;list-style:none}summary.row::-webkit-details-marker{display:none}
+summary.row::before{content:"+";font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--dim)}
+details[open]>summary.row::before{content:"\\2212"}details[open]>summary.row,summary.row:hover{background:var(--soft)}
+.row span,.row b{overflow-wrap:anywhere;min-width:0}.n{text-align:right}
+.body{padding:10px 8px 14px 36px;border-bottom:1px solid var(--line)}
+.fields{border-collapse:collapse}.fields th{text-align:right;font-weight:400;color:var(--dim);padding:1px 14px 1px 0;vertical-align:top;white-space:nowrap}
+.fields td{padding:1px 0;overflow-wrap:anywhere}.body p{margin:8px 0 0;font-size:14px}
+.vol{width:100%;border-collapse:collapse}.vol th,.vol td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:14px}
+.vol th{color:var(--dim);font-weight:400;border-bottom:1px solid var(--fg);white-space:nowrap}.vol .n{text-align:right;white-space:nowrap}
+.quiet{color:var(--dim)}.loud{font-weight:700}
+footer{margin-top:40px;padding-top:10px;padding-bottom:40px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
+@page{margin:14mm 12mm 16mm;@top-left{content:""}@top-center{content:""}@top-right{content:""}@bottom-center{content:""}
+@bottom-left{content:"RASD replay report";font:9pt system-ui,sans-serif;color:#666}@bottom-right{content:counter(page) " / " counter(pages);font:9pt system-ui,sans-serif;color:#666}}
+@media print{:root{--bg:#fff;--fg:#000;--dim:#555;--line:#bbb;--soft:#fff}body{font-size:11pt}header,main,footer{max-width:none;padding:0}
+nav,.tools{display:none}h2{break-after:avoid}.story,.row,.body,tr{break-inside:avoid}.vol th,.vol td{font-size:9.5pt;padding:4px 6px}thead{display:table-header-group}}
+"""
+
+REPORT_JS = """
+(function(){
+var q=document.getElementById('q'),all=document.getElementById('all'),count=document.getElementById('count');
+var rows=[].slice.call(document.querySelectorAll('details.alert'));
+function filter(){var s=q.value.trim().toLowerCase(),n=0;
+rows.forEach(function(r){var hit=!s||r.textContent.toLowerCase().indexOf(s)>-1;r.hidden=!hit;if(hit)n++;});
+count.textContent=s?n+' of '+rows.length+' alerts':'';}
+function toggle(open){rows.forEach(function(r){if(!r.hidden)r.open=open;});all.textContent=open?'Close all':'Open all';}
+function jump(){var t=document.getElementById(location.hash.slice(1));
+if(t&&t.tagName==='DETAILS'){t.hidden=false;t.open=true;t.scrollIntoView({block:'start'});}}
+q.addEventListener('input',filter);
+all.addEventListener('click',function(){toggle(all.textContent==='Open all');});
+window.addEventListener('hashchange',jump);window.addEventListener('beforeprint',function(){toggle(true);});
+jump();
+})();
+"""
+
+
+def _alert_fields(alert: dict, rules: dict) -> list[tuple[str, str]]:
+    """What an alert's details show: the event fields its rule read, or a correlation's window and counts."""
+    rec = _alert_record(alert, rules)
+    if "event" in rec:
+        return [(k, _one_line(v)) for k, v in rec["event"].items() if v not in (None, "")]
+    rows = []
+    for k, v in (rec.get("correlation") or {}).items():
+        if isinstance(v, dict):
+            v = ", ".join(f"{a}={b}" for a, b in v.items())
+        elif isinstance(v, (list, tuple, set)):
+            v = ", ".join(str(x) for x in v)
+        if v not in (None, ""):
+            rows.append((k, _one_line(v)))
+    return rows
+
+
+def write_html(path: str, alerts, stats, fc, stories, source: str, noisy_per_day: float = 20, rules: dict | None = None):
     e = lambda x: html.escape(str(x))
     daily = any(r["per_day"] is not None for r in fc)
-    lvl = {"high": "var(--high)", "critical": "var(--high)", "medium": "var(--med)", "low": "var(--low)"}
-    story_html = "".join(f"""
-      <article class="story"><header><span class="score" style="--s:{s['score']}">{s['score']}</span>
-        <div><h3>{e(s['entity'])}</h3><p class="muted">{s['start']:%Y-%m-%d %H:%M} – {s['end']:%H:%M} · {s['techniques']} techniques ·
-        {len(s['tactics'])} tactics · {s['alerts']} alerts</p></div></header>
-        <p class="narrative">{e(s['narrative'])}</p>
-        <ol class="timeline">{''.join(f"<li><time>{a['time']:%H:%M:%S}</time><b style='color:{lvl.get(a['level'],'inherit')}'>{e(a['technique'])}</b> {e(a['title'])}<code>{e(a['summary'][:140])}</code></li>" for a in s['steps'])}</ol>
-      </article>""" for s in stories) or "<p class='muted'>No multi-technique storylines in this window.</p>"
+    rules = rules or {}
+    shown = [a for a in alerts if a["time"]]
+    anchor = {id(a): f"a{n}" for n, a in enumerate(shown, 1)}
+    by_key = {(a["time"], a["rule"], a["entity"]): f"a{n}" for n, a in enumerate(shown, 1)}
+
+    def link(a) -> str:
+        return anchor.get(id(a)) or by_key.get((a["time"], a["rule"], a["entity"]), "alerts")
+
+    story_html = "".join(
+        f"""<article class="story"><h3>{e(s['entity'])}<span class="meta">risk {s['score']} · {s['start']:%Y-%m-%d %H:%M} – {s['end']:%H:%M} · """
+        f"""{s['techniques']} techniques · {len(s['tactics'])} tactics · {s['alerts']} alerts</span></h3>
+<p class="narrative">{e(s['narrative'])}</p>
+<ol class="steps">"""
+        + "".join(f"""<li><a href="#{link(a)}"><time>{a['time']:%H:%M:%S}</time><b>{e(a['technique'])}</b> {e(a['title'])}</a>"""
+                  f"""<code>{e(a['summary'][:140])}</code></li>""" for a in s["steps"])
+        + "</ol></article>" for s in stories) or '<p class="note">No multi-technique storylines in this window.</p>'
     fc_rows = "".join(f"<tr><td>{e(r['rule'])}</td><td>{e(r['level'])}</td><td class='n'>{r['alerts']}</td>"
                       + (f"<td class='n'>{r['per_day']}</td>" if daily else "") + f"<td class='n'>{r['entities']}</td>"
-                      f"<td class='{ 'bad' if r['verdict'].startswith('noisy') else ('muted' if r['verdict']=='silent' else 'ok') }'>{e(r['verdict'])}</td></tr>" for r in fc)
-    alert_rows = "".join(f"<tr><td class='t'>{a['time']:%H:%M:%S}</td><td class='n'>{'' if a.get('risk') is None else a['risk']}</td>"
-                         f"<td>{e(a['entity'])}</td><td>{e(a['user'])}</td>"
-                         f"<td class='t'><b style='color:{lvl.get(a['level'],'inherit')}'>{e(a['technique'])}</b></td><td>{e(a['title'])}"
-                         f"<code>{e(', '.join(a.get('risk_factors') or []))}</code></td></tr>" for a in alerts if a['time'])
+                      f"<td class='{'loud' if r['verdict'].startswith('noisy') else ('quiet' if r['verdict'] == 'silent' else '')}'>{e(r['verdict'])}</td></tr>" for r in fc)
+
+    def alert_html(a) -> str:
+        fields = "".join(f"<tr><th>{e(k)}</th><td>{e(v)}</td></tr>" for k, v in _alert_fields(a, rules))
+        factors = ", ".join(a.get("risk_factors") or [])
+        asks = "; ".join(a.get("risk_questions") or [])
+        return (f"""<details class="alert" id="{link(a)}"><summary class="row"><time>{a['time']:%H:%M:%S}</time>"""
+                f"""<span class="n">{'' if a.get('risk') is None else a['risk']}</span><span>{e(a['level'])}</span><span>{e(a['entity'])}</span>"""
+                f"""<span>{e(a['user'])}</span><b>{e(a['technique'])}</b><span>{e(a['title'])}</span></summary>"""
+                f"""<div class="body"><table class="fields">{fields}</table>"""
+                + (f"<p>Risk: {e(factors)}</p>" if factors else "")
+                + (f"<p>To answer: {e(asks)}</p>" if asks else "") + "</div></details>")
+
+    alerts_html = "".join(alert_html(a) for a in shown)
+    fired = sum(1 for r in fc if r["alerts"])
+    count = lambda n, noun: f"<b>{n}</b> {noun}{'' if n == 1 else 's'}"
     doc = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RASD Replay Report</title><style>
-:root{{--bg:#fbfaf7;--fg:#1d1c1a;--muted:#6b6862;--card:#fff;--line:#e6e2da;--gold:#9a7a45;--sage:#4f7a4f;--high:#b3412e;--med:#a8741a;--low:#4f7a4f}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#111214;--fg:#e9e5dc;--muted:#9a968d;--card:#1a1b1e;--line:#2c2d31;--gold:#d7af87;--sage:#87af87;--high:#ef7b66;--med:#e3b25b;--low:#87af87}}}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}}
-main{{max-width:1080px;margin:0 auto;padding:32px 16px 64px}}h1{{font-size:26px;margin:0}}h2{{font-size:18px;margin:36px 0 12px;color:var(--gold)}}h3{{margin:0;font-size:16px}}
-.muted{{color:var(--muted)}}.kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:20px}}
-.kpi{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}}.kpi b{{display:block;font-size:24px}}
-.story{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}}
-.story header{{display:flex;gap:14px;align-items:center}}.score{{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:700;
-background:conic-gradient(var(--high) calc(var(--s)*1%),var(--line) 0)}}.narrative{{margin:12px 0;font-weight:500}}
-.timeline{{margin:0;padding-left:18px}}.timeline li{{margin:6px 0}}time{{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:8px}}
-code{{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}}.table-wrap{{overflow-x:auto}}
-table{{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}}
-th,td{{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:14px}}th{{color:var(--muted);font-weight:500;white-space:nowrap}}
-.n{{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}}.t{{white-space:nowrap;font-variant-numeric:tabular-nums}}
-.bad{{color:var(--high)}}.ok{{color:var(--sage)}}.note{{color:var(--muted);font-size:14px;margin:0 0 12px}}footer{{margin-top:40px;color:var(--muted);font-size:13px}}
-@page{{margin:14mm 12mm 16mm;@top-left{{content:""}}@top-center{{content:""}}@top-right{{content:""}}@bottom-center{{content:""}}
-@bottom-left{{content:"RASD replay report";font:9pt system-ui,sans-serif;color:#6b6862}}@bottom-right{{content:counter(page) " / " counter(pages);font:9pt system-ui,sans-serif;color:#6b6862}}}}
-@media print{{:root{{--bg:#fff;--fg:#1d1c1a;--muted:#5f5c56;--card:#fff;--line:#d9d5cc;--gold:#7d6233;--sage:#3f663f;--high:#a5351f;--med:#8a5f12;--low:#3f663f}}
-body{{font-size:11pt}}main{{max-width:none;padding:0}}h2{{break-after:avoid}}.kpi,.story header,.timeline li,tr{{break-inside:avoid}}
-.table-wrap{{overflow:visible}}table{{border-radius:0;overflow:visible}}th,td{{font-size:9.5pt;padding:5px 7px}}td{{overflow-wrap:break-word}}thead{{display:table-header-group}}
-.score,.kpi,.story{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}footer{{margin-top:18px}}}}
-</style></head><body><main>
-<h1>RASD Replay Report</h1><p class="muted">{e(", ".join(Path(x).name for x in source.split(", ")))} · {e(when_text(stats))}</p>
-<div class="kpis"><div class="kpi"><span class="muted">Events</span><b>{stats['events']}</b></div>
-<div class="kpi"><span class="muted">Alerts</span><b>{len(alerts)}</b></div>
-<div class="kpi"><span class="muted">Storylines</span><b>{len(stories)}</b></div>
-<div class="kpi"><span class="muted">Rules fired</span><b>{sum(1 for r in fc if r['alerts'])}/{len(fc)}</b></div></div>
-<h2>Attack storylines</h2>{story_html}
-<h2>Alert volume</h2><p class="note">{e(volume_note(stats, noisy_per_day))}</p>
-<div class="table-wrap"><table><thead><tr><th>Detection</th><th>Level</th><th class="n">Alerts</th>{'<th class="n">Per day</th>' if daily else ''}<th class="n">Entities</th><th>Verdict</th></tr></thead><tbody>{fc_rows}</tbody></table></div>
-<h2>All alerts</h2><div class="table-wrap"><table><thead><tr><th>Time</th><th class="n">Risk</th><th>Entity</th><th>User</th><th>Technique</th><th>Detection · risk factors</th></tr></thead><tbody>{alert_rows}</tbody></table></div>
-<footer>Generated by RASD · Continuous Detection Assurance Framework</footer></main></body></html>"""
+<title>RASD replay</title><style>{REPORT_CSS}</style></head><body>
+<header><h1>RASD replay</h1><p class="src">{e(", ".join(Path(x).name for x in source.split(", ")))} · {e(when_text(stats))}</p>
+<p class="counts">{count(stats['events'], 'event')}<i>·</i>{count(len(alerts), 'alert')}<i>·</i>{count(len(stories), 'storyline')}<i>·</i><b>{fired}</b> of {len(fc)} rules fired</p>
+</header>
+<nav><a href="#storylines">Storylines</a><a href="#alerts">Alerts</a><a href="#volume">Alert volume</a></nav>
+<main>
+<section id="storylines"><h2>Storylines</h2>{story_html}</section>
+<section id="alerts"><h2>Alerts</h2>
+<p class="tools"><input id="q" type="search" placeholder="Filter: host, user, technique, detection, field value" aria-label="Filter alerts">
+<button id="all" type="button">Open all</button><span id="count" class="note"></span></p>
+<div class="row head"><span></span><span>Time</span><span class="n">Risk</span><span>Level</span><span>Host</span><span>User</span><span>Technique</span><span>Detection</span></div>
+{alerts_html}</section>
+<section id="volume"><h2>Alert volume</h2><p class="note">{e(volume_note(stats, noisy_per_day))}</p>
+<table class="vol"><thead><tr><th>Detection</th><th>Level</th><th class="n">Alerts</th>{'<th class="n">Per day</th>' if daily else ''}<th class="n">Entities</th><th>Verdict</th></tr></thead><tbody>{fc_rows}</tbody></table></section>
+</main>
+<footer>Generated by RASD</footer>
+<script>{REPORT_JS}</script></body></html>"""
     write_output(path, doc)
 
 
@@ -872,7 +950,8 @@ def main() -> int:
     stories = storylines(alerts, args.window)
     print_report(alerts, stats, fc, stories, args.noisy)
     if args.html:
-        write_html(args.html, alerts, stats, fc, stories, ", ".join(args.logs), args.noisy)
+        write_html(args.html, alerts, stats, fc, stories, ", ".join(args.logs), args.noisy,
+                   {**{d.id: d for d in dets}, **{c.id: c for c in corrs}})
         print(f"\n[+] HTML report: {args.html}")
     if args.json:
         clean = lambda o: o.isoformat() if isinstance(o, datetime) else str(o)
