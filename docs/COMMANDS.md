@@ -86,9 +86,9 @@ On Windows, create the environment with `py -m venv .venv` and activate it with 
 
 Without installing, every command also runs as `python rasd.py <command>` after `pip install -r requirements.txt`. Offline, or behind a package mirror without build isolation: `python -m pip install -e . --no-build-isolation` (it uses the setuptools already installed, which must be 77 or newer for the SPDX license field). For changes to the tools themselves, `pip install -r requirements-dev.txt` adds ruff (lint and security rules) and mypy, which CI and the pre-commit hooks run. Security linting is currently covered through Ruff S-rules. Bandit may be added later as an optional CI gate. On Debian, Ubuntu or Kali, `sudo apt install python3-venv` provides `venv`, and `sudo apt install python3-yaml` is enough for `python3 rasd.py ...`.
 
-The last command writes the replay report: every rule and correlation run over a synthetic lab day, alerts ranked by risk, and the intrusion rebuilt as one storyline (command lines hidden in this capture).
+The last command writes the replay report: every rule and correlation run over a synthetic lab day, and the intrusion rebuilt as one storyline. Each step of the storyline leads to its alert; an alert opens to the event fields its rule read, and the filter narrows the list by host, account, technique or any field value.
 
-<img src="assets/replay-report.png" alt="RASD replay report: alerts, rules fired and the attack storyline on WS07" width="760">
+<img src="assets/replay-report.png" alt="RASD replay report: the storyline on WS07 and its alerts, one opened to the fields its rule read" width="760">
 
 Real evidence, on an isolated Windows lab VM that forwards to Splunk ([lab kit](../red/lab/README.md)):
 
