@@ -120,7 +120,7 @@ What leaves the machine is the prompt: the technique's public description, RASD'
 
 ## Reviewing and promoting a candidate
 
-`rasd review <candidate>` shows a reviewer the rule, everything it will never alert on, its tests and the four questions no gate can answer; `--approve`, `--revise` or `--reject` records the verdict with the reviewer's name against the SHA-256 of the rule text. `rasd review <candidate> --promote` then turns an approved candidate into the start of a core detection: the rule and the tests carried over byte for byte, the contract, the tuning guide and the mutation tests left for a person to write, and from there the behaviour spec and the lab run, through `rasd ci` and a pull request. The technique then stands as core. Who may do what, the audit trail and how a run is rolled back are in [GOVERNANCE](GOVERNANCE.md).
+`rasd review <candidate>` shows a reviewer the rule, everything it will never alert on, its tests and the four questions no gate can answer, and with `--logs <export>` the events of the reviewer's own telemetry it fires on; `--approve`, `--revise` or `--reject` records the verdict with the reviewer's name against the SHA-256 of the rule text. `rasd review <candidate> --promote` then turns an approved candidate into the start of a core detection: the rule and the tests carried over byte for byte, the contract, the tuning guide and the mutation tests left for a person to write, and from there the behaviour spec and the lab run, through `rasd ci` and a pull request. The technique then stands as core. Who may do what, the audit trail and how a run is rolled back are in [GOVERNANCE](GOVERNANCE.md).
 
 ## Commands
 
@@ -138,6 +138,7 @@ rasd grow --guard                      # nothing but the lane's own files differ
 rasd grow --set-aside run.json         # take what that run accepted out again, recorded as refused
 rasd grow --write                      # regenerate the lane's pages (part of rasd build)
 rasd review                            # the people's side: the board, a dossier, a verdict, promotion, rollback, the trail
+rasd review --logs export.jsonl        # the board beside your own logs: the candidates that fire, and the events the core is silent on
 ```
 
 Exit codes: 0 done; 1 a check failed, or the model stopped answering three times in a row (what the gates had accepted is kept); 2 the model is misconfigured; 3 `--sync` held a release that disagrees with the core.

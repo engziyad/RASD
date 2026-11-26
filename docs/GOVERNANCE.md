@@ -9,6 +9,8 @@ One rule holds the rest together:
 ```bash
 rasd review                                   # the board: every candidate and where it stands with people
 rasd review T1105                             # the dossier of one candidate, with what only a person can judge
+rasd review --logs export.jsonl               # the board beside your own logs: what fires, and what the core says nothing about
+rasd review T1105 --logs export.jsonl         # the dossier with the events of your logs the rule fires on
 rasd review T1105 --approve --by "Your Name" --rate logic=5 telemetry=5 noise=4 mapping=5
 rasd review T1105 --revise  --by "Your Name" --note "what to change"
 rasd review T1105 --reject  --by "Your Name" --note "why it is wrong"
@@ -43,6 +45,7 @@ The gates prove that a rule is well-formed, catches its own examples under every
 | The events it fires on and stays quiet on | The examples the model chose, and the ones the proof added |
 | What the gates measured | Rule mutants killed, attacker variations matched, parity events |
 | Four questions only a person can answer | **logic**: does it describe the technique or only its examples · **telemetry**: are the log source and fields right · **noise**: would it stay quiet on ordinary administration · **mapping**: are the technique and the severity right |
+| With `--logs`, the events of your own telemetry it fires on | Something to answer **logic** and **noise** from: an export goes through the candidate exactly as `rasd replay` puts it through the core, and the events a core detection alerts on as well are counted apart. The board lists first the candidates that fire. Nothing is written, and a candidate that fires on your logs is still a candidate |
 
 A verdict is recorded in [`agent/reviews.yml`](../agent/reviews.yml) with the reviewer's name, the date and the **SHA-256 of the rule text that was judged**:
 
