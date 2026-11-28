@@ -791,15 +791,17 @@ def environment_counsel(logs: list[Path], profile: str | None, noisy_per_day: fl
             data={"storylines": len(stories)}))
     near = nearmiss.analyse(events)
     for det_id, r in sorted(near["detections"].items()):
+        rule = det_id.split(" ")[0]
+        key = slug(det_id) if det_id.endswith(" (base)") else det_id
         for b in r.get("boundaries") or []:
             if b["pinned_by"] or b["events"] < 1:
                 continue
             out.append(Finding(
-                id=f"nearmiss.env.{det_id}.{slug(b['condition'])}", priority=3, pillar="detect", roles=("engineer", "analyst"),
+                id=f"nearmiss.env.{key}.{slug(b['condition'])}", priority=3, pillar="detect", roles=("engineer", "analyst"),
                 title=f"{det_id}: {b['events']} of your events ({b['share']}%) are one edit away from an alert, held back by {b['condition']}",
                 evidence=f"No true negative pins that boundary; the edit is {b['witness']['field']}.",
-                action=f"rasd nearmiss {label} --profile {used} --filter {det_id} --suggest", weight=b["events"],
-                data={"detection": det_id}))
+                action=f"rasd nearmiss {label} --profile {used} --filter {rule} --suggest", weight=b["events"],
+                data={"detection": rule}))
     for cid, r in sorted(near["correlations"].items()):
         if r.get("headroom") is not None and r["headroom"] <= 1 and r.get("windows"):
             out.append(Finding(

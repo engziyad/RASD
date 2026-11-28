@@ -3026,6 +3026,19 @@ class Advise(unittest.TestCase):
         self.assertTrue(all(f.id.startswith(("telemetry.", "noise.", "replay.", "nearmiss.env.", "headroom.env.", "profile."))
                             for f in findings), ids)
 
+    def test_environment_counsel_names_a_correlation_base_rule(self):
+        import nearmiss
+        boundary = {"pinned_by": [], "events": 1, "share": 2.2, "witness": {"field": "Status"},
+                    "condition": "kerberos_tgt_refused: Status '0x6', '6', '0x12' (+1)"}
+        measured = {"detections": {"T1110.003_password_spray_burst (base)": {"boundaries": [boundary]}}, "correlations": {}}
+        with mock.patch.object(nearmiss, "analyse", return_value=measured):
+            findings, _summary = advise.environment_counsel([ROOT / "samples" / "replay" / "lab-day.jsonl"], None)
+        near = [f for f in findings if f.id.startswith("nearmiss.env.")]
+        self.assertEqual([f.id for f in near],
+                         ["nearmiss.env.t1110-003-password-spray-burst-base.kerberos-tgt-refused-status-0x6-6-0x12-1"])
+        self.assertEqual(near[0].data["detection"], "T1110.003_password_spray_burst")
+        self.assertIn("--filter T1110.003_password_spray_burst --suggest", near[0].action)
+
     def test_a_test_proposal_is_engine_verified(self):
         det = find_detection("T1218.011_rundll32_suspicious_execution")
         quiet = {"EventID": 1, "Image": "C:\\Windows\\System32\\notepad.exe", "CommandLine": "notepad.exe C:\\notes.txt"}
